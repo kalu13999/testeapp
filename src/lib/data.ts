@@ -47,6 +47,7 @@ export interface User {
     name: string;
     email: string | null;
     avatar: string | null;
+    role: string;
 }
 
 export interface Book {

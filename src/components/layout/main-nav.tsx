@@ -37,6 +37,7 @@ const menuItems = [
     items: [
       { href: "/projects", label: "Projects", icon: Briefcase },
       { href: "/clients", label: "Clients", icon: Users },
+      { href: "/users", label: "Users", icon: Users },
     ],
   },
   {
