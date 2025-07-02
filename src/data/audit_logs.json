@@ -7,5 +7,8 @@
   { "id": "al_5", "documentId": "DOC-0824", "action": "Processing", "userId": "u_system", "date": "2023-10-25 14:00", "details": "OCR script initiated" },
   { "id": "al_6", "documentId": "DOC-0824", "action": "QC Pending", "userId": "u_system", "date": "2023-10-26 09:00", "details": "Ready for Quality Control" },
   { "id": "al_7", "documentId": "DOC-0823", "action": "Created", "userId": "u_system", "date": "2023-10-26 10:00", "details": "Request received from Future Tech" },
-  { "id": "al_8", "documentId": "DOC-0823", "action": "Delivered", "userId": "u_1", "date": "2023-10-26 11:00", "details": "Delivered to client" }
+  { "id": "al_8", "documentId": "DOC-0823", "action": "Delivered", "userId": "u_1", "date": "2023-10-26 11:00", "details": "Delivered to client" },
+  { "id": "al_9", "documentId": "DOC-0818", "action": "QC Failed", "userId": "u_3", "date": "2023-10-22 13:00", "details": "Rejected due to poor scan quality." },
+  { "id": "al_10", "documentId": "DOC-0819", "action": "Received", "userId": "u_1", "date": "2023-10-23 14:00", "details": "Physical document confirmed." },
+  { "id": "al_11", "documentId": "DOC-0822", "action": "Processing", "userId": "u_system", "date": "2023-10-25 15:00", "details": "Script run initiated." }
 ]

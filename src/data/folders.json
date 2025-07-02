@@ -3,7 +3,9 @@
   { "id": "f_1", "name": "Project Innovate", "parentId": null },
   { "id": "f_2", "name": "Project Future", "parentId": null },
   { "id": "f_3", "name": "Project DataSys", "parentId": null },
-  { "id": "f_4", "name": "Uncategorized", "parentId": null },
+  { "id": "f_4", "name": "Project Quantum", "parentId": null },
+  { "id": "f_5", "name": "Project Global", "parentId": null },
   { "id": "f_1_inv", "name": "Invoices", "parentId": "f_1" },
-  { "id": "f_2_con", "name": "Contracts", "parentId": "f_2" }
+  { "id": "f_2_con", "name": "Contracts", "parentId": "f_2" },
+  { "id": "f_4_exp", "name": "Expenses", "parentId": "f_4" }
 ]

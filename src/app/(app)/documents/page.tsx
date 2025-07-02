@@ -1,8 +1,15 @@
 
-import { getDocuments } from "@/lib/data";
+import { getDocuments, getClients } from "@/lib/data";
 import DocumentsClient from "./client";
 
 export default async function DocumentsPage() {
-  const documents = await getDocuments();
-  return <DocumentsClient documents={documents} />;
+  const [documents, clients] = await Promise.all([
+    getDocuments(),
+    getClients(),
+  ]);
+
+  const uniqueStatuses = [...new Set(documents.map(doc => doc.status))].sort();
+  const clientNames = clients.map(c => c.name).sort();
+
+  return <DocumentsClient documents={documents} clients={clientNames} statuses={uniqueStatuses} />;
 }

@@ -3,5 +3,6 @@
   { "id": "cl_1", "name": "Innovate Corp" },
   { "id": "cl_2", "name": "Future Tech" },
   { "id": "cl_3", "name": "Data Systems" },
-  { "id": "cl_4", "name": "Quantum Leap" }
+  { "id": "cl_4", "name": "Quantum Leap" },
+  { "id": "cl_5", "name": "Global Solutions" }
 ]

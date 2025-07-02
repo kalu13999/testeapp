@@ -1,7 +1,8 @@
 
 [
   { "id": "u_admin", "name": "Admin User", "email": "admin@flowvault.com", "avatar": "https://placehold.co/100x100.png" },
-  { "id": "u_1", "name": "operator-1", "email": "op1@flowvault.com", "avatar": "https://placehold.co/100x100.png" },
-  { "id": "u_2", "name": "operator-2", "email": "op2@flowvault.com", "avatar": "https://placehold.co/100x100.png" },
-  { "id": "u_system", "name": "system", "email": null, "avatar": null }
+  { "id": "u_1", "name": "Operator 1", "email": "op1@flowvault.com", "avatar": "https://placehold.co/100x100.png" },
+  { "id": "u_2", "name": "Operator 2", "email": "op2@flowvault.com", "avatar": "https://placehold.co/100x100.png" },
+  { "id": "u_3", "name": "QC Specialist", "email": "qc1@flowvault.com", "avatar": "https://placehold.co/100x100.png" },
+  { "id": "u_system", "name": "System", "email": null, "avatar": null }
 ]
