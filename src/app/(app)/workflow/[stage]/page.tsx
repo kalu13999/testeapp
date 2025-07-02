@@ -17,7 +17,7 @@ const STAGE_CONFIG: { [key: string]: any } = {
   scanning: {
     title: "Scanning Queue",
     description: "Physical books that have been received and are awaiting scanning.",
-    actionButtonLabel: "Start Scanning",
+    actionButtonLabel: "Confirm Scanning",
     actionButtonIcon: "ScanLine",
     emptyStateText: "No books in the scanning queue.",
     dataType: 'book',

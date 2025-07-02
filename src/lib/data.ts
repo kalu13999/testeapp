@@ -66,6 +66,7 @@ export interface Project {
 
 export interface BookWithProject extends Book {
     projectId: string;
+    clientId: string;
     projectName: string;
     clientName: string;
     documentCount: number;
@@ -322,10 +323,14 @@ export async function getFolderContents(folderId: string | null) {
         getFolders()
     ]);
     
-    const storageStatusId = statuses.find(s => s.stage === 'Storage')?.id;
+    // In a real app, 'Storage' would represent a set of statuses (e.g., Indexing, QC, etc.)
+    // For this prototype, let's show all documents that are past the 'Scanned' state
+    const postScanStatusIds = statuses
+      .filter(s => !['Request Received', 'Received', 'Scanned', 'Pending'].includes(s.name))
+      .map(s => s.id)
 
     const documentsInFolder = documents
-        .filter(doc => (doc.folderId || null) === (folderId || null) && doc.statusId === storageStatusId)
+        .filter(doc => (doc.folderId || null) === (folderId || null) && postScanStatusIds.includes(doc.statusId))
         .map(doc => {
             const client = clients.find(c => c.id === doc.clientId);
             const status = statuses.find(s => s.id === doc.statusId);
@@ -362,6 +367,7 @@ export async function getBooks(): Promise<BookWithProject[]> {
             books.push({
                 ...book,
                 projectId: project.id,
+                clientId: project.clientId,
                 projectName: project.name,
                 clientName: project.clientName,
                 documentCount: bookDocuments.length,

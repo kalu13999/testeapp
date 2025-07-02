@@ -91,13 +91,17 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const handleGenericAction = (item: any) => {
     if (dataType === 'book') {
         handleBookAction(item.id, item.status);
+        toast({
+            title: "Action Completed",
+            description: `Book "${item.name}" has been moved to the next stage.`,
+        });
     } else {
         handleDocumentAction(item.id, item.status);
+        toast({
+            title: "Action Completed",
+            description: `Document "${item.name}" has been moved to the next stage.`,
+        });
     }
-    toast({
-        title: "Action Completed",
-        description: `"${item.name}" has been moved to the next stage.`,
-    });
   };
   
   const handleQCAction = (item: any, newStatus: string) => {

@@ -33,18 +33,18 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { BookWithProject } from "@/lib/data";
 import { Progress } from "@/components/ui/progress";
+import { useWorkflow } from "@/context/workflow-context";
 
 interface DocumentsClientProps {
-  books: BookWithProject[];
   clients: string[];
   projects: string[];
 }
 
 const ITEMS_PER_PAGE = 10;
 
-export default function DocumentsClient({ books, clients, projects }: DocumentsClientProps) {
+export default function DocumentsClient({ clients, projects }: DocumentsClientProps) {
+  const { books } = useWorkflow(); // Use the central state for books
   const [filters, setFilters] = React.useState({
     query: '',
     project: 'all',
