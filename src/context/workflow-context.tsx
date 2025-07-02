@@ -28,7 +28,7 @@ const digitalStageTransitions: { [key: string]: string } = {
 }
 
 // Client-side representation of a document
-export type AppDocument = RawDocument & { client: string; status: string };
+export type AppDocument = RawDocument & { client: string; status: string; flag: 'error' | 'warning' | 'info' | null; };
 
 type AppContextType = {
   // State
@@ -70,6 +70,7 @@ type AppContextType = {
   addPageToBook: (bookId: string, position: number) => void;
   deletePageFromBook: (pageId: string, bookId: string) => void;
   updateDocumentStatus: (docId: string, newStatus: string) => void;
+  updateDocumentFlag: (docId: string, flag: AppDocument['flag']) => void;
 };
 
 const AppContext = React.createContext<AppContextType | undefined>(undefined);
@@ -277,6 +278,7 @@ export function AppProvider({
           folderId: null,
           projectId: book.projectId,
           bookId: book.id,
+          flag: null,
         }));
 
         setDocuments(prevDocs => [...prevDocs, ...newDocs]);
@@ -365,6 +367,7 @@ export function AppProvider({
         folderId: null,
         projectId: book.projectId,
         bookId: book.id,
+        flag: 'info',
       };
 
       const updatedPages = bookPages.map(page => {
@@ -402,6 +405,16 @@ export function AppProvider({
     );
   };
 
+  const updateDocumentFlag = (docId: string, flag: AppDocument['flag']) => {
+    setDocuments(prevDocs =>
+      prevDocs.map(doc =>
+        doc.id === docId ? { ...doc, flag: flag } : doc
+      )
+    );
+    const flagLabel = flag ? flag.charAt(0).toUpperCase() + flag.slice(1) : 'Cleared';
+    toast({ title: `Flag ${flag ? 'Set' : 'Cleared'}`, description: `Document has been marked with: ${flagLabel}` });
+  }
+
   const value = { 
     clients, users, projects, books, documents, auditLogs,
     addClient, updateClient, deleteClient,
@@ -411,6 +424,7 @@ export function AppProvider({
     handleBookAction, handleMoveBookToNextStage, handleClientAction,
     handleFinalize, handleMarkAsCorrected, handleResubmit,
     addPageToBook, deletePageFromBook, updateDocumentStatus,
+    updateDocumentFlag,
   };
 
   return (

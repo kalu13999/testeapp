@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FolderSync, FileText, FileJson, Play, ThumbsUp, ThumbsDown, Send, Archive, Undo2 } from "lucide-react";
+import { FolderSync, FileText, FileJson, Play, ThumbsUp, ThumbsDown, Send, Archive, Undo2, AlertTriangle, ShieldAlert } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { useToast } from "@/hooks/use-toast";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -22,6 +22,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { AppDocument } from "@/context/workflow-context";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type IconMap = {
   [key: string]: React.ElementType;
@@ -55,6 +56,8 @@ type GroupedDocuments = {
     bookName: string;
     projectName: string;
     pages: AppDocument[];
+    hasError: boolean;
+    hasWarning: boolean;
   };
 };
 
@@ -88,9 +91,13 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
           bookName: bookInfo?.name || 'Unknown Book',
           projectName: bookInfo?.projectName || 'Unknown Project',
           pages: [],
+          hasError: false,
+          hasWarning: false,
         };
       }
       acc[doc.bookId].pages.push(doc);
+      if (doc.flag === 'error') acc[doc.bookId].hasError = true;
+      if (doc.flag === 'warning') acc[doc.bookId].hasWarning = true;
       return acc;
     }, {});
   }, [stageDocuments, books]);
@@ -102,7 +109,18 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     setCurrentBook(null);
   }
 
-  const renderActions = (bookId: string, bookName: string) => {
+  const renderActions = (bookId: string, bookName: string, hasError: boolean) => {
+    const actionButton = (
+        <Button 
+            size="sm" 
+            onClick={() => handleMoveBookToNextStage(bookId, config.dataStage)}
+            disabled={hasError}
+        >
+            <ActionIcon className="mr-2 h-4 w-4" />
+            {config.actionButtonLabel}
+        </Button>
+    );
+
     switch (stage) {
       case 'pending-deliveries':
         return (
@@ -149,14 +167,21 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
         return null; // No actions in archive
       default: // For standard workflow stages
         if (!config.actionButtonLabel) return null;
-        return (
-          <Button size="sm" onClick={() => {
-            handleMoveBookToNextStage(bookId, config.dataStage);
-          }}>
-            <ActionIcon className="mr-2 h-4 w-4" />
-            {config.actionButtonLabel}
-          </Button>
-        );
+        if (hasError) {
+          return (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span tabIndex={0}>{actionButton}</span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Cannot proceed. One or more pages have an error.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )
+        }
+        return actionButton;
     }
   }
 
@@ -170,27 +195,31 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
         <CardContent>
           {Object.keys(groupedByBook).length > 0 ? (
             <Accordion type="multiple" className="w-full">
-              {Object.entries(groupedByBook).map(([bookId, { bookName, projectName, pages }]) => (
+              {Object.entries(groupedByBook).map(([bookId, { bookName, projectName, pages, hasError, hasWarning }]) => (
                 <AccordionItem value={bookId} key={bookId}>
                   <div className="flex items-center justify-between hover:bg-muted/50 rounded-md">
                       <AccordionTrigger className="flex-1 px-4 py-2">
                           <div className="flex items-center gap-3 text-left">
                               <FolderSync className="h-5 w-5 text-primary" />
                               <div>
-                                  <p className="font-semibold text-base">{bookName}</p>
+                                  <p className="font-semibold text-base flex items-center gap-2">
+                                    {bookName}
+                                    {hasError && <ShieldAlert className="h-4 w-4 text-destructive" />}
+                                    {hasWarning && !hasError && <AlertTriangle className="h-4 w-4 text-orange-500" />}
+                                  </p>
                                   <p className="text-sm text-muted-foreground">{projectName} - {pages.length} pages</p>
                               </div>
                           </div>
                       </AccordionTrigger>
                       <div className="px-4">
-                        {renderActions(bookId, bookName)}
+                        {renderActions(bookId, bookName, hasError)}
                       </div>
                   </div>
                   <AccordionContent>
                     <div className="pt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
                       {pages.map(page => (
                           <Link href={`/documents/${page.id}`} key={page.id}>
-                              <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+                              <Card className="overflow-hidden hover:shadow-lg transition-shadow relative group">
                                   <CardContent className="p-0">
                                       <Image
                                           src="https://placehold.co/400x550.png"
@@ -200,9 +229,13 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                                           height={550}
                                           className="aspect-[4/5.5] object-cover w-full h-full"
                                       />
+                                      {page.flag === 'error' && <div className="absolute inset-0 bg-destructive/20 border-2 border-destructive"></div>}
+                                      {page.flag === 'warning' && <div className="absolute inset-0 bg-orange-500/20 border-2 border-orange-500"></div>}
                                   </CardContent>
-                                   <CardFooter className="p-2">
+                                   <CardFooter className="p-2 flex items-center justify-between">
                                       <p className="text-xs font-medium truncate">{page.name}</p>
+                                       {page.flag === 'error' && <ShieldAlert className="h-3 w-3 text-destructive flex-shrink-0"/>}
+                                       {page.flag === 'warning' && <AlertTriangle className="h-3 w-3 text-orange-500 flex-shrink-0"/>}
                                    </CardFooter>
                               </Card>
                           </Link>

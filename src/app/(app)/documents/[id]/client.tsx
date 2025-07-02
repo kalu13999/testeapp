@@ -9,19 +9,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { useAppContext } from '@/context/workflow-context';
-import { Check, Send, ThumbsDown, ThumbsUp, ZoomIn, ZoomOut, History } from "lucide-react";
+import { ShieldAlert, AlertTriangle, InfoIcon, CircleX, History } from "lucide-react";
+import type { AppDocument } from '@/context/workflow-context';
+
+const flagConfig = {
+    error: { icon: ShieldAlert, color: "text-destructive", label: "Error" },
+    warning: { icon: AlertTriangle, color: "text-accent-foreground", label: "Warning" },
+    info: { icon: InfoIcon, color: "text-primary", label: "Info" },
+};
 
 export default function DocumentDetailClient({ docId }: { docId: string }) {
-    const { documents, auditLogs } = useAppContext();
+    const { documents, auditLogs, updateDocumentFlag } = useAppContext();
     
     const document = documents.find(doc => doc.id === docId);
     
-    // The documentId in the static audit_logs.json (`DOC-0824`) doesn't match our dynamic `doc_...` IDs.
-    // For the prototype to show *something*, I'll just grab the first document's logs.
-    // In a real application, the audit log generation would be dynamic and use consistent IDs.
     const firstLogDocId = auditLogs.length > 0 ? auditLogs[0].documentId : undefined;
     const documentAuditLog = firstLogDocId ? auditLogs.filter(log => log.documentId === firstLogDocId) : [];
-
 
     if (!document) {
         return (
@@ -38,18 +41,20 @@ export default function DocumentDetailClient({ docId }: { docId: string }) {
         )
     }
 
+    const CurrentFlagIcon = document.flag ? flagConfig[document.flag].icon : null;
+    const currentFlagLabel = document.flag ? flagConfig[document.flag].label : "None";
+    
     return (
         <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-6">
             <div className="md:col-span-2 lg:col-span-3 space-y-6">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
                        <div>
-                         <CardTitle className="font-headline">{document.name}</CardTitle>
+                         <CardTitle className="font-headline flex items-center gap-2">
+                            {CurrentFlagIcon && <CurrentFlagIcon className={`h-6 w-6 ${flagConfig[document.flag!].color}`} />}
+                            {document.name}
+                         </CardTitle>
                          <CardDescription>Document ID: {document.id}</CardDescription>
-                       </div>
-                       <div className="flex items-center gap-2">
-                            <Button variant="outline" size="icon"><ZoomIn className="h-4 w-4" /></Button>
-                            <Button variant="outline" size="icon"><ZoomOut className="h-4 w-4" /></Button>
                        </div>
                     </CardHeader>
                     <CardContent>
@@ -78,7 +83,7 @@ export default function DocumentDetailClient({ docId }: { docId: string }) {
                                   {index < documentAuditLog.length - 1 && <div className="absolute left-4 top-8 w-px h-full bg-border" />}
                                    <div className="flex-shrink-0 z-10">
                                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center ring-4 ring-background">
-                                           <Check className="h-4 w-4 text-primary"/>
+                                           <InfoIcon className="h-4 w-4 text-primary"/>
                                        </div>
                                    </div>
                                    <div className="flex-1 -mt-1">
@@ -98,12 +103,24 @@ export default function DocumentDetailClient({ docId }: { docId: string }) {
             <div className="md:col-span-1 lg:col-span-1 space-y-6">
                 <Card>
                     <CardHeader>
-                        <CardTitle className="font-headline">Actions</CardTitle>
+                        <CardTitle className="font-headline">Flagging</CardTitle>
+                        <CardDescription>Mark this document with a status. Errors will block workflow progression.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-2">
-                        <Button className="w-full"><ThumbsUp className="mr-2 h-4 w-4" /> Approve</Button>
-                        <Button variant="destructive" className="w-full"><ThumbsDown className="mr-2 h-4 w-4" /> Reject</Button>
-                        <Button variant="outline" className="w-full"><Send className="mr-2 h-4 w-4" /> Send to Next Stage</Button>
+                        <Button variant="destructive" className="w-full" onClick={() => updateDocumentFlag(document.id, 'error')}>
+                            <ShieldAlert className="mr-2 h-4 w-4" /> Mark with Error
+                        </Button>
+                        <Button variant="secondary" className="w-full" onClick={() => updateDocumentFlag(document.id, 'warning')}>
+                            <AlertTriangle className="mr-2 h-4 w-4" /> Mark with Warning
+                        </Button>
+                        <Button variant="outline" className="w-full" onClick={() => updateDocumentFlag(document.id, 'info')}>
+                            <InfoIcon className="mr-2 h-4 w-4" /> Mark with Info
+                        </Button>
+                         {document.flag && (
+                            <Button variant="ghost" className="w-full" onClick={() => updateDocumentFlag(document.id, null)}>
+                               <CircleX className="mr-2 h-4 w-4" /> Clear Flag
+                            </Button>
+                        )}
                     </CardContent>
                 </Card>
                 <Card>
@@ -112,6 +129,8 @@ export default function DocumentDetailClient({ docId }: { docId: string }) {
                     </CardHeader>
                     <CardContent className="space-y-3 text-sm">
                         <div className="flex justify-between items-center"><span>Status:</span><Badge variant="secondary">{document.status}</Badge></div>
+                        <Separator />
+                         <div className="flex justify-between items-center"><span>Flag:</span><Badge variant={document.flag === 'error' ? "destructive" : "outline"}>{currentFlagLabel}</Badge></div>
                         <Separator />
                         <div className="flex justify-between"><span>Client:</span><strong className="text-right">{document.client}</strong></div>
                         <Separator />
@@ -131,7 +150,7 @@ export default function DocumentDetailClient({ docId }: { docId: string }) {
                         <CardTitle className="font-headline">Comments</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <Textarea placeholder="Add an optional comment for rejection or feedback..." />
+                        <Textarea placeholder="Add an optional comment..." />
                         <Button className="w-full mt-2">Submit Comment</Button>
                     </CardContent>
                 </Card>

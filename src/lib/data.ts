@@ -37,6 +37,7 @@ export interface Document {
     folderId?: string | null;
     projectId?: string | null;
     bookId?: string | null;
+    flag?: 'error' | 'warning' | 'info' | null;
 }
 
 export interface AuditLog {
@@ -193,6 +194,7 @@ export async function getEnrichedDocuments() {
             ...doc,
             client: client?.name || 'Unknown Client',
             status: status?.name || 'Unknown Status',
+            flag: doc.flag || null,
         };
     });
 }
