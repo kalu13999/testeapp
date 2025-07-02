@@ -1,6 +1,8 @@
-import { getDocumentsByStage } from "@/lib/data";
+
+import { getDocumentsByStage, getFolderContents } from "@/lib/data";
 import { notFound } from "next/navigation";
 import WorkflowClient from "./client";
+import StorageExplorer from "./storage-explorer";
 
 const STAGE_CONFIG: { [key: string]: any } = {
   requests: {
@@ -68,7 +70,13 @@ const STAGE_CONFIG: { [key: string]: any } = {
   },
 };
 
-export default async function WorkflowStagePage({ params }: { params: { stage: string } }) {
+export default async function WorkflowStagePage({ params, searchParams }: { params: { stage: string }, searchParams?: { [key: string]: string | string[] | undefined } }) {
+    if (params.stage === 'storage') {
+        const folderId = searchParams?.folderId && typeof searchParams.folderId === 'string' ? searchParams.folderId : null;
+        const { folders, documents, breadcrumbs } = await getFolderContents(folderId);
+        return <StorageExplorer folders={folders} documents={documents} breadcrumbs={breadcrumbs} />;
+    }
+    
     const config = STAGE_CONFIG[params.stage];
     if (!config) {
         notFound();
