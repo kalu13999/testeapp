@@ -1,5 +1,6 @@
-
 "use client"
+
+import * as React from "react";
 import {
   Table,
   TableBody,
@@ -22,6 +23,7 @@ import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send } from "lucide-react";
 import type { BookWithProject, Document } from "@/lib/data";
+import { useToast } from "@/hooks/use-toast";
 
 const iconMap: { [key: string]: LucideIcon } = {
     Check,
@@ -67,8 +69,19 @@ const getBadgeVariant = (status: string): BadgeVariant => {
 
 
 export default function WorkflowClient({ items, config, stage }: WorkflowClientProps) {
+  const [displayItems, setDisplayItems] = React.useState(items);
+  const { toast } = useToast();
   const { title, description, dataType, actionButtonLabel, actionButtonIcon, emptyStateText } = config;
   const ActionIcon = actionButtonIcon ? iconMap[actionButtonIcon] : null;
+
+  const handleAction = (itemId: string, itemName: string, actionText: string = "moved to the next stage") => {
+    setDisplayItems(current => current.filter(item => item.id !== itemId));
+    toast({
+        title: "Action Completed",
+        description: `"${itemName}" has been ${actionText}.`,
+    })
+  };
+
 
   const renderBookRow = (item: BookWithProject) => (
     <TableRow key={item.id}>
@@ -81,9 +94,9 @@ export default function WorkflowClient({ items, config, stage }: WorkflowClientP
         <Badge variant={getBadgeVariant(item.status)}>{item.status}</Badge>
       </TableCell>
       {(actionButtonLabel || stage === 'quality-control') && (
-        <TableCell className="flex gap-2">
+        <TableCell>
             {actionButtonLabel && (
-                <Button size="sm">
+                <Button size="sm" onClick={() => handleAction(item.id, item.name)}>
                     {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
                     {actionButtonLabel}
                 </Button>
@@ -93,10 +106,10 @@ export default function WorkflowClient({ items, config, stage }: WorkflowClientP
     </TableRow>
   )
   
-  const renderDocumentRow = (item: Document & { client: string, status: string }) => (
+  const renderDocumentRow = (item: Document & { client: string; status: string; name: string }) => (
      <TableRow key={item.id}>
       <TableCell className="font-medium">
-          <Link href={`/documents/${item.id}`} className="hover:underline">{item.id}</Link>
+          <Link href={`/documents/${item.id}`} className="hover:underline">{item.name}</Link>
       </TableCell>
       <TableCell>{item.client}</TableCell>
       <TableCell className="hidden md:table-cell">{item.type}</TableCell>
@@ -105,19 +118,21 @@ export default function WorkflowClient({ items, config, stage }: WorkflowClientP
       </TableCell>
        <TableCell className="hidden md:table-cell">{item.lastUpdated}</TableCell>
       {(actionButtonLabel || stage === 'quality-control') && (
-        <TableCell className="flex gap-2">
+        <TableCell>
+          <div className="flex gap-2">
             {stage === 'quality-control' ? (
                 <>
-                    <Button size="sm" variant="outline"><ThumbsUp className="h-4 w-4" /></Button>
-                    <Button size="sm" variant="destructive"><ThumbsDown className="h-4 w-4" /></Button>
-                    <Button size="sm" variant="ghost"><Undo2 className="h-4 w-4" /></Button>
+                    <Button size="sm" variant="outline" onClick={() => handleAction(item.id, item.name, 'approved')}><ThumbsUp className="h-4 w-4" /></Button>
+                    <Button size="sm" variant="destructive" onClick={() => handleAction(item.id, item.name, 'rejected')}><ThumbsDown className="h-4 w-4" /></Button>
+                    <Button size="sm" variant="ghost" onClick={() => handleAction(item.id, item.name, 'sent back to processing')}><Undo2 className="h-4 w-4" /></Button>
                 </>
             ) : actionButtonLabel ? (
-                <Button size="sm">
+                <Button size="sm" onClick={() => handleAction(item.id, item.name)}>
                     {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
                     {actionButtonLabel}
                 </Button>
             ) : null}
+          </div>
         </TableCell>
       )}
     </TableRow>
@@ -133,7 +148,7 @@ export default function WorkflowClient({ items, config, stage }: WorkflowClientP
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {items.length > 0 ? (
+        {displayItems.length > 0 ? (
           <Table>
             <TableHeader>
               {dataType === 'book' ? (
@@ -142,11 +157,11 @@ export default function WorkflowClient({ items, config, stage }: WorkflowClientP
                   <TableHead>Project</TableHead>
                   <TableHead className="hidden md:table-cell">Client</TableHead>
                   <TableHead>Status</TableHead>
-                  {actionButtonLabel && <TableHead>Actions</TableHead>}
+                  {(actionButtonLabel) && <TableHead>Actions</TableHead>}
                 </TableRow>
               ) : (
                  <TableRow>
-                  <TableHead>Document ID</TableHead>
+                  <TableHead>Document Name</TableHead>
                   <TableHead>Client</TableHead>
                   <TableHead className="hidden md:table-cell">Type</TableHead>
                   <TableHead>Status</TableHead>
@@ -158,10 +173,10 @@ export default function WorkflowClient({ items, config, stage }: WorkflowClientP
               )}
             </TableHeader>
             <TableBody>
-              {items.map((item) => (
+              {displayItems.map((item) => (
                 dataType === 'book'
                   ? renderBookRow(item as BookWithProject)
-                  : renderDocumentRow(item as Document & { client: string, status: string })
+                  : renderDocumentRow(item as Document & { client: string, status: string, name: string })
               ))}
             </TableBody>
           </Table>
@@ -173,7 +188,7 @@ export default function WorkflowClient({ items, config, stage }: WorkflowClientP
       </CardContent>
       <CardFooter>
         <div className="text-xs text-muted-foreground">
-          Showing <strong>{items.length}</strong> of <strong>{items.length}</strong> items
+          Showing <strong>{displayItems.length}</strong> of <strong>{items.length}</strong> items
         </div>
       </CardFooter>
     </Card>
