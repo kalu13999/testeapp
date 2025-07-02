@@ -35,6 +35,7 @@ type WorkflowContextType = {
   handleResubmit: (bookId: string, targetStage: string) => void;
   addPageToBook: (bookId: string) => void;
   deletePageFromBook: (pageId: string, bookId: string) => void;
+  updateDocumentStatus: (docId: string, newStatus: string) => void;
 };
 
 const WorkflowContext = React.createContext<WorkflowContextType | undefined>(undefined);
@@ -126,7 +127,7 @@ export function WorkflowProvider({
     moveBookDocuments(bookId, newStatus);
     
     // Update the book's state, including the rejection reason if provided
-    updateBookStatus(bookId, book?.status || newStatus, (b) => ({
+    updateBookStatus(bookId, newStatus, (b) => ({
         rejectionReason: isApproval ? null : reason
     }));
 
@@ -180,6 +181,14 @@ export function WorkflowProvider({
     setBooks(prev => prev.map(b => b.id === bookId ? {...b, documentCount: b.documentCount - 1 } : b));
   }
 
+  const updateDocumentStatus = (docId: string, newStatus: string) => {
+    setDocuments(prevDocs =>
+        prevDocs.map(doc =>
+            doc.id === docId ? { ...doc, status: newStatus } : doc
+        )
+    );
+  };
+
 
   const value = { 
     books, 
@@ -193,6 +202,7 @@ export function WorkflowProvider({
     handleResubmit,
     addPageToBook,
     deletePageFromBook,
+    updateDocumentStatus,
   };
 
   return (
