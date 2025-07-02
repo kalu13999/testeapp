@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/card"
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { ThumbsDown, ThumbsUp, Undo2 } from "lucide-react";
+import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send } from "lucide-react";
 
 type Document = {
   id: string;
@@ -29,13 +29,22 @@ type Document = {
   lastUpdated: string;
 };
 
+const iconMap: { [key: string]: LucideIcon } = {
+    Check,
+    ScanLine,
+    FileText,
+    FileJson,
+    Play,
+    Send
+};
+
 interface WorkflowClientProps {
   documents: Document[];
   config: {
     title: string;
     description: string;
     actionButtonLabel?: string;
-    actionButtonIcon?: LucideIcon;
+    actionButtonIcon?: keyof typeof iconMap;
     emptyStateText: string;
   };
   stage: string;
@@ -61,7 +70,8 @@ const getBadgeVariant = (status: string): BadgeVariant => {
 
 
 export default function WorkflowClient({ documents, config, stage }: WorkflowClientProps) {
-  const { title, description, actionButtonLabel, actionButtonIcon: ActionIcon, emptyStateText } = config;
+  const { title, description, actionButtonLabel, actionButtonIcon, emptyStateText } = config;
+  const ActionIcon = actionButtonIcon ? iconMap[actionButtonIcon] : null;
 
   return (
     <Card>

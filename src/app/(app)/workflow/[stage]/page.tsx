@@ -1,16 +1,13 @@
 import { getDocumentsByStage } from "@/lib/data";
 import { notFound } from "next/navigation";
 import WorkflowClient from "./client";
-import { 
-    Check, ScanLine, Warehouse, FileText, FileJson, FileSearch2, Send, Play, ThumbsUp, ThumbsDown, Undo2
-} from "lucide-react";
 
 const STAGE_CONFIG: { [key: string]: any } = {
   requests: {
     title: "Requests Received",
     description: "New client requests waiting to be marked as received.",
     actionButtonLabel: "Mark as Received",
-    actionButtonIcon: Check,
+    actionButtonIcon: "Check",
     emptyStateText: "No pending requests.",
     dataStage: "Requests",
   },
@@ -18,7 +15,7 @@ const STAGE_CONFIG: { [key: string]: any } = {
     title: "Document Reception",
     description: "Physical documents that have been received and are awaiting scanning.",
     actionButtonLabel: "Send to Scanning",
-    actionButtonIcon: ScanLine,
+    actionButtonIcon: "ScanLine",
     emptyStateText: "No documents in reception.",
     dataStage: "Reception",
   },
@@ -26,7 +23,7 @@ const STAGE_CONFIG: { [key: string]: any } = {
     title: "Scanning",
     description: "Documents that have been scanned and are ready for storage.",
     actionButtonLabel: "Confirm Scanning",
-    actionButtonIcon: Check,
+    actionButtonIcon: "Check",
     emptyStateText: "No documents in scanning queue.",
     dataStage: "Scanning",
   },
@@ -34,7 +31,7 @@ const STAGE_CONFIG: { [key: string]: any } = {
     title: "Storage",
     description: "Documents in storage, awaiting indexing.",
     actionButtonLabel: "Start Indexing",
-    actionButtonIcon: FileText,
+    actionButtonIcon: "FileText",
     emptyStateText: "No documents in storage.",
     dataStage: "Storage",
   },
@@ -42,7 +39,7 @@ const STAGE_CONFIG: { [key: string]: any } = {
     title: "Indexing",
     description: "Documents that are currently being indexed with metadata.",
     actionButtonLabel: "Send to Processing",
-    actionButtonIcon: FileJson,
+    actionButtonIcon: "FileJson",
     emptyStateText: "No documents to index.",
     dataStage: "Indexing",
   },
@@ -50,7 +47,7 @@ const STAGE_CONFIG: { [key: string]: any } = {
     title: "Processing",
     description: "Documents ready for technical processing like OCR.",
     actionButtonLabel: "Run Script",
-    actionButtonIcon: Play,
+    actionButtonIcon: "Play",
     emptyStateText: "No documents to process.",
     dataStage: "Processing",
   },
@@ -65,7 +62,7 @@ const STAGE_CONFIG: { [key: string]: any } = {
     title: "Delivery",
     description: "Documents approved and ready for delivery to the client.",
     actionButtonLabel: "Deliver to Client",
-    actionButtonIcon: Send,
+    actionButtonIcon: "Send",
     emptyStateText: "No documents to deliver.",
     dataStage: "Delivery",
   },
