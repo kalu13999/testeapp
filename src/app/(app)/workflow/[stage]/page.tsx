@@ -26,7 +26,7 @@ const STAGE_CONFIG: { [key: string]: any } = {
   },
   storage: {
     title: "Storage",
-    description: "Books that have been scanned and are awaiting indexing. Expand a book to see its pages.",
+    description: "Scanned documents are organized by book. Promote books to the next stage.",
     actionButtonLabel: "Send to Indexing",
     actionButtonIcon: "FileText",
     emptyStateText: "No scanned documents are waiting in storage.",

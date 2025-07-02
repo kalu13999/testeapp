@@ -40,6 +40,7 @@ interface FolderViewClientProps {
     actionButtonLabel: string;
     actionButtonIcon: keyof typeof iconMap;
     emptyStateText: string;
+    dataStage: string;
   };
 }
 
@@ -57,8 +58,8 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   const ActionIcon = iconMap[config.actionButtonIcon] || FolderSync;
 
   const stageDocuments = React.useMemo(() => {
-    return documents.filter(doc => doc.status === stage);
-  }, [documents, stage]);
+    return documents.filter(doc => doc.status === config.dataStage);
+  }, [documents, config.dataStage]);
 
   const groupedByBook = React.useMemo(() => {
     return stageDocuments.reduce<GroupedDocuments>((acc, doc) => {
@@ -77,7 +78,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   }, [stageDocuments, books]);
 
   const handleAction = (bookId: string, bookName: string) => {
-    handleMoveBookToNextStage(bookId, stage);
+    handleMoveBookToNextStage(bookId, config.dataStage);
     toast({
       title: "Action Completed",
       description: `"${bookName}" has been moved to the next stage.`,
