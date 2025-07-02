@@ -34,23 +34,21 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { useWorkflow } from "@/context/workflow-context";
-
-interface DocumentsClientProps {
-  clients: string[];
-  projects: string[];
-}
+import { useAppContext } from "@/context/app-context";
 
 const ITEMS_PER_PAGE = 10;
 
-export default function DocumentsClient({ clients, projects }: DocumentsClientProps) {
-  const { books } = useWorkflow(); // Use the central state for books
+export default function DocumentsClient() {
+  const { books, projects } = useAppContext();
   const [filters, setFilters] = React.useState({
     query: '',
     project: 'all',
     client: 'all'
   });
   const [currentPage, setCurrentPage] = React.useState(1);
+
+  const clientNames = [...new Set(books.map(b => b.clientName))].sort();
+  const projectNames = [...new Set(books.map(b => b.projectName))].sort();
 
   const handleFilterChange = (filterName: keyof typeof filters, value: string) => {
     setFilters(prev => ({ ...prev, [filterName]: value }));
@@ -161,7 +159,7 @@ export default function DocumentsClient({ clients, projects }: DocumentsClientPr
             </SelectTrigger>
             <SelectContent>
                 <SelectItem value="all">All Projects</SelectItem>
-                {projects.map(project => <SelectItem key={project} value={project}>{project}</SelectItem>)}
+                {projectNames.map(project => <SelectItem key={project} value={project}>{project}</SelectItem>)}
             </SelectContent>
         </Select>
         <Select value={filters.client} onValueChange={(value) => handleFilterChange('client', value)}>
@@ -170,7 +168,7 @@ export default function DocumentsClient({ clients, projects }: DocumentsClientPr
             </SelectTrigger>
             <SelectContent>
                 <SelectItem value="all">All Clients</SelectItem>
-                {clients.map(client => <SelectItem key={client} value={client}>{client}</SelectItem>)}
+                {clientNames.map(client => <SelectItem key={client} value={client}>{client}</SelectItem>)}
             </SelectContent>
         </Select>
         <div className="ml-auto flex items-center gap-2">

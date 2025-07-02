@@ -1,6 +1,2 @@
 
-[
-  { "id": "doc_book_04_1", "name": "Master Services Agreement - Page 1", "clientId": "cl_2", "statusId": "ds_10", "type": "Contract", "lastUpdated": "2023-10-26", "tags": [], "folderId": "f_2_con", "projectId": "proj_2", "bookId": "book_04" },
-  { "id": "doc_book_06_1", "name": "Q1-Q2 Reports - Page 1", "clientId": "cl_3", "statusId": "ds_10", "type": "Report", "lastUpdated": "2023-11-04", "tags": [], "folderId": "f_3", "projectId": "proj_3", "bookId": "book_06" },
-  { "id": "doc_book_06_2", "name": "Q1-Q2 Reports - Page 2", "clientId": "cl_3", "statusId": "ds_10", "type": "Report", "lastUpdated": "2023-11-04", "tags": [], "folderId": "f_3", "projectId": "proj_3", "bookId": "book_06" }
-]
+[]

@@ -23,7 +23,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal, PlusCircle, Trash2, Edit } from "lucide-react";
-import { type Client } from "@/lib/data";
+import { type Client, type EnrichedProject } from "@/lib/data";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,28 +49,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { ProjectForm } from "./project-form";
+import { useAppContext } from "@/context/app-context";
 
-type Project = {
-    id: string;
-    name: string;
-    clientName: string;
-    clientId: string;
-    status: string;
-    progress: number;
-    documentCount: number;
-    totalExpected: number;
-};
+export default function ProjectsClient() {
+  const { projects, clients, addProject, updateProject, deleteProject } = useAppContext();
+  const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | null; data?: EnrichedProject }>({ open: false, type: null })
 
-interface ProjectsClientProps {
-  projects: Project[];
-  clients: Client[];
-}
-
-export default function ProjectsClient({ projects: initialProjects, clients }: ProjectsClientProps) {
-  const [projects, setProjects] = React.useState(initialProjects);
-  const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | null; data?: Project }>({ open: false, type: null })
-
-  const openDialog = (type: 'new' | 'edit' | 'delete', data?: Project) => {
+  const openDialog = (type: 'new' | 'edit' | 'delete', data?: EnrichedProject) => {
     setDialogState({ open: true, type, data })
   }
 
@@ -79,31 +64,17 @@ export default function ProjectsClient({ projects: initialProjects, clients }: P
   }
 
   const handleSave = (values: { name: string; clientId: string }) => {
-    console.log("Saving project:", values, "Current project:", dialogState.data)
-    // Here you would call an API to save the project
-    const clientName = clients.find(c => c.id === values.clientId)?.name || 'Unknown';
-
     if (dialogState.type === 'new') {
-      const newProject = { 
-        id: `proj_${Date.now()}`, 
-        ...values,
-        clientName,
-        status: "In Progress",
-        progress: 0,
-        documentCount: 0,
-        totalExpected: 0, // Should be calculated based on books
-      };
-      setProjects(prev => [...prev, newProject]);
+      addProject(values);
     } else if (dialogState.type === 'edit' && dialogState.data) {
-      setProjects(prev => prev.map(p => p.id === dialogState.data!.id ? { ...p, ...values, clientName } : p));
+      updateProject(dialogState.data.id, values);
     }
     closeDialog();
   }
 
   const handleDelete = () => {
     if (!dialogState.data) return;
-    console.log("Deleting project:", dialogState.data)
-    setProjects(prev => prev.filter(p => p.id !== dialogState.data!.id));
+    deleteProject(dialogState.data.id);
     closeDialog();
   }
 

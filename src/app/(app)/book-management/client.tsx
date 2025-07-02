@@ -32,6 +32,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -46,29 +47,37 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-import type { Project, BookWithProject } from "@/lib/data"
+import type { EnrichedProject, EnrichedBook, BookImport } from "@/context/app-context"
 import { BookForm } from "./book-form"
+import { useAppContext } from "@/context/app-context"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { useToast } from "@/hooks/use-toast"
 
 
-interface BookManagementClientProps {
-  projects: Project[]
-  initialBooks: BookWithProject[]
-}
-
-export default function BookManagementClient({ projects, initialBooks }: BookManagementClientProps) {
+export default function BookManagementClient() {
+  const { projects, books, addBook, updateBook, deleteBook, importBooks } = useAppContext();
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null)
-  const [books, setBooks] = React.useState(initialBooks)
-  const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | null; data?: BookWithProject }>({ open: false, type: null })
+  const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | 'import' | null; data?: EnrichedBook }>({ open: false, type: null })
+  
+  const [importJson, setImportJson] = React.useState("");
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
 
   const filteredBooks = React.useMemo(() => {
     if (!selectedProjectId) return []
     return books.filter(b => b.projectId === selectedProjectId)
   }, [books, selectedProjectId])
 
-  const openDialog = (type: 'new' | 'edit' | 'delete', data?: BookWithProject) => {
-    if ((type === 'new' || type === 'edit') && !selectedProjectId) {
-      // Ideally show a toast or message to select a project first.
-      console.error("Please select a project first.")
+  const openDialog = (type: 'new' | 'edit' | 'delete' | 'import', data?: EnrichedBook) => {
+    if ((type === 'new' || type === 'edit' || type === 'import') && !selectedProjectId) {
+      toast({
+          title: "No Project Selected",
+          description: "Please select a project before adding or importing books.",
+          variant: "destructive"
+      });
       return;
     }
     setDialogState({ open: true, type, data })
@@ -76,34 +85,57 @@ export default function BookManagementClient({ projects, initialBooks }: BookMan
 
   const closeDialog = () => {
     setDialogState({ open: false, type: null, data: undefined })
+    setImportJson("");
   }
 
   const handleSave = (values: { name: string; expectedDocuments: number }) => {
     if (dialogState.type === 'new' && selectedProjectId) {
-      const selectedProject = projects.find(p => p.id === selectedProjectId);
-      const newBook: BookWithProject = {
-        id: `book_${Date.now()}`,
-        name: values.name,
-        expectedDocuments: values.expectedDocuments,
-        status: 'Pending',
-        documentCount: 0,
-        progress: 0,
-        projectId: selectedProjectId,
-        projectName: selectedProject?.name || 'Unknown',
-        clientName: selectedProject?.clientName || 'Unknown',
-      }
-      setBooks(prev => [...prev, newBook])
+      addBook(selectedProjectId, values);
     } else if (dialogState.type === 'edit' && dialogState.data) {
-      setBooks(prev => prev.map(b => b.id === dialogState.data!.id ? { ...b, ...values } : b))
+      updateBook(dialogState.data.id, values);
     }
     closeDialog()
   }
   
   const handleDelete = () => {
     if (!dialogState.data) return;
-    setBooks(prev => prev.filter(b => b.id !== dialogState.data!.id))
+    deleteBook(dialogState.data.id);
     closeDialog()
   }
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const text = e.target?.result;
+            if (typeof text === 'string') {
+                setImportJson(text);
+            }
+        };
+        reader.readAsText(file);
+    }
+  };
+  
+  const handleImport = () => {
+    if (!selectedProjectId) return;
+    try {
+        const parsedBooks: BookImport[] = JSON.parse(importJson);
+        // Basic validation
+        if (!Array.isArray(parsedBooks) || !parsedBooks.every(b => b.name && typeof b.expectedDocuments === 'number')) {
+            throw new Error("Invalid JSON format.");
+        }
+        importBooks(selectedProjectId, parsedBooks);
+        closeDialog();
+    } catch (error) {
+        toast({
+            title: "Import Failed",
+            description: "The provided text is not valid JSON or doesn't match the required format.",
+            variant: "destructive"
+        });
+    }
+  }
+
 
   return (
     <div className="space-y-6">
@@ -112,8 +144,8 @@ export default function BookManagementClient({ projects, initialBooks }: BookMan
           <h1 className="font-headline text-3xl font-bold tracking-tight">Book Management</h1>
           <p className="text-muted-foreground">Load and manage the list of books for each project.</p>
         </div>
-         <Button variant="outline">
-            <BookUp className="mr-2 h-4 w-4"/> Import Book List (JSON/XLS)
+         <Button variant="outline" onClick={() => openDialog('import')}>
+            <BookUp className="mr-2 h-4 w-4"/> Import Book List (JSON)
         </Button>
       </div>
 
@@ -225,6 +257,39 @@ export default function BookManagementClient({ projects, initialBooks }: BookMan
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={dialogState.open && dialogState.type === 'import'} onOpenChange={closeDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+                <DialogTitle>Import Books from JSON</DialogTitle>
+                <DialogDescription>
+                    Upload or paste a JSON file with an array of books.
+                    Each object should have a `name` (string) and `expectedDocuments` (number).
+                </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>Upload File</Button>
+                    <p className="text-sm text-muted-foreground">Or paste content below.</p>
+                    <Input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json" />
+                </div>
+                <div className="grid w-full gap-1.5">
+                    <Label htmlFor="json-input">JSON Content</Label>
+                    <Textarea 
+                        id="json-input"
+                        placeholder='[{"name": "Book A", "expectedDocuments": 50}, {"name": "Book B", "expectedDocuments": 120}]'
+                        value={importJson}
+                        onChange={(e) => setImportJson(e.target.value)}
+                        className="h-48 font-mono text-xs"
+                    />
+                </div>
+            </div>
+            <DialogFooter>
+                <Button type="button" variant="outline" onClick={closeDialog}>Cancel</Button>
+                <Button type="submit" onClick={handleImport} disabled={!importJson}>Import Books</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

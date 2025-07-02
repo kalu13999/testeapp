@@ -5,21 +5,31 @@ import { MainNav } from '@/components/layout/main-nav';
 import { UserNav } from '@/components/layout/user-nav';
 import { FileLock2 } from 'lucide-react';
 import { Toaster } from '@/components/ui/toaster';
-import { getBooks, getDocuments, getUserById, getEnrichedAuditLogs } from '@/lib/data';
-import { WorkflowProvider } from '@/context/workflow-context';
+import { getEnrichedBooks, getEnrichedDocuments, getUserById, getEnrichedAuditLogs, getClients, getUsers, getEnrichedProjects } from '@/lib/data';
+import { AppProvider } from '@/context/app-context';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  // Fetch user data on the server
-  const [user, books, documents, auditLogs] = await Promise.all([
+  // Fetch all initial data on the server
+  const [user, clients, users, projects, books, documents, auditLogs] = await Promise.all([
     getUserById('u_admin'),
-    getBooks(),
-    getDocuments(),
+    getClients(),
+    getUsers(),
+    getEnrichedProjects(),
+    getEnrichedBooks(),
+    getEnrichedDocuments(),
     getEnrichedAuditLogs(),
   ]);
 
   return (
     <SidebarProvider>
-      <WorkflowProvider initialBooks={books} initialDocuments={documents} initialAuditLogs={auditLogs}>
+      <AppProvider 
+        initialClients={clients}
+        initialUsers={users}
+        initialProjects={projects}
+        initialBooks={books} 
+        initialDocuments={documents} 
+        initialAuditLogs={auditLogs}
+      >
         <Sidebar>
           <SidebarHeader>
             <div className="flex items-center gap-3 p-4">
@@ -44,7 +54,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             {children}
           </main>
         </SidebarInset>
-      </WorkflowProvider>
+      </AppProvider>
     </SidebarProvider>
   );
 }

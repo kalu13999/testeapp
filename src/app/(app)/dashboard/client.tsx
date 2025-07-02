@@ -20,6 +20,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { AlertTriangle, CheckCircle2, FileClock, Files } from "lucide-react"
+import { useAppContext } from "@/context/app-context"
+import { useMemo } from "react"
 
 // A map to associate KPI titles with icons
 const iconMap: { [key: string]: React.ElementType } = {
@@ -47,13 +49,61 @@ type RecentActivity = {
     status: string;
 }
 
-interface DashboardClientProps {
-    kpiData: KpiData[];
-    chartData: ChartData[];
-    recentActivities: RecentActivity[];
-}
+export default function DashboardClient() {
+    const { documents, projects } = useAppContext();
 
-export default function DashboardClient({ kpiData, chartData, recentActivities }: DashboardClientProps) {
+    const dashboardData = useMemo(() => {
+        const pendingCount = documents.filter(d => ['Quality Control', 'Processing', 'Indexing'].includes(d.status)).length;
+        const slaWarningsCount = projects.filter(p => p.progress < 50 && p.status === 'In Progress').length;
+        const processedTodayCount = documents.filter(d => d.lastUpdated === new Date().toISOString().slice(0, 10)).length;
+        const totalCount = documents.length;
+
+        const kpiData: KpiData[] = [
+            { title: "Pending Documents", value: pendingCount.toLocaleString(), description: "Awaiting processing" },
+            { title: "SLA Warnings", value: slaWarningsCount.toLocaleString(), description: "Projects with low progress" },
+            { title: "Processed Today", value: processedTodayCount.toLocaleString(), description: "Docs updated today" },
+            { title: "Total in Workflow", value: totalCount.toLocaleString(), description: "Across all stages" },
+        ];
+
+        const recentActivities: RecentActivity[] = documents
+            .sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())
+            .slice(0, 5)
+            .map(doc => ({
+                id: doc.id.split('_').pop() || doc.id,
+                client: doc.client,
+                status: doc.status
+            }));
+
+        const monthlyStats: { [key: string]: { approved: number, rejected: number } } = {};
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+        documents.forEach(doc => {
+            const date = new Date(doc.lastUpdated);
+            const monthKey = monthNames[date.getMonth()];
+            if (!monthKey) return;
+
+            if (!monthlyStats[monthKey]) {
+                monthlyStats[monthKey] = { approved: 0, rejected: 0 };
+            }
+
+            if (doc.status === 'Finalized' || doc.status === 'Archived') {
+                monthlyStats[monthKey].approved += 1;
+            } else if (doc.status === 'Client Rejected') {
+                monthlyStats[monthKey].rejected += 1;
+            }
+        });
+
+        const chartData: ChartData[] = monthNames.map(name => ({
+            name,
+            approved: monthlyStats[name]?.approved || 0,
+            rejected: monthlyStats[name]?.rejected || 0,
+        })).slice(0, 6);
+
+        return { kpiData, chartData, recentActivities };
+    }, [documents, projects]);
+
+    const { kpiData, chartData, recentActivities } = dashboardData;
+
     return (
         <div className="flex flex-col gap-6">
             <h1 className="font-headline text-3xl font-bold tracking-tight">Internal Dashboard</h1>

@@ -14,16 +14,13 @@ import {
 } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { getProjectById, Client } from "@/lib/data";
 import { Book, CheckCircle, Clock, Package, Edit } from "lucide-react";
 import { ProjectForm } from "../project-form";
 import Link from "next/link";
-
-type Project = NonNullable<Awaited<ReturnType<typeof getProjectById>>>;
+import { useAppContext } from "@/context/app-context";
 
 interface ProjectDetailClientProps {
-  project: Project;
-  clients: Client[];
+  projectId: string;
 }
 
 const getStatusIcon = (status: string) => {
@@ -37,20 +34,24 @@ const getStatusIcon = (status: string) => {
     }
 }
 
-export default function ProjectDetailClient({ project: initialProject, clients }: ProjectDetailClientProps) {
-  const [project, setProject] = React.useState(initialProject)
+export default function ProjectDetailClient({ projectId }: ProjectDetailClientProps) {
+  const { projects, clients, updateProject } = useAppContext();
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  
+  const project = projects.find(p => p.id === projectId);
 
   const handleSave = (values: { name: string, clientId: string }) => {
-    console.log("Saving project:", values);
-    const clientName = clients.find(c => c.id === values.clientId)?.name || 'Unknown Client';
-    setProject(prev => ({
-        ...prev!,
-        name: values.name,
-        clientId: values.clientId,
-        clientName: clientName,
-    }));
+    updateProject(projectId, values);
     setIsEditDialogOpen(false);
+  }
+
+  if (!project) {
+      return (
+          <Card>
+              <CardHeader><CardTitle>Project Not Found</CardTitle></CardHeader>
+              <CardContent><p>This project could not be found.</p></CardContent>
+          </Card>
+      )
   }
 
   return (
@@ -76,7 +77,7 @@ export default function ProjectDetailClient({ project: initialProject, clients }
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
                       <div className="bg-muted p-4 rounded-lg">
                           <p className="text-sm text-muted-foreground">Status</p>
-                          <p className="text-2xl font-bold">In Progress</p>
+                          <p className="text-2xl font-bold">{project.status}</p>
                       </div>
                        <div className="bg-muted p-4 rounded-lg">
                           <p className="text-sm text-muted-foreground">Total Documents</p>

@@ -48,16 +48,14 @@ import {
 import { type User } from "@/lib/data"
 import { UserForm } from "./user-form"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useAppContext } from "@/context/app-context"
 
-interface UsersClientProps {
-  users: User[]
-  roles: string[]
-}
-
-export default function UsersClient({ users: initialUsers, roles }: UsersClientProps) {
-  const [users, setUsers] = React.useState(initialUsers)
+export default function UsersClient() {
+  const { users, addUser, updateUser, deleteUser } = useAppContext();
   const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | null; data?: User }>({ open: false, type: null })
   
+  const roles = [...new Set(users.map(u => u.role))].filter(r => r !== 'System').sort();
+
   const getInitials = (name: string) => {
     if (!name) return "";
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
@@ -72,20 +70,17 @@ export default function UsersClient({ users: initialUsers, roles }: UsersClientP
   }
 
   const handleSave = (values: { name: string, email: string, role: string }) => {
-    console.log("Saving user:", values, "Current user:", dialogState.data)
     if (dialogState.type === 'new') {
-      const newUser = { id: `u_${Date.now()}`, avatar: 'https://placehold.co/100x100.png', ...values }
-      setUsers(prev => [...prev, newUser])
+      addUser(values)
     } else if (dialogState.type === 'edit' && dialogState.data) {
-      setUsers(prev => prev.map(u => u.id === dialogState.data!.id ? { ...u, ...values } : u))
+      updateUser(dialogState.data.id, values);
     }
     closeDialog()
   }
 
   const handleDelete = () => {
     if (!dialogState.data || dialogState.data.role === 'System') return;
-    console.log("Deleting user:", dialogState.data)
-    setUsers(prev => prev.filter(u => u.id !== dialogState.data!.id))
+    deleteUser(dialogState.data.id);
     closeDialog()
   }
 

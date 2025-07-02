@@ -46,13 +46,10 @@ import {
 } from "@/components/ui/table"
 import { type Client } from "@/lib/data"
 import { ClientForm } from "./client-form"
+import { useAppContext } from "@/context/app-context"
 
-interface ClientsClientProps {
-  clients: Client[]
-}
-
-export default function ClientsClient({ clients: initialClients }: ClientsClientProps) {
-  const [clients, setClients] = React.useState(initialClients)
+export default function ClientsClient() {
+  const { clients, addClient, updateClient, deleteClient } = useAppContext();
   const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | null; data?: Client }>({ open: false, type: null })
 
   const openDialog = (type: 'new' | 'edit' | 'delete', data?: Client) => {
@@ -64,23 +61,17 @@ export default function ClientsClient({ clients: initialClients }: ClientsClient
   }
 
   const handleSave = (values: { name: string }) => {
-    console.log("Saving client:", values, "Current client:", dialogState.data)
-    // Here you would call an API to save the client
-    // For this prototype, we'll simulate it
     if (dialogState.type === 'new') {
-      const newClient = { id: `cl_${Date.now()}`, ...values }
-      setClients(prev => [...prev, newClient])
+      addClient(values);
     } else if (dialogState.type === 'edit' && dialogState.data) {
-      setClients(prev => prev.map(c => c.id === dialogState.data!.id ? { ...c, ...values } : c))
+      updateClient(dialogState.data.id, values);
     }
     closeDialog()
   }
 
   const handleDelete = () => {
     if (!dialogState.data) return;
-    console.log("Deleting client:", dialogState.data)
-    // Here you would call an API to delete the client
-    setClients(prev => prev.filter(c => c.id !== dialogState.data!.id))
+    deleteClient(dialogState.data.id);
     closeDialog()
   }
 
@@ -162,7 +153,7 @@ export default function ClientsClient({ clients: initialClients }: ClientsClient
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the client <span className="font-bold">{dialogState.data?.name}</span>.
+              This action cannot be undone. This will permanently delete the client <span className="font-bold">{dialogState.data?.name}</span> and all of its associated projects and books.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

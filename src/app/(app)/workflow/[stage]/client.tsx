@@ -23,9 +23,9 @@ import {
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send, FolderSync } from "lucide-react";
-import type { BookWithProject, Document } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
-import { useWorkflow } from "@/context/workflow-context";
+import { useAppContext } from "@/context/app-context";
+import { EnrichedBook, AppDocument } from "@/context/app-context";
 
 const iconMap: { [key: string]: LucideIcon } = {
     Check,
@@ -74,7 +74,7 @@ const getBadgeVariant = (status: string): BadgeVariant => {
 
 
 export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
-  const { books, documents, handleBookAction, handleDocumentAction, updateDocumentStatus } = useWorkflow();
+  const { books, documents, handleBookAction, handleMoveBookToNextStage, updateDocumentStatus } = useAppContext();
   const { toast } = useToast();
   const { title, description, dataType, actionButtonLabel, actionButtonIcon, emptyStateText, dataStatus, dataStage } = config;
   const ActionIcon = actionButtonIcon ? iconMap[actionButtonIcon] : null;
@@ -83,7 +83,6 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     if (dataType === 'book' && dataStatus) {
       return books.filter(book => book.status === dataStatus);
     }
-    // Note the change here: using dataStage for document filtering
     if (dataType === 'document' && dataStage) {
       return documents.filter(doc => doc.status === dataStage);
     }
@@ -93,16 +92,8 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const handleGenericAction = (item: any) => {
     if (dataType === 'book') {
         handleBookAction(item.id, item.status);
-        toast({
-            title: "Action Completed",
-            description: `Book "${item.name}" has been moved to the next stage.`,
-        });
     } else { // It's a document
-        handleDocumentAction(item.id, item.status);
-        toast({
-            title: "Action Completed",
-            description: `Document "${item.name}" has been moved to the next stage.`,
-        });
+        handleMoveBookToNextStage(item.bookId, item.status);
     }
   };
   
@@ -131,7 +122,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     })
   }
 
-  const renderBookRow = (item: BookWithProject) => (
+  const renderBookRow = (item: EnrichedBook) => (
     <TableRow key={item.id}>
       <TableCell className="font-medium">
          <Link href={`/books/${item.id}`} className="hover:underline">{item.name}</Link>
@@ -154,7 +145,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     </TableRow>
   )
   
-  const renderDocumentRow = (item: Document & { client: string; status: string; name: string }) => (
+  const renderDocumentRow = (item: AppDocument) => (
      <TableRow key={item.id}>
       <TableCell className="font-medium">
           <Link href={`/documents/${item.id}`} className="hover:underline">{item.name}</Link>
@@ -223,8 +214,8 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
             <TableBody>
               {displayItems.map((item) => (
                 dataType === 'book'
-                  ? renderBookRow(item as BookWithProject)
-                  : renderDocumentRow(item as Document & { client: string, status: string, name: string })
+                  ? renderBookRow(item as EnrichedBook)
+                  : renderDocumentRow(item as AppDocument)
               ))}
             </TableBody>
           </Table>

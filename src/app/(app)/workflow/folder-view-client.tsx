@@ -15,13 +15,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { FolderSync, FileText, FileJson, Play, ThumbsUp, ThumbsDown, Send, Archive, Undo2 } from "lucide-react";
-import type { Document } from "@/lib/data";
-import { useWorkflow } from "@/context/workflow-context";
+import { useAppContext } from "@/context/app-context";
 import { useToast } from "@/hooks/use-toast";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { AppDocument } from "@/context/app-context";
 
 type IconMap = {
   [key: string]: React.ElementType;
@@ -54,7 +54,7 @@ type GroupedDocuments = {
   [bookId: string]: {
     bookName: string;
     projectName: string;
-    pages: (Document & { client: string; status: string; name: string })[];
+    pages: AppDocument[];
   };
 };
 
@@ -67,7 +67,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     handleFinalize,
     handleMarkAsCorrected,
     handleResubmit,
-  } = useWorkflow();
+  } = useAppContext();
   const { toast } = useToast();
   const ActionIcon = config.actionButtonIcon ? iconMap[config.actionButtonIcon] : FolderSync;
 
@@ -152,10 +152,6 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
         return (
           <Button size="sm" onClick={() => {
             handleMoveBookToNextStage(bookId, config.dataStage);
-            toast({
-              title: "Action Completed",
-              description: `"${bookName}" has been moved to the next stage.`,
-            })
           }}>
             <ActionIcon className="mr-2 h-4 w-4" />
             {config.actionButtonLabel}

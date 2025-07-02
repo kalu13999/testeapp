@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -7,11 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { useWorkflow } from '@/context/workflow-context';
+import { useAppContext } from '@/context/app-context';
 import { Check, Send, ThumbsDown, ThumbsUp, ZoomIn, ZoomOut, History } from "lucide-react";
 
 export default function DocumentDetailClient({ docId }: { docId: string }) {
-    const { documents, auditLogs } = useWorkflow();
+    const { documents, auditLogs } = useAppContext();
     
     const document = documents.find(doc => doc.id === docId);
     

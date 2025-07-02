@@ -12,14 +12,36 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import type { BookWithProject, Document } from "@/lib/data";
+import type { EnrichedBook, AppDocument } from "@/context/app-context";
+import { useAppContext } from "@/context/app-context";
 
 interface BookDetailClientProps {
-  book: BookWithProject;
-  pages: (Document & { client: string, status: string })[];
+  bookId: string;
 }
 
-export default function BookDetailClient({ book, pages }: BookDetailClientProps) {
+export default function BookDetailClient({ bookId }: BookDetailClientProps) {
+  const { books, documents } = useAppContext();
+
+  const book = books.find(b => b.id === bookId);
+  const pages = documents.filter(d => d.bookId === bookId);
+
+  if (!book) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Book Not Found</CardTitle>
+                <CardDescription>This book could not be found in the current context.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <p className="text-center text-muted-foreground py-10">
+                    Please check if the book exists or has been deleted.
+                </p>
+            </CardContent>
+        </Card>
+    );
+  }
+
+
   return (
     <div className="space-y-6">
         <div>
