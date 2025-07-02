@@ -18,6 +18,7 @@ import {
   Send,
   SlidersHorizontal,
   Warehouse,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -33,7 +34,10 @@ const menuItems = [
   {
     id: "management",
     title: "Management",
-    items: [{ href: "/projects", label: "Projects", icon: Briefcase }],
+    items: [
+      { href: "/projects", label: "Projects", icon: Briefcase },
+      { href: "/clients", label: "Clients", icon: Users },
+    ],
   },
   {
     id: "workflow",
