@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from 'react';
-import type { BookWithProject, Document, DocumentStatus } from '@/lib/data';
+import type { BookWithProject, Document, AuditLog } from '@/lib/data';
 
 // This map defines the status transition for books (physical items)
 const bookStatusTransition: { [key: string]: string } = {
@@ -20,6 +20,7 @@ const docStatusTransition: { [key:string]: string } = {
 type WorkflowContextType = {
   books: BookWithProject[];
   documents: (Document & { client: string; status: string; name: string })[];
+  auditLogs: (AuditLog & { user: string; })[];
   updateBookStatus: (bookId: string, newStatusName: string) => void;
   updateDocumentStatus: (docId: string, newStatusName: string) => void;
   handleBookAction: (bookId: string, currentStatus: string) => void;
@@ -32,14 +33,17 @@ const WorkflowContext = React.createContext<WorkflowContextType | undefined>(und
 export function WorkflowProvider({
   initialBooks,
   initialDocuments,
+  initialAuditLogs,
   children,
 }: {
   initialBooks: BookWithProject[];
   initialDocuments: (Document & { client: string; status: string; name: string })[];
+  initialAuditLogs: (AuditLog & { user: string; })[];
   children: React.ReactNode;
 }) {
   const [books, setBooks] = React.useState<BookWithProject[]>(initialBooks);
   const [documents, setDocuments] = React.useState<(Document & { client: string; status: string; name: string })[]>(initialDocuments);
+  const [auditLogs, setAuditLogs] = React.useState<(AuditLog & { user: string; })[]>(initialAuditLogs);
 
   const updateBookStatus = (bookId: string, newStatusName: string) => {
     setBooks(prevBooks =>
@@ -109,7 +113,7 @@ export function WorkflowProvider({
   };
 
 
-  const value = { books, documents, updateBookStatus, updateDocumentStatus, handleBookAction, handleDocumentAction, handleSendBookToIndex };
+  const value = { books, documents, auditLogs, updateBookStatus, updateDocumentStatus, handleBookAction, handleDocumentAction, handleSendBookToIndex };
 
   return (
     <WorkflowContext.Provider value={value}>

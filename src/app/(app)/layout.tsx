@@ -5,20 +5,21 @@ import { MainNav } from '@/components/layout/main-nav';
 import { UserNav } from '@/components/layout/user-nav';
 import { FileLock2 } from 'lucide-react';
 import { Toaster } from '@/components/ui/toaster';
-import { getBooks, getDocuments, getUserById } from '@/lib/data';
+import { getBooks, getDocuments, getUserById, getEnrichedAuditLogs } from '@/lib/data';
 import { WorkflowProvider } from '@/context/workflow-context';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   // Fetch user data on the server
-  const [user, books, documents] = await Promise.all([
+  const [user, books, documents, auditLogs] = await Promise.all([
     getUserById('u_admin'),
     getBooks(),
     getDocuments(),
+    getEnrichedAuditLogs(),
   ]);
 
   return (
     <SidebarProvider>
-      <WorkflowProvider initialBooks={books} initialDocuments={documents}>
+      <WorkflowProvider initialBooks={books} initialDocuments={documents} initialAuditLogs={auditLogs}>
         <Sidebar>
           <SidebarHeader>
             <div className="flex items-center gap-3 p-4">

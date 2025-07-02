@@ -33,7 +33,7 @@ export interface Document {
     bookId?: string | null;
 }
 
-interface AuditLog {
+export interface AuditLog {
     id: string;
     documentId: string;
     action: string;
@@ -109,6 +109,23 @@ export async function getUserById(id: string): Promise<User | undefined> {
 
 export async function getAuditLogs(): Promise<AuditLog[]> {
     return readJsonFile<AuditLog[]>('audit_logs.json');
+}
+
+export async function getEnrichedAuditLogs() {
+    const [logs, users] = await Promise.all([
+        getAuditLogs(),
+        getUsers()
+    ]);
+
+    return logs
+        .map(log => {
+            const user = users.find(u => u.id === log.userId);
+            return {
+                ...log,
+                user: user?.name || 'Unknown User',
+            };
+        })
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 }
 
 export async function getRawProjects(): Promise<Project[]> {
