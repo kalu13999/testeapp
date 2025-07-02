@@ -1,0 +1,10 @@
+
+[
+  { "id": "DOC-0824", "clientId": "cl_1", "statusId": "ds_7", "type": "Invoice", "lastUpdated": "2023-10-26", "tags": ["Urgent", "Q4"], "name": "Invoice for Innovate Corp" },
+  { "id": "DOC-0823", "clientId": "cl_2", "statusId": "ds_8", "type": "Contract", "lastUpdated": "2023-10-26", "tags": [], "name": "Contract for Future Tech" },
+  { "id": "DOC-0822", "clientId": "cl_3", "statusId": "ds_6", "type": "Report", "lastUpdated": "2023-10-25", "tags": [], "name": "Report for Data Systems" },
+  { "id": "DOC-0821", "clientId": "cl_1", "statusId": "ds_5", "type": "Invoice", "lastUpdated": "2023-10-25", "tags": [], "name": "Invoice for Innovate Corp" },
+  { "id": "DOC-0820", "clientId": "cl_4", "statusId": "ds_3", "type": "Receipt", "lastUpdated": "2023-10-24", "tags": [], "name": "Receipt for Quantum Leap" },
+  { "id": "DOC-0819", "clientId": "cl_2", "statusId": "ds_2", "type": "Contract", "lastUpdated": "2023-10-23", "tags": [], "name": "Contract for Future Tech" },
+  { "id": "DOC-0818", "clientId": "cl_3", "statusId": "ds_9", "type": "Report", "lastUpdated": "2023-10-22", "tags": [], "name": "Report for Data Systems" }
+]

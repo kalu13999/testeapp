@@ -1,11 +1,16 @@
+
 import React from 'react';
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
 import { MainNav } from '@/components/layout/main-nav';
 import { UserNav } from '@/components/layout/user-nav';
 import { FileLock2 } from 'lucide-react';
 import { Toaster } from '@/components/ui/toaster';
+import { getUserById } from '@/lib/data';
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  // Fetch user data on the server
+  const user = await getUserById('u_admin');
+
   return (
     <SidebarProvider>
       <Sidebar>
@@ -25,7 +30,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm sm:justify-end md:px-6">
             <SidebarTrigger className="sm:hidden" />
             <div className="flex items-center gap-4">
-              <UserNav />
+              <UserNav user={user} />
             </div>
         </header>
         <main className="flex-1 p-4 md:p-6">

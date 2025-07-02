@@ -1,29 +1,32 @@
+
 import Image from "next/image";
+import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { getAuditLogsByDocumentId, getDocumentById } from "@/lib/data";
 import { Check, Send, ThumbsDown, ThumbsUp, X, ZoomIn, ZoomOut, History } from "lucide-react";
 
-const auditLog = [
-    { action: "Created", user: "system", date: "2023-10-25 08:00", details: "Request received from Innovate Corp" },
-    { action: "Received", user: "operator-1", date: "2023-10-25 09:15", details: "Physical document confirmed" },
-    { action: "Scanned", user: "operator-1", date: "2023-10-25 10:30", details: "Scan successful" },
-    { action: "Indexed", user: "operator-2", date: "2023-10-25 11:45", details: "Metadata applied" },
-    { action: "Processing", user: "system", date: "2023-10-25 14:00", details: "OCR script initiated" },
-    { action: "QC Pending", user: "system", date: "2023-10-26 09:00", details: "Ready for Quality Control" },
-];
+export default async function DocumentDetailPage({ params }: { params: { id: string } }) {
+    const [document, auditLog] = await Promise.all([
+        getDocumentById(params.id),
+        getAuditLogsByDocumentId(params.id)
+    ]);
 
-export default function DocumentDetailPage({ params }: { params: { id: string } }) {
+    if (!document) {
+        notFound();
+    }
+
     return (
         <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-6">
             <div className="md:col-span-2 lg:col-span-3 space-y-6">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
                        <div>
-                         <CardTitle className="font-headline">Document Preview: {params.id}</CardTitle>
-                         <CardDescription>Invoice for Innovate Corp</CardDescription>
+                         <CardTitle className="font-headline">Document Preview: {document.id}</CardTitle>
+                         <CardDescription>{document.name}</CardDescription>
                        </div>
                        <div className="flex items-center gap-2">
                             <Button variant="outline" size="icon"><ZoomIn className="h-4 w-4" /></Button>
@@ -52,7 +55,7 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
                     <CardContent>
                         <div className="space-y-4">
                            {auditLog.map((log, index) => (
-                               <div key={index} className="flex items-start gap-4 relative">
+                               <div key={log.id} className="flex items-start gap-4 relative">
                                   {index < auditLog.length - 1 && <div className="absolute left-4 top-8 w-px h-full bg-border" />}
                                    <div className="flex-shrink-0 z-10">
                                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center ring-4 ring-background">
@@ -87,18 +90,17 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
                         <CardTitle className="font-headline">Metadata</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3 text-sm">
-                        <div className="flex justify-between items-center"><span>Status:</span><Badge variant="secondary">QC Pending</Badge></div>
+                        <div className="flex justify-between items-center"><span>Status:</span><Badge variant="secondary">{document.status}</Badge></div>
                         <Separator />
-                        <div className="flex justify-between"><span>Client:</span><strong className="text-right">Innovate Corp</strong></div>
+                        <div className="flex justify-between"><span>Client:</span><strong className="text-right">{document.client}</strong></div>
                         <Separator />
-                        <div className="flex justify-between"><span>Doc Type:</span><strong className="text-right">Invoice</strong></div>
+                        <div className="flex justify-between"><span>Doc Type:</span><strong className="text-right">{document.type}</strong></div>
                          <Separator />
-                        <div className="flex justify-between"><span>Received:</span><strong className="text-right">2023-10-25</strong></div>
+                        <div className="flex justify-between"><span>Received:</span><strong className="text-right">{document.lastUpdated}</strong></div>
                          <Separator />
                          <div className="flex justify-between items-start"><span>Tags:</span>
                             <div className="flex flex-wrap gap-1 justify-end">
-                                <Badge variant="outline">Urgent</Badge>
-                                <Badge variant="outline">Q4</Badge>
+                                {document.tags.map(tag => <Badge key={tag} variant="outline">{tag}</Badge>)}
                             </div>
                          </div>
                     </CardContent>
