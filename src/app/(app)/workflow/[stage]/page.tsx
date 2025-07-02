@@ -1,48 +1,40 @@
 
-import { getDocumentsByStage, getFolderContents } from "@/lib/data";
+import { getDocumentsByStage, getFolderContents, getBooksByStatus } from "@/lib/data";
 import { notFound } from "next/navigation";
 import WorkflowClient from "./client";
 import StorageExplorer from "./storage-explorer";
 
 const STAGE_CONFIG: { [key: string]: any } = {
-  requests: {
-    title: "Requests Received",
-    description: "New client requests waiting to be marked as received.",
-    actionButtonLabel: "Mark as Received",
-    actionButtonIcon: "Check",
-    emptyStateText: "No pending requests.",
-    dataStage: "Requests",
-  },
   reception: {
     title: "Document Reception",
-    description: "Physical documents that have been received and are awaiting scanning.",
-    actionButtonLabel: "Send to Scanning",
-    actionButtonIcon: "ScanLine",
-    emptyStateText: "No documents in reception.",
-    dataStage: "Reception",
+    description: "Books that have been added to a project manifest but are awaiting physical confirmation.",
+    actionButtonLabel: "Confirm Receipt",
+    actionButtonIcon: "Check",
+    emptyStateText: "No books are awaiting reception.",
+    dataType: 'book',
+    dataStatus: 'Pending',
   },
   scanning: {
-    title: "Scanning",
-    description: "Documents that have been scanned and are ready for storage.",
-    actionButtonLabel: "Confirm Scanning",
-    actionButtonIcon: "Check",
-    emptyStateText: "No documents in scanning queue.",
-    dataStage: "Scanning",
+    title: "Scanning Queue",
+    description: "Physical books that have been received and are awaiting scanning.",
+    actionButtonLabel: "Start Scanning",
+    actionButtonIcon: "ScanLine",
+    emptyStateText: "No books in the scanning queue.",
+    dataType: 'book',
+    dataStatus: 'Received',
   },
   storage: {
-    title: "Storage",
+    title: "Storage Explorer",
     description: "Documents in storage, awaiting indexing.",
-    actionButtonLabel: "Start Indexing",
-    actionButtonIcon: "FileText",
-    emptyStateText: "No documents in storage.",
-    dataStage: "Storage",
+    dataType: 'storage-explorer', // Special type for this page
   },
   indexing: {
     title: "Indexing",
-    description: "Documents that are currently being indexed with metadata.",
+    description: "Documents that have been scanned and are ready for metadata assignment.",
     actionButtonLabel: "Send to Processing",
     actionButtonIcon: "FileJson",
     emptyStateText: "No documents to index.",
+    dataType: 'document',
     dataStage: "Indexing",
   },
   processing: {
@@ -51,13 +43,14 @@ const STAGE_CONFIG: { [key: string]: any } = {
     actionButtonLabel: "Run Script",
     actionButtonIcon: "Play",
     emptyStateText: "No documents to process.",
+    dataType: 'document',
     dataStage: "Processing",
   },
   'quality-control': {
     title: "Quality Control",
     description: "Review documents for quality and accuracy before delivery.",
-    // This stage has multiple actions, so we won't use the generic button.
     emptyStateText: "No documents for QC.",
+    dataType: 'document',
     dataStage: "Quality Control",
   },
   delivery: {
@@ -66,22 +59,29 @@ const STAGE_CONFIG: { [key: string]: any } = {
     actionButtonLabel: "Deliver to Client",
     actionButtonIcon: "Send",
     emptyStateText: "No documents to deliver.",
+    dataType: 'document',
     dataStage: "Delivery",
   },
 };
 
 export default async function WorkflowStagePage({ params, searchParams }: { params: { stage: string }, searchParams?: { [key: string]: string | string[] | undefined } }) {
-    if (params.stage === 'storage') {
+    const config = STAGE_CONFIG[params.stage];
+    if (!config) {
+        notFound();
+    }
+    
+    if (config.dataType === 'storage-explorer') {
         const folderId = searchParams?.folderId && typeof searchParams.folderId === 'string' ? searchParams.folderId : null;
         const { folders, documents, breadcrumbs } = await getFolderContents(folderId);
         return <StorageExplorer folders={folders} documents={documents} breadcrumbs={breadcrumbs} />;
     }
     
-    const config = STAGE_CONFIG[params.stage];
-    if (!config) {
-        notFound();
+    let items;
+    if (config.dataType === 'book') {
+        items = await getBooksByStatus(config.dataStatus);
+    } else {
+        items = await getDocumentsByStage(config.dataStage);
     }
-    const documents = await getDocumentsByStage(config.dataStage);
 
-    return <WorkflowClient documents={documents} config={config} stage={params.stage} />;
+    return <WorkflowClient items={items} config={config} stage={params.stage} />;
 }

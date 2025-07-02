@@ -9,7 +9,6 @@ import {
   CheckCheck,
   FileCheck,
   FileClock,
-  FileInput,
   FileJson,
   FileSearch2,
   FileText,
@@ -48,7 +47,6 @@ const menuItems = [
     title: "Workflow",
     items: [
       { href: "/documents", label: "All Books", icon: Files },
-      { href: "/workflow/requests", label: "Requests", icon: FileInput },
       { href: "/workflow/reception", label: "Reception", icon: ArrowDownToLine },
       { href: "/workflow/scanning", label: "Scanning", icon: ScanLine },
       { href: "/workflow/storage", label: "Storage", icon: Warehouse },

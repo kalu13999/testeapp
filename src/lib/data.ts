@@ -220,6 +220,11 @@ export async function getDocumentsByStage(stage: string) {
         });
 }
 
+export async function getBooksByStatus(status: string) {
+    const books = await getBooks();
+    return books.filter(book => book.status === status);
+}
+
 
 export async function getDocumentById(id: string) {
     const documents = await getDocuments();

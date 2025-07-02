@@ -27,5 +27,22 @@
        { "id": "book_06", "name": "Q1-Q2 Reports", "status": "Complete", "expectedDocuments": 15 },
        { "id": "book_07", "name": "Q3-Q4 Reports", "status": "Pending", "expectedDocuments": 15 }
     ]
+  },
+  {
+    "id": "proj_4",
+    "name": "Quantum Leap Financials",
+    "clientId": "cl_4",
+    "books": [
+       { "id": "book_08", "name": "Annual General Meeting Minutes", "status": "Pending", "expectedDocuments": 50 },
+       { "id": "book_09", "name": "Investment Portfolio 2024", "status": "Received", "expectedDocuments": 250 }
+    ]
+  },
+  {
+    "id": "proj_5",
+    "name": "Global Solutions Migration",
+    "clientId": "cl_5",
+    "books": [
+       { "id": "book_10", "name": "Legacy System Data", "status": "Pending", "expectedDocuments": 500 }
+    ]
   }
 ]
