@@ -258,67 +258,6 @@ export async function getDashboardData() {
     return { kpiData, chartData, recentActivities };
 }
 
-export type Breadcrumb = {
-    id: string | null;
-    name: string;
-}
-
-async function getBreadcrumbs(folderId: string | null, allFolders: Folder[]): Promise<Breadcrumb[]> {
-    const breadcrumbs: Breadcrumb[] = [{ id: null, name: 'Storage' }];
-    if (!folderId) {
-        return breadcrumbs;
-    }
-
-    let currentFolder = allFolders.find(f => f.id === folderId);
-    const path: Breadcrumb[] = [];
-
-    while (currentFolder) {
-        path.unshift({ id: currentFolder.id, name: currentFolder.name });
-        if (currentFolder.parentId) {
-            currentFolder = allFolders.find(f => f.id === currentFolder.parentId);
-        } else {
-            currentFolder = undefined;
-        }
-    }
-    
-    return breadcrumbs.concat(path);
-}
-
-export async function getFolderContents(folderId: string | null) {
-    const [documents, clients, statuses, allFolders] = await Promise.all([
-        getRawDocuments(),
-        getClients(),
-        getDocumentStatuses(),
-        getFolders()
-    ]);
-    
-    const postScanStatusIds = statuses
-      .filter(s => !['Request Received', 'Received', 'Scanned', 'Pending'].includes(s.name))
-      .map(s => s.id)
-
-    const documentsInFolder = documents
-        .filter(doc => (doc.folderId || null) === (folderId || null) && postScanStatusIds.includes(doc.statusId))
-        .map(doc => {
-            const client = clients.find(c => c.id === doc.clientId);
-            const status = statuses.find(s => s.id === doc.statusId);
-            return {
-                ...doc,
-                client: client?.name || 'Unknown Client',
-                status: status?.name || 'Unknown Status',
-            };
-        });
-
-    const subFolders = allFolders.filter(folder => folder.parentId === folderId);
-
-    const breadcrumbs = await getBreadcrumbs(folderId, allFolders);
-
-    return {
-        documents: documentsInFolder,
-        folders: subFolders,
-        breadcrumbs: breadcrumbs
-    };
-}
-
 export async function getBooks(): Promise<BookWithProject[]> {
     const [projects, documents] = await Promise.all([
         getProjects(),

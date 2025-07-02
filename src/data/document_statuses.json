@@ -6,8 +6,8 @@
   { "id": "ds_4", "name": "Storage", "stage": "Storage" },
   { "id": "ds_5", "name": "Indexing", "stage": "Indexing" },
   { "id": "ds_6", "name": "Processing", "stage": "Processing" },
-  { "id": "ds_7", "name": "QC Pending", "stage": "Quality Control" },
-  { "id": "ds_8", "name": "Delivered", "stage": "Delivery" },
+  { "id": "ds_7", "name": "Quality Control", "stage": "Quality Control" },
+  { "id": "ds_8", "name": "Delivery", "stage": "Delivery" },
   { "id": "ds_9", "name": "Rejected", "stage": "Quality Control" },
   { "id": "ds_10", "name": "Finalized", "stage": "Finalization" },
   { "id": "ds_11", "name": "Archived", "stage": "Archive" }

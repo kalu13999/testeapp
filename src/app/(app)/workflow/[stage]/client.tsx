@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/card"
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send } from "lucide-react";
+import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send, FolderSync } from "lucide-react";
 import type { BookWithProject, Document } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
 import { useWorkflow } from "@/context/workflow-context";
@@ -33,7 +33,8 @@ const iconMap: { [key: string]: LucideIcon } = {
     FileText,
     FileJson,
     Play,
-    Send
+    Send,
+    FolderSync,
 };
 
 interface WorkflowClientProps {
@@ -44,8 +45,8 @@ interface WorkflowClientProps {
     actionButtonLabel?: string;
     actionButtonIcon?: keyof typeof iconMap;
     emptyStateText: string;
-    dataStatus?: string;
-    dataStage?: string;
+    dataStatus?: string; // For books
+    dataStage?: string; // For documents
   };
   stage: string;
 }
@@ -63,8 +64,8 @@ const getBadgeVariant = (status: string): BadgeVariant => {
             return "destructive";
         case "Quality Control":
         case "Processing":
-        case "Scanning":
-        case "Received":
+        case "Indexing":
+        case "Storage":
             return "secondary"
         default:
             return "outline";
@@ -82,6 +83,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     if (dataType === 'book' && dataStatus) {
       return books.filter(book => book.status === dataStatus);
     }
+    // Note the change here: using dataStage for document filtering
     if (dataType === 'document' && dataStage) {
       return documents.filter(doc => doc.status === dataStage);
     }
@@ -95,7 +97,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
             title: "Action Completed",
             description: `Book "${item.name}" has been moved to the next stage.`,
         });
-    } else {
+    } else { // It's a document
         handleDocumentAction(item.id, item.status);
         toast({
             title: "Action Completed",

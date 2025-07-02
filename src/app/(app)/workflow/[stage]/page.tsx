@@ -1,8 +1,6 @@
 
-import { getFolderContents } from "@/lib/data";
 import { notFound } from "next/navigation";
 import WorkflowClient from "./client";
-import StorageExplorer from "./storage-explorer";
 
 const STAGE_CONFIG: { [key: string]: any } = {
   reception: {
@@ -24,9 +22,13 @@ const STAGE_CONFIG: { [key: string]: any } = {
     dataStatus: 'Received',
   },
   storage: {
-    title: "Storage Explorer",
-    description: "Documents in storage, awaiting indexing.",
-    dataType: 'storage-explorer', // Special type for this page
+    title: "Storage",
+    description: "Documents that have been scanned and are awaiting indexing.",
+    actionButtonLabel: "Start Indexing",
+    actionButtonIcon: "FolderSync",
+    emptyStateText: "No scanned documents are waiting in storage.",
+    dataType: 'document',
+    dataStage: "Storage",
   },
   indexing: {
     title: "Indexing",
@@ -64,18 +66,12 @@ const STAGE_CONFIG: { [key: string]: any } = {
   },
 };
 
-export default async function WorkflowStagePage({ params, searchParams }: { params: { stage: string }, searchParams?: { [key: string]: string | string[] | undefined } }) {
+export default async function WorkflowStagePage({ params }: { params: { stage: string } }) {
     const config = STAGE_CONFIG[params.stage];
     if (!config) {
         notFound();
     }
     
-    if (config.dataType === 'storage-explorer') {
-        const folderId = searchParams?.folderId && typeof searchParams.folderId === 'string' ? searchParams.folderId : null;
-        const { folders, documents, breadcrumbs } = await getFolderContents(folderId);
-        return <StorageExplorer folders={folders} documents={documents} breadcrumbs={breadcrumbs} />;
-    }
-    
-    // Data is now supplied by the WorkflowProvider context, no need to fetch it here.
+    // Data is now supplied by the WorkflowProvider context, so the client component handles fetching.
     return <WorkflowClient config={config} stage={params.stage} />;
 }
