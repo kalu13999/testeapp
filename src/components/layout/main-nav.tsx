@@ -1,8 +1,10 @@
+
 "use client";
 
 import {
   Archive,
   ArrowDownToLine,
+  Briefcase,
   CheckCheck,
   FileCheck,
   FileClock,
@@ -27,6 +29,11 @@ const menuItems = [
     id: "dashboards",
     title: "Dashboards",
     items: [{ href: "/dashboard", label: "Internal", icon: SlidersHorizontal }],
+  },
+  {
+    id: "management",
+    title: "Management",
+    items: [{ href: "/projects", label: "Projects", icon: Briefcase }],
   },
   {
     id: "workflow",

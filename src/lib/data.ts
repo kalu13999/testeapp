@@ -28,7 +28,9 @@ export interface Document {
     lastUpdated: string;
     tags: string[];
     name: string;
-    folderId?: string;
+    folderId?: string | null;
+    projectId?: string | null;
+    bookId?: string | null;
 }
 
 interface AuditLog {
@@ -46,6 +48,21 @@ export interface User {
     email: string | null;
     avatar: string | null;
 }
+
+export interface Book {
+    id: string;
+    name: string;
+    status: string;
+    expectedDocuments: number;
+}
+
+export interface Project {
+    id: string;
+    name: string;
+    clientId: string;
+    books: Book[];
+}
+
 
 // Helper to read and parse JSON files
 async function readJsonFile<T>(filename: string): Promise<T> {
@@ -83,6 +100,76 @@ export async function getUserById(id: string): Promise<User | undefined> {
 export async function getAuditLogs(): Promise<AuditLog[]> {
     return readJsonFile<AuditLog[]>('audit_logs.json');
 }
+
+export async function getRawProjects(): Promise<Project[]> {
+    return readJsonFile<Project[]>('projects.json');
+}
+
+export async function getProjects() {
+    const [projects, clients, documents] = await Promise.all([
+        getRawProjects(),
+        getClients(),
+        getRawDocuments()
+    ]);
+
+    return projects.map(proj => {
+        const client = clients.find(c => c.id === proj.clientId);
+        
+        const projectDocuments = documents.filter(d => d.projectId === proj.id);
+        const totalExpected = proj.books.reduce((sum, book) => sum + book.expectedDocuments, 0);
+        const progress = totalExpected > 0 ? (projectDocuments.length / totalExpected) * 100 : 0;
+        
+        // Simplified status logic: if all books are complete, project is complete. Otherwise, it's in progress.
+        const isComplete = proj.books.every(b => b.status === "Complete");
+
+        return {
+            ...proj,
+            clientName: client?.name || 'Unknown Client',
+            documentCount: projectDocuments.length,
+            totalExpected,
+            progress: Math.min(100, progress), // Cap at 100%
+            status: isComplete ? "Complete" : "In Progress",
+        };
+    });
+}
+
+export async function getProjectById(id: string) {
+    const [project, clients, documents] = await Promise.all([
+        getRawProjects().then(projects => projects.find(p => p.id === id)),
+        getClients(),
+        getRawDocuments()
+    ]);
+
+    if (!project) {
+        return null;
+    }
+
+    const client = clients.find(c => c.id === project.clientId);
+
+    const projectDocuments = documents.filter(d => d.projectId === project.id);
+    const totalExpected = project.books.reduce((sum, book) => sum + book.expectedDocuments, 0);
+    const overallProgress = totalExpected > 0 ? (projectDocuments.length / totalExpected) * 100 : 0;
+
+    const booksWithStats = project.books.map(book => {
+        const bookDocuments = documents.filter(d => d.bookId === book.id);
+        const bookProgress = book.expectedDocuments > 0 ? (bookDocuments.length / book.expectedDocuments) * 100 : 0;
+        return {
+            ...book,
+            documentCount: bookDocuments.length,
+            progress: Math.min(100, bookProgress),
+        };
+    });
+
+    return {
+        ...project,
+        clientName: client?.name || 'Unknown Client',
+        documentCount: projectDocuments.length,
+        totalExpected,
+        progress: Math.min(100, overallProgress),
+        books: booksWithStats,
+    };
+}
+
 
 export async function getDocuments() {
     const [documents, clients, statuses] = await Promise.all([
