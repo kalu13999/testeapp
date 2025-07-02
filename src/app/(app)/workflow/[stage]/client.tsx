@@ -24,8 +24,8 @@ import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send, FolderSync } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useAppContext } from "@/context/app-context";
-import { EnrichedBook, AppDocument } from "@/context/app-context";
+import { useAppContext } from "@/context/workflow-context";
+import { EnrichedBook, AppDocument } from "@/context/workflow-context";
 
 const iconMap: { [key: string]: LucideIcon } = {
     Check,

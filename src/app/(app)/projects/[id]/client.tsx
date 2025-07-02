@@ -17,7 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Book, CheckCircle, Clock, Package, Edit } from "lucide-react";
 import { ProjectForm } from "../project-form";
 import Link from "next/link";
-import { useAppContext } from "@/context/app-context";
+import { useAppContext } from "@/context/workflow-context";
 
 interface ProjectDetailClientProps {
   projectId: string;

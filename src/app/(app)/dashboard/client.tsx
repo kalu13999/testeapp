@@ -20,7 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { AlertTriangle, CheckCircle2, FileClock, Files } from "lucide-react"
-import { useAppContext } from "@/context/app-context"
+import { useAppContext } from "@/context/workflow-context"
 import { useMemo } from "react"
 
 // A map to associate KPI titles with icons

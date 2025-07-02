@@ -46,7 +46,7 @@ import {
 } from "@/components/ui/table"
 import { type Client } from "@/lib/data"
 import { ClientForm } from "./client-form"
-import { useAppContext } from "@/context/app-context"
+import { useAppContext } from "@/context/workflow-context"
 
 export default function ClientsClient() {
   const { clients, addClient, updateClient, deleteClient } = useAppContext();

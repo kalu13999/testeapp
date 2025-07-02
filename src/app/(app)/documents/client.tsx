@@ -34,7 +34,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { useAppContext } from "@/context/app-context";
+import { useAppContext } from "@/context/workflow-context";
 
 const ITEMS_PER_PAGE = 10;
 

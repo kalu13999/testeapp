@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { useAppContext } from '@/context/app-context';
+import { useAppContext } from '@/context/workflow-context';
 import { Check, Send, ThumbsDown, ThumbsUp, ZoomIn, ZoomOut, History } from "lucide-react";
 
 export default function DocumentDetailClient({ docId }: { docId: string }) {

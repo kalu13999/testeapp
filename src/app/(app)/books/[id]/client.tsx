@@ -12,8 +12,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import type { EnrichedBook, AppDocument } from "@/context/app-context";
-import { useAppContext } from "@/context/app-context";
+import type { EnrichedBook, AppDocument } from "@/context/workflow-context";
+import { useAppContext } from "@/context/workflow-context";
 
 interface BookDetailClientProps {
   bookId: string;

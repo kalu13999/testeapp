@@ -6,7 +6,7 @@ import { UserNav } from '@/components/layout/user-nav';
 import { FileLock2 } from 'lucide-react';
 import { Toaster } from '@/components/ui/toaster';
 import { getEnrichedBooks, getEnrichedDocuments, getUserById, getEnrichedAuditLogs, getClients, getUsers, getEnrichedProjects } from '@/lib/data';
-import { AppProvider } from '@/context/app-context';
+import { AppProvider } from '@/context/workflow-context';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   // Fetch all initial data on the server

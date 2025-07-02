@@ -48,7 +48,7 @@ import {
 import { type User } from "@/lib/data"
 import { UserForm } from "./user-form"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useAppContext } from "@/context/app-context"
+import { useAppContext } from "@/context/workflow-context"
 
 export default function UsersClient() {
   const { users, addUser, updateUser, deleteUser } = useAppContext();

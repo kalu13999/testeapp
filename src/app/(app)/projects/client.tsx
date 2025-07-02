@@ -49,7 +49,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { ProjectForm } from "./project-form";
-import { useAppContext } from "@/context/app-context";
+import { useAppContext } from "@/context/workflow-context";
 
 export default function ProjectsClient() {
   const { projects, clients, addProject, updateProject, deleteProject } = useAppContext();

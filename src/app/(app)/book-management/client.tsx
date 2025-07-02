@@ -47,9 +47,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-import type { EnrichedProject, EnrichedBook, BookImport } from "@/context/app-context"
+import type { EnrichedProject, EnrichedBook, BookImport } from "@/context/workflow-context"
 import { BookForm } from "./book-form"
-import { useAppContext } from "@/context/app-context"
+import { useAppContext } from "@/context/workflow-context"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
