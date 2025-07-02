@@ -45,7 +45,7 @@ export function WorkflowProvider({
   children,
 }: {
   initialBooks: BookWithProject[];
-  initialDocuments: (Document & { client: string; status: string })[];
+  initialDocuments: (Document & { client: string; status: string; name: string })[];
   children: React.ReactNode;
 }) {
   const [books, setBooks] = React.useState<BookWithProject[]>(initialBooks);
@@ -79,7 +79,7 @@ export function WorkflowProvider({
           type: 'Scanned Page',
           lastUpdated: new Date().toISOString().slice(0, 10),
           tags: [],
-          folderId: null,
+          folderId: null, // This would be set to a "storage/indexing" folder
           projectId: book.projectId,
           bookId: book.id,
         }));

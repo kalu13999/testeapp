@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, File as FileIcon } from "lucide-react";
+import { File as FileIcon } from "lucide-react";
 import {
   Pagination,
   PaginationContent,

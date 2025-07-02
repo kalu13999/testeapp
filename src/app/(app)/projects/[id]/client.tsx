@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { getProjectById, Client } from "@/lib/data";
 import { Book, CheckCircle, Clock, Package, Edit } from "lucide-react";
 import { ProjectForm } from "../project-form";
+import Link from "next/link";
 
 type Project = NonNullable<Awaited<ReturnType<typeof getProjectById>>>;
 
@@ -114,7 +115,11 @@ export default function ProjectDetailClient({ project: initialProject, clients }
                       <TableBody>
                           {project.books.map(book => (
                               <TableRow key={book.id}>
-                                  <TableCell className="font-medium">{book.name}</TableCell>
+                                  <TableCell className="font-medium">
+                                      <Link href={`/books/${book.id}`} className="hover:underline">
+                                          {book.name}
+                                      </Link>
+                                  </TableCell>
                                   <TableCell>
                                       <div className="flex items-center gap-2">
                                           {getStatusIcon(book.status)}

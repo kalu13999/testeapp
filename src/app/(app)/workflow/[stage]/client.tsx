@@ -61,7 +61,7 @@ const getBadgeVariant = (status: string): BadgeVariant => {
             return "default";
         case "Rejected":
             return "destructive";
-        case "QC Pending":
+        case "Quality Control":
         case "Processing":
         case "Scanning":
         case "Received":

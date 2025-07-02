@@ -199,34 +199,6 @@ export async function getDocuments() {
     });
 }
 
-export async function getDocumentsByStage(stage: string) {
-    const [documents, clients, statuses] = await Promise.all([
-        getRawDocuments(),
-        getClients(),
-        getDocumentStatuses()
-    ]);
-
-    const stageStatuses = statuses.filter(s => s.stage === stage).map(s => s.id);
-
-    return documents
-        .filter(doc => stageStatuses.includes(doc.statusId))
-        .map(doc => {
-            const client = clients.find(c => c.id === doc.clientId);
-            const status = statuses.find(s => s.id === doc.statusId);
-            return {
-                ...doc,
-                client: client?.name || 'Unknown Client',
-                status: status?.name || 'Unknown Status',
-            };
-        });
-}
-
-export async function getBooksByStatus(status: string) {
-    const books = await getBooks();
-    return books.filter(book => book.status === status);
-}
-
-
 export async function getDocumentById(id: string) {
     const documents = await getDocuments();
     return documents.find(doc => doc.id === id);
@@ -253,7 +225,7 @@ export async function getAuditLogsByDocumentId(documentId: string) {
 export async function getDashboardData() {
     const documents = await getDocuments();
     
-    const pendingCount = documents.filter(d => d.status === 'QC Pending' || d.status === 'Processing').length;
+    const pendingCount = documents.filter(d => ['Quality Control', 'Processing'].includes(d.status)).length;
     const slaWarningsCount = 32; // This was static, keeping it for now
     const processedTodayCount = documents.filter(d => d.lastUpdated === new Date().toISOString().slice(0, 10)).length;
     const totalCount = documents.length;
@@ -274,7 +246,6 @@ export async function getDashboardData() {
             status: doc.status
         }));
         
-    // Static chart data for now, as it requires more complex historical data
     const chartData = [
         { name: "Jan", approved: 400, rejected: 240 },
         { name: "Feb", approved: 300, rejected: 139 },
@@ -292,7 +263,6 @@ export type Breadcrumb = {
     name: string;
 }
 
-// New function for breadcrumbs
 async function getBreadcrumbs(folderId: string | null, allFolders: Folder[]): Promise<Breadcrumb[]> {
     const breadcrumbs: Breadcrumb[] = [{ id: null, name: 'Storage' }];
     if (!folderId) {
@@ -314,7 +284,6 @@ async function getBreadcrumbs(folderId: string | null, allFolders: Folder[]): Pr
     return breadcrumbs.concat(path);
 }
 
-// New function for folder contents
 export async function getFolderContents(folderId: string | null) {
     const [documents, clients, statuses, allFolders] = await Promise.all([
         getRawDocuments(),
@@ -323,8 +292,6 @@ export async function getFolderContents(folderId: string | null) {
         getFolders()
     ]);
     
-    // In a real app, 'Storage' would represent a set of statuses (e.g., Indexing, QC, etc.)
-    // For this prototype, let's show all documents that are past the 'Scanned' state
     const postScanStatusIds = statuses
       .filter(s => !['Request Received', 'Received', 'Scanned', 'Pending'].includes(s.name))
       .map(s => s.id)

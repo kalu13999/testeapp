@@ -5,8 +5,8 @@
     "name": "Innovate Corp Q4 Scanning",
     "clientId": "cl_1",
     "books": [
-      { "id": "book_01", "name": "Financial Statements 2023", "status": "QC Pending", "expectedDocuments": 15 },
-      { "id": "book_02", "name": "Employee Records", "status": "Scanning", "expectedDocuments": 120 },
+      { "id": "book_01", "name": "Financial Statements 2023", "status": "Pending", "expectedDocuments": 15 },
+      { "id": "book_02", "name": "Employee Records", "status": "Pending", "expectedDocuments": 120 },
       { "id": "book_03", "name": "Client Contracts", "status": "Received", "expectedDocuments": 30 }
     ]
   },
@@ -16,7 +16,7 @@
     "clientId": "cl_2",
     "books": [
       { "id": "book_04", "name": "Master Services Agreement", "status": "Complete", "expectedDocuments": 1 },
-      { "id": "book_05", "name": "Security Compliance", "status": "QC Pending", "expectedDocuments": 25 }
+      { "id": "book_05", "name": "Security Compliance", "status": "Received", "expectedDocuments": 25 }
     ]
   },
   {
