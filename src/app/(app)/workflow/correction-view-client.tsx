@@ -18,6 +18,9 @@ import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2 } from "lu
 import { useWorkflow } from "@/context/workflow-context";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface CorrectionViewClientProps {
   stage: string;
@@ -38,22 +41,40 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
     deletePageFromBook,
   } = useWorkflow();
   const { toast } = useToast();
+  
+  const [addPageState, setAddPageState] = React.useState({ open: false, bookId: '', bookName: '', maxPages: 0 });
+  const [newPagePosition, setNewPagePosition] = React.useState<number | string>('');
 
   const rejectedBooks = React.useMemo(() => {
     return books.filter(book => book.status === config.dataStage);
   }, [books, config.dataStage]);
 
   const getPagesForBook = (bookId: string) => {
-    return documents.filter(doc => doc.bookId === bookId);
+    const getPageNum = (name: string): number => {
+        const match = name.match(/ - Page (\d+)/);
+        // Put pages without a number (like newly added ones before a refresh) at the end
+        return match ? parseInt(match[1], 10) : 9999; 
+    }
+
+    return documents
+        .filter(doc => doc.bookId === bookId)
+        .sort((a, b) => getPageNum(a.name) - getPageNum(b.name));
   }
 
-  const handleAddPage = (bookId: string, bookName: string) => {
-    addPageToBook(bookId);
-    toast({
-      title: "Page Added",
-      description: `A new blank page has been added to "${bookName}".`
-    });
-  }
+  const handleAddPageSubmit = () => {
+    const position = Number(newPagePosition);
+    if (!addPageState.bookId || !position || position < 1 || position > addPageState.maxPages + 1) {
+      toast({
+        title: "Invalid Position",
+        description: `Please enter a number between 1 and ${addPageState.maxPages + 1}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    addPageToBook(addPageState.bookId, position);
+    setAddPageState({ open: false, bookId: '', bookName: '', maxPages: 0 });
+    setNewPagePosition('');
+  };
 
   const handleDeletePage = (pageId: string, pageName: string) => {
     const page = documents.find(p => p.id === pageId);
@@ -68,6 +89,7 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
 
 
   return (
+    <>
      <Card>
       <CardHeader>
         <CardTitle className="font-headline">{config.title}</CardTitle>
@@ -110,7 +132,7 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
                         </Card>
 
                         <div className="flex items-center justify-end gap-2">
-                             <Button variant="outline" size="sm" onClick={() => handleAddPage(book.id, book.name)}>
+                             <Button variant="outline" size="sm" onClick={() => setAddPageState({ open: true, bookId: book.id, bookName: book.name, maxPages: pages.length })}>
                                 <FilePlus2 className="mr-2 h-4 w-4"/> Add Page
                              </Button>
                         </div>
@@ -177,5 +199,38 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
         </div>
       </CardFooter>
     </Card>
+
+    <Dialog open={addPageState.open} onOpenChange={(isOpen) => !isOpen && setAddPageState({ open: false, bookId: '', bookName: '', maxPages: 0 })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Page to "{addPageState.bookName}"</DialogTitle>
+            <DialogDescription>
+              Enter the position where the new page should be inserted. The current book has {addPageState.maxPages} pages.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="position" className="text-right">
+                Position
+              </Label>
+              <Input
+                id="position"
+                type="number"
+                value={newPagePosition}
+                onChange={(e) => setNewPagePosition(e.target.value)}
+                className="col-span-3"
+                min={1}
+                max={addPageState.maxPages + 1}
+                placeholder={`e.g., 1 to ${addPageState.maxPages + 1}`}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+             <Button type="button" variant="outline" onClick={() => setAddPageState({ open: false, bookId: '', bookName: '', maxPages: 0 })}>Cancel</Button>
+             <Button type="submit" onClick={handleAddPageSubmit}>Add Page</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

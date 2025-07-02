@@ -33,7 +33,7 @@ type WorkflowContextType = {
   handleFinalize: (bookId: string) => void;
   handleMarkAsCorrected: (bookId: string) => void;
   handleResubmit: (bookId: string, targetStage: string) => void;
-  addPageToBook: (bookId: string) => void;
+  addPageToBook: (bookId: string, position: number) => void;
   deletePageFromBook: (pageId: string, bookId: string) => void;
   updateDocumentStatus: (docId: string, newStatus: string) => void;
 };
@@ -154,26 +154,52 @@ export function WorkflowProvider({
     toast({ title: "Book Resubmitted", description: `The book has been sent back to ${targetStage}.` });
   };
   
-  const addPageToBook = (bookId: string) => {
+  const addPageToBook = (bookId: string, position: number) => {
     const book = books.find(b => b.id === bookId);
     if (!book) return;
-    const newPageNumber = documents.filter(d => d.bookId === bookId).length + 1;
-    const newPage = {
-      id: `doc_${book.id}_new_${newPageNumber}`,
-      name: `${book.name} - Page ${newPageNumber} (Added)`,
-      clientId: book.clientId,
-      client: book.clientName,
-      status: 'Client Rejected', // Stays in the same stage
-      statusId: 'ds_13',
-      type: 'Added Page',
-      lastUpdated: new Date().toISOString().slice(0, 10),
-      tags: ['added'],
-      folderId: null,
-      projectId: book.projectId,
-      bookId: book.id,
-    };
-    setDocuments(prev => [...prev, newPage]);
-    setBooks(prev => prev.map(b => b.id === bookId ? {...b, documentCount: b.documentCount + 1 } : b));
+
+    setDocuments(prevDocs => {
+      const otherPages = prevDocs.filter(p => p.bookId !== bookId);
+      const bookPages = prevDocs.filter(p => p.bookId === bookId);
+
+      const getPageNum = (name: string): number | null => {
+        const match = name.match(/ - Page (\d+)/);
+        return match ? parseInt(match[1], 10) : null;
+      };
+
+      const newPage = {
+        id: `doc_${book.id}_new_${Date.now()}`,
+        name: `${book.name} - Page ${position} (Added)`,
+        clientId: book.clientId,
+        client: book.clientName,
+        status: 'Client Rejected',
+        statusId: 'ds_13',
+        type: 'Added Page',
+        lastUpdated: new Date().toISOString().slice(0, 10),
+        tags: ['added', 'corrected'],
+        folderId: null,
+        projectId: book.projectId,
+        bookId: book.id,
+      };
+
+      const updatedPages = bookPages.map(page => {
+        const pageNum = getPageNum(page.name);
+        if (pageNum !== null && pageNum >= position) {
+          const newPageNum = pageNum + 1;
+          return { ...page, name: page.name.replace(/ - Page \d+/, ` - Page ${newPageNum}`) };
+        }
+        return page;
+      });
+
+      return [...otherPages, ...updatedPages, newPage];
+    });
+
+    setBooks(prev => prev.map(b => b.id === bookId ? { ...b, documentCount: b.documentCount + 1, expectedDocuments: b.expectedDocuments + 1 } : b));
+    
+    toast({
+      title: "Page Added",
+      description: `A new page has been inserted at position ${position} in "${book.name}".`,
+    });
   }
 
   const deletePageFromBook = (pageId: string, bookId: string) => {
