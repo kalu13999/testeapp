@@ -25,8 +25,8 @@ export default async function DocumentDetailPage({ params }: { params: { id: str
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
                        <div>
-                         <CardTitle className="font-headline">Document Preview: {document.id}</CardTitle>
-                         <CardDescription>{document.name}</CardDescription>
+                         <CardTitle className="font-headline">{document.name}</CardTitle>
+                         <CardDescription>Document ID: {document.id}</CardDescription>
                        </div>
                        <div className="flex items-center gap-2">
                             <Button variant="outline" size="icon"><ZoomIn className="h-4 w-4" /></Button>
