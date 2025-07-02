@@ -2,7 +2,7 @@
 import { notFound } from "next/navigation";
 import WorkflowClient from "./client";
 import FolderViewClient from "../folder-view-client";
-import CorrectionViewClient from "../workflow/correction-view-client";
+import CorrectionViewClient from "../correction-view-client";
 
 const STAGE_CONFIG: { [key: string]: any } = {
   reception: {
