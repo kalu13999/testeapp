@@ -91,6 +91,29 @@ export async function getDocuments() {
     });
 }
 
+export async function getDocumentsByStage(stage: string) {
+    const [documents, clients, statuses] = await Promise.all([
+        getRawDocuments(),
+        getClients(),
+        getDocumentStatuses()
+    ]);
+
+    const stageStatuses = statuses.filter(s => s.stage === stage).map(s => s.id);
+
+    return documents
+        .filter(doc => stageStatuses.includes(doc.statusId))
+        .map(doc => {
+            const client = clients.find(c => c.id === doc.clientId);
+            const status = statuses.find(s => s.id === doc.statusId);
+            return {
+                ...doc,
+                client: client?.name || 'Unknown Client',
+                status: status?.name || 'Unknown Status',
+            };
+        });
+}
+
+
 export async function getDocumentById(id: string) {
     const documents = await getDocuments();
     return documents.find(doc => doc.id === id);

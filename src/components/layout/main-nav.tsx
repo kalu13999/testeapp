@@ -33,31 +33,31 @@ const menuItems = [
     title: "Workflow",
     items: [
       { href: "/documents", label: "All Documents", icon: Files },
-      { href: "/documents", label: "Requests", icon: FileInput, isSubPath: true },
-      { href: "/documents", label: "Reception", icon: ArrowDownToLine, isSubPath: true },
-      { href: "/documents", label: "Scanning", icon: ScanLine, isSubPath: true },
-      { href: "/documents", label: "Storage", icon: Warehouse, isSubPath: true },
-      { href: "/documents", label: "Indexing", icon: FileText, isSubPath: true },
-      { href: "/documents", label: "Processing", icon: FileJson, isSubPath: true },
-      { href: "/documents", label: "Quality Control", icon: FileSearch2, isSubPath: true },
-      { href: "/documents", label: "Delivery", icon: Send, isSubPath: true },
+      { href: "/workflow/requests", label: "Requests", icon: FileInput },
+      { href: "/workflow/reception", label: "Reception", icon: ArrowDownToLine },
+      { href: "/workflow/scanning", label: "Scanning", icon: ScanLine },
+      { href: "/workflow/storage", label: "Storage", icon: Warehouse },
+      { href: "/workflow/indexing", label: "Indexing", icon: FileText },
+      { href: "/workflow/processing", label: "Processing", icon: FileJson },
+      { href: "/workflow/quality-control", label: "Quality Control", icon: FileSearch2 },
+      { href: "/workflow/delivery", label: "Delivery", icon: Send },
     ],
   },
   {
     id: "client",
     title: "Client Portal",
     items: [
-      { href: "/dashboard", label: "Client Dashboard", icon: Home, isSubPath: true },
-      { href: "/documents", label: "Pending Deliveries", icon: FileClock, isSubPath: true },
-      { href: "/documents", label: "Validated History", icon: FileCheck, isSubPath: true },
+      { href: "/client-dashboard", label: "Client Dashboard", icon: Home },
+      { href: "/pending-deliveries", label: "Pending Deliveries", icon: FileClock },
+      { href: "/validated-history", label: "Validated History", icon: FileCheck },
     ],
   },
   {
     id: "finalization",
     title: "Finalization",
     items: [
-      { href: "/documents", label: "Finalized", icon: CheckCheck, isSubPath: true },
-      { href: "/documents", label: "Archive", icon: Archive, isSubPath: true },
+      { href: "/finalized", label: "Finalized", icon: CheckCheck },
+      { href: "/archive", label: "Archive", icon: Archive },
     ],
   },
 ];
@@ -65,13 +65,10 @@ const menuItems = [
 export function MainNav() {
   const pathname = usePathname();
 
-  const isActive = (href: string, isSubPath?: boolean) => {
-    if (isSubPath) {
-      // For sub-paths, we don't want to highlight the main /documents link
-      return pathname === href;
-    }
-    return pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
-  }
+  const isActive = (href: string) => {
+    // Exact match or sub-path match
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
 
   return (
     <nav className="flex flex-col p-2">
@@ -87,7 +84,7 @@ export function MainNav() {
                   <Link href={item.href} passHref>
                     <Button
                       variant={
-                        isActive(item.href, item.isSubPath)
+                        isActive(item.href)
                           ? "secondary"
                           : "ghost"
                       }
