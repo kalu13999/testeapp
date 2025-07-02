@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -13,13 +14,33 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FolderSync, FileText } from "lucide-react";
+import { FolderSync, FileText, FileJson, Play, ThumbsUp, Send } from "lucide-react";
 import type { Document, BookWithProject } from "@/lib/data";
 import { useWorkflow } from "@/context/workflow-context";
 import { useToast } from "@/hooks/use-toast";
 
-interface StorageClientProps {
-  // The client gets all its data from the context.
+type IconMap = {
+  [key: string]: React.ElementType;
+};
+
+const iconMap: IconMap = {
+  FolderSync,
+  FileText,
+  FileJson,
+  Play,
+  ThumbsUp,
+  Send,
+};
+
+interface FolderViewClientProps {
+  stage: string;
+  config: {
+    title: string;
+    description: string;
+    actionButtonLabel: string;
+    actionButtonIcon: keyof typeof iconMap;
+    emptyStateText: string;
+  };
 }
 
 type GroupedDocuments = {
@@ -30,17 +51,17 @@ type GroupedDocuments = {
   };
 };
 
-
-export default function StorageClient({}: StorageClientProps) {
-  const { documents, books, handleSendBookToIndex } = useWorkflow();
+export default function FolderViewClient({ stage, config }: FolderViewClientProps) {
+  const { documents, books, handleMoveBookToNextStage } = useWorkflow();
   const { toast } = useToast();
+  const ActionIcon = iconMap[config.actionButtonIcon] || FolderSync;
 
-  const storageDocuments = React.useMemo(() => {
-    return documents.filter(doc => doc.status === 'Storage');
-  }, [documents]);
+  const stageDocuments = React.useMemo(() => {
+    return documents.filter(doc => doc.status === stage);
+  }, [documents, stage]);
 
   const groupedByBook = React.useMemo(() => {
-    return storageDocuments.reduce<GroupedDocuments>((acc, doc) => {
+    return stageDocuments.reduce<GroupedDocuments>((acc, doc) => {
       if (!doc.bookId) return acc;
       if (!acc[doc.bookId]) {
         const bookInfo = books.find(b => b.id === doc.bookId);
@@ -53,23 +74,21 @@ export default function StorageClient({}: StorageClientProps) {
       acc[doc.bookId].pages.push(doc);
       return acc;
     }, {});
-  }, [storageDocuments, books]);
+  }, [stageDocuments, books]);
 
   const handleAction = (bookId: string, bookName: string) => {
-    handleSendBookToIndex(bookId);
+    handleMoveBookToNextStage(bookId, stage);
     toast({
-      title: "Book Sent to Indexing",
-      description: `"${bookName}" is now ready for indexing.`,
+      title: "Action Completed",
+      description: `"${bookName}" has been moved to the next stage.`,
     })
   }
 
   return (
      <Card>
       <CardHeader>
-        <CardTitle className="font-headline">Storage</CardTitle>
-        <CardDescription>
-          Books that have been scanned and are awaiting indexing. Expand a book to see its pages.
-        </CardDescription>
+        <CardTitle className="font-headline">{config.title}</CardTitle>
+        <CardDescription>{config.description}</CardDescription>
       </CardHeader>
       <CardContent>
         {Object.keys(groupedByBook).length > 0 ? (
@@ -88,8 +107,8 @@ export default function StorageClient({}: StorageClientProps) {
                     </AccordionTrigger>
                     <div className="px-4">
                       <Button size="sm" onClick={() => handleAction(bookId, bookName)}>
-                          <FileText className="mr-2 h-4 w-4" />
-                          Send to Indexing
+                          <ActionIcon className="mr-2 h-4 w-4" />
+                          {config.actionButtonLabel}
                       </Button>
                     </div>
                 </div>
@@ -110,7 +129,7 @@ export default function StorageClient({}: StorageClientProps) {
                                 </CardContent>
                                  <CardFooter className="p-2">
                                     <p className="text-xs font-medium truncate">{page.name}</p>
-                                </CardFooter>
+                                 </CardFooter>
                             </Card>
                         </Link>
                     ))}
@@ -121,13 +140,13 @@ export default function StorageClient({}: StorageClientProps) {
           </Accordion>
         ) : (
            <div className="text-center py-10 text-muted-foreground">
-              <p>No scanned documents are waiting in storage.</p>
+              <p>{config.emptyStateText}</p>
            </div>
         )}
       </CardContent>
        <CardFooter>
         <div className="text-xs text-muted-foreground">
-          Showing <strong>{Object.keys(groupedByBook).length}</strong> books ready for indexing.
+          Showing <strong>{Object.keys(groupedByBook).length}</strong> books in this stage.
         </div>
       </CardFooter>
     </Card>

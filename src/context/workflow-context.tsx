@@ -10,10 +10,12 @@ const bookStatusTransition: { [key: string]: string } = {
   'Received': 'Scanned',
 };
 
-// This map defines the status transition for documents (digital items)
-const docStatusTransition: { [key:string]: string } = {
+// This map defines the status transition for entire books of documents (digital items)
+const digitalStageTransitions: { [key: string]: string } = {
+    'Storage': 'Indexing',
     'Indexing': 'Processing',
     'Processing': 'Quality Control',
+    'Quality Control': 'Delivery', // Represents bulk approval
     'Delivery': 'Finalized',
 }
 
@@ -25,7 +27,7 @@ type WorkflowContextType = {
   updateDocumentStatus: (docId: string, newStatusName: string) => void;
   handleBookAction: (bookId: string, currentStatus: string) => void;
   handleDocumentAction: (docId: string, currentStatus: string) => void;
-  handleSendBookToIndex: (bookId: string) => void;
+  handleMoveBookToNextStage: (bookId: string, currentStage: string) => void;
 };
 
 const WorkflowContext = React.createContext<WorkflowContextType | undefined>(undefined);
@@ -38,7 +40,7 @@ export function WorkflowProvider({
 }: {
   initialBooks: BookWithProject[];
   initialDocuments: (Document & { client: string; status: string; name: string })[];
-  initialAuditLogs: (AuditLog & { user: string; })[];
+  initialAuditLogs: (AuditLog & { user:string; })[];
   children: React.ReactNode;
 }) {
   const [books, setBooks] = React.useState<BookWithProject[]>(initialBooks);
@@ -77,7 +79,7 @@ export function WorkflowProvider({
           type: 'Scanned Page',
           lastUpdated: new Date().toISOString().slice(0, 10),
           tags: [],
-          folderId: null, // This would be set to a "storage/indexing" folder
+          folderId: null,
           projectId: book.projectId,
           bookId: book.id,
         }));
@@ -96,24 +98,30 @@ export function WorkflowProvider({
   };
   
   const handleDocumentAction = (docId: string, currentStatus: string) => {
-      const nextStatus = docStatusTransition[currentStatus];
+      const nextStatus = digitalStageTransitions[currentStatus];
       if(nextStatus) {
           updateDocumentStatus(docId, nextStatus);
       }
   };
 
-  const handleSendBookToIndex = (bookId: string) => {
+  const handleMoveBookToNextStage = (bookId: string, currentStage: string) => {
+    const nextStage = digitalStageTransitions[currentStage];
+    if (!nextStage) {
+        console.warn(`No transition defined for stage: ${currentStage}`);
+        return;
+    }
+
     setDocuments(prevDocs =>
-      prevDocs.map(doc => 
-        (doc.bookId === bookId && doc.status === 'Storage') 
-          ? { ...doc, status: 'Indexing' } 
-          : doc
-      )
+        prevDocs.map(doc =>
+            (doc.bookId === bookId && doc.status === currentStage)
+                ? { ...doc, status: nextStage }
+                : doc
+        )
     );
   };
 
 
-  const value = { books, documents, auditLogs, updateBookStatus, updateDocumentStatus, handleBookAction, handleDocumentAction, handleSendBookToIndex };
+  const value = { books, documents, auditLogs, updateBookStatus, updateDocumentStatus, handleBookAction, handleDocumentAction, handleMoveBookToNextStage };
 
   return (
     <WorkflowContext.Provider value={value}>
