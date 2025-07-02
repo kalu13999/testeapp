@@ -71,6 +71,7 @@ export interface BookWithProject extends Book {
     clientName: string;
     documentCount: number;
     progress: number;
+    rejectionReason?: string;
 }
 
 

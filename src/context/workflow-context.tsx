@@ -20,16 +20,21 @@ const digitalStageTransitions: { [key: string]: string } = {
     'Delivery': 'Pending Validation',
 }
 
+// Add rejectionReason to our extended Book type for client-side state
+type ClientBook = BookWithProject & { rejectionReason?: string | null };
+
 type WorkflowContextType = {
-  books: BookWithProject[];
+  books: ClientBook[];
   documents: (Document & { client: string; status: string; name: string })[];
   auditLogs: (AuditLog & { user: string; })[];
   handleBookAction: (bookId: string, currentStatus: string) => void;
   handleMoveBookToNextStage: (bookId: string, currentStage: string) => void;
-  handleClientAction: (bookId: string, action: 'approve' | 'reject') => void;
+  handleClientAction: (bookId: string, action: 'approve' | 'reject', reason?: string) => void;
   handleFinalize: (bookId: string) => void;
   handleMarkAsCorrected: (bookId: string) => void;
   handleResubmit: (bookId: string, targetStage: string) => void;
+  addPageToBook: (bookId: string) => void;
+  deletePageFromBook: (pageId: string, bookId: string) => void;
 };
 
 const WorkflowContext = React.createContext<WorkflowContextType | undefined>(undefined);
@@ -45,15 +50,15 @@ export function WorkflowProvider({
   initialAuditLogs: (AuditLog & { user:string; })[];
   children: React.ReactNode;
 }) {
-  const [books, setBooks] = React.useState<BookWithProject[]>(initialBooks);
+  const [books, setBooks] = React.useState<ClientBook[]>(initialBooks);
   const [documents, setDocuments] = React.useState<(Document & { client: string; status: string; name: string })[]>(initialDocuments);
   const [auditLogs, setAuditLogs] = React.useState<(AuditLog & { user: string; })[]>(initialAuditLogs);
   const { toast } = useToast();
 
-  const updateBookStatus = (bookId: string, newStatusName: string) => {
+  const updateBookStatus = (bookId: string, newStatusName: string, updateFn?: (book: ClientBook) => Partial<ClientBook>) => {
     setBooks(prevBooks =>
       prevBooks.map(book =>
-        book.id === bookId ? { ...book, status: newStatusName } : book
+        book.id === bookId ? { ...book, status: newStatusName, ...(updateFn ? updateFn(book) : {}) } : book
       )
     );
   };
@@ -114,13 +119,20 @@ export function WorkflowProvider({
     toast({ title: "Workflow Action", description: `Book moved to ${nextStage}.` });
   };
 
-  const handleClientAction = (bookId: string, action: 'approve' | 'reject') => {
-    const newStatus = action === 'approve' ? 'Finalized' : 'Client Rejected';
+  const handleClientAction = (bookId: string, action: 'approve' | 'reject', reason?: string) => {
+    const isApproval = action === 'approve';
+    const newStatus = isApproval ? 'Finalized' : 'Client Rejected';
     const book = books.find(b => b.id === bookId);
     moveBookDocuments(bookId, newStatus);
+    
+    // Update the book's state, including the rejection reason if provided
+    updateBookStatus(bookId, book?.status || newStatus, (b) => ({
+        rejectionReason: isApproval ? null : reason
+    }));
+
     toast({
-      title: `Book ${action === 'approve' ? 'Approved' : 'Rejected'}`,
-      description: `"${book?.name}" has been ${action === 'approve' ? 'approved by the client' : 'rejected and sent for review'}.`,
+      title: `Book ${isApproval ? 'Approved' : 'Rejected'}`,
+      description: `"${book?.name}" has been ${isApproval ? 'approved by the client' : 'rejected and sent for review'}.`,
     });
   };
 
@@ -131,13 +143,43 @@ export function WorkflowProvider({
   
   const handleMarkAsCorrected = (bookId: string) => {
     moveBookDocuments(bookId, 'Corrected');
+    updateBookStatus(bookId, 'Corrected'); // Also update book status
     toast({ title: "Book Corrected", description: "The book is now ready for resubmission." });
   };
 
   const handleResubmit = (bookId: string, targetStage: string) => {
     moveBookDocuments(bookId, targetStage);
+    updateBookStatus(bookId, 'In Progress'); // Reset book status
     toast({ title: "Book Resubmitted", description: `The book has been sent back to ${targetStage}.` });
   };
+  
+  const addPageToBook = (bookId: string) => {
+    const book = books.find(b => b.id === bookId);
+    if (!book) return;
+    const newPageNumber = documents.filter(d => d.bookId === bookId).length + 1;
+    const newPage = {
+      id: `doc_${book.id}_new_${newPageNumber}`,
+      name: `${book.name} - Page ${newPageNumber} (Added)`,
+      clientId: book.clientId,
+      client: book.clientName,
+      status: 'Client Rejected', // Stays in the same stage
+      statusId: 'ds_13',
+      type: 'Added Page',
+      lastUpdated: new Date().toISOString().slice(0, 10),
+      tags: ['added'],
+      folderId: null,
+      projectId: book.projectId,
+      bookId: book.id,
+    };
+    setDocuments(prev => [...prev, newPage]);
+    setBooks(prev => prev.map(b => b.id === bookId ? {...b, documentCount: b.documentCount + 1 } : b));
+  }
+
+  const deletePageFromBook = (pageId: string, bookId: string) => {
+    setDocuments(prev => prev.filter(p => p.id !== pageId));
+    setBooks(prev => prev.map(b => b.id === bookId ? {...b, documentCount: b.documentCount - 1 } : b));
+  }
+
 
   const value = { 
     books, 
@@ -149,6 +191,8 @@ export function WorkflowProvider({
     handleFinalize,
     handleMarkAsCorrected,
     handleResubmit,
+    addPageToBook,
+    deletePageFromBook,
   };
 
   return (

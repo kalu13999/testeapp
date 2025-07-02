@@ -2,7 +2,7 @@
 import { notFound } from "next/navigation";
 import WorkflowClient from "./client";
 import FolderViewClient from "../folder-view-client";
-import { ThumbsDown, Undo2, Archive } from "lucide-react";
+import CorrectionViewClient from "../workflow/correction-view-client";
 
 const STAGE_CONFIG: { [key: string]: any } = {
   reception: {
@@ -77,13 +77,12 @@ const STAGE_CONFIG: { [key: string]: any } = {
   },
   'client-rejections': {
     title: "Client Rejections",
-    description: "Books that have been rejected by the client and require attention.",
+    description: "Books that have been rejected by the client and require correction.",
     actionButtonLabel: "Mark as Corrected",
     actionButtonIcon: "Undo2",
     emptyStateText: "No books have been rejected by clients.",
-    dataType: 'document',
     dataStage: 'Client Rejected',
-    viewType: 'folder'
+    viewType: 'correction'
   },
   corrected: {
     title: "Corrected Books",
@@ -103,6 +102,10 @@ export default async function WorkflowStagePage({ params }: { params: { stage: s
     
     if (config.viewType === 'folder') {
       return <FolderViewClient config={config} stage={params.stage} />;
+    }
+    
+    if (config.viewType === 'correction') {
+      return <CorrectionViewClient config={config} stage={params.stage} />;
     }
     
     return <WorkflowClient config={config} stage={params.stage} />;
