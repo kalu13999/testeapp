@@ -1,9 +1,8 @@
-
 import { getDocumentsByStage } from "@/lib/data";
 import { notFound } from "next/navigation";
 import WorkflowClient from "./client";
 import { 
-    Check, ScanLine, Warehouse, FileText, FileJson, FileSearch2, Send, Play, ThumbsUp, ThumbsDown, ArrowUturnLeft
+    Check, ScanLine, Warehouse, FileText, FileJson, FileSearch2, Send, Play, ThumbsUp, ThumbsDown, Undo2
 } from "lucide-react";
 
 const STAGE_CONFIG: { [key: string]: any } = {

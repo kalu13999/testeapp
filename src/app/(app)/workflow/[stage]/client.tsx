@@ -1,4 +1,3 @@
-
 "use client"
 import {
   Table,
@@ -20,7 +19,7 @@ import {
 } from "@/components/ui/card"
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { ThumbsDown, ThumbsUp, ArrowUturnLeft } from "lucide-react";
+import { ThumbsDown, ThumbsUp, Undo2 } from "lucide-react";
 
 type Document = {
   id: string;
@@ -107,7 +106,7 @@ export default function WorkflowClient({ documents, config, stage }: WorkflowCli
                             <>
                                 <Button size="sm" variant="outline"><ThumbsUp className="h-4 w-4" /></Button>
                                 <Button size="sm" variant="destructive"><ThumbsDown className="h-4 w-4" /></Button>
-                                <Button size="sm" variant="ghost"><ArrowUturnLeft className="h-4 w-4" /></Button>
+                                <Button size="sm" variant="ghost"><Undo2 className="h-4 w-4" /></Button>
                             </>
                         ) : actionButtonLabel ? (
                             <Button size="sm">
