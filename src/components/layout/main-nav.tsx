@@ -4,6 +4,7 @@
 import {
   Archive,
   ArrowDownToLine,
+  BookUp,
   Briefcase,
   CheckCheck,
   FileCheck,
@@ -17,13 +18,14 @@ import {
   ScanLine,
   Send,
   SlidersHorizontal,
+  Users2,
   Warehouse,
-  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { User } from "lucide-react";
 
 const menuItems = [
   {
@@ -36,15 +38,16 @@ const menuItems = [
     title: "Management",
     items: [
       { href: "/projects", label: "Projects", icon: Briefcase },
-      { href: "/clients", label: "Clients", icon: Users },
-      { href: "/users", label: "Users", icon: Users },
+      { href: "/clients", label: "Clients", icon: Users2 },
+      { href: "/users", label: "Users", icon: User },
+      { href: "/book-management", label: "Book Management", icon: BookUp },
     ],
   },
   {
     id: "workflow",
     title: "Workflow",
     items: [
-      { href: "/documents", label: "All Documents", icon: Files },
+      { href: "/documents", label: "All Books", icon: Files },
       { href: "/workflow/requests", label: "Requests", icon: FileInput },
       { href: "/workflow/reception", label: "Reception", icon: ArrowDownToLine },
       { href: "/workflow/scanning", label: "Scanning", icon: ScanLine },
@@ -78,8 +81,8 @@ export function MainNav() {
   const pathname = usePathname();
 
   const isActive = (href: string) => {
-    // Exact match or sub-path match
-    return pathname === href || pathname.startsWith(`${href}/`);
+    // Exact match or sub-path match for parent routes
+    return pathname === href || (href !== '/' && pathname.startsWith(`${href}/`));
   };
 
   return (

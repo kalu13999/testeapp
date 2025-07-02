@@ -2,14 +2,7 @@
 "use client"
 
 import * as React from "react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import Link from "next/link";
 import {
   Table,
   TableBody,
@@ -20,8 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, PlusCircle, File as FileIcon } from "lucide-react";
-import Link from "next/link";
+import { MoreHorizontal, File as FileIcon } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -41,46 +33,21 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-type Document = {
-  id: string;
-  client: string;
-  status: string;
-  type: string;
-  lastUpdated: string;
-  name: string;
-};
+import type { BookWithProject } from "@/lib/data";
+import { Progress } from "@/components/ui/progress";
 
 interface DocumentsClientProps {
-  documents: Document[];
+  books: BookWithProject[];
   clients: string[];
-  statuses: string[];
-}
-
-type BadgeVariant = "default" | "destructive" | "secondary" | "outline";
-
-const getBadgeVariant = (status: string): BadgeVariant => {
-    switch (status) {
-        case "Delivered":
-        case "Finalized":
-        case "Scanned":
-            return "default";
-        case "Rejected":
-            return "destructive";
-        case "QC Pending":
-        case "Processing":
-            return "secondary"
-        default:
-            return "outline";
-    }
+  projects: string[];
 }
 
 const ITEMS_PER_PAGE = 10;
 
-export default function DocumentsClient({ documents, clients, statuses }: DocumentsClientProps) {
+export default function DocumentsClient({ books, clients, projects }: DocumentsClientProps) {
   const [filters, setFilters] = React.useState({
     query: '',
-    status: 'all',
+    project: 'all',
     client: 'all'
   });
   const [currentPage, setCurrentPage] = React.useState(1);
@@ -90,21 +57,20 @@ export default function DocumentsClient({ documents, clients, statuses }: Docume
     setCurrentPage(1); 
   };
 
-  const filteredDocuments = React.useMemo(() => {
-    return documents.filter(doc => {
+  const filteredBooks = React.useMemo(() => {
+    return books.filter(book => {
       const queryMatch = filters.query.trim() === '' || 
-        doc.name.toLowerCase().includes(filters.query.toLowerCase()) || 
-        doc.id.toLowerCase().includes(filters.query.toLowerCase());
+        book.name.toLowerCase().includes(filters.query.toLowerCase());
       
-      const statusMatch = filters.status === 'all' || doc.status === filters.status;
-      const clientMatch = filters.client === 'all' || doc.client === filters.client;
+      const projectMatch = filters.project === 'all' || book.projectName === filters.project;
+      const clientMatch = filters.client === 'all' || book.clientName === filters.client;
       
-      return queryMatch && statusMatch && clientMatch;
+      return queryMatch && projectMatch && clientMatch;
     });
-  }, [documents, filters]);
+  }, [books, filters]);
   
-  const totalPages = Math.ceil(filteredDocuments.length / ITEMS_PER_PAGE);
-  const paginatedDocuments = filteredDocuments.slice(
+  const totalPages = Math.ceil(filteredBooks.length / ITEMS_PER_PAGE);
+  const paginatedBooks = filteredBooks.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
@@ -184,22 +150,22 @@ export default function DocumentsClient({ documents, clients, statuses }: Docume
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2 flex-wrap">
         <Input 
-            placeholder="Search by ID or name..." 
+            placeholder="Search by book name..." 
             className="max-w-xs"
             value={filters.query}
             onChange={(e) => handleFilterChange('query', e.target.value)}
         />
-        <Select value={filters.status} onValueChange={(value) => handleFilterChange('status', value)}>
-            <SelectTrigger className="w-auto min-w-[150px]">
-                <SelectValue placeholder="Filter by Status" />
+        <Select value={filters.project} onValueChange={(value) => handleFilterChange('project', value)}>
+            <SelectTrigger className="w-auto min-w-[180px]">
+                <SelectValue placeholder="Filter by Project" />
             </SelectTrigger>
             <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                {statuses.map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}
+                <SelectItem value="all">All Projects</SelectItem>
+                {projects.map(project => <SelectItem key={project} value={project}>{project}</SelectItem>)}
             </SelectContent>
         </Select>
         <Select value={filters.client} onValueChange={(value) => handleFilterChange('client', value)}>
-            <SelectTrigger className="w-auto min-w-[150px]">
+            <SelectTrigger className="w-auto min-w-[180px]">
                 <SelectValue placeholder="Filter by Client" />
             </SelectTrigger>
             <SelectContent>
@@ -214,72 +180,49 @@ export default function DocumentsClient({ documents, clients, statuses }: Docume
                     Export
                 </span>
             </Button>
-            <Button size="sm" className="h-9 gap-1">
-                <PlusCircle className="h-3.5 w-3.5" />
-                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                    New Document
-                </span>
-            </Button>
         </div>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle className="font-headline">All Documents</CardTitle>
+          <CardTitle className="font-headline">All Books</CardTitle>
           <CardDescription>
-            Manage and track all documents in the workflow.
+            Manage and track all books in the workflow. Each book is a collection of documents.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Document ID</TableHead>
-                <TableHead>Name</TableHead>
+                <TableHead>Book Name</TableHead>
+                <TableHead>Project</TableHead>
                 <TableHead>Client</TableHead>
-                <TableHead className="hidden md:table-cell">Type</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="hidden md:table-cell">Last Updated</TableHead>
-                <TableHead>
-                  <span className="sr-only">Actions</span>
-                </TableHead>
+                <TableHead>Progress</TableHead>
+                <TableHead className="text-center">Pages</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedDocuments.length > 0 ? paginatedDocuments.map((doc) => (
-                <TableRow key={doc.id}>
-                  <TableCell className="font-medium">{doc.id}</TableCell>
-                  <TableCell className="font-medium">{doc.name}</TableCell>
-                  <TableCell>{doc.client}</TableCell>
-                  <TableCell className="hidden md:table-cell">{doc.type}</TableCell>
-                  <TableCell>
-                    <Badge variant={getBadgeVariant(doc.status)}>{doc.status}</Badge>
+              {paginatedBooks.length > 0 ? paginatedBooks.map((book) => (
+                <TableRow key={book.id}>
+                  <TableCell className="font-medium">
+                    <Link href={`/books/${book.id}`} className="hover:underline">
+                      {book.name}
+                    </Link>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">{doc.lastUpdated}</TableCell>
+                  <TableCell>{book.projectName}</TableCell>
+                  <TableCell>{book.clientName}</TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button aria-haspopup="true" size="icon" variant="ghost">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Toggle menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <Link href={`/documents/${doc.id}`} passHref>
-                          <DropdownMenuItem>View Details</DropdownMenuItem>
-                        </Link>
-                        <DropdownMenuItem>Approve</DropdownMenuItem>
-                        <DropdownMenuItem>Reject</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive">Archive</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <Badge variant={book.status === 'Complete' ? "default" : "outline"}>{book.status}</Badge>
                   </TableCell>
+                  <TableCell>
+                      <Progress value={book.progress} className="h-2" />
+                  </TableCell>
+                  <TableCell className="text-center">{book.documentCount} / {book.expectedDocuments}</TableCell>
                 </TableRow>
               )) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
-                    No documents found.
+                  <TableCell colSpan={6} className="h-24 text-center">
+                    No books found.
                   </TableCell>
                 </TableRow>
               )}
@@ -288,7 +231,7 @@ export default function DocumentsClient({ documents, clients, statuses }: Docume
         </CardContent>
         <CardFooter className="flex items-center justify-between">
           <div className="text-xs text-muted-foreground">
-            Showing <strong>{(currentPage - 1) * ITEMS_PER_PAGE + 1}-{(currentPage - 1) * ITEMS_PER_PAGE + paginatedDocuments.length}</strong> of <strong>{filteredDocuments.length}</strong> documents
+            Showing <strong>{(currentPage - 1) * ITEMS_PER_PAGE + 1}-{(currentPage - 1) * ITEMS_PER_PAGE + paginatedBooks.length}</strong> of <strong>{filteredBooks.length}</strong> books
           </div>
            <PaginationNav />
         </CardFooter>

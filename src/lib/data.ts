@@ -64,6 +64,14 @@ export interface Project {
     books: Book[];
 }
 
+export interface BookWithProject extends Book {
+    projectId: string;
+    projectName: string;
+    clientName: string;
+    documentCount: number;
+    progress: number;
+}
+
 
 // Helper to read and parse JSON files
 async function readJsonFile<T>(filename: string): Promise<T> {
@@ -332,4 +340,39 @@ export async function getFolderContents(folderId: string | null) {
         folders: subFolders,
         breadcrumbs: breadcrumbs
     };
+}
+
+export async function getBooks(): Promise<BookWithProject[]> {
+    const [projects, documents] = await Promise.all([
+        getProjects(),
+        getRawDocuments()
+    ]);
+    
+    const books: BookWithProject[] = [];
+
+    for (const project of projects) {
+        for (const book of project.books) {
+            const bookDocuments = documents.filter(d => d.bookId === book.id);
+            const bookProgress = book.expectedDocuments > 0 ? (bookDocuments.length / book.expectedDocuments) * 100 : 0;
+            books.push({
+                ...book,
+                projectId: project.id,
+                projectName: project.name,
+                clientName: project.clientName,
+                documentCount: bookDocuments.length,
+                progress: Math.min(100, bookProgress),
+            });
+        }
+    }
+    return books;
+}
+
+export async function getBookById(id: string): Promise<BookWithProject | undefined> {
+    const books = await getBooks();
+    return books.find(b => b.id === id);
+}
+
+export async function getPagesByBookId(bookId: string) {
+    const allDocs = await getDocuments();
+    return allDocs.filter(doc => doc.bookId === bookId);
 }

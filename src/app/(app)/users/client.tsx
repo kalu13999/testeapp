@@ -1,7 +1,8 @@
+
 "use client"
 
 import * as React from "react"
-import { MoreHorizontal, PlusCircle, Trash2, Edit } from "lucide-react"
+import { MoreHorizontal, PlusCircle, Trash2, Edit, User as UserIcon } from "lucide-react"
 
 import {
   AlertDialog,
