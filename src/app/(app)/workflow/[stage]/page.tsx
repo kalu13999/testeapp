@@ -1,5 +1,5 @@
 
-import { getDocumentsByStage, getFolderContents, getBooksByStatus } from "@/lib/data";
+import { getFolderContents } from "@/lib/data";
 import { notFound } from "next/navigation";
 import WorkflowClient from "./client";
 import StorageExplorer from "./storage-explorer";
@@ -76,12 +76,6 @@ export default async function WorkflowStagePage({ params, searchParams }: { para
         return <StorageExplorer folders={folders} documents={documents} breadcrumbs={breadcrumbs} />;
     }
     
-    let items;
-    if (config.dataType === 'book') {
-        items = await getBooksByStatus(config.dataStatus);
-    } else {
-        items = await getDocumentsByStage(config.dataStage);
-    }
-
-    return <WorkflowClient items={items} config={config} stage={params.stage} />;
+    // Data is now supplied by the WorkflowProvider context, no need to fetch it here.
+    return <WorkflowClient config={config} stage={params.stage} />;
 }

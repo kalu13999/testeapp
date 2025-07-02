@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react";
@@ -24,6 +25,7 @@ import Link from "next/link";
 import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send } from "lucide-react";
 import type { BookWithProject, Document } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
+import { useWorkflow } from "@/context/workflow-context";
 
 const iconMap: { [key: string]: LucideIcon } = {
     Check,
@@ -35,7 +37,6 @@ const iconMap: { [key: string]: LucideIcon } = {
 };
 
 interface WorkflowClientProps {
-  items: (BookWithProject | (Document & { client: string, status: string }))[];
   config: {
     title: string;
     description: string;
@@ -43,6 +44,8 @@ interface WorkflowClientProps {
     actionButtonLabel?: string;
     actionButtonIcon?: keyof typeof iconMap;
     emptyStateText: string;
+    dataStatus?: string;
+    dataStage?: string;
   };
   stage: string;
 }
@@ -61,6 +64,7 @@ const getBadgeVariant = (status: string): BadgeVariant => {
         case "QC Pending":
         case "Processing":
         case "Scanning":
+        case "Received":
             return "secondary"
         default:
             return "outline";
@@ -68,20 +72,58 @@ const getBadgeVariant = (status: string): BadgeVariant => {
 }
 
 
-export default function WorkflowClient({ items, config, stage }: WorkflowClientProps) {
-  const [displayItems, setDisplayItems] = React.useState(items);
+export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
+  const { books, documents, handleBookAction, handleDocumentAction, updateDocumentStatus } = useWorkflow();
   const { toast } = useToast();
-  const { title, description, dataType, actionButtonLabel, actionButtonIcon, emptyStateText } = config;
+  const { title, description, dataType, actionButtonLabel, actionButtonIcon, emptyStateText, dataStatus, dataStage } = config;
   const ActionIcon = actionButtonIcon ? iconMap[actionButtonIcon] : null;
 
-  const handleAction = (itemId: string, itemName: string, actionText: string = "moved to the next stage") => {
-    setDisplayItems(current => current.filter(item => item.id !== itemId));
+  const displayItems = React.useMemo(() => {
+    if (dataType === 'book' && dataStatus) {
+      return books.filter(book => book.status === dataStatus);
+    }
+    if (dataType === 'document' && dataStage) {
+      return documents.filter(doc => doc.status === dataStage);
+    }
+    return [];
+  }, [books, documents, dataType, dataStatus, dataStage]);
+  
+  const handleGenericAction = (item: any) => {
+    if (dataType === 'book') {
+        handleBookAction(item.id, item.status);
+    } else {
+        handleDocumentAction(item.id, item.status);
+    }
     toast({
         title: "Action Completed",
-        description: `"${itemName}" has been ${actionText}.`,
-    })
+        description: `"${item.name}" has been moved to the next stage.`,
+    });
   };
+  
+  const handleQCAction = (item: any, newStatus: string) => {
+    let actionText = '';
+    let nextStageStatus = '';
 
+    switch(newStatus) {
+        case 'Approved':
+            actionText = 'approved and sent to Delivery';
+            nextStageStatus = 'Delivery';
+            break;
+        case 'Rejected':
+            actionText = 'rejected';
+            nextStageStatus = 'Rejected';
+            break;
+        case 'Sent Back':
+            actionText = 'sent back to Processing';
+            nextStageStatus = 'Processing';
+            break;
+    }
+    updateDocumentStatus(item.id, nextStageStatus);
+    toast({
+        title: `Action: ${newStatus}`,
+        description: `"${item.name}" has been ${actionText}.`,
+    })
+  }
 
   const renderBookRow = (item: BookWithProject) => (
     <TableRow key={item.id}>
@@ -93,10 +135,10 @@ export default function WorkflowClient({ items, config, stage }: WorkflowClientP
       <TableCell>
         <Badge variant={getBadgeVariant(item.status)}>{item.status}</Badge>
       </TableCell>
-      {(actionButtonLabel || stage === 'quality-control') && (
+      {(actionButtonLabel) && (
         <TableCell>
             {actionButtonLabel && (
-                <Button size="sm" onClick={() => handleAction(item.id, item.name)}>
+                <Button size="sm" onClick={() => handleGenericAction(item)}>
                     {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
                     {actionButtonLabel}
                 </Button>
@@ -122,12 +164,12 @@ export default function WorkflowClient({ items, config, stage }: WorkflowClientP
           <div className="flex gap-2">
             {stage === 'quality-control' ? (
                 <>
-                    <Button size="sm" variant="outline" onClick={() => handleAction(item.id, item.name, 'approved')}><ThumbsUp className="h-4 w-4" /></Button>
-                    <Button size="sm" variant="destructive" onClick={() => handleAction(item.id, item.name, 'rejected')}><ThumbsDown className="h-4 w-4" /></Button>
-                    <Button size="sm" variant="ghost" onClick={() => handleAction(item.id, item.name, 'sent back to processing')}><Undo2 className="h-4 w-4" /></Button>
+                    <Button size="sm" variant="outline" onClick={() => handleQCAction(item, 'Approved')}><ThumbsUp className="h-4 w-4" /></Button>
+                    <Button size="sm" variant="destructive" onClick={() => handleQCAction(item, 'Rejected')}><ThumbsDown className="h-4 w-4" /></Button>
+                    <Button size="sm" variant="ghost" onClick={() => handleQCAction(item, 'Sent Back')}><Undo2 className="h-4 w-4" /></Button>
                 </>
             ) : actionButtonLabel ? (
-                <Button size="sm" onClick={() => handleAction(item.id, item.name)}>
+                <Button size="sm" onClick={() => handleGenericAction(item)}>
                     {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
                     {actionButtonLabel}
                 </Button>
@@ -188,7 +230,7 @@ export default function WorkflowClient({ items, config, stage }: WorkflowClientP
       </CardContent>
       <CardFooter>
         <div className="text-xs text-muted-foreground">
-          Showing <strong>{displayItems.length}</strong> of <strong>{items.length}</strong> items
+          Showing <strong>{displayItems.length}</strong> items
         </div>
       </CardFooter>
     </Card>
