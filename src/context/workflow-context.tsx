@@ -12,7 +12,6 @@ const bookStatusTransition: { [key: string]: string } = {
 
 // This map defines the status transition for documents (digital items)
 const docStatusTransition: { [key:string]: string } = {
-    'Storage': 'Indexing',
     'Indexing': 'Processing',
     'Processing': 'Quality Control',
     'Delivery': 'Finalized',
@@ -25,6 +24,7 @@ type WorkflowContextType = {
   updateDocumentStatus: (docId: string, newStatusName: string) => void;
   handleBookAction: (bookId: string, currentStatus: string) => void;
   handleDocumentAction: (docId: string, currentStatus: string) => void;
+  handleSendBookToIndex: (bookId: string) => void;
 };
 
 const WorkflowContext = React.createContext<WorkflowContextType | undefined>(undefined);
@@ -98,8 +98,18 @@ export function WorkflowProvider({
       }
   };
 
+  const handleSendBookToIndex = (bookId: string) => {
+    setDocuments(prevDocs =>
+      prevDocs.map(doc => 
+        (doc.bookId === bookId && doc.status === 'Storage') 
+          ? { ...doc, status: 'Indexing' } 
+          : doc
+      )
+    );
+  };
 
-  const value = { books, documents, updateBookStatus, updateDocumentStatus, handleBookAction, handleDocumentAction };
+
+  const value = { books, documents, updateBookStatus, updateDocumentStatus, handleBookAction, handleDocumentAction, handleSendBookToIndex };
 
   return (
     <WorkflowContext.Provider value={value}>

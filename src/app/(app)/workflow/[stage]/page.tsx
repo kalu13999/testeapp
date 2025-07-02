@@ -21,15 +21,6 @@ const STAGE_CONFIG: { [key: string]: any } = {
     dataType: 'book',
     dataStatus: 'Received',
   },
-  storage: {
-    title: "Storage",
-    description: "Documents that have been scanned and are awaiting indexing.",
-    actionButtonLabel: "Start Indexing",
-    actionButtonIcon: "FolderSync",
-    emptyStateText: "No scanned documents are waiting in storage.",
-    dataType: 'document',
-    dataStage: "Storage",
-  },
   indexing: {
     title: "Indexing",
     description: "Documents that have been scanned and are ready for metadata assignment.",
