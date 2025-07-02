@@ -14,10 +14,11 @@ import {
 } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Book, CheckCircle, Clock, Package, Edit } from "lucide-react";
+import { Book, CheckCircle, Clock, Package, Edit, DollarSign, Calendar, Info } from "lucide-react";
 import { ProjectForm } from "../project-form";
 import Link from "next/link";
 import { useAppContext } from "@/context/workflow-context";
+import { Project } from "@/lib/data";
 
 interface ProjectDetailClientProps {
   projectId: string;
@@ -40,7 +41,7 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
   
   const project = projects.find(p => p.id === projectId);
 
-  const handleSave = (values: { name: string, clientId: string }) => {
+  const handleSave = (values: Omit<Project, 'id'>) => {
     updateProject(projectId, values);
     setIsEditDialogOpen(false);
   }
@@ -61,6 +62,7 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
               <div>
                   <p className="text-sm text-muted-foreground">{project.clientName}</p>
                   <h1 className="font-headline text-3xl font-bold tracking-tight">{project.name}</h1>
+                  <p className="text-muted-foreground max-w-2xl">{project.description}</p>
               </div>
               <Button variant="outline" onClick={() => setIsEditDialogOpen(true)}>
                 <Edit className="mr-2 h-4 w-4"/>
@@ -71,30 +73,49 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
           <Card>
               <CardHeader>
                   <CardTitle>Project Overview</CardTitle>
-                  <CardDescription>High-level statistics for this project.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-                      <div className="bg-muted p-4 rounded-lg">
-                          <p className="text-sm text-muted-foreground">Status</p>
-                          <p className="text-2xl font-bold">{project.status}</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="bg-muted p-4 rounded-lg flex items-center gap-4">
+                          <Package className="h-8 w-8 text-muted-foreground" />
+                          <div>
+                            <p className="text-sm text-muted-foreground">Status</p>
+                            <p className="text-xl font-bold">{project.status}</p>
+                          </div>
                       </div>
-                       <div className="bg-muted p-4 rounded-lg">
-                          <p className="text-sm text-muted-foreground">Total Documents</p>
-                          <p className="text-2xl font-bold">{project.documentCount} / {project.totalExpected}</p>
+                       <div className="bg-muted p-4 rounded-lg flex items-center gap-4">
+                          <DollarSign className="h-8 w-8 text-muted-foreground" />
+                          <div>
+                            <p className="text-sm text-muted-foreground">Budget</p>
+                            <p className="text-xl font-bold">${project.budget.toLocaleString()}</p>
+                          </div>
                       </div>
-                       <div className="bg-muted p-4 rounded-lg">
-                          <p className="text-sm text-muted-foreground">Books</p>
-                          <p className="text-2xl font-bold">{project.books.length}</p>
+                       <div className="bg-muted p-4 rounded-lg flex items-center gap-4">
+                           <Calendar className="h-8 w-8 text-muted-foreground" />
+                           <div>
+                            <p className="text-sm text-muted-foreground">Timeline</p>
+                            <p className="text-base font-bold">{project.startDate} to {project.endDate}</p>
+                           </div>
                       </div>
                   </div>
                    <div>
                       <div className="flex justify-between items-center mb-1">
-                          <span className="text-sm font-medium">Overall Progress</span>
+                          <span className="text-sm font-medium">Overall Progress ({project.documentCount} / {project.totalExpected} pages)</span>
                           <span className="text-sm text-muted-foreground">{Math.round(project.progress)}%</span>
                       </div>
                       <Progress value={project.progress} />
                    </div>
+                    {project.info && (
+                        <Card className="bg-background">
+                            <CardHeader className="flex flex-row items-center gap-2 pb-2">
+                                <Info className="h-4 w-4" />
+                                <CardTitle className="text-base">Additional Info</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-sm text-muted-foreground">{project.info}</p>
+                            </CardContent>
+                        </Card>
+                    )}
               </CardContent>
           </Card>
 
@@ -140,7 +161,7 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
       </div>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit Project</DialogTitle>
             <DialogDescription>

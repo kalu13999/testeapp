@@ -1,8 +1,8 @@
 
 [
-  { "id": "u_admin", "name": "Admin User", "email": "admin@flowvault.com", "role": "Admin", "avatar": "https://placehold.co/100x100.png" },
-  { "id": "u_1", "name": "Operator 1", "email": "op1@flowvault.com", "role": "Operator", "avatar": "https://placehold.co/100x100.png" },
-  { "id": "u_2", "name": "Operator 2", "email": "op2@flowvault.com", "role": "Operator", "avatar": "https://placehold.co/100x100.png" },
-  { "id": "u_3", "name": "QC Specialist", "email": "qc1@flowvault.com", "role": "QC Specialist", "avatar": "https://placehold.co/100x100.png" },
-  { "id": "u_system", "name": "System", "email": null, "role": "System", "avatar": null }
+  { "id": "u_admin", "name": "Admin User", "email": "admin@flowvault.com", "role": "Admin", "avatar": "https://placehold.co/100x100.png", "phone": "555-0199", "jobTitle": "System Administrator", "department": "IT", "lastLogin": "2024-05-20T10:00:00Z", "info": "Super user with all permissions." },
+  { "id": "u_1", "name": "Operator 1", "email": "op1@flowvault.com", "role": "Operator", "avatar": "https://placehold.co/100x100.png", "phone": "555-0111", "jobTitle": "Document Specialist", "department": "Operations", "lastLogin": "2024-05-22T14:30:00Z", "info": "Primary operator for Innovate Corp projects." },
+  { "id": "u_2", "name": "Operator 2", "email": "op2@flowvault.com", "role": "Operator", "avatar": "https://placehold.co/100x100.png", "phone": "555-0112", "jobTitle": "Scanning Technician", "department": "Operations", "lastLogin": "2024-05-22T15:00:00Z", "info": "" },
+  { "id": "u_3", "name": "QC Specialist", "email": "qc1@flowvault.com", "role": "QC Specialist", "avatar": "https://placehold.co/100x100.png", "phone": "555-0113", "jobTitle": "Quality Assurance Lead", "department": "Quality", "lastLogin": "2024-05-22T16:00:00Z", "info": "Final approver for all deliveries." },
+  { "id": "u_system", "name": "System", "email": null, "role": "System", "avatar": null, "info": "Automated system account for processes." }
 ]

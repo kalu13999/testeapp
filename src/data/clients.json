@@ -1,8 +1,8 @@
 
 [
-  { "id": "cl_1", "name": "Innovate Corp" },
-  { "id": "cl_2", "name": "Future Tech" },
-  { "id": "cl_3", "name": "Data Systems" },
-  { "id": "cl_4", "name": "Quantum Leap" },
-  { "id": "cl_5", "name": "Global Solutions" }
+  { "id": "cl_1", "name": "Innovate Corp", "contactEmail": "contact@innovatecorp.com", "contactPhone": "555-0101", "address": "123 Innovation Drive, Techville, TX 75001", "website": "https://innovatecorp.com", "since": "2020-05-15", "info": "Key enterprise client, high volume." },
+  { "id": "cl_2", "name": "Future Tech", "contactEmail": "hello@future.tech", "contactPhone": "555-0102", "address": "456 Future Street, Silicon Valley, CA 94025", "website": "https://future.tech", "since": "2021-08-20", "info": "Emerging tech startup, focus on AI projects." },
+  { "id": "cl_3", "name": "Data Systems", "contactEmail": "support@datasystems.io", "contactPhone": "555-0103", "address": "789 Data Avenue, Server City, WA 98001", "website": "https://datasystems.io", "since": "2019-01-10", "info": "Long-standing client, requires high security standards." },
+  { "id": "cl_4", "name": "Quantum Leap", "contactEmail": "info@quantumleap.dev", "contactPhone": "555-0104", "address": "101 Quantum Road, Boston, MA 02110", "website": "https://quantumleap.dev", "since": "2022-11-30", "info": "" },
+  { "id": "cl_5", "name": "Global Solutions", "contactEmail": "contact@globalsolutions.net", "contactPhone": "555-0105", "address": "212 World Plaza, New York, NY 10001", "website": "https://globalsolutions.net", "since": "2018-03-22", "info": "International corporation with complex needs." }
 ]

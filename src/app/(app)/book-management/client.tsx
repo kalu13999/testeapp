@@ -20,12 +20,13 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { MoreHorizontal, PlusCircle, BookUp, Trash2, Edit } from "lucide-react"
+import { MoreHorizontal, PlusCircle, BookUp, Trash2, Edit, Info } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
@@ -47,7 +48,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-import type { EnrichedProject, EnrichedBook, BookImport } from "@/context/workflow-context"
+import type { EnrichedBook, BookImport, RawBook } from "@/context/workflow-context"
 import { BookForm } from "./book-form"
 import { useAppContext } from "@/context/workflow-context"
 import { Textarea } from "@/components/ui/textarea"
@@ -59,7 +60,7 @@ import { useToast } from "@/hooks/use-toast"
 export default function BookManagementClient() {
   const { projects, books, addBook, updateBook, deleteBook, importBooks } = useAppContext();
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null)
-  const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | 'import' | null; data?: EnrichedBook }>({ open: false, type: null })
+  const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | 'import' | 'details' | null; data?: EnrichedBook }>({ open: false, type: null })
   
   const [importJson, setImportJson] = React.useState("");
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -71,7 +72,7 @@ export default function BookManagementClient() {
     return books.filter(b => b.projectId === selectedProjectId)
   }, [books, selectedProjectId])
 
-  const openDialog = (type: 'new' | 'edit' | 'delete' | 'import', data?: EnrichedBook) => {
+  const openDialog = (type: 'new' | 'edit' | 'delete' | 'import' | 'details', data?: EnrichedBook) => {
     if ((type === 'new' || type === 'edit' || type === 'import') && !selectedProjectId) {
       toast({
           title: "No Project Selected",
@@ -88,7 +89,7 @@ export default function BookManagementClient() {
     setImportJson("");
   }
 
-  const handleSave = (values: { name: string; expectedDocuments: number }) => {
+  const handleSave = (values: Omit<RawBook, 'id' | 'projectId' | 'status'>) => {
     if (dialogState.type === 'new' && selectedProjectId) {
       addBook(selectedProjectId, values);
     } else if (dialogState.type === 'edit' && dialogState.data) {
@@ -181,6 +182,7 @@ export default function BookManagementClient() {
                   <TableRow>
                       <TableHead>Book Name</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Priority</TableHead>
                       <TableHead className="text-center">Expected Pages</TableHead>
                       <TableHead><span className="sr-only">Actions</span></TableHead>
                   </TableRow>
@@ -191,6 +193,7 @@ export default function BookManagementClient() {
                       <TableRow key={book.id}>
                           <TableCell className="font-medium">{book.name}</TableCell>
                           <TableCell><Badge variant="outline">{book.status}</Badge></TableCell>
+                          <TableCell>{book.priority || '—'}</TableCell>
                           <TableCell className="text-center">{book.expectedDocuments}</TableCell>
                           <TableCell>
                               <DropdownMenu>
@@ -202,9 +205,13 @@ export default function BookManagementClient() {
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
                                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                       <DropdownMenuItem onSelect={() => openDialog('details', book)}>
+                                        <Info className="mr-2 h-4 w-4" /> Details
+                                      </DropdownMenuItem>
                                       <DropdownMenuItem onSelect={() => openDialog('edit', book)}>
                                         <Edit className="mr-2 h-4 w-4" /> Edit
                                       </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
                                       <DropdownMenuItem onSelect={() => openDialog('delete', book)} className="text-destructive">
                                         <Trash2 className="mr-2 h-4 w-4" /> Delete
                                       </DropdownMenuItem>
@@ -214,14 +221,14 @@ export default function BookManagementClient() {
                       </TableRow>
                   )) : (
                     <TableRow>
-                      <TableCell colSpan={4} className="h-24 text-center">
+                      <TableCell colSpan={5} className="h-24 text-center">
                         No books found for this project.
                       </TableCell>
                     </TableRow>
                   )
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
+                    <TableCell colSpan={5} className="h-24 text-center">
                       Please select a project to see its books.
                     </TableCell>
                   </TableRow>
@@ -232,7 +239,7 @@ export default function BookManagementClient() {
       </Card>
 
       <Dialog open={dialogState.open && (dialogState.type === 'new' || dialogState.type === 'edit')} onOpenChange={closeDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{dialogState.type === 'new' ? 'Add New Book' : 'Edit Book'}</DialogTitle>
             <DialogDescription>
@@ -288,6 +295,42 @@ export default function BookManagementClient() {
                 <Button type="button" variant="outline" onClick={closeDialog}>Cancel</Button>
                 <Button type="submit" onClick={handleImport} disabled={!importJson}>Import Books</Button>
             </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+       <Dialog open={dialogState.open && dialogState.type === 'details'} onOpenChange={closeDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Book Details</DialogTitle>
+            <DialogDescription>{dialogState.data?.name}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4 text-sm">
+            <div className="grid grid-cols-3 items-center gap-x-4">
+              <p className="text-muted-foreground">Author</p>
+              <p className="col-span-2 font-medium">{dialogState.data?.author || '—'}</p>
+            </div>
+            <div className="grid grid-cols-3 items-center gap-x-4">
+              <p className="text-muted-foreground">ISBN</p>
+              <p className="col-span-2 font-medium">{dialogState.data?.isbn || '—'}</p>
+            </div>
+             <div className="grid grid-cols-3 items-center gap-x-4">
+              <p className="text-muted-foreground">Publication Year</p>
+              <p className="col-span-2 font-medium">{dialogState.data?.publicationYear || '—'}</p>
+            </div>
+            <div className="grid grid-cols-3 items-center gap-x-4">
+              <p className="text-muted-foreground">Priority</p>
+              <p className="col-span-2 font-medium">{dialogState.data?.priority || '—'}</p>
+            </div>
+            {dialogState.data?.info && (
+              <div className="grid grid-cols-3 items-start gap-x-4">
+                <p className="text-muted-foreground">Additional Info</p>
+                <p className="col-span-2 font-medium whitespace-pre-wrap">{dialogState.data.info}</p>
+              </div>
+            )}
+          </div>
+           <DialogFooter>
+              <Button type="button" variant="secondary" onClick={closeDialog}>Close</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

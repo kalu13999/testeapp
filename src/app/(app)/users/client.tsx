@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { MoreHorizontal, PlusCircle, Trash2, Edit, User as UserIcon } from "lucide-react"
+import { MoreHorizontal, PlusCircle, Trash2, Edit, Info } from "lucide-react"
 
 import {
   AlertDialog,
@@ -27,6 +27,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -35,6 +36,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
@@ -52,7 +54,7 @@ import { useAppContext } from "@/context/workflow-context"
 
 export default function UsersClient() {
   const { users, addUser, updateUser, deleteUser } = useAppContext();
-  const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | null; data?: User }>({ open: false, type: null })
+  const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | 'details' | null; data?: User }>({ open: false, type: null })
   
   const roles = [...new Set(users.map(u => u.role))].filter(r => r !== 'System').sort();
 
@@ -61,7 +63,7 @@ export default function UsersClient() {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   }
 
-  const openDialog = (type: 'new' | 'edit' | 'delete', data?: User) => {
+  const openDialog = (type: 'new' | 'edit' | 'delete' | 'details', data?: User) => {
     setDialogState({ open: true, type, data })
   }
 
@@ -69,7 +71,7 @@ export default function UsersClient() {
     setDialogState({ open: false, type: null, data: undefined })
   }
 
-  const handleSave = (values: { name: string, email: string, role: string }) => {
+  const handleSave = (values: Omit<User, 'id' | 'avatar' | 'lastLogin'>) => {
     if (dialogState.type === 'new') {
       addUser(values)
     } else if (dialogState.type === 'edit' && dialogState.data) {
@@ -108,6 +110,7 @@ export default function UsersClient() {
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
+                <TableHead>Department</TableHead>
                 <TableHead>
                   <span className="sr-only">Actions</span>
                 </TableHead>
@@ -129,6 +132,7 @@ export default function UsersClient() {
                    <TableCell>
                       <Badge variant={user.role === 'Admin' ? "default" : "secondary"}>{user.role}</Badge>
                   </TableCell>
+                  <TableCell>{user.department || '—'}</TableCell>
                   <TableCell>
                     {user.role !== 'System' && (
                       <DropdownMenu>
@@ -140,9 +144,13 @@ export default function UsersClient() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem onSelect={() => openDialog('details', user)}>
+                             <Info className="mr-2 h-4 w-4" /> Details
+                          </DropdownMenuItem>
                           <DropdownMenuItem onSelect={() => openDialog('edit', user)}>
                              <Edit className="mr-2 h-4 w-4" /> Edit
                           </DropdownMenuItem>
+                           <DropdownMenuSeparator />
                           <DropdownMenuItem onSelect={() => openDialog('delete', user)} className="text-destructive">
                              <Trash2 className="mr-2 h-4 w-4" /> Delete
                           </DropdownMenuItem>
@@ -157,9 +165,8 @@ export default function UsersClient() {
         </CardContent>
       </Card>
 
-      {/* Form Dialog for New/Edit */}
       <Dialog open={dialogState.open && (dialogState.type === 'new' || dialogState.type === 'edit')} onOpenChange={closeDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{dialogState.type === 'new' ? 'Create New User' : 'Edit User'}</DialogTitle>
             <DialogDescription>
@@ -170,7 +177,6 @@ export default function UsersClient() {
         </DialogContent>
       </Dialog>
       
-      {/* Confirmation Dialog for Delete */}
       <AlertDialog open={dialogState.open && dialogState.type === 'delete'} onOpenChange={closeDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -185,6 +191,50 @@ export default function UsersClient() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={dialogState.open && dialogState.type === 'details'} onOpenChange={closeDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>User Details</DialogTitle>
+            <DialogDescription>{dialogState.data?.name}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4 text-sm">
+            <div className="grid grid-cols-3 items-center gap-x-4">
+              <p className="text-muted-foreground">Email</p>
+              <p className="col-span-2 font-medium">{dialogState.data?.email}</p>
+            </div>
+             <div className="grid grid-cols-3 items-center gap-x-4">
+              <p className="text-muted-foreground">Phone</p>
+              <p className="col-span-2 font-medium">{dialogState.data?.phone || '—'}</p>
+            </div>
+             <div className="grid grid-cols-3 items-center gap-x-4">
+              <p className="text-muted-foreground">Role</p>
+              <p className="col-span-2 font-medium">{dialogState.data?.role}</p>
+            </div>
+            <div className="grid grid-cols-3 items-center gap-x-4">
+              <p className="text-muted-foreground">Job Title</p>
+              <p className="col-span-2 font-medium">{dialogState.data?.jobTitle || '—'}</p>
+            </div>
+            <div className="grid grid-cols-3 items-center gap-x-4">
+              <p className="text-muted-foreground">Department</p>
+              <p className="col-span-2 font-medium">{dialogState.data?.department || '—'}</p>
+            </div>
+             <div className="grid grid-cols-3 items-center gap-x-4">
+              <p className="text-muted-foreground">Last Login</p>
+              <p className="col-span-2 font-medium">{dialogState.data?.lastLogin ? new Date(dialogState.data.lastLogin).toLocaleString() : '—'}</p>
+            </div>
+            {dialogState.data?.info && (
+              <div className="grid grid-cols-3 items-start gap-x-4">
+                <p className="text-muted-foreground">Additional Info</p>
+                <p className="col-span-2 font-medium whitespace-pre-wrap">{dialogState.data.info}</p>
+              </div>
+            )}
+          </div>
+           <DialogFooter>
+              <Button type="button" variant="secondary" onClick={closeDialog}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

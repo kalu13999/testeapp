@@ -6,6 +6,12 @@ import path from 'path';
 export interface Client {
     id: string;
     name: string;
+    contactEmail: string;
+    contactPhone: string;
+    address: string;
+    website: string;
+    since: string;
+    info?: string;
 }
 
 export interface DocumentStatus {
@@ -48,6 +54,11 @@ export interface User {
     email: string | null;
     avatar: string | null;
     role: string;
+    phone?: string;
+    jobTitle?: string;
+    department?: string;
+    lastLogin?: string;
+    info?: string;
 }
 
 export interface RawBook {
@@ -56,12 +67,23 @@ export interface RawBook {
     status: string;
     expectedDocuments: number;
     projectId: string;
+    isbn?: string;
+    author?: string;
+    publicationYear?: number;
+    priority?: 'Low' | 'Medium' | 'High';
+    info?: string;
 }
 
 export interface Project {
     id: string;
     name: string;
     clientId: string;
+    description: string;
+    startDate: string;
+    endDate: string;
+    budget: number;
+    status: string; // "Planning", "In Progress", "Complete", "On Hold"
+    info?: string;
 }
 
 // Enriched types for client-side use
@@ -70,7 +92,6 @@ export interface EnrichedProject extends Project {
     documentCount: number;
     totalExpected: number;
     progress: number;
-    status: string;
     books: EnrichedBook[];
 }
 
@@ -81,7 +102,7 @@ export interface EnrichedBook extends RawBook {
     clientName: string;
     documentCount: number;
     progress: number;
-    rejectionReason?: string;
+    rejectionReason?: string | null;
 }
 
 
@@ -141,15 +162,12 @@ export async function getEnrichedProjects(): Promise<EnrichedProject[]> {
         const totalExpected = projectBooks.reduce((sum, book) => sum + book.expectedDocuments, 0);
         const progress = totalExpected > 0 ? (projectDocuments.length / totalExpected) * 100 : 0;
         
-        const isComplete = projectBooks.length > 0 && projectBooks.every(b => b.status === "Complete");
-
         return {
             ...proj,
             clientName: client?.name || 'Unknown Client',
             documentCount: projectDocuments.length,
             totalExpected,
             progress: Math.min(100, progress),
-            status: isComplete ? "Complete" : "In Progress",
             books: projectBooks
         };
     });

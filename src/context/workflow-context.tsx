@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from 'react';
-import type { Client, User, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog } from '@/lib/data';
+import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 
 // Define the shape of the book data when importing
@@ -40,23 +40,23 @@ type AppContextType = {
   auditLogs: (AuditLog & { user: string; })[];
   
   // Client Actions
-  addClient: (clientData: { name: string }) => void;
-  updateClient: (clientId: string, clientData: { name: string }) => void;
+  addClient: (clientData: Omit<Client, 'id'>) => void;
+  updateClient: (clientId: string, clientData: Partial<Omit<Client, 'id'>>) => void;
   deleteClient: (clientId: string) => void;
 
   // User Actions
-  addUser: (userData: { name: string; email: string; role: string }) => void;
-  updateUser: (userId: string, userData: { name: string; email: string; role: string }) => void;
+  addUser: (userData: Omit<User, 'id' | 'avatar'>) => void;
+  updateUser: (userId: string, userData: Partial<Omit<User, 'id' | 'avatar'>>) => void;
   deleteUser: (userId: string) => void;
 
   // Project Actions
-  addProject: (projectData: { name: string; clientId: string }) => void;
-  updateProject: (projectId: string, projectData: { name: string; clientId: string }) => void;
+  addProject: (projectData: Omit<Project, 'id'>) => void;
+  updateProject: (projectId: string, projectData: Partial<Omit<Project, 'id'>>) => void;
   deleteProject: (projectId: string) => void;
 
   // Book Actions
-  addBook: (projectId: string, bookData: { name: string; expectedDocuments: number }) => void;
-  updateBook: (bookId: string, bookData: { name: string; expectedDocuments: number }) => void;
+  addBook: (projectId: string, bookData: Omit<RawBook, 'id' | 'projectId' | 'status'>) => void;
+  updateBook: (bookId: string, bookData: Partial<Omit<RawBook, 'id' | 'projectId' | 'status'>>) => void;
   deleteBook: (bookId: string) => void;
   importBooks: (projectId: string, newBooks: BookImport[]) => void;
 
@@ -116,7 +116,7 @@ export function AppProvider({
       }
   };
 
-  const enrichProject = (project: { id: string, name: string, clientId: string }): EnrichedProject => {
+  const enrichProject = (project: Project): EnrichedProject => {
       const client = clients.find(c => c.id === project.clientId);
       const projectBooks = books.filter(b => b.projectId === project.id);
       const projectDocuments = documents.filter(d => d.projectId === project.id);
@@ -124,15 +124,12 @@ export function AppProvider({
       const totalExpected = projectBooks.reduce((sum, book) => sum + book.expectedDocuments, 0);
       const progress = totalExpected > 0 ? (projectDocuments.length / totalExpected) * 100 : 0;
       
-      const isComplete = projectBooks.length > 0 && projectBooks.every(b => b.status === "Complete");
-
       return {
           ...project,
           clientName: client?.name || 'Unknown Client',
           documentCount: projectDocuments.length,
           totalExpected,
           progress: Math.min(100, progress),
-          status: isComplete ? "Complete" : "In Progress",
           books: projectBooks,
       };
   };
@@ -140,13 +137,13 @@ export function AppProvider({
   // --- CRUD ACTIONS ---
 
   // Clients
-  const addClient = (clientData: { name: string }) => {
+  const addClient = (clientData: Omit<Client, 'id'>) => {
     const newClient: Client = { id: `cl_${Date.now()}`, ...clientData };
     setClients(prev => [...prev, newClient]);
     toast({ title: "Client Added", description: `Client "${newClient.name}" has been created.` });
   };
 
-  const updateClient = (clientId: string, clientData: { name: string }) => {
+  const updateClient = (clientId: string, clientData: Partial<Omit<Client, 'id'>>) => {
     setClients(prev => prev.map(c => c.id === clientId ? { ...c, ...clientData } : c));
     toast({ title: "Client Updated", description: "Client details have been saved." });
   };
@@ -161,13 +158,13 @@ export function AppProvider({
   };
   
   // Users
-  const addUser = (userData: { name: string; email: string; role: string }) => {
+  const addUser = (userData: Omit<User, 'id' | 'avatar'>) => {
     const newUser: User = { id: `u_${Date.now()}`, avatar: 'https://placehold.co/100x100.png', ...userData };
     setUsers(prev => [...prev, newUser]);
     toast({ title: "User Added", description: `User "${newUser.name}" has been created.` });
   };
 
-  const updateUser = (userId: string, userData: { name: string; email: string; role: string }) => {
+  const updateUser = (userId: string, userData: Partial<Omit<User, 'id' | 'avatar'>>) => {
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...userData } : u));
     toast({ title: "User Updated", description: "User details have been saved." });
   };
@@ -178,17 +175,17 @@ export function AppProvider({
   };
   
   // Projects
-  const addProject = (projectData: { name: string; clientId: string }) => {
-    const newProjectData = { id: `proj_${Date.now()}`, ...projectData };
+  const addProject = (projectData: Omit<Project, 'id'>) => {
+    const newProjectData: Project = { id: `proj_${Date.now()}`, ...projectData };
     const newEnrichedProject = enrichProject(newProjectData);
     setProjects(prev => [...prev, newEnrichedProject]);
     toast({ title: "Project Added", description: `Project "${newProjectData.name}" has been created.` });
   };
   
-  const updateProject = (projectId: string, projectData: { name: string; clientId: string }) => {
+  const updateProject = (projectId: string, projectData: Partial<Omit<Project, 'id'>>) => {
       setProjects(prev => prev.map(p => {
           if (p.id !== projectId) return p;
-          const updatedRaw = { ...p, ...projectData };
+          const updatedRaw: Project = { ...p, ...projectData, books: p.books };
           return enrichProject(updatedRaw);
       }));
       toast({ title: "Project Updated" });
@@ -201,7 +198,7 @@ export function AppProvider({
   };
 
   // Books
-  const addBook = (projectId: string, bookData: { name: string; expectedDocuments: number }) => {
+  const addBook = (projectId: string, bookData: Omit<RawBook, 'id' | 'projectId' | 'status'>) => {
       const newRawBook: RawBook = {
           id: `book_${Date.now()}`,
           status: 'Pending',
@@ -213,7 +210,7 @@ export function AppProvider({
       toast({ title: "Book Added", description: `Book "${newRawBook.name}" has been added.` });
   };
   
-  const updateBook = (bookId: string, bookData: { name: string; expectedDocuments: number }) => {
+  const updateBook = (bookId: string, bookData: Partial<Omit<RawBook, 'id' | 'projectId' | 'status'>>) => {
       setBooks(prev => prev.map(b => b.id === bookId ? enrichBook({ ...b, ...bookData }) : b));
       toast({ title: "Book Updated" });
   };
@@ -314,6 +311,7 @@ export function AppProvider({
     moveBookDocuments(bookId, newStatus);
     
     updateBookStatus(bookId, newStatus, (b) => ({
+        ...b,
         rejectionReason: isApproval ? null : reason
     }));
 

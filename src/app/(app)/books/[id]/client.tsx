@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card"
 import type { EnrichedBook, AppDocument } from "@/context/workflow-context";
 import { useAppContext } from "@/context/workflow-context";
+import { Info } from "lucide-react";
 
 interface BookDetailClientProps {
   bookId: string;
@@ -48,10 +49,25 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
             <p className="text-sm text-muted-foreground">{book.projectName} / {book.clientName}</p>
             <h1 className="font-headline text-3xl font-bold tracking-tight">{book.name}</h1>
             <p className="text-muted-foreground max-w-2xl">
+                Author: {book.author || 'N/A'} | ISBN: {book.isbn || 'N/A'} | Priority: {book.priority || 'Medium'}
+            </p>
+            <p className="text-muted-foreground max-w-2xl mt-1">
                 Showing {pages.length} of {book.expectedDocuments} expected pages. Once scanned, pages will appear here.
             </p>
         </div>
         
+         {book.info && (
+            <Card className="bg-background">
+                <CardHeader className="flex flex-row items-center gap-2 pb-2">
+                    <Info className="h-4 w-4" />
+                    <CardTitle className="text-base">Additional Info</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-sm text-muted-foreground">{book.info}</p>
+                </CardContent>
+            </Card>
+        )}
+
         {pages.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
                 {pages.map(page => (

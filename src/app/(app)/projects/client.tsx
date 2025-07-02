@@ -22,19 +22,21 @@ import {
 } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, PlusCircle, Trash2, Edit } from "lucide-react";
-import { type Client, type EnrichedProject } from "@/lib/data";
+import { MoreHorizontal, PlusCircle, Trash2, Edit, Info } from "lucide-react";
+import { type Client, type EnrichedProject, type Project } from "@/lib/data";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -51,11 +53,20 @@ import {
 import { ProjectForm } from "./project-form";
 import { useAppContext } from "@/context/workflow-context";
 
+const getStatusBadgeVariant = (status: string) => {
+    switch (status) {
+        case 'Complete': return 'default';
+        case 'In Progress': return 'secondary';
+        case 'On Hold': return 'outline';
+        default: return 'outline';
+    }
+}
+
 export default function ProjectsClient() {
   const { projects, clients, addProject, updateProject, deleteProject } = useAppContext();
-  const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | null; data?: EnrichedProject }>({ open: false, type: null })
+  const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | 'details' | null; data?: EnrichedProject }>({ open: false, type: null })
 
-  const openDialog = (type: 'new' | 'edit' | 'delete', data?: EnrichedProject) => {
+  const openDialog = (type: 'new' | 'edit' | 'delete' | 'details', data?: EnrichedProject) => {
     setDialogState({ open: true, type, data })
   }
 
@@ -63,7 +74,7 @@ export default function ProjectsClient() {
     setDialogState({ open: false, type: null, data: undefined })
   }
 
-  const handleSave = (values: { name: string; clientId: string }) => {
+  const handleSave = (values: Omit<Project, 'id'>) => {
     if (dialogState.type === 'new') {
       addProject(values);
     } else if (dialogState.type === 'edit' && dialogState.data) {
@@ -103,8 +114,8 @@ export default function ProjectsClient() {
                   <TableRow>
                       <TableHead>Project Name</TableHead>
                       <TableHead>Client</TableHead>
-                      <TableHead className="w-[150px]">Status</TableHead>
-                      <TableHead className="w-[150px] text-center">Documents</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>End Date</TableHead>
                       <TableHead className="w-[200px]">Progress</TableHead>
                       <TableHead className="w-[50px]"><span className="sr-only">Actions</span></TableHead>
                   </TableRow>
@@ -119,11 +130,11 @@ export default function ProjectsClient() {
                           </TableCell>
                           <TableCell>{project.clientName}</TableCell>
                           <TableCell>
-                              <Badge variant={project.status === 'Complete' ? 'default' : 'secondary'}>
+                              <Badge variant={getStatusBadgeVariant(project.status)}>
                                   {project.status}
                               </Badge>
                           </TableCell>
-                          <TableCell className="text-center">{project.documentCount} / {project.totalExpected}</TableCell>
+                           <TableCell>{project.endDate}</TableCell>
                           <TableCell>
                               <Progress value={project.progress} className="h-2" />
                           </TableCell>
@@ -137,9 +148,13 @@ export default function ProjectsClient() {
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
                                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                      <DropdownMenuItem onSelect={() => openDialog('details', project)}>
+                                        <Info className="mr-2 h-4 w-4" /> Details
+                                      </DropdownMenuItem>
                                       <DropdownMenuItem onSelect={() => openDialog('edit', project)}>
                                         <Edit className="mr-2 h-4 w-4" /> Edit
                                       </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
                                       <DropdownMenuItem onSelect={() => openDialog('delete', project)} className="text-destructive">
                                         <Trash2 className="mr-2 h-4 w-4" /> Delete
                                       </DropdownMenuItem>
@@ -155,7 +170,7 @@ export default function ProjectsClient() {
       </div>
 
       <Dialog open={dialogState.open && (dialogState.type === 'new' || dialogState.type === 'edit')} onOpenChange={closeDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{dialogState.type === 'new' ? 'Create New Project' : 'Edit Project'}</DialogTitle>
             <DialogDescription>
@@ -185,6 +200,46 @@ export default function ProjectsClient() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={dialogState.open && dialogState.type === 'details'} onOpenChange={closeDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Project Details</DialogTitle>
+            <DialogDescription>{dialogState.data?.name}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4 text-sm">
+            <div className="grid grid-cols-3 items-center gap-x-4">
+              <p className="text-muted-foreground">Client</p>
+              <p className="col-span-2 font-medium">{dialogState.data?.clientName}</p>
+            </div>
+             <div className="grid grid-cols-3 items-start gap-x-4">
+              <p className="text-muted-foreground">Description</p>
+              <p className="col-span-2 font-medium">{dialogState.data?.description}</p>
+            </div>
+             <div className="grid grid-cols-3 items-center gap-x-4">
+              <p className="text-muted-foreground">Start Date</p>
+              <p className="col-span-2 font-medium">{dialogState.data?.startDate}</p>
+            </div>
+             <div className="grid grid-cols-3 items-center gap-x-4">
+              <p className="text-muted-foreground">End Date</p>
+              <p className="col-span-2 font-medium">{dialogState.data?.endDate}</p>
+            </div>
+             <div className="grid grid-cols-3 items-center gap-x-4">
+              <p className="text-muted-foreground">Budget</p>
+              <p className="col-span-2 font-medium">${dialogState.data?.budget.toLocaleString()}</p>
+            </div>
+            {dialogState.data?.info && (
+              <div className="grid grid-cols-3 items-start gap-x-4">
+                <p className="text-muted-foreground">Additional Info</p>
+                <p className="col-span-2 font-medium whitespace-pre-wrap">{dialogState.data.info}</p>
+              </div>
+            )}
+          </div>
+           <DialogFooter>
+              <Button type="button" variant="secondary" onClick={closeDialog}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

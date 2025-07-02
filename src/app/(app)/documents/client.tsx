@@ -195,6 +195,7 @@ export default function DocumentsClient() {
                 <TableHead>Project</TableHead>
                 <TableHead>Client</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Priority</TableHead>
                 <TableHead>Progress</TableHead>
                 <TableHead className="text-center">Pages</TableHead>
               </TableRow>
@@ -212,6 +213,7 @@ export default function DocumentsClient() {
                   <TableCell>
                     <Badge variant={book.status === 'Complete' ? "default" : "outline"}>{book.status}</Badge>
                   </TableCell>
+                   <TableCell>{book.priority || "Medium"}</TableCell>
                   <TableCell>
                       <Progress value={book.progress} className="h-2" />
                   </TableCell>
@@ -219,7 +221,7 @@ export default function DocumentsClient() {
                 </TableRow>
               )) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
+                  <TableCell colSpan={7} className="h-24 text-center">
                     No books found.
                   </TableCell>
                 </TableRow>

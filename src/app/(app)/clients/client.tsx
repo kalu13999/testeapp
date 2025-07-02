@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { MoreHorizontal, PlusCircle, Trash2, Edit } from "lucide-react"
+import { MoreHorizontal, PlusCircle, Trash2, Edit, Info } from "lucide-react"
 
 import {
   AlertDialog,
@@ -26,6 +26,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -34,6 +35,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
@@ -50,9 +52,9 @@ import { useAppContext } from "@/context/workflow-context"
 
 export default function ClientsClient() {
   const { clients, addClient, updateClient, deleteClient } = useAppContext();
-  const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | null; data?: Client }>({ open: false, type: null })
+  const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | 'details' | null; data?: Client }>({ open: false, type: null })
 
-  const openDialog = (type: 'new' | 'edit' | 'delete', data?: Client) => {
+  const openDialog = (type: 'new' | 'edit' | 'delete' | 'details', data?: Client) => {
     setDialogState({ open: true, type, data })
   }
 
@@ -60,7 +62,7 @@ export default function ClientsClient() {
     setDialogState({ open: false, type: null, data: undefined })
   }
 
-  const handleSave = (values: { name: string }) => {
+  const handleSave = (values: Omit<Client, 'id'>) => {
     if (dialogState.type === 'new') {
       addClient(values);
     } else if (dialogState.type === 'edit' && dialogState.data) {
@@ -96,8 +98,10 @@ export default function ClientsClient() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Client ID</TableHead>
                 <TableHead>Client Name</TableHead>
+                <TableHead>Contact Email</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Client Since</TableHead>
                 <TableHead>
                   <span className="sr-only">Actions</span>
                 </TableHead>
@@ -106,8 +110,10 @@ export default function ClientsClient() {
             <TableBody>
               {clients.map((client) => (
                 <TableRow key={client.id}>
-                  <TableCell className="font-mono">{client.id}</TableCell>
                   <TableCell className="font-medium">{client.name}</TableCell>
+                  <TableCell>{client.contactEmail}</TableCell>
+                  <TableCell>{client.contactPhone}</TableCell>
+                  <TableCell>{client.since}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -118,9 +124,13 @@ export default function ClientsClient() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuItem onSelect={() => openDialog('details', client)}>
+                           <Info className="mr-2 h-4 w-4" /> Details
+                        </DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => openDialog('edit', client)}>
                            <Edit className="mr-2 h-4 w-4" /> Edit
                         </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem onSelect={() => openDialog('delete', client)} className="text-destructive">
                            <Trash2 className="mr-2 h-4 w-4" /> Delete
                         </DropdownMenuItem>
@@ -134,9 +144,8 @@ export default function ClientsClient() {
         </CardContent>
       </Card>
 
-      {/* Form Dialog for New/Edit */}
       <Dialog open={dialogState.open && (dialogState.type === 'new' || dialogState.type === 'edit')} onOpenChange={closeDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{dialogState.type === 'new' ? 'Create New Client' : 'Edit Client'}</DialogTitle>
             <DialogDescription>
@@ -147,7 +156,6 @@ export default function ClientsClient() {
         </DialogContent>
       </Dialog>
       
-      {/* Confirmation Dialog for Delete */}
       <AlertDialog open={dialogState.open && dialogState.type === 'delete'} onOpenChange={closeDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -162,6 +170,46 @@ export default function ClientsClient() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={dialogState.open && dialogState.type === 'details'} onOpenChange={closeDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Client Details</DialogTitle>
+            <DialogDescription>{dialogState.data?.name}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4 text-sm">
+            <div className="grid grid-cols-3 items-center gap-x-4">
+              <p className="text-muted-foreground">Contact Email</p>
+              <p className="col-span-2 font-medium">{dialogState.data?.contactEmail}</p>
+            </div>
+            <div className="grid grid-cols-3 items-center gap-x-4">
+              <p className="text-muted-foreground">Contact Phone</p>
+              <p className="col-span-2 font-medium">{dialogState.data?.contactPhone}</p>
+            </div>
+             <div className="grid grid-cols-3 items-center gap-x-4">
+              <p className="text-muted-foreground">Website</p>
+              <a href={dialogState.data?.website} target="_blank" rel="noopener noreferrer" className="col-span-2 font-medium text-primary hover:underline">{dialogState.data?.website}</a>
+            </div>
+            <div className="grid grid-cols-3 items-start gap-x-4">
+              <p className="text-muted-foreground">Address</p>
+              <p className="col-span-2 font-medium">{dialogState.data?.address}</p>
+            </div>
+             <div className="grid grid-cols-3 items-center gap-x-4">
+              <p className="text-muted-foreground">Client Since</p>
+              <p className="col-span-2 font-medium">{dialogState.data?.since}</p>
+            </div>
+            {dialogState.data?.info && (
+              <div className="grid grid-cols-3 items-start gap-x-4">
+                <p className="text-muted-foreground">Additional Info</p>
+                <p className="col-span-2 font-medium whitespace-pre-wrap">{dialogState.data.info}</p>
+              </div>
+            )}
+          </div>
+           <DialogFooter>
+              <Button type="button" variant="secondary" onClick={closeDialog}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
