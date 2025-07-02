@@ -2,6 +2,7 @@
 import { notFound } from "next/navigation";
 import WorkflowClient from "./client";
 import FolderViewClient from "../folder-view-client";
+import { ThumbsDown, Undo2, Archive } from "lucide-react";
 
 const STAGE_CONFIG: { [key: string]: any } = {
   reception: {
@@ -67,13 +68,31 @@ const STAGE_CONFIG: { [key: string]: any } = {
   delivery: {
     title: "Delivery",
     description: "Documents approved and ready for delivery to the client.",
-    actionButtonLabel: "Finalize Delivery",
+    actionButtonLabel: "Send to Client",
     actionButtonIcon: "Send",
     emptyStateText: "No documents to deliver.",
     dataType: 'document',
     dataStage: "Delivery",
     viewType: 'folder',
   },
+  'client-rejections': {
+    title: "Client Rejections",
+    description: "Books that have been rejected by the client and require attention.",
+    actionButtonLabel: "Mark as Corrected",
+    actionButtonIcon: "Undo2",
+    emptyStateText: "No books have been rejected by clients.",
+    dataType: 'document',
+    dataStage: 'Client Rejected',
+    viewType: 'folder'
+  },
+  corrected: {
+    title: "Corrected Books",
+    description: "Books that have been corrected and are ready to be re-submitted to the workflow.",
+    emptyStateText: "There are no corrected books.",
+    dataType: 'document',
+    dataStage: 'Corrected',
+    viewType: 'folder'
+  }
 };
 
 export default async function WorkflowStagePage({ params }: { params: { stage: string } }) {

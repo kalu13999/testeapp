@@ -17,6 +17,8 @@ import {
   ScanLine,
   Send,
   SlidersHorizontal,
+  ThumbsDown,
+  Undo2,
   Users2,
   Warehouse,
 } from "lucide-react";
@@ -54,6 +56,8 @@ const menuItems = [
       { href: "/workflow/processing", label: "Processing", icon: FileJson },
       { href: "/workflow/quality-control", label: "Quality Control", icon: FileSearch2 },
       { href: "/workflow/delivery", label: "Delivery", icon: Send },
+      { href: "/workflow/client-rejections", label: "Client Rejections", icon: ThumbsDown },
+      { href: "/workflow/corrected", label: "Corrected", icon: Undo2 },
     ],
   },
   {

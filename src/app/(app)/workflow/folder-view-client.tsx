@@ -14,10 +14,11 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FolderSync, FileText, FileJson, Play, ThumbsUp, Send } from "lucide-react";
-import type { Document, BookWithProject } from "@/lib/data";
+import { FolderSync, FileText, FileJson, Play, ThumbsUp, ThumbsDown, Send, Archive, Undo2 } from "lucide-react";
+import type { Document } from "@/lib/data";
 import { useWorkflow } from "@/context/workflow-context";
 import { useToast } from "@/hooks/use-toast";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 type IconMap = {
   [key: string]: React.ElementType;
@@ -30,6 +31,8 @@ const iconMap: IconMap = {
   Play,
   ThumbsUp,
   Send,
+  Archive,
+  Undo2,
 };
 
 interface FolderViewClientProps {
@@ -37,8 +40,8 @@ interface FolderViewClientProps {
   config: {
     title: string;
     description: string;
-    actionButtonLabel: string;
-    actionButtonIcon: keyof typeof iconMap;
+    actionButtonLabel?: string;
+    actionButtonIcon?: keyof typeof iconMap;
     emptyStateText: string;
     dataStage: string;
   };
@@ -53,9 +56,17 @@ type GroupedDocuments = {
 };
 
 export default function FolderViewClient({ stage, config }: FolderViewClientProps) {
-  const { documents, books, handleMoveBookToNextStage } = useWorkflow();
+  const { 
+    documents, 
+    books, 
+    handleMoveBookToNextStage, 
+    handleClientAction,
+    handleFinalize,
+    handleMarkAsCorrected,
+    handleResubmit,
+  } = useWorkflow();
   const { toast } = useToast();
-  const ActionIcon = iconMap[config.actionButtonIcon] || FolderSync;
+  const ActionIcon = config.actionButtonIcon ? iconMap[config.actionButtonIcon] : FolderSync;
 
   const stageDocuments = React.useMemo(() => {
     return documents.filter(doc => doc.status === config.dataStage);
@@ -76,13 +87,65 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
       return acc;
     }, {});
   }, [stageDocuments, books]);
-
-  const handleAction = (bookId: string, bookName: string) => {
-    handleMoveBookToNextStage(bookId, config.dataStage);
-    toast({
-      title: "Action Completed",
-      description: `"${bookName}" has been moved to the next stage.`,
-    })
+  
+  const renderActions = (bookId: string, bookName: string) => {
+    switch (stage) {
+      case 'pending-deliveries':
+        return (
+          <div className="flex gap-2">
+            <Button size="sm" variant="destructive" onClick={() => handleClientAction(bookId, 'reject')}>
+              <ThumbsDown className="mr-2 h-4 w-4" /> Reject
+            </Button>
+            <Button size="sm" onClick={() => handleClientAction(bookId, 'approve')}>
+              <ThumbsUp className="mr-2 h-4 w-4" /> Approve
+            </Button>
+          </div>
+        );
+      case 'finalized':
+        return (
+          <Button size="sm" onClick={() => handleFinalize(bookId)}>
+            <Archive className="mr-2 h-4 w-4" /> Archive
+          </Button>
+        );
+       case 'client-rejections':
+        return (
+          <Button size="sm" onClick={() => handleMarkAsCorrected(bookId)}>
+            <Undo2 className="mr-2 h-4 w-4" /> Mark as Corrected
+          </Button>
+        );
+       case 'corrected':
+         return (
+           <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm">
+                  <Send className="mr-2 h-4 w-4" /> Resubmit To...
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => handleResubmit(bookId, 'Indexing')}>Indexing</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleResubmit(bookId, 'Processing')}>Processing</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleResubmit(bookId, 'Quality Control')}>Quality Control</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleResubmit(bookId, 'Delivery')}>Delivery</DropdownMenuItem>
+              </DropdownMenuContent>
+           </DropdownMenu>
+         )
+      case 'archive':
+        return null; // No actions in archive
+      default: // For standard workflow stages
+        if (!config.actionButtonLabel) return null;
+        return (
+          <Button size="sm" onClick={() => {
+            handleMoveBookToNextStage(bookId, config.dataStage);
+            toast({
+              title: "Action Completed",
+              description: `"${bookName}" has been moved to the next stage.`,
+            })
+          }}>
+            <ActionIcon className="mr-2 h-4 w-4" />
+            {config.actionButtonLabel}
+          </Button>
+        );
+    }
   }
 
   return (
@@ -107,10 +170,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                         </div>
                     </AccordionTrigger>
                     <div className="px-4">
-                      <Button size="sm" onClick={() => handleAction(bookId, bookName)}>
-                          <ActionIcon className="mr-2 h-4 w-4" />
-                          {config.actionButtonLabel}
-                      </Button>
+                      {renderActions(bookId, bookName)}
                     </div>
                 </div>
                 <AccordionContent>

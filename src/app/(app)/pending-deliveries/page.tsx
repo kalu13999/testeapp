@@ -1,16 +1,16 @@
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import FolderViewClient from "../workflow/folder-view-client";
 
 export default function PendingDeliveriesPage() {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="font-headline">Pending Deliveries</CardTitle>
-        <CardDescription>Documents awaiting your approval.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p className="text-center text-muted-foreground py-10">Pending deliveries interface coming soon!</p>
-      </CardContent>
-    </Card>
-  );
+  const config = {
+    title: "Pending Deliveries",
+    description: "Documents awaiting your review and approval.",
+    actionButtonLabel: "", // Actions are handled by the component
+    actionButtonIcon: "ThumbsUp",
+    emptyStateText: "There are no pending deliveries.",
+    dataStage: "Pending Validation",
+    viewType: "folder",
+  };
+  
+  return <FolderViewClient config={config} stage="pending-deliveries" />;
 }
