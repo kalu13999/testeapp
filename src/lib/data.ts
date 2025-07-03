@@ -77,6 +77,7 @@ export interface RawBook {
     publicationYear?: number;
     priority?: 'Low' | 'Medium' | 'High';
     info?: string;
+    scannerUserId?: string;
 }
 
 export interface Project {

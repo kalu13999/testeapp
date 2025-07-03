@@ -30,6 +30,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 
 const iconMap: { [key: string]: LucideIcon } = {
@@ -81,22 +82,32 @@ const getBadgeVariant = (status: string): BadgeVariant => {
 
 
 export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
-  const { books, documents, handleBookAction, handleMoveBookToNextStage, updateDocumentStatus } = useAppContext();
+  const { books, documents, handleBookAction, handleMoveBookToNextStage, updateDocumentStatus, currentUser, scannerUsers } = useAppContext();
   const { toast } = useToast();
   const { title, description, dataType, actionButtonLabel, actionButtonIcon, emptyStateText, dataStatus, dataStage } = config;
   const ActionIcon = actionButtonIcon ? iconMap[actionButtonIcon] : null;
 
   const [scanState, setScanState] = React.useState<{ open: boolean; book: EnrichedBook | null; folderName: string | null; fileCount: number | null; }>({ open: false, book: null, folderName: null, fileCount: null });
+  const [assignScannerState, setAssignScannerState] = React.useState<{ open: boolean; book: EnrichedBook | null }>({ open: false, book: null });
+  const [selectedScannerId, setSelectedScannerId] = React.useState<string>("");
+
   
   const displayItems = React.useMemo(() => {
     if (dataType === 'book' && dataStatus) {
-      return books.filter(book => book.status === dataStatus);
+      let filteredBooks = books.filter(book => book.status === dataStatus);
+
+      // Filter for scanning stage based on user role
+      if (stage === 'scanning' && currentUser?.role === 'Scanning') {
+        filteredBooks = filteredBooks.filter(book => book.scannerUserId === currentUser.id);
+      }
+      
+      return filteredBooks;
     }
     if (dataType === 'document' && dataStage) {
       return documents.filter(doc => doc.status === dataStage);
     }
     return [];
-  }, [books, documents, dataType, dataStatus, dataStage]);
+  }, [books, documents, dataType, dataStatus, dataStage, currentUser, stage]);
   
   const handleGenericAction = (item: any) => {
     if (dataType === 'book') {
@@ -154,7 +165,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
   const handleConfirmScan = () => {
     if (scanState.book) {
-      handleBookAction(scanState.book.id, scanState.book.status, scanState.fileCount ?? 0);
+      handleBookAction(scanState.book.id, scanState.book.status, { actualPageCount: scanState.fileCount ?? 0 });
       closeScanningDialog();
     }
   };
@@ -163,10 +174,26 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     setScanState({ open: false, book: null, folderName: null, fileCount: null });
   }
 
+  const handleConfirmAssignment = () => {
+    if (assignScannerState.book && selectedScannerId) {
+      handleBookAction(assignScannerState.book.id, assignScannerState.book.status, { scannerUserId: selectedScannerId });
+      closeAssignmentDialog();
+    } else {
+      toast({ title: "No Scanner Selected", description: "Please select a scanner to assign the book.", variant: "destructive" });
+    }
+  };
+
+  const closeAssignmentDialog = () => {
+    setAssignScannerState({ open: false, book: null });
+    setSelectedScannerId("");
+  };
+
+
   const isScanFolderMatch = scanState.book?.name === scanState.folderName;
 
   const renderBookRow = (item: EnrichedBook) => {
     const isScanningStage = stage === 'scanning';
+    const isReceptionStage = stage === 'reception';
 
     return (
         <TableRow key={item.id}>
@@ -180,7 +207,12 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         </TableCell>
         {(actionButtonLabel) && (
             <TableCell>
-                {isScanningStage ? (
+                {isReceptionStage ? (
+                     <Button size="sm" onClick={() => setAssignScannerState({ open: true, book: item })}>
+                        {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
+                        {actionButtonLabel}
+                    </Button>
+                ) : isScanningStage ? (
                     <Button size="sm" onClick={() => setScanState({ open: true, book: item, folderName: null, fileCount: null })}>
                         {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
                         {actionButtonLabel}
@@ -332,6 +364,35 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
           <Button variant="outline" onClick={closeScanningDialog}>Cancel</Button>
           <Button onClick={handleConfirmScan} disabled={!isScanFolderMatch}>
             Confirm Scan
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog open={assignScannerState.open} onOpenChange={closeAssignmentDialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Assign Scanner for "{assignScannerState.book?.name}"</DialogTitle>
+          <DialogDescription>
+            Select a scanner operator to process this book. The book will then move to the Scanning queue.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <Select value={selectedScannerId} onValueChange={setSelectedScannerId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select a scanner..." />
+            </SelectTrigger>
+            <SelectContent>
+              {scannerUsers.map(user => (
+                <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={closeAssignmentDialog}>Cancel</Button>
+          <Button onClick={handleConfirmAssignment} disabled={!selectedScannerId}>
+            Assign and Confirm
           </Button>
         </DialogFooter>
       </DialogContent>

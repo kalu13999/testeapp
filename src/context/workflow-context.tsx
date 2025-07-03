@@ -40,6 +40,7 @@ type AppContextType = {
   // State (filtered by project or based on user)
   clients: Client[];
   users: User[];
+  scannerUsers: User[];
   projects: EnrichedProject[];
   books: EnrichedBook[];
   documents: AppDocument[];
@@ -75,7 +76,7 @@ type AppContextType = {
   importBooks: (projectId: string, newBooks: BookImport[]) => void;
 
   // Workflow Actions
-  handleBookAction: (bookId: string, currentStatus: string, actualPageCount?: number) => void;
+  handleBookAction: (bookId: string, currentStatus: string, payload?: { actualPageCount?: number, scannerUserId?: string }) => void;
   handleMoveBookToNextStage: (bookId: string, currentStage: string) => void;
   handleStartProcessing: (bookId: string) => void;
   handleCompleteProcessing: (bookId: string) => void;
@@ -313,51 +314,65 @@ export function AppProvider({
     );
   };
   
-  const handleBookAction = (bookId: string, currentStatus: string, actualPageCount?: number) => {
+  const handleBookAction = (bookId: string, currentStatus: string, payload?: { actualPageCount?: number, scannerUserId?: string }) => {
     const nextStatus = bookStatusTransition[currentStatus];
-    if (nextStatus) {
-      updateBookStatus(bookId, nextStatus);
+    if (!nextStatus) return;
+
+    // Handle moving from Pending -> Received
+    if (currentStatus === 'Pending' && payload?.scannerUserId) {
+      updateBookStatus(bookId, nextStatus, () => ({ scannerUserId: payload.scannerUserId }));
       toast({
-        title: "Book Status Updated",
-        description: `Book moved to "${nextStatus}".`
+        title: "Book Receipt Confirmed",
+        description: `Book assigned and moved to "${nextStatus}".`
+      });
+      return;
+    }
+    
+    // Handle moving from Received -> Scanned
+    if (currentStatus === 'Received') {
+      updateBookStatus(bookId, nextStatus);
+      const book = books.find(b => b.id === bookId);
+      if (!book) return;
+
+      const existingDocs = documents.some(d => d.bookId === book.id);
+      if (existingDocs) {
+         toast({ title: "Scanning Complete", description: `Book status updated to "${nextStatus}".` });
+         return;
+      }
+
+      const pagesToCreate = payload?.actualPageCount ?? book.expectedDocuments;
+
+      const newDocs: AppDocument[] = Array.from({ length: pagesToCreate }).map((_, i) => {
+        const pageName = `${book.name} - Page ${i + 1}`;
+        return {
+          id: `doc_${book.id}_${i + 1}`,
+          name: pageName,
+          clientId: book.clientId,
+          client: book.clientName,
+          status: 'Storage',
+          statusId: 'ds_4', // Corresponds to 'Storage'
+          type: 'Scanned Page',
+          lastUpdated: new Date().toISOString().slice(0, 10),
+          tags: [],
+          folderId: null,
+          projectId: book.projectId,
+          bookId: book.id,
+          flag: null,
+          imageUrl: `https://dummyimage.com/400x550/e0e0e0/5c5c5c.png&text=${encodeURIComponent(pageName)}`
+        };
       });
 
-      if (nextStatus === 'Scanned') {
-        const book = books.find(b => b.id === bookId);
-        if (!book) return;
-
-        const existingDocs = documents.some(d => d.bookId === book.id);
-        if (existingDocs) return;
-
-        const pagesToCreate = actualPageCount ?? book.expectedDocuments;
-
-        const newDocs: AppDocument[] = Array.from({ length: pagesToCreate }).map((_, i) => {
-          const pageName = `${book.name} - Page ${i + 1}`;
-          return {
-            id: `doc_${book.id}_${i + 1}`,
-            name: pageName,
-            clientId: book.clientId,
-            client: book.clientName,
-            status: 'Storage',
-            statusId: 'ds_4', // Corresponds to 'Storage'
-            type: 'Scanned Page',
-            lastUpdated: new Date().toISOString().slice(0, 10),
-            tags: [],
-            folderId: null,
-            projectId: book.projectId,
-            bookId: book.id,
-            flag: null,
-            imageUrl: `https://dummyimage.com/400x550/e0e0e0/5c5c5c.png&text=${encodeURIComponent(pageName)}`
-          };
-        });
-
-        setDocuments(prevDocs => [...prevDocs, ...newDocs]);
-        toast({
-          title: "Scanning Complete",
-          description: `${pagesToCreate} digital pages created in Storage.`
-        });
-      }
+      setDocuments(prevDocs => [...prevDocs, ...newDocs]);
+      toast({
+        title: "Scanning Complete",
+        description: `${pagesToCreate} digital pages created in Storage.`
+      });
+      return;
     }
+    
+    // Fallback for other potential simple transitions if any
+    updateBookStatus(bookId, nextStatus);
+    toast({ title: "Book Status Updated", description: `Book moved to "${nextStatus}".` });
   };
   
   const moveBookDocuments = (bookId: string, newStatus: string) => {
@@ -521,7 +536,9 @@ export function AppProvider({
     toast({ title: `Flag ${flag ? 'Set' : 'Cleared'}`, description: `Document has been marked with: ${flagLabel}` });
   }
 
-  // Memoized filtered lists
+  // Memoized lists
+  const scannerUsers = React.useMemo(() => users.filter(user => user.role === 'Scanning'), [users]);
+
   const filteredProjects = React.useMemo(() => {
     if (!selectedProjectId) return projects;
     return projects.filter(p => p.id === selectedProjectId);
@@ -539,7 +556,7 @@ export function AppProvider({
 
   const value = { 
     currentUser, login, logout,
-    clients, users, 
+    clients, users, scannerUsers,
     projects: filteredProjects, 
     books: filteredBooks, 
     documents: filteredDocuments, 
