@@ -3,5 +3,9 @@
   "Admin",
   "Operator",
   "QC Specialist",
-  "Client"
+  "Client",
+  "Reception",
+  "Scanning",
+  "Processing",
+  "Delivery"
 ]

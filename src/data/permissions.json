@@ -44,5 +44,35 @@
     "/pending-deliveries",
     "/validated-history",
     "/documents/[id]"
+  ],
+  "Reception": [
+    "/dashboard",
+    "/workflow/reception",
+    "/books/[id]",
+    "/documents/[id]"
+  ],
+  "Scanning": [
+    "/dashboard",
+    "/workflow/scanning",
+    "/books/[id]",
+    "/documents/[id]"
+  ],
+  "Processing": [
+    "/dashboard",
+    "/workflow/storage",
+    "/workflow/indexing",
+    "/workflow/quality-control",
+    "/workflow/ready-for-processing",
+    "/workflow/in-processing",
+    "/workflow/processed",
+    "/books/[id]",
+    "/documents/[id]"
+  ],
+  "Delivery": [
+    "/dashboard",
+    "/workflow/final-quality-control",
+    "/workflow/delivery",
+    "/books/[id]",
+    "/documents/[id]"
   ]
 }
