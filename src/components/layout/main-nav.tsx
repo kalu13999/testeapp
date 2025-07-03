@@ -19,7 +19,7 @@ import {
   Loader2,
   ScanLine,
   Send,
-  SlidersHorizontal,
+  Sliders,
   ThumbsDown,
   Undo2,
   Users2,
@@ -82,6 +82,13 @@ const allMenuItems = [
       { href: "/pending-deliveries", label: "Pending Deliveries", icon: FileClock },
       { href: "/validated-history", label: "Validated History", icon: FileCheck },
     ],
+  },
+  {
+    id: "admin",
+    title: "Admin Tools",
+    items: [
+      { href: "/admin/status-override", label: "Status Override", icon: Sliders }
+    ]
   },
   {
     id: "finalization",

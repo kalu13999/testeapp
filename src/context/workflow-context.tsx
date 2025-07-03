@@ -82,6 +82,7 @@ type AppContextType = {
   handleAssignUser: (bookId: string, userId: string, role: 'indexer' | 'qc') => void;
   handleStartTask: (bookId: string, role: 'indexing' | 'qc') => void;
   handleCancelTask: (bookId: string, currentStatus: string) => void;
+  handleAdminStatusOverride: (bookId: string, newStatus: string, reason: string) => void;
   handleStartProcessing: (bookId: string) => void;
   handleCompleteProcessing: (bookId: string) => void;
   handleClientAction: (bookId: string, action: 'approve' | 'reject', reason?: string) => void;
@@ -337,14 +338,22 @@ export function AppProvider({
 
   // --- WORKFLOW ACTIONS ---
 
-  const updateBookStatus = (bookId: string, newStatusName: string, updateFn?: (book: RawBook) => Partial<RawBook>) => {
+  const updateBookStatus = React.useCallback((bookId: string, newStatusName: string, updateFn?: (book: RawBook) => Partial<RawBook>) => {
     setRawBooks(prevBooks =>
       prevBooks.map(book =>
         book.id === bookId ? { ...book, status: newStatusName, ...(updateFn ? updateFn(book) : {}) } : book
       )
     );
-  };
+  }, []);
   
+  const moveBookDocuments = React.useCallback((bookId: string, newStatus: string) => {
+    setDocuments(prevDocs =>
+        prevDocs.map(doc =>
+            doc.bookId === bookId ? { ...doc, status: newStatus } : doc
+        )
+    );
+  }, []);
+
   const handleBookAction = (bookId: string, currentStatus: string, payload?: { actualPageCount?: number, scannerUserId?: string }) => {
     const nextStatus = bookStatusTransition[currentStatus];
     if (!nextStatus) return;
@@ -405,13 +414,6 @@ export function AppProvider({
     }
   };
   
-  const moveBookDocuments = (bookId: string, newStatus: string) => {
-    setDocuments(prevDocs =>
-        prevDocs.map(doc =>
-            doc.bookId === bookId ? { ...doc, status: newStatus } : doc
-        )
-    );
-  };
 
   const handleMoveBookToNextStage = (bookId: string, currentStage: string) => {
     const book = rawBooks.find(b => b.id === bookId);
@@ -468,31 +470,58 @@ export function AppProvider({
     }
   }
 
-  const handleCancelTask = (bookId: string, currentStatus: string) => {
+  const handleCancelTask = React.useCallback((bookId: string, currentStatus: string) => {
     const book = rawBooks.find(b => b.id === bookId);
     if (!book) return;
+    
+    let previousBookStatus = '';
+    let previousDocStatus = '';
     let details = '';
+    let updater: (book: RawBook) => Partial<RawBook> = b => b;
 
     switch (currentStatus) {
       case 'Scanning Started':
-        updateBookStatus(bookId, 'To Scan', b => ({...b, scanStartTime: undefined}));
-        details = `Scanning for book "${book.name}" was cancelled.`;
+        previousBookStatus = 'To Scan';
+        previousDocStatus = 'To Scan'; 
+        updater = b => ({ ...b, scanStartTime: undefined });
+        details = `Scanning for book "${book.name}" was cancelled, returning to Scan Queue.`;
         break;
       case 'Indexing Started':
-        updateBookStatus(bookId, 'To Indexing', b => ({...b, indexingStartTime: undefined}));
-        moveBookDocuments(bookId, 'To Indexing');
-        details = `Indexing for book "${book.name}" was cancelled.`;
+        previousBookStatus = 'To Indexing';
+        previousDocStatus = 'To Indexing';
+        updater = b => ({ ...b, indexingStartTime: undefined });
+        details = `Indexing for book "${book.name}" was cancelled, returning to Indexing Queue.`;
         break;
       case 'Checking Started':
-        updateBookStatus(bookId, 'To Checking', b => ({...b, qcStartTime: undefined}));
-        moveBookDocuments(bookId, 'To Checking');
-        details = `Checking for book "${book.name}" was cancelled.`;
+        previousBookStatus = 'To Checking';
+        previousDocStatus = 'To Checking';
+        updater = b => ({ ...b, qcStartTime: undefined });
+        details = `Checking for book "${book.name}" was cancelled, returning to Checking Queue.`;
         break;
       default:
         return;
     }
+
+    updateBookStatus(bookId, previousBookStatus, updater);
+    moveBookDocuments(bookId, previousDocStatus);
+
     logAction('Task Cancelled', details, { bookId });
-    toast({ title: 'Task Cancelled', variant: 'destructive'});
+    toast({ title: 'Task Cancelled', description: 'Book returned to the previous queue.', variant: 'destructive'});
+  }, [rawBooks, updateBookStatus, moveBookDocuments, logAction, toast]);
+  
+  const handleAdminStatusOverride = (bookId: string, newStatus: string, reason: string) => {
+    const book = rawBooks.find(b => b.id === bookId);
+    if (!book) return;
+
+    updateBookStatus(bookId, newStatus);
+    moveBookDocuments(bookId, newStatus);
+
+    logAction(
+        'Admin Status Override', 
+        `Status of "${book.name}" manually changed to "${newStatus}". Reason: ${reason}`,
+        { bookId }
+    );
+    toast({ title: "Status Overridden", description: `Book is now in status: ${newStatus}` });
   };
 
 
@@ -701,6 +730,7 @@ export function AppProvider({
     addPageToBook, deletePageFromBook, updateDocumentStatus,
     updateDocumentFlag, handleStartProcessing, handleCompleteProcessing,
     handleAssignUser, handleStartTask, handleCancelTask,
+    handleAdminStatusOverride,
   };
 
   return (
