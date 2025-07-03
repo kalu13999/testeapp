@@ -54,6 +54,8 @@ export interface AuditLog {
 export interface User {
     id: string;
     name: string;
+    username?: string;
+    password?: string;
     email: string | null;
     avatar: string | null;
     role: string;

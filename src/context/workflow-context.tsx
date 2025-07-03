@@ -34,7 +34,7 @@ export type AppDocument = RawDocument & { client: string; status: string; flag: 
 type AppContextType = {
   // Auth state
   currentUser: User | null;
-  login: (email: string) => boolean;
+  login: (username: string, password: string) => boolean;
   logout: () => void;
 
   // State (filtered by project or based on user)
@@ -136,8 +136,10 @@ export function AppProvider({
     }
   }, [initialUsers]);
 
-  const login = (email: string): boolean => {
-    const user = initialUsers.find(u => u.email === email);
+  const login = (username: string, password: string): boolean => {
+    // Find user by username and password. For this example, passwords are in plain text.
+    // In a real application, you would hash and compare passwords.
+    const user = initialUsers.find(u => u.username === username && u.password === password);
     if (user) {
       setCurrentUser(user);
       localStorage.setItem('flowvault_userid', user.id);

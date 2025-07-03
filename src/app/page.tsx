@@ -13,7 +13,7 @@ import { useAppContext } from '@/context/workflow-context';
 import { useToast } from '@/hooks/use-toast';
 
 export default function LoginPage() {
-  const [email, setEmail] = React.useState('');
+  const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
   const router = useRouter();
   const { login } = useAppContext();
@@ -21,7 +21,7 @@ export default function LoginPage() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    const success = login(email);
+    const success = login(username, password);
 
     if (success) {
       toast({ title: "Login Successful", description: "Welcome back!" });
@@ -29,7 +29,7 @@ export default function LoginPage() {
     } else {
       toast({
         title: "Login Failed",
-        description: "Invalid email or password. Please try again.",
+        description: "Invalid username or password. Please try again.",
         variant: "destructive"
       });
     }
@@ -50,14 +50,14 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="username">Username</Label>
               <Input 
-                id="email" 
-                type="email" 
-                placeholder="admin@flowvault.com" 
+                id="username" 
+                type="text" 
+                placeholder="e.g. admin" 
                 required 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
               />
             </div>
             <div className="space-y-2">
