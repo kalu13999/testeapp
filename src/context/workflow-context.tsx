@@ -82,6 +82,7 @@ type AppContextType = {
   handleMoveBookToNextStage: (bookId: string, currentStage: string) => void;
   handleAssignUser: (bookId: string, userId: string, role: 'indexer' | 'qc') => void;
   handleStartTask: (bookId: string, role: 'indexing' | 'qc') => void;
+  handleCancelTask: (bookId: string, currentStatus: string) => void;
   handleStartProcessing: (bookId: string) => void;
   handleCompleteProcessing: (bookId: string) => void;
   handleClientAction: (bookId: string, action: 'approve' | 'reject', reason?: string) => void;
@@ -455,6 +456,33 @@ export function AppProvider({
     }
   }
 
+  const handleCancelTask = (bookId: string, currentStatus: string) => {
+    const book = rawBooks.find(b => b.id === bookId);
+    if (!book) return;
+
+    switch (currentStatus) {
+      case 'Scanning Started':
+        updateBookStatus(bookId, 'To Scan', b => ({...b, scanStartTime: undefined}));
+        logAction('Scanning Cancelled', `Scanning for book "${book.name}" was cancelled.`, { bookId });
+        toast({ title: 'Scanning Cancelled', variant: 'destructive'});
+        break;
+      case 'Indexing Started':
+        updateBookStatus(bookId, 'To Indexing', b => ({...b, indexingStartTime: undefined}));
+        moveBookDocuments(bookId, 'Storage'); // Revert docs to pre-indexing state
+        logAction('Indexing Cancelled', `Indexing for book "${book.name}" was cancelled.`, { bookId });
+        toast({ title: 'Indexing Cancelled', variant: 'destructive'});
+        break;
+      case 'Checking Started':
+        updateBookStatus(bookId, 'To Checking', b => ({...b, qcStartTime: undefined}));
+        moveBookDocuments(bookId, 'Indexing Started'); // Revert docs to pre-checking state
+        logAction('Checking Cancelled', `Checking for book "${book.name}" was cancelled.`, { bookId });
+        toast({ title: 'Checking Cancelled', variant: 'destructive'});
+        break;
+      default:
+        break;
+    }
+  };
+
 
   const handleStartProcessing = (bookId: string) => {
     const book = rawBooks.find(b => b.id === bookId);
@@ -658,7 +686,7 @@ export function AppProvider({
     handleFinalize, handleMarkAsCorrected, handleResubmit,
     addPageToBook, deletePageFromBook, updateDocumentStatus,
     updateDocumentFlag, handleStartProcessing, handleCompleteProcessing,
-    handleAssignUser, handleStartTask,
+    handleAssignUser, handleStartTask, handleCancelTask,
   };
 
   return (

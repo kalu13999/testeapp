@@ -93,7 +93,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const { 
     books, documents, handleBookAction, handleMoveBookToNextStage, 
     updateDocumentStatus, currentUser, scannerUsers, indexerUsers, qcUsers,
-    handleStartTask, handleAssignUser, handleStartProcessing
+    handleStartTask, handleAssignUser, handleStartProcessing, handleCancelTask
   } = useAppContext();
 
   const { toast } = useToast();
@@ -315,9 +315,20 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
       }
   };
 
+  const handleBulkCancel = () => {
+    selection.forEach(id => {
+        const item = displayItems.find(d => d.id === id) as EnrichedBook;
+        if (item) {
+            handleCancelTask(item.id, item.status);
+        }
+    });
+    setSelection([]);
+  };
+
   const isScanFolderMatch = scanState.book?.name === scanState.folderName;
 
   const renderBookRow = (item: EnrichedBook, index: number) => {
+    const isCancelable = ['scanning-started', 'indexing-started', 'checking-started'].includes(stage);
     return (
         <TableRow key={item.id} data-state={selection.includes(item.id) && "selected"}>
         <TableCell>
@@ -337,16 +348,34 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         <TableCell>
             <Badge variant={getBadgeVariant(item.status)}>{item.status}</Badge>
         </TableCell>
-        {(actionButtonLabel) && (
+        {(actionButtonLabel || isCancelable) && (
             <TableCell>
-                <Button size="sm" onClick={() => openConfirmationDialog({
-                    title: `Are you sure?`,
-                    description: `This will perform the action "${actionButtonLabel}" on "${item.name}".`,
-                    onConfirm: () => handleSingleItemAction(item)
-                })}>
-                    {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
-                    {actionButtonLabel}
-                </Button>
+                <div className="flex gap-2">
+                    {isCancelable && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openConfirmationDialog({
+                                title: `Cancel task for "${item.name}"?`,
+                                description: "This will return the book to the previous step.",
+                                onConfirm: () => handleCancelTask(item.id, item.status)
+                            })}
+                        >
+                            <Undo2 className="mr-2 h-4 w-4" />
+                            Cancel
+                        </Button>
+                    )}
+                    {actionButtonLabel && (
+                        <Button size="sm" onClick={() => openConfirmationDialog({
+                            title: `Are you sure?`,
+                            description: `This will perform the action "${actionButtonLabel}" on "${item.name}".`,
+                            onConfirm: () => handleSingleItemAction(item)
+                        })}>
+                            {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
+                            {actionButtonLabel}
+                        </Button>
+                    )}
+                </div>
             </TableCell>
         )}
         </TableRow>
@@ -408,17 +437,33 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                 <CardTitle className="font-headline">{title}</CardTitle>
                 <CardDescription>{description}</CardDescription>
             </div>
-            {selection.length > 0 && actionButtonLabel && (
+            {selection.length > 0 && (
                 <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">{selection.length} of {displayItems.length} selected</span>
-                    <Button size="sm" onClick={() => openConfirmationDialog({
-                        title: `Are you sure?`,
-                        description: `This will perform the action "${actionButtonLabel}" on ${selection.length} selected items.`,
-                        onConfirm: handleBulkAction
-                    })}>
-                        {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
-                        {actionButtonLabel} Selected
-                    </Button>
+                    {['scanning-started', 'indexing-started', 'checking-started'].includes(stage) && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openConfirmationDialog({
+                                title: `Cancel ${selection.length} selected tasks?`,
+                                description: "This will revert all selected books to their previous step.",
+                                onConfirm: () => handleBulkCancel()
+                            })}
+                        >
+                            <Undo2 className="mr-2 h-4 w-4" />
+                            Cancel Selected
+                        </Button>
+                    )}
+                    {actionButtonLabel && (
+                      <Button size="sm" onClick={() => openConfirmationDialog({
+                          title: `Are you sure?`,
+                          description: `This will perform the action "${actionButtonLabel}" on ${selection.length} selected items.`,
+                          onConfirm: handleBulkAction
+                      })}>
+                          {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
+                          {actionButtonLabel} Selected
+                      </Button>
+                    )}
                 </div>
             )}
         </div>

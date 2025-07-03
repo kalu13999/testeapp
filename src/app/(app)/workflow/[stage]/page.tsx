@@ -30,7 +30,7 @@ const STAGE_CONFIG: { [key: string]: any } = {
   'scanning-started': {
     title: "Scanning Started",
     description: "Books that are currently being actively scanned.",
-    actionButtonLabel: "Confirm Scan Completion",
+    actionButtonLabel: "Mark as Complete",
     actionButtonIcon: "ScanLine",
     emptyStateText: "No books are currently being scanned by you.",
     dataType: 'book',
@@ -59,7 +59,7 @@ const STAGE_CONFIG: { [key: string]: any } = {
   'indexing-started': {
     title: "Indexing Started",
     description: "Books that are currently being indexed. Assign to a QC specialist when complete.",
-    actionButtonLabel: "Assign for QC",
+    actionButtonLabel: "Mark as Complete",
     actionButtonIcon: "Send",
     emptyStateText: "No books are currently being indexed by you.",
     dataType: 'book',
@@ -79,7 +79,7 @@ const STAGE_CONFIG: { [key: string]: any } = {
   'checking-started': {
     title: "Checking Started",
     description: "Books that are currently undergoing initial quality control.",
-    actionButtonLabel: "Send to Processing",
+    actionButtonLabel: "Mark as Complete",
     actionButtonIcon: "Play",
     emptyStateText: "No books are currently being checked by you.",
     dataType: 'book',
