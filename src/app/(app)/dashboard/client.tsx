@@ -53,7 +53,7 @@ export default function DashboardClient() {
     const { documents, projects } = useAppContext();
 
     const dashboardData = useMemo(() => {
-        const pendingCount = documents.filter(d => ['Quality Control', 'Processing', 'Indexing'].includes(d.status)).length;
+        const pendingCount = documents.filter(d => ['Quality Control', 'Final Quality Control', 'Processing', 'Indexing'].includes(d.status)).length;
         const slaWarningsCount = projects.filter(p => p.progress < 50 && p.status === 'In Progress').length;
         const processedTodayCount = documents.filter(d => d.lastUpdated === new Date().toISOString().slice(0, 10)).length;
         const totalCount = documents.length;

@@ -21,9 +21,10 @@ const bookStatusTransition: { [key: string]: string } = {
 // This map defines the status transition for entire books of documents (digital items)
 const digitalStageTransitions: { [key: string]: string } = {
     'Storage': 'Indexing',
-    'Indexing': 'Processing',
-    'Processing': 'Quality Control',
-    'Quality Control': 'Delivery',
+    'Indexing': 'Quality Control',
+    'Quality Control': 'Processing',
+    'Processing': 'Final Quality Control',
+    'Final Quality Control': 'Delivery',
     'Delivery': 'Pending Validation',
 }
 

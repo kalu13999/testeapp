@@ -65,12 +65,14 @@ const getBadgeVariant = (status: string): BadgeVariant => {
         case "Scanned":
         case "Complete":
             return "default";
-        case "Rejected":
+        case "Client Rejected":
+        case "Rejected Final QC":
             return "destructive";
         case "Quality Control":
         case "Processing":
         case "Indexing":
         case "Storage":
+        case "Final Quality Control":
             return "secondary"
         default:
             return "outline";
@@ -115,7 +117,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
             break;
         case 'Rejected':
             actionText = 'rejected';
-            nextStageStatus = 'Rejected';
+            nextStageStatus = 'Rejected Final QC';
             break;
         case 'Sent Back':
             actionText = 'sent back to Processing';
@@ -206,10 +208,10 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         <Badge variant={getBadgeVariant(item.status)}>{item.status}</Badge>
       </TableCell>
        <TableCell className="hidden md:table-cell">{item.lastUpdated}</TableCell>
-      {(actionButtonLabel || stage === 'quality-control') && (
+      {(actionButtonLabel || stage === 'final-quality-control') && (
         <TableCell>
           <div className="flex gap-2">
-            {stage === 'quality-control' ? (
+            {stage === 'final-quality-control' ? (
                 <>
                     <Button size="sm" variant="outline" onClick={() => handleQCAction(item, 'Approved')}><ThumbsUp className="h-4 w-4" /></Button>
                     <Button size="sm" variant="destructive" onClick={() => handleQCAction(item, 'Rejected')}><ThumbsDown className="h-4 w-4" /></Button>
@@ -256,7 +258,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                   <TableHead className="hidden md:table-cell">Type</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="hidden md:table-cell">Last Updated</TableHead>
-                  {(actionButtonLabel || stage === 'quality-control') && (
+                  {(actionButtonLabel || stage === 'final-quality-control') && (
                     <TableHead>Actions</TableHead>
                   )}
                 </TableRow>
