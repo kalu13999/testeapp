@@ -1,7 +1,7 @@
 
 "use client"
 
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, LineChart, AreaChart, Line, Area } from "recharts"
 import * as React from "react"
 import {
   Table,
@@ -25,6 +25,8 @@ import { useAppContext } from "@/context/workflow-context"
 import { useMemo } from "react"
 import type { EnrichedBook, AppDocument, EnrichedProject, EnrichedAuditLog } from "@/context/workflow-context"
 import Link from "next/link"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
 
 const kpiIconMap: { [key: string]: React.ElementType } = {
     "Books in Workflow": BookCopy,
@@ -64,6 +66,8 @@ const getStatusBadgeVariant = (status: string) => {
 
 export default function DashboardClient() {
     const { projects, books, documents, auditLogs, selectedProjectId } = useAppContext();
+    const [chartType, setChartType] = React.useState<'bar' | 'line' | 'area'>('bar');
+
 
     const dashboardData = useMemo(() => {
         const relevantProjects = selectedProjectId ? projects.filter(p => p.id === selectedProjectId) : projects;
@@ -89,37 +93,47 @@ export default function DashboardClient() {
         ];
 
         // --- Chart Data Calculation ---
-        const workflowStages: { [key: string]: string[] } = {
-            'Reception': ['Pending', 'To Scan'],
-            'Scanning': ['Scanning Started', 'Scanned'],
-            'Processing': ['Storage', 'Indexing', 'Quality Control', 'Ready for Processing', 'In Processing', 'Processed'],
-            'Final Review': ['Final Quality Control', 'Delivery', 'Pending Validation'],
-            'Correction': ['Client Rejected', 'Corrected'],
+        const chartStageMapping: { [key: string]: string } = {
+            'Pending': 'Reception',
+            'To Scan': 'To Scan',
+            'Scanning Started': 'Scanning',
+            'Storage': 'Storage',
+            'Indexing': 'Indexing',
+            'Quality Control': 'Initial QC',
+            'Ready for Processing': 'Ready to Process',
+            'In Processing': 'Processing',
+            'Processed': 'Processed',
+            'Final Quality Control': 'Final QC',
+            'Delivery': 'Delivery',
+            'Pending Validation': 'Client Validation',
+            'Client Rejected': 'Rejections',
         };
 
-        const bookStageCounts = Object.fromEntries(Object.keys(workflowStages).map(k => [k, 0]));
-        
+        const orderedStageNames = Object.values(chartStageMapping);
+        const bookStageCounts = Object.fromEntries(orderedStageNames.map(name => [name, 0]));
+
         relevantBooks.forEach(book => {
-            for (const [stage, statuses] of Object.entries(workflowStages)) {
-                if (statuses.includes(book.status)) {
-                    bookStageCounts[stage]++;
-                    return;
-                }
-            }
-            // Fallback for document-level status checks if book status is generic like 'In Progress'
-            const bookDocs = relevantDocuments.filter(d => d.bookId === book.id);
+            // If a book has documents, its true status is determined by its documents' status.
+            const bookDocs = documents.filter(d => d.bookId === book.id);
             if (bookDocs.length > 0) {
-                 const docStatus = bookDocs[0].status;
-                 for (const [stage, statuses] of Object.entries(workflowStages)) {
-                    if (statuses.includes(docStatus)) {
-                        bookStageCounts[stage]++;
-                        return;
-                    }
+                 const firstDocStatus = bookDocs[0].status;
+                 const stageName = chartStageMapping[firstDocStatus];
+                 if (stageName) {
+                    bookStageCounts[stageName]++;
+                 }
+            } else {
+                // If no docs, the book's own status is authoritative (e.g., Pending, To Scan).
+                const stageName = chartStageMapping[book.status];
+                if (stageName) {
+                    bookStageCounts[stageName]++;
                 }
             }
         });
 
-        const chartData: ChartData[] = Object.entries(bookStageCounts).map(([name, count]) => ({ name, count }));
+        const chartData: ChartData[] = orderedStageNames.map(name => ({
+            name,
+            count: bookStageCounts[name] || 0
+        }));
 
         // --- Table Data ---
         const recentActivities = relevantAuditLogs.slice(0, 7)
@@ -136,6 +150,19 @@ export default function DashboardClient() {
     }, [projects, books, documents, auditLogs, selectedProjectId]);
 
     const { kpiData, chartData, recentActivities, projectProgressData } = dashboardData;
+    
+    const ChartComponent = {
+        bar: BarChart,
+        line: LineChart,
+        area: AreaChart,
+    }[chartType];
+
+    const ChartElement = {
+        bar: <Bar dataKey="count" fill="hsl(var(--primary))" name="Books" radius={[4, 4, 0, 0]} />,
+        line: <Line type="monotone" dataKey="count" stroke="hsl(var(--primary))" strokeWidth={2} name="Books" />,
+        area: <Area type="monotone" dataKey="count" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.3} name="Books" />,
+    }[chartType];
+
 
     return (
         <div className="flex flex-col gap-6">
@@ -157,97 +184,108 @@ export default function DashboardClient() {
                     </Card>
                 ))}
             </div>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle className="font-headline flex items-center gap-2"><BarChart2 className="h-5 w-5"/> Workflow Overview</CardTitle>
-                    <CardDescription>Number of books currently in each major workflow phase.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <ResponsiveContainer width="100%" height={300}>
-                         <BarChart data={chartData}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                            <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-                            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false}/>
-                            <Tooltip
-                                cursor={{ fill: "hsl(var(--muted))" }}
-                                contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }}
-                            />
-                            <Bar dataKey="count" fill="hsl(var(--primary))" name="Books" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle className="font-headline flex items-center gap-2"><Activity className="h-5 w-5" /> Recent Activity</CardTitle>
-                    <CardDescription>Latest actions performed across the system.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                     <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Details</TableHead>
-                                <TableHead>User</TableHead>
-                                <TableHead>Date</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {recentActivities.length > 0 ? recentActivities.map(activity => {
-                                const targetLink = activity.documentId ? `/documents/${activity.documentId}` : (activity.bookId ? `/books/${activity.bookId}` : '#');
-                                return (
-                                    <TableRow key={activity.id}>
-                                        <TableCell>
-                                            <Link href={targetLink} className="font-medium truncate hover:underline">{activity.action}</Link>
-                                            <div className="text-xs text-muted-foreground truncate">{activity.details}</div>
-                                        </TableCell>
-                                        <TableCell>{activity.user}</TableCell>
-                                        <TableCell className="text-xs">{new Date(activity.date).toLocaleString()}</TableCell>
-                                    </TableRow>
-                                )
-                            }) : (
-                                <TableRow><TableCell colSpan={3} className="h-24 text-center">No recent activity.</TableCell></TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
             
-            {!selectedProjectId && projectProgressData.length > 0 && (
-                 <Card>
+            <div className="grid gap-6">
+                <Card>
+                     <CardHeader className="flex flex-row items-start justify-between">
+                        <div>
+                            <CardTitle className="font-headline flex items-center gap-2"><BarChart2 className="h-5 w-5"/> Workflow Overview</CardTitle>
+                            <CardDescription>Number of books currently in each workflow phase.</CardDescription>
+                        </div>
+                        <Tabs value={chartType} onValueChange={(value) => setChartType(value as any)} className="w-auto">
+                            <TabsList>
+                                <TabsTrigger value="bar">Bar</TabsTrigger>
+                                <TabsTrigger value="line">Line</TabsTrigger>
+                                <TabsTrigger value="area">Area</TabsTrigger>
+                            </TabsList>
+                        </Tabs>
+                    </CardHeader>
+                    <CardContent>
+                        <ResponsiveContainer width="100%" height={300}>
+                             <ChartComponent data={chartData}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} angle={-40} textAnchor="end" height={60} interval={0} />
+                                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false}/>
+                                <Tooltip
+                                    cursor={{ fill: "hsl(var(--muted))" }}
+                                    contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }}
+                                />
+                                {ChartElement}
+                            </ChartComponent>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+
+                <Card>
                     <CardHeader>
-                        <CardTitle className="font-headline flex items-center gap-2"><ListTodo className="h-5 w-5" /> Project Health</CardTitle>
-                        <CardDescription>Overview of all active and recently completed projects.</CardDescription>
+                        <CardTitle className="font-headline flex items-center gap-2"><Activity className="h-5 w-5" /> Recent Activity</CardTitle>
+                        <CardDescription>Latest actions performed across the system.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Project Name</TableHead>
-                                    <TableHead>Client</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="w-[200px]">Progress</TableHead>
+                                    <TableHead>Details</TableHead>
+                                    <TableHead>User</TableHead>
+                                    <TableHead>Date</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {projectProgressData.map(project => (
-                                    <TableRow key={project.id}>
-                                        <TableCell className="font-medium">
-                                            <Link href={`/projects/${project.id}`} className="hover:underline">
-                                                {project.name}
-                                            </Link>
-                                        </TableCell>
-                                        <TableCell>{project.client}</TableCell>
-                                        <TableCell><Badge variant={getStatusBadgeVariant(project.status)}>{project.status}</Badge></TableCell>
-                                        <TableCell><Progress value={project.progress} className="h-2"/></TableCell>
-                                    </TableRow>
-                                ))}
+                                {recentActivities.length > 0 ? recentActivities.map(activity => {
+                                    const targetLink = activity.documentId ? `/documents/${activity.documentId}` : (activity.bookId ? `/books/${activity.bookId}` : '#');
+                                    return (
+                                        <TableRow key={activity.id}>
+                                            <TableCell>
+                                                <Link href={targetLink} className="font-medium truncate hover:underline">{activity.action}</Link>
+                                                <div className="text-xs text-muted-foreground truncate">{activity.details}</div>
+                                            </TableCell>
+                                            <TableCell>{activity.user}</TableCell>
+                                            <TableCell className="text-xs">{new Date(activity.date).toLocaleString()}</TableCell>
+                                        </TableRow>
+                                    )
+                                }) : (
+                                    <TableRow><TableCell colSpan={3} className="h-24 text-center">No recent activity.</TableCell></TableRow>
+                                )}
                             </TableBody>
                         </Table>
                     </CardContent>
                 </Card>
-            )}
+                
+                {!selectedProjectId && projectProgressData.length > 0 && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="font-headline flex items-center gap-2"><ListTodo className="h-5 w-5" /> Project Health</CardTitle>
+                            <CardDescription>Overview of all active and recently completed projects.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Project Name</TableHead>
+                                        <TableHead>Client</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead className="w-[200px]">Progress</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {projectProgressData.map(project => (
+                                        <TableRow key={project.id}>
+                                            <TableCell className="font-medium">
+                                                <Link href={`/projects/${project.id}`} className="hover:underline">
+                                                    {project.name}
+                                                </Link>
+                                            </TableCell>
+                                            <TableCell>{project.client}</TableCell>
+                                            <TableCell><Badge variant={getStatusBadgeVariant(project.status)}>{project.status}</Badge></TableCell>
+                                            <TableCell><Progress value={project.progress} className="h-2"/></TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                )}
+            </div>
         </div>
     )
 }
