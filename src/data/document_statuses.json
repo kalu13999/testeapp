@@ -1,6 +1,7 @@
 
 [
-  { "id": "ds_1", "name": "Pending", "stage": "Reception" },
+  { "id": "ds_1", "name": "Pending", "stage": "Pre-Reception" },
+  { "id": "ds_22", "name": "In Transit", "stage": "Reception" },
   { "id": "ds_2", "name": "Received", "stage": "Reception" },
   { "id": "ds_3", "name": "To Scan", "stage": "Scanning" },
   { "id": "ds_18", "name": "Scanning Started", "stage": "Scanning" },

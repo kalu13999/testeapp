@@ -4,17 +4,25 @@ import WorkflowClient from "./client";
 import FolderViewClient from "../folder-view-client";
 import CorrectionViewClient from "../correction-view-client";
 import ProcessingViewClient from "../processing-view-client";
-import { ClipboardCheck, FileSearch2, FileText, PencilRuler, PlayCircle } from "lucide-react";
+import { ClipboardCheck, FileSearch2, FileText, PencilRuler, PlayCircle, ArrowDownToLine, ScanLine, Warehouse, FileCog, Loader2, FileCheck2, Send, ThumbsDown, Undo2, CheckCheck, Archive, FileClock } from "lucide-react";
 
 const STAGE_CONFIG: { [key: string]: any } = {
-  reception: {
-    title: "Document Reception",
-    description: "Books that are awaiting physical confirmation and scanner assignment.",
-    actionButtonLabel: "Assign & Confirm",
-    actionButtonIcon: "Check",
-    emptyStateText: "No books are awaiting reception.",
+  'pending-shipment': {
+    title: "Pending Shipment",
+    description: "Books registered in the system but not yet shipped by the client.",
+    emptyStateText: "There are no books awaiting shipment from clients.",
     dataType: 'book',
     dataStatus: 'Pending',
+    viewType: 'list',
+  },
+  reception: {
+    title: "Document Reception",
+    description: "Books marked as shipped and are awaiting physical confirmation.",
+    actionButtonLabel: "Assign & Confirm",
+    actionButtonIcon: "Check",
+    emptyStateText: "No books are currently in transit from clients.",
+    dataType: 'book',
+    dataStatus: 'In Transit',
     viewType: 'list',
   },
   'to-scan': {

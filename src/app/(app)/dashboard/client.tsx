@@ -103,10 +103,11 @@ export default function DashboardClient() {
 
         // --- Workflow Chart Calculation ---
         const chartStageMapping: { [key: string]: string } = {
-            'Pending': 'Reception',
+            'Pending': 'Pending Shipment',
+            'In Transit': 'In Transit',
             'To Scan': 'To Scan',
             'Scanning Started': 'Scanning',
-            'Storage': 'Storage', // Represents books in 'In Progress' status post-scan
+            'Storage': 'Storage',
             'To Indexing': 'To Indexing',
             'Indexing Started': 'Indexing',
             'To Checking': 'To Checking',
@@ -120,7 +121,7 @@ export default function DashboardClient() {
             'Client Rejected': 'Rejections',
         };
 
-        const orderedStageNames = ['Reception', 'To Scan', 'Scanning', 'Storage', 'To Indexing', 'Indexing', 'To Checking', 'Initial QC', 'Ready to Process', 'Processing', 'Processed', 'Final QC', 'Delivery', 'Client Validation', 'Rejections'];
+        const orderedStageNames = ['Pending Shipment', 'In Transit', 'To Scan', 'Scanning', 'Storage', 'To Indexing', 'Indexing', 'To Checking', 'Initial QC', 'Ready to Process', 'Processing', 'Processed', 'Final QC', 'Delivery', 'Client Validation', 'Rejections'];
         const bookStageCounts = Object.fromEntries(orderedStageNames.map(name => [name, 0]));
 
         relevantBooks.forEach(book => {
@@ -145,6 +146,7 @@ export default function DashboardClient() {
         const sevenDaysAgo = subDays(new Date(), 6);
 
         const actionsToTrack: { [key: string]: string } = {
+            'Book Shipped': 'Shipped',
             'Reception Confirmed': 'Received',
             'Scanning Finished': 'Scanned',
             'Indexing Started': 'Indexed',
@@ -181,6 +183,7 @@ export default function DashboardClient() {
             const dayData = dailyActivity[dateStr] || {};
             return {
                 date: format(new Date(dateStr), 'MMM d'),
+                Shipped: dayData.Shipped || 0,
                 Received: dayData.Received || 0,
                 Scanned: dayData.Scanned || 0,
                 Indexed: dayData.Indexed || 0,
@@ -227,9 +230,9 @@ export default function DashboardClient() {
     }[chartType];
 
     const dailyChartConfig = {
-      Received: { label: "Received", color: "hsl(var(--chart-1))" },
-      Scanned: { label: "Scanned", color: "hsl(var(--chart-2))" },
-      Indexed: { label: "Indexed", color: "hsl(var(--chart-3))" },
+      Shipped: { label: "Shipped", color: "hsl(var(--chart-1))" },
+      Received: { label: "Received", color: "hsl(var(--chart-2))" },
+      Scanned: { label: "Scanned", color: "hsl(var(--chart-3))" },
       Checked: { label: "Checked", color: "hsl(var(--chart-4))" },
       Processed: { label: "Processed", color: "hsl(var(--chart-5))" },
       Delivered: { label: "Delivered", color: "hsl(200, 80%, 50%)" },

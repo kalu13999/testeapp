@@ -27,7 +27,8 @@ import {
   Play,
   PlayCircle,
   PencilRuler,
-  ClipboardCheck
+  ClipboardCheck,
+  Package,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -57,6 +58,7 @@ const allMenuItems = [
     title: "Workflow",
     items: [
       { href: "/documents", label: "All Books", icon: Files },
+      { href: "/workflow/pending-shipment", label: "Pending Shipment", icon: FileClock },
       { href: "/workflow/reception", label: "Reception", icon: ArrowDownToLine },
       { href: "/workflow/to-scan", label: "To Scan", icon: ScanLine },
       { href: "/workflow/scanning-started", label: "Scanning Started", icon: PlayCircle },
@@ -79,6 +81,7 @@ const allMenuItems = [
     title: "Client Portal",
     items: [
       { href: "/client-dashboard", label: "Client Dashboard", icon: Home },
+      { href: "/shipments", label: "Prepare Shipment", icon: Send },
       { href: "/pending-deliveries", label: "Pending Deliveries", icon: FileClock },
       { href: "/validated-history", label: "Validated History", icon: FileCheck },
     ],

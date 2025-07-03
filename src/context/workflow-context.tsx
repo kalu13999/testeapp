@@ -14,7 +14,7 @@ export interface BookImport {
 
 // This map defines the status transition for books (physical items)
 const bookStatusTransition: { [key: string]: string } = {
-  'Pending': 'To Scan',
+  'In Transit': 'To Scan',
   'To Scan': 'Scanning Started',
   'Scanning Started': 'Storage', // After scan, docs are in Storage
 };
@@ -77,6 +77,7 @@ type AppContextType = {
   importBooks: (projectId: string, newBooks: BookImport[]) => void;
 
   // Workflow Actions
+  handleMarkAsShipped: (bookIds: string[]) => void;
   handleBookAction: (bookId: string, currentStatus: string, payload?: { actualPageCount?: number, scannerUserId?: string }) => void;
   handleMoveBookToNextStage: (bookId: string, currentStage: string) => void;
   handleAssignUser: (bookId: string, userId: string, role: 'indexer' | 'qc') => void;
@@ -354,6 +355,19 @@ export function AppProvider({
     );
   }, []);
 
+  const handleMarkAsShipped = (bookIds: string[]) => {
+    setRawBooks(prevBooks =>
+      prevBooks.map(book =>
+        bookIds.includes(book.id) && book.status === 'Pending' ? { ...book, status: 'In Transit' } : book
+      )
+    );
+    bookIds.forEach(bookId => {
+      const book = rawBooks.find(b => b.id === bookId);
+      logAction('Book Shipped', `Client marked book "${book?.name}" as shipped.`, { bookId });
+    });
+    toast({ title: `${bookIds.length} Book(s) Marked as Shipped` });
+  };
+
   const handleBookAction = (bookId: string, currentStatus: string, payload?: { actualPageCount?: number, scannerUserId?: string }) => {
     const nextStatus = bookStatusTransition[currentStatus];
     if (!nextStatus) return;
@@ -361,7 +375,7 @@ export function AppProvider({
     const book = rawBooks.find(b => b.id === bookId);
     if (!book) return;
 
-    if (currentStatus === 'Pending' && payload?.scannerUserId) {
+    if (currentStatus === 'In Transit' && payload?.scannerUserId) {
       const scanner = users.find(u => u.id === payload.scannerUserId);
       updateBookStatus(bookId, nextStatus, () => ({ scannerUserId: payload.scannerUserId }));
       logAction('Reception Confirmed', `Assigned to scanner ${scanner?.name || 'Unknown'}.`, { bookId });
@@ -470,34 +484,32 @@ export function AppProvider({
     }
   }
 
-  const handleCancelTask = React.useCallback((bookId: string, currentStatus: string) => {
+  const handleCancelTask = (bookId: string, currentStatus: string) => {
     const book = rawBooks.find(b => b.id === bookId);
     if (!book) return;
 
-    if (currentStatus === 'Scanning Started') {
-      setRawBooks(prev => prev.map(b => b.id === bookId ? { ...b, status: 'To Scan', scanStartTime: undefined } : b));
-      moveBookDocuments(bookId, 'To Scan');
-      logAction('Task Cancelled', `Scanning for book "${book.name}" was cancelled.`, { bookId });
-      toast({ title: 'Task Cancelled', description: 'Book returned to Scan Queue.', variant: 'destructive'});
-      return;
-    }
+    const updates: { [key: string]: { bookStatus: string, docStatus: string, logMsg: string, clearTime: 'scan' | 'index' | 'qc' } } = {
+      'Scanning Started': { bookStatus: 'To Scan', docStatus: 'To Scan', logMsg: 'Scanning', clearTime: 'scan' },
+      'Indexing Started': { bookStatus: 'To Indexing', docStatus: 'To Indexing', logMsg: 'Indexing', clearTime: 'index' },
+      'Checking Started': { bookStatus: 'To Checking', docStatus: 'To Checking', logMsg: 'Checking', clearTime: 'qc' },
+    };
 
-    if (currentStatus === 'Indexing Started') {
-      setRawBooks(prev => prev.map(b => b.id === bookId ? { ...b, status: 'To Indexing', indexingStartTime: undefined } : b));
-      moveBookDocuments(bookId, 'To Indexing');
-      logAction('Task Cancelled', `Indexing for book "${book.name}" was cancelled.`, { bookId });
-      toast({ title: 'Task Cancelled', description: 'Book returned to Indexing Queue.', variant: 'destructive'});
-      return;
-    }
+    const update = updates[currentStatus];
+    if (!update) return;
 
-    if (currentStatus === 'Checking Started') {
-      setRawBooks(prev => prev.map(b => b.id === bookId ? { ...b, status: 'To Checking', qcStartTime: undefined } : b));
-      moveBookDocuments(bookId, 'To Checking');
-      logAction('Task Cancelled', `Checking for book "${book.name}" was cancelled.`, { bookId });
-      toast({ title: 'Task Cancelled', description: 'Book returned to Checking Queue.', variant: 'destructive'});
-      return;
-    }
-  }, [rawBooks, moveBookDocuments, logAction, toast]);
+    setRawBooks(prev => prev.map(b => {
+      if (b.id !== bookId) return b;
+      const newBook: RawBook = { ...b, status: update.bookStatus };
+      if (update.clearTime === 'scan') newBook.scanStartTime = undefined;
+      if (update.clearTime === 'index') newBook.indexingStartTime = undefined;
+      if (update.clearTime === 'qc') newBook.qcStartTime = undefined;
+      return newBook;
+    }));
+
+    moveBookDocuments(bookId, update.docStatus);
+    logAction('Task Cancelled', `${update.logMsg} for book "${book.name}" was cancelled.`, { bookId });
+    toast({ title: 'Task Cancelled', description: `Book returned to ${update.bookStatus} Queue.`, variant: 'destructive' });
+  };
   
   const handleAdminStatusOverride = (bookId: string, newStatus: string, reason: string) => {
     const book = rawBooks.find(b => b.id === bookId);
@@ -683,27 +695,40 @@ export function AppProvider({
   const indexerUsers = React.useMemo(() => users.filter(user => user.role === 'Indexing'), [users]);
   const qcUsers = React.useMemo(() => users.filter(user => user.role === 'QC Specialist'), [users]);
 
-  const filteredProjects = React.useMemo(() => {
-    if (!selectedProjectId) return enrichedProjects;
-    return enrichedProjects.filter(p => p.id === selectedProjectId);
+  // --- Contextual Data Filtering ---
+  const booksForContext = React.useMemo(() => {
+    if (currentUser?.role === 'Client' && currentUser.clientId) {
+        return enrichedBooks.filter(b => b.clientId === currentUser.clientId);
+    }
+    if (selectedProjectId) {
+        return enrichedBooks.filter(b => b.projectId === selectedProjectId);
+    }
+    return enrichedBooks;
+  }, [enrichedBooks, currentUser, selectedProjectId]);
+
+  const documentsForContext = React.useMemo(() => {
+      if (currentUser?.role === 'Client' && currentUser.clientId) {
+        return documents.filter(d => d.clientId === currentUser.clientId);
+    }
+    if (selectedProjectId) {
+        return documents.filter(d => d.projectId === selectedProjectId);
+    }
+    return documents;
+  }, [documents, currentUser, selectedProjectId]);
+
+  const projectsForContext = React.useMemo(() => {
+    if (selectedProjectId) {
+        return enrichedProjects.filter(p => p.id === selectedProjectId);
+    }
+    return enrichedProjects;
   }, [enrichedProjects, selectedProjectId]);
-
-  const filteredBooks = React.useMemo(() => {
-    if (!selectedProjectId) return enrichedBooks;
-    return enrichedBooks.filter(b => b.projectId === selectedProjectId);
-  }, [enrichedBooks, selectedProjectId]);
-
-  const filteredDocuments = React.useMemo(() => {
-    if (!selectedProjectId) return documents;
-    return documents.filter(d => d.projectId === selectedProjectId);
-  }, [documents, selectedProjectId]);
 
   const value = { 
     currentUser, login, logout,
     clients, users, scannerUsers, indexerUsers, qcUsers,
-    projects: filteredProjects, 
-    books: filteredBooks, 
-    documents: filteredDocuments, 
+    projects: projectsForContext, 
+    books: booksForContext, 
+    documents: documentsForContext, 
     auditLogs,
     processingLogs,
     roles: initialRoles,
@@ -715,6 +740,7 @@ export function AppProvider({
     addUser, updateUser, deleteUser,
     addProject, updateProject, deleteProject,
     addBook, updateBook, deleteBook, importBooks,
+    handleMarkAsShipped,
     handleBookAction, handleMoveBookToNextStage, handleClientAction,
     handleFinalize, handleMarkAsCorrected, handleResubmit,
     addPageToBook, deletePageFromBook, updateDocumentStatus,

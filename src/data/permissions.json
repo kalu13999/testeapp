@@ -15,6 +15,7 @@
     "/books/[id]",
     "/documents",
     "/documents/[id]",
+    "/workflow/pending-shipment",
     "/workflow/reception",
     "/workflow/to-scan",
     "/workflow/scanning-started",
@@ -45,12 +46,14 @@
   ],
   "Client": [
     "/client-dashboard",
+    "/shipments",
     "/pending-deliveries",
     "/validated-history",
     "/documents/[id]"
   ],
   "Reception": [
     "/dashboard",
+    "/workflow/pending-shipment",
     "/workflow/reception",
     "/books/[id]",
     "/documents/[id]"

@@ -65,6 +65,7 @@ export interface User {
     department?: string;
     lastLogin?: string;
     info?: string;
+    clientId?: string;
 }
 
 export interface RawBook {
@@ -83,6 +84,7 @@ export interface RawBook {
     scanEndTime?: string;
     indexerUserId?: string;
     indexingStartTime?: string;
+    indexingEndTime?: string;
     qcUserId?: string;
     qcStartTime?: string;
     rejectionReason?: string;

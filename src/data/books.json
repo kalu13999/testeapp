@@ -1,8 +1,8 @@
 
 [
-    { "id": "book_01", "name": "Financial Statements 2023", "status": "To Scan", "expectedDocuments": 15, "projectId": "proj_1", "isbn": "978-1-23-456789-0", "author": "Innovate Corp Finance Dept.", "publicationYear": 2023, "priority": "High", "info": "Contains sensitive financial data.", "scannerUserId": "u_scanner" },
+    { "id": "book_01", "name": "Financial Statements 2023", "status": "In Transit", "expectedDocuments": 15, "projectId": "proj_1", "isbn": "978-1-23-456789-0", "author": "Innovate Corp Finance Dept.", "publicationYear": 2023, "priority": "High", "info": "Contains sensitive financial data.", "scannerUserId": "u_scanner" },
     { "id": "book_02", "name": "Employee Records", "status": "Pending", "expectedDocuments": 120, "projectId": "proj_1", "author": "Innovate Corp HR", "publicationYear": 2023, "priority": "High", "info": "Contains PII." },
-    { "id": "book_03", "name": "Client Contracts", "status": "To Scan", "expectedDocuments": 5, "projectId": "proj_1", "author": "Innovate Corp Legal", "publicationYear": 2023, "priority": "Medium", "info": "", "scannerUserId": "u_scanner_2" },
+    { "id": "book_03", "name": "Client Contracts", "status": "Pending", "expectedDocuments": 5, "projectId": "proj_1", "author": "Innovate Corp Legal", "publicationYear": 2023, "priority": "Medium", "info": "" },
     { "id": "book_04", "name": "Master Services Agreement", "status": "Complete", "expectedDocuments": 1, "projectId": "proj_2", "author": "Future Tech Legal", "publicationYear": 2024, "priority": "High", "info": "" },
     { "id": "book_05", "name": "Security Compliance", "status": "Scanning Started", "expectedDocuments": 5, "projectId": "proj_2", "author": "Future Tech Security", "publicationYear": 2024, "priority": "Medium", "info": "Security audit documents.", "scannerUserId": "u_scanner", "scanStartTime": "2024-05-28T10:30:00Z" },
     { "id": "book_06", "name": "Q1-Q2 Reports", "status": "Complete", "expectedDocuments": 15, "projectId": "proj_3", "publicationYear": 2022, "priority": "Low", "info": "" },
