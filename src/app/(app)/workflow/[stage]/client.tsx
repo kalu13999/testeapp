@@ -93,6 +93,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
   const [scanState, setScanState] = React.useState<{ open: boolean; book: EnrichedBook | null; folderName: string | null; fileCount: number | null; }>({ open: false, book: null, folderName: null, fileCount: null });
   const [assignScannerState, setAssignScannerState] = React.useState<{ open: boolean; book: EnrichedBook | null }>({ open: false, book: null });
+  const [bulkAssignScannerState, setBulkAssignScannerState] = React.useState<{ open: boolean }>({ open: false });
   const [selectedScannerId, setSelectedScannerId] = React.useState<string>("");
 
   const [selection, setSelection] = React.useState<string[]>([]);
@@ -133,13 +134,20 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   };
 
   const handleBulkAction = () => {
-    selection.forEach(id => {
-      const item = displayItems.find(d => d.id === id);
-      if (item) {
-        handleGenericAction(item);
-      }
-    });
-    setSelection([]);
+    const isReceptionStage = stage === 'reception';
+    if (isReceptionStage) {
+        // For reception, the confirmation dialog leads to the bulk assignment dialog.
+        setBulkAssignScannerState({ open: true });
+    } else {
+        // For other stages, perform the generic bulk action directly after confirmation.
+        selection.forEach(id => {
+          const item = displayItems.find(d => d.id === id);
+          if (item) {
+            handleGenericAction(item);
+          }
+        });
+        setSelection([]);
+    }
   }
   
   const handleQCAction = (item: any, newStatus: string) => {
@@ -210,6 +218,28 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
   const closeAssignmentDialog = () => {
     setAssignScannerState({ open: false, book: null });
+    setSelectedScannerId("");
+  };
+
+  const handleConfirmBulkAssignment = () => {
+    if (!selectedScannerId) {
+      toast({ title: "No Scanner Selected", description: "Please select a scanner to assign the books.", variant: "destructive" });
+      return;
+    }
+
+    selection.forEach(bookId => {
+      const book = displayItems.find(b => b.id === bookId) as EnrichedBook;
+      if (book) {
+        handleBookAction(book.id, book.status, { scannerUserId: selectedScannerId });
+      }
+    });
+
+    closeBulkAssignmentDialog();
+    setSelection([]);
+  };
+
+  const closeBulkAssignmentDialog = () => {
+    setBulkAssignScannerState({ open: false });
     setSelectedScannerId("");
   };
 
@@ -486,6 +516,35 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         <DialogFooter>
           <Button variant="outline" onClick={closeAssignmentDialog}>Cancel</Button>
           <Button onClick={handleConfirmAssignment} disabled={!selectedScannerId}>
+            Assign and Confirm
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog open={bulkAssignScannerState.open} onOpenChange={closeBulkAssignmentDialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Assign Scanner for {selection.length} Books</DialogTitle>
+          <DialogDescription>
+            Select a scanner operator to process the selected books. They will then move to the 'To Scan' queue.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <Select value={selectedScannerId} onValueChange={setSelectedScannerId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select a scanner..." />
+            </SelectTrigger>
+            <SelectContent>
+              {scannerUsers.map(user => (
+                <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={closeBulkAssignmentDialog}>Cancel</Button>
+          <Button onClick={handleConfirmBulkAssignment} disabled={!selectedScannerId}>
             Assign and Confirm
           </Button>
         </DialogFooter>
