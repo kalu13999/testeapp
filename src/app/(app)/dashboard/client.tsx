@@ -69,7 +69,7 @@ export default function DashboardClient() {
             .sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())
             .slice(0, 5)
             .map(doc => ({
-                id: doc.id.split('_').pop() || doc.id,
+                id: doc.id,
                 client: doc.client,
                 status: doc.status
             }));
@@ -170,7 +170,7 @@ export default function DashboardClient() {
                             <TableBody>
                                 {recentActivities.map(activity => (
                                     <TableRow key={activity.id}>
-                                        <TableCell className="font-medium">{activity.id}</TableCell>
+                                        <TableCell className="font-medium">{activity.id.split('_').pop() || activity.id}</TableCell>
                                         <TableCell>{activity.client}</TableCell>
                                         <TableCell><Badge variant="outline">{activity.status}</Badge></TableCell>
                                     </TableRow>
