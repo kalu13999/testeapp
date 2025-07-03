@@ -31,6 +31,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 
 
 const iconMap: { [key: string]: LucideIcon } = {
@@ -93,6 +95,9 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const [assignScannerState, setAssignScannerState] = React.useState<{ open: boolean; book: EnrichedBook | null }>({ open: false, book: null });
   const [selectedScannerId, setSelectedScannerId] = React.useState<string>("");
 
+  const [selection, setSelection] = React.useState<string[]>([]);
+  const [confirmationState, setConfirmationState] = React.useState({ open: false, title: '', description: '', onConfirm: () => {} });
+
   
   const displayItems = React.useMemo(() => {
     if (dataType === 'book' && dataStatus) {
@@ -110,7 +115,15 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     }
     return [];
   }, [books, documents, dataType, dataStatus, dataStage, currentUser, stage]);
+
+  React.useEffect(() => {
+    setSelection([]);
+  }, [stage]);
   
+  const openConfirmationDialog = ({ title, description, onConfirm}: Omit<typeof confirmationState, 'open'>) => {
+    setConfirmationState({ open: true, title, description, onConfirm });
+  }
+
   const handleGenericAction = (item: any) => {
     if (dataType === 'book') {
         handleBookAction(item.id, item.status);
@@ -118,6 +131,16 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         handleMoveBookToNextStage(item.bookId, item.status);
     }
   };
+
+  const handleBulkAction = () => {
+    selection.forEach(id => {
+      const item = displayItems.find(d => d.id === id);
+      if (item) {
+        handleGenericAction(item);
+      }
+    });
+    setSelection([]);
+  }
   
   const handleQCAction = (item: any, newStatus: string) => {
     let actionText = '';
@@ -193,12 +216,31 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
   const isScanFolderMatch = scanState.book?.name === scanState.folderName;
 
-  const renderBookRow = (item: EnrichedBook) => {
+  const renderBookRow = (item: EnrichedBook, index: number) => {
     const isScanningStartedStage = stage === 'scanning-started';
     const isReceptionStage = stage === 'reception';
+    
+    const singleItemAction = () => {
+        if (isReceptionStage) {
+            setAssignScannerState({ open: true, book: item });
+        } else if (isScanningStartedStage) {
+            setScanState({ open: true, book: item, folderName: null, fileCount: null });
+        } else {
+            handleGenericAction(item);
+        }
+    }
 
     return (
-        <TableRow key={item.id}>
+        <TableRow key={item.id} data-state={selection.includes(item.id) && "selected"}>
+        <TableCell>
+            <Checkbox
+                checked={selection.includes(item.id)}
+                onCheckedChange={(checked) => setSelection(
+                    checked ? [...selection, item.id] : selection.filter((id) => id !== item.id)
+                )}
+                aria-label={`Select row ${index + 1}`}
+            />
+        </TableCell>
         <TableCell className="font-medium">
             <Link href={`/books/${item.id}`} className="hover:underline">{item.name}</Link>
         </TableCell>
@@ -209,30 +251,31 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         </TableCell>
         {(actionButtonLabel) && (
             <TableCell>
-                {isReceptionStage ? (
-                     <Button size="sm" onClick={() => setAssignScannerState({ open: true, book: item })}>
-                        {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
-                        {actionButtonLabel}
-                    </Button>
-                ) : isScanningStartedStage ? (
-                    <Button size="sm" onClick={() => setScanState({ open: true, book: item, folderName: null, fileCount: null })}>
-                        {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
-                        {actionButtonLabel}
-                    </Button>
-                ) : (
-                    <Button size="sm" onClick={() => handleGenericAction(item)}>
-                        {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
-                        {actionButtonLabel}
-                    </Button>
-                )}
+                <Button size="sm" onClick={() => openConfirmationDialog({
+                    title: `Are you sure?`,
+                    description: `This will perform the action "${actionButtonLabel}" on "${item.name}".`,
+                    onConfirm: singleItemAction
+                })}>
+                    {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
+                    {actionButtonLabel}
+                </Button>
             </TableCell>
         )}
         </TableRow>
     )
   }
   
-  const renderDocumentRow = (item: AppDocument) => (
-     <TableRow key={item.id}>
+  const renderDocumentRow = (item: AppDocument, index: number) => (
+     <TableRow key={item.id} data-state={selection.includes(item.id) && "selected"}>
+      <TableCell>
+            <Checkbox
+                checked={selection.includes(item.id)}
+                onCheckedChange={(checked) => setSelection(
+                    checked ? [...selection, item.id] : selection.filter((id) => id !== item.id)
+                )}
+                aria-label={`Select row ${index + 1}`}
+            />
+        </TableCell>
       <TableCell className="font-medium">
           <Link href={`/documents/${item.id}`} className="hover:underline">{item.name}</Link>
       </TableCell>
@@ -252,7 +295,11 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                     <Button size="sm" variant="ghost" onClick={() => handleQCAction(item, 'Sent Back')}><Undo2 className="h-4 w-4" /></Button>
                 </>
             ) : actionButtonLabel ? (
-                <Button size="sm" onClick={() => handleGenericAction(item)}>
+                 <Button size="sm" onClick={() => openConfirmationDialog({
+                    title: `Are you sure?`,
+                    description: `This will move the book for "${item.name}" to the next stage.`,
+                    onConfirm: () => handleGenericAction(item)
+                })}>
                     {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
                     {actionButtonLabel}
                 </Button>
@@ -268,10 +315,25 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     <>
     <Card>
       <CardHeader>
-        <CardTitle className="font-headline">{title}</CardTitle>
-        <CardDescription>
-          {description}
-        </CardDescription>
+        <div className="flex items-center justify-between">
+            <div>
+                <CardTitle className="font-headline">{title}</CardTitle>
+                <CardDescription>{description}</CardDescription>
+            </div>
+            {selection.length > 0 && actionButtonLabel && (
+                <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">{selection.length} of {displayItems.length} selected</span>
+                    <Button size="sm" onClick={() => openConfirmationDialog({
+                        title: `Are you sure?`,
+                        description: `This will perform the action "${actionButtonLabel}" on ${selection.length} selected items.`,
+                        onConfirm: handleBulkAction
+                    })}>
+                        {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
+                        {actionButtonLabel} Selected
+                    </Button>
+                </div>
+            )}
+        </div>
       </CardHeader>
       <CardContent>
         {displayItems.length > 0 ? (
@@ -279,14 +341,28 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
             <TableHeader>
               {dataType === 'book' ? (
                 <TableRow>
-                  <TableHead>Book Name</TableHead>
-                  <TableHead>Project</TableHead>
-                  <TableHead className="hidden md:table-cell">Client</TableHead>
-                  <TableHead>Status</TableHead>
-                  {(actionButtonLabel) && <TableHead>Actions</TableHead>}
+                    <TableHead className="w-[50px]">
+                        <Checkbox
+                            checked={displayItems.length > 0 && selection.length === displayItems.length}
+                            onCheckedChange={(checked) => setSelection(checked ? displayItems.map(item => item.id) : [])}
+                            aria-label="Select all"
+                        />
+                    </TableHead>
+                    <TableHead>Book Name</TableHead>
+                    <TableHead>Project</TableHead>
+                    <TableHead className="hidden md:table-cell">Client</TableHead>
+                    <TableHead>Status</TableHead>
+                    {(actionButtonLabel) && <TableHead>Actions</TableHead>}
                 </TableRow>
               ) : (
                  <TableRow>
+                    <TableHead className="w-[50px]">
+                       <Checkbox
+                            checked={displayItems.length > 0 && selection.length === displayItems.length}
+                            onCheckedChange={(checked) => setSelection(checked ? displayItems.map(item => item.id) : [])}
+                            aria-label="Select all"
+                        />
+                    </TableHead>
                   <TableHead>Document Name</TableHead>
                   <TableHead>Client</TableHead>
                   <TableHead className="hidden md:table-cell">Type</TableHead>
@@ -299,10 +375,10 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
               )}
             </TableHeader>
             <TableBody>
-              {displayItems.map((item) => (
+              {displayItems.map((item, index) => (
                 dataType === 'book'
-                  ? renderBookRow(item as EnrichedBook)
-                  : renderDocumentRow(item as AppDocument)
+                  ? renderBookRow(item as EnrichedBook, index)
+                  : renderDocumentRow(item as AppDocument, index)
               ))}
             </TableBody>
           </Table>
@@ -318,6 +394,22 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         </div>
       </CardFooter>
     </Card>
+
+    <AlertDialog open={confirmationState.open} onOpenChange={(open) => !open && setConfirmationState(prev => ({...prev, open: false}))}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>{confirmationState.title}</AlertDialogTitle>
+                <AlertDialogDescription>{confirmationState.description}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setConfirmationState(prev => ({...prev, open: false}))}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => {
+                    confirmationState.onConfirm();
+                    setConfirmationState({ open: false, title: '', description: '', onConfirm: () => {} });
+                }}>Confirm</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
 
     <Dialog open={scanState.open} onOpenChange={closeScanningDialog}>
       <DialogContent>

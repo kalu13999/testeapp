@@ -16,6 +16,7 @@ import { Loader2, BookOpen } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface ProcessingViewClientProps {
   stage: string;
@@ -35,12 +36,19 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
     handleCompleteProcessing
   } = useAppContext();
   
+  const [confirmationState, setConfirmationState] = React.useState({ open: false, title: '', description: '', onConfirm: () => {} });
+  
   const booksInProcessing = React.useMemo(() => {
     const bookIds = new Set(documents.filter(doc => doc.status === config.dataStage).map(doc => doc.bookId));
     return books.filter(book => bookIds.has(book.id));
   }, [documents, books, config.dataStage]);
+  
+  const openConfirmationDialog = ({ title, description, onConfirm}: Omit<typeof confirmationState, 'open'>) => {
+    setConfirmationState({ open: true, title, description, onConfirm });
+  }
 
   return (
+    <>
      <Card>
       <CardHeader>
         <CardTitle className="font-headline">{config.title}</CardTitle>
@@ -64,7 +72,11 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
                         </div>
                     </AccordionTrigger>
                     <div className="px-4">
-                       <Button size="sm" onClick={() => handleCompleteProcessing(book.id)}>
+                       <Button size="sm" onClick={() => openConfirmationDialog({
+                         title: "Complete Processing?",
+                         description: `This will mark all pages for "${book.name}" as processed and move it to the next stage.`,
+                         onConfirm: () => handleCompleteProcessing(book.id)
+                       })}>
                          Mark as Complete
                        </Button>
                     </div>
@@ -104,5 +116,22 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
         </div>
       </CardFooter>
     </Card>
+
+    <AlertDialog open={confirmationState.open} onOpenChange={(open) => !open && setConfirmationState(prev => ({...prev, open: false}))}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>{confirmationState.title}</AlertDialogTitle>
+                <AlertDialogDescription>{confirmationState.description}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setConfirmationState(prev => ({...prev, open: false}))}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => {
+                    confirmationState.onConfirm();
+                    setConfirmationState({ open: false, title: '', description: '', onConfirm: () => {} });
+                }}>Confirm</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
+    </>
   )
 }

@@ -44,6 +44,7 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
   
   const [addPageState, setAddPageState] = React.useState({ open: false, bookId: '', bookName: '', maxPages: 0 });
   const [newPagePosition, setNewPagePosition] = React.useState<number | string>('');
+  const [confirmationState, setConfirmationState] = React.useState({ open: false, title: '', description: '', onConfirm: () => {} });
 
   const rejectedBooks = React.useMemo(() => {
     return books.filter(book => book.status === config.dataStage);
@@ -87,6 +88,9 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
     });
   }
 
+  const openConfirmationDialog = ({ title, description, onConfirm}: Omit<typeof confirmationState, 'open'>) => {
+    setConfirmationState({ open: true, title, description, onConfirm });
+  }
 
   return (
     <>
@@ -113,7 +117,11 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
                         </div>
                     </AccordionTrigger>
                     <div className="px-4">
-                       <Button size="sm" onClick={() => handleMarkAsCorrected(book.id)}>
+                       <Button size="sm" onClick={() => openConfirmationDialog({
+                         title: `Are you sure?`,
+                         description: `This will mark "${book.name}" as corrected and move it to the next stage.`,
+                         onConfirm: () => handleMarkAsCorrected(book.id)
+                       })}>
                          Mark as Corrected
                        </Button>
                     </div>
@@ -199,6 +207,22 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
         </div>
       </CardFooter>
     </Card>
+
+    <AlertDialog open={confirmationState.open} onOpenChange={(open) => !open && setConfirmationState(prev => ({...prev, open: false}))}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>{confirmationState.title}</AlertDialogTitle>
+                <AlertDialogDescription>{confirmationState.description}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setConfirmationState(prev => ({...prev, open: false}))}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => {
+                    confirmationState.onConfirm();
+                    setConfirmationState({ open: false, title: '', description: '', onConfirm: () => {} });
+                }}>Confirm</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
 
     <Dialog open={addPageState.open} onOpenChange={(isOpen) => !isOpen && setAddPageState({ open: false, bookId: '', bookName: '', maxPages: 0 })}>
         <DialogContent>

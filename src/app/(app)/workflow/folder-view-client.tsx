@@ -87,6 +87,8 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     flag: AppDocument['flag'];
     comment: string;
   }>({ open: false, docId: null, docName: null, flag: null, comment: '' });
+  
+  const [confirmationState, setConfirmationState] = React.useState({ open: false, title: '', description: '', onConfirm: () => {} });
 
 
   const stageDocuments = React.useMemo(() => {
@@ -118,6 +120,10 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     handleClientAction(currentBook.id, 'reject', rejectionComment);
     setRejectionComment("");
     setCurrentBook(null);
+  }
+
+  const openConfirmationDialog = ({ title, description, onConfirm}: Omit<typeof confirmationState, 'open'>) => {
+    setConfirmationState({ open: true, title, description, onConfirm });
   }
   
   const openFlagDialog = (doc: AppDocument, flag: NonNullable<AppDocument['flag']>) => {
@@ -154,7 +160,11 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     const actionButton = (
         <Button 
             size="sm" 
-            onClick={() => handleMainAction(bookId)}
+            onClick={() => openConfirmationDialog({
+              title: `Are you sure?`,
+              description: `This will perform the action "${config.actionButtonLabel}" on "${bookName}".`,
+              onConfirm: () => handleMainAction(bookId)
+            })}
             disabled={hasError}
         >
             <ActionIcon className="mr-2 h-4 w-4" />
@@ -171,20 +181,32 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                   <ThumbsDown className="mr-2 h-4 w-4" /> Reject
                 </Button>
             </AlertDialogTrigger>
-            <Button size="sm" onClick={() => handleClientAction(bookId, 'approve')}>
+            <Button size="sm" onClick={() => openConfirmationDialog({
+                title: 'Approve Book?',
+                description: `This will approve all documents for "${bookName}" and finalize them.`,
+                onConfirm: () => handleClientAction(bookId, 'approve')
+            })}>
               <ThumbsUp className="mr-2 h-4 w-4" /> Approve
             </Button>
           </div>
         );
       case 'finalized':
         return (
-          <Button size="sm" onClick={() => handleFinalize(bookId)}>
+          <Button size="sm" onClick={() => openConfirmationDialog({
+              title: 'Archive Book?',
+              description: `This will archive all documents for "${bookName}". This is a final action.`,
+              onConfirm: () => handleFinalize(bookId)
+          })}>
             <Archive className="mr-2 h-4 w-4" /> Archive
           </Button>
         );
        case 'client-rejections':
         return (
-          <Button size="sm" onClick={() => handleMarkAsCorrected(bookId)}>
+           <Button size="sm" onClick={() => openConfirmationDialog({
+              title: 'Mark as Corrected?',
+              description: `This will mark "${bookName}" as corrected and make it available for resubmission.`,
+              onConfirm: () => handleMarkAsCorrected(bookId)
+           })}>
             <Undo2 className="mr-2 h-4 w-4" /> Mark as Corrected
           </Button>
         );
@@ -365,6 +387,22 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+    <AlertDialog open={confirmationState.open} onOpenChange={(open) => !open && setConfirmationState(prev => ({...prev, open: false}))}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>{confirmationState.title}</AlertDialogTitle>
+                <AlertDialogDescription>{confirmationState.description}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setConfirmationState(prev => ({...prev, open: false}))}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => {
+                    confirmationState.onConfirm();
+                    setConfirmationState({ open: false, title: '', description: '', onConfirm: () => {} });
+                }}>Confirm</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
 
       <Dialog open={flagDialogState.open} onOpenChange={closeFlagDialog}>
         <DialogContent>
