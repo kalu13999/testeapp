@@ -443,6 +443,7 @@ export function AppProvider({
         toast({ title: "Book Assigned", description: `Assigned to ${user.name} for indexing.` });
     } else if (role === 'qc') {
         updateBookStatus(bookId, "To Checking", () => ({ qcUserId: userId, indexingStartTime: undefined, indexingEndTime: new Date().toISOString() }));
+        moveBookDocuments(bookId, "To Checking");
         logAction('Assigned for QC', `Book "${book.name}" assigned to ${user.name}.`, { bookId });
         toast({ title: "Book Assigned", description: `Assigned to ${user.name} for checking.` });
     }
@@ -483,7 +484,7 @@ export function AppProvider({
         break;
       case 'Checking Started':
         updateBookStatus(bookId, 'To Checking', b => ({...b, qcStartTime: undefined}));
-        moveBookDocuments(bookId, 'Indexing Started');
+        moveBookDocuments(bookId, 'To Checking');
         logAction('Checking Cancelled', `Checking for book "${book.name}" was cancelled.`, { bookId });
         toast({ title: 'Checking Cancelled', variant: 'destructive'});
         break;
