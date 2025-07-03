@@ -205,6 +205,13 @@ export default function DashboardClient() {
 
     const { kpiData, chartData, dailyChartData, recentActivities, projectProgressData } = dashboardData;
     
+    const workflowChartConfig = {
+      count: {
+        label: "Books",
+        color: "hsl(var(--primary))",
+      },
+    } satisfies ChartConfig
+
     const ChartComponent = {
         bar: BarChart,
         line: LineChart,
@@ -212,9 +219,9 @@ export default function DashboardClient() {
     }[chartType];
 
     const ChartElement = {
-        bar: <Bar dataKey="count" fill="hsl(var(--primary))" name="Books" radius={[4, 4, 0, 0]} />,
-        line: <Line type="monotone" dataKey="count" stroke="hsl(var(--primary))" strokeWidth={2} name="Books" />,
-        area: <Area type="monotone" dataKey="count" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.3} name="Books" />,
+        bar: <Bar dataKey="count" fill="var(--color-count)" radius={[4, 4, 0, 0]} />,
+        line: <Line type="monotone" dataKey="count" stroke="var(--color-count)" strokeWidth={2} />,
+        area: <Area type="monotone" dataKey="count" stroke="var(--color-count)" fill="var(--color-count)" fillOpacity={0.3} />,
     }[chartType];
 
     const dailyChartConfig = {
@@ -263,7 +270,7 @@ export default function DashboardClient() {
                         </Tabs>
                     </CardHeader>
                     <CardContent>
-                        <ResponsiveContainer width="100%" height={300}>
+                        <ChartContainer config={workflowChartConfig} className="h-[300px] w-full">
                              <ChartComponent data={chartData}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                 <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} angle={-40} textAnchor="end" height={60} interval={0} />
@@ -274,7 +281,7 @@ export default function DashboardClient() {
                                 />
                                 {ChartElement}
                             </ChartComponent>
-                        </ResponsiveContainer>
+                        </ChartContainer>
                     </CardContent>
                 </Card>
 
@@ -386,3 +393,5 @@ export default function DashboardClient() {
         </div>
     )
 }
+
+    
