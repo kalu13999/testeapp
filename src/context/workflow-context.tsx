@@ -439,6 +439,7 @@ export function AppProvider({
 
     if (role === 'indexer') {
         updateBookStatus(bookId, "To Indexing", () => ({ indexerUserId: userId }));
+        moveBookDocuments(bookId, "To Indexing");
         logAction('Assigned to Indexer', `Book "${book.name}" assigned to ${user.name}.`, { bookId });
         toast({ title: "Book Assigned", description: `Assigned to ${user.name} for indexing.` });
     } else if (role === 'qc') {
@@ -478,7 +479,7 @@ export function AppProvider({
         break;
       case 'Indexing Started':
         updateBookStatus(bookId, 'To Indexing', b => ({...b, indexingStartTime: undefined}));
-        moveBookDocuments(bookId, 'Storage');
+        moveBookDocuments(bookId, 'To Indexing');
         logAction('Indexing Cancelled', `Indexing for book "${book.name}" was cancelled.`, { bookId });
         toast({ title: 'Indexing Cancelled', variant: 'destructive'});
         break;
@@ -713,5 +714,3 @@ export function useAppContext() {
   }
   return context;
 }
-
-    
