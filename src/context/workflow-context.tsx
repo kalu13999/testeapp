@@ -265,21 +265,25 @@ export function AppProvider({
         const existingDocs = documents.some(d => d.bookId === book.id);
         if (existingDocs) return;
 
-        const newDocs: AppDocument[] = Array.from({ length: book.expectedDocuments }).map((_, i) => ({
-          id: `doc_${book.id}_${i + 1}`,
-          name: `${book.name} - Page ${i + 1}`,
-          clientId: book.clientId,
-          client: book.clientName,
-          status: 'Storage',
-          statusId: 'ds_4', // Corresponds to 'Storage'
-          type: 'Scanned Page',
-          lastUpdated: new Date().toISOString().slice(0, 10),
-          tags: [],
-          folderId: null,
-          projectId: book.projectId,
-          bookId: book.id,
-          flag: null,
-        }));
+        const newDocs: AppDocument[] = Array.from({ length: book.expectedDocuments }).map((_, i) => {
+          const pageName = `${book.name} - Page ${i + 1}`;
+          return {
+            id: `doc_${book.id}_${i + 1}`,
+            name: pageName,
+            clientId: book.clientId,
+            client: book.clientName,
+            status: 'Storage',
+            statusId: 'ds_4', // Corresponds to 'Storage'
+            type: 'Scanned Page',
+            lastUpdated: new Date().toISOString().slice(0, 10),
+            tags: [],
+            folderId: null,
+            projectId: book.projectId,
+            bookId: book.id,
+            flag: null,
+            imageUrl: `https://dummyimage.com/400x550/e0e0e0/5c5c5c.png&text=${encodeURIComponent(pageName)}`
+          };
+        });
 
         setDocuments(prevDocs => [...prevDocs, ...newDocs]);
         toast({
@@ -314,7 +318,8 @@ export function AppProvider({
     
     updateBookStatus(bookId, newStatus, (b) => ({
         ...b,
-        rejectionReason: isApproval ? null : reason
+        rejectionReason: isApproval ? undefined : reason,
+        status: newStatus
     }));
 
     toast({
@@ -354,9 +359,10 @@ export function AppProvider({
         return match ? parseInt(match[1], 10) : null;
       };
 
+      const newPageName = `${book.name} - Page ${position} (Added)`;
       const newPage: AppDocument = {
         id: `doc_${book.id}_new_${Date.now()}`,
-        name: `${book.name} - Page ${position} (Added)`,
+        name: newPageName,
         clientId: book.clientId,
         client: book.clientName,
         status: 'Client Rejected',
@@ -368,6 +374,7 @@ export function AppProvider({
         projectId: book.projectId,
         bookId: book.id,
         flag: 'info',
+        imageUrl: `https://dummyimage.com/400x550/e0e0e0/5c5c5c.png&text=${encodeURIComponent(newPageName)}`
       };
 
       const updatedPages = bookPages.map(page => {

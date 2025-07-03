@@ -143,7 +143,7 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
                                     <Link href={`/documents/${page.id}`}>
                                         <CardContent className="p-0">
                                             <Image
-                                                src="https://placehold.co/400x550.png"
+                                                src={page.imageUrl || "https://placehold.co/400x550.png"}
                                                 alt={`Preview of ${page.name}`}
                                                 data-ai-hint="document page"
                                                 width={400}

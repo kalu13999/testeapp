@@ -222,7 +222,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                               <Card className="overflow-hidden hover:shadow-lg transition-shadow relative group">
                                   <CardContent className="p-0">
                                       <Image
-                                          src="https://placehold.co/400x550.png"
+                                          src={page.imageUrl || "https://placehold.co/400x550.png"}
                                           alt={`Preview of ${page.name}`}
                                           data-ai-hint="document page"
                                           width={400}

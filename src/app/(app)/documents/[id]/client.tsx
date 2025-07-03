@@ -60,7 +60,7 @@ export default function DocumentDetailClient({ docId }: { docId: string }) {
                     <CardContent>
                         <div className="bg-muted rounded-lg aspect-[3/4] overflow-hidden flex items-center justify-center">
                              <Image
-                                src="https://placehold.co/1200x1600.png"
+                                src={document.imageUrl ? document.imageUrl.replace('/400x550/', '/1200x1600/') : 'https://placehold.co/1200x1600.png'}
                                 alt="Document placeholder"
                                 data-ai-hint="document scan"
                                 width={1200}
