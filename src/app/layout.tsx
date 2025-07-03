@@ -1,17 +1,31 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { AppProvider } from "@/context/workflow-context";
+import { getClients, getEnrichedAuditLogs, getEnrichedBooks, getEnrichedDocuments, getEnrichedProjects, getPermissions, getProcessingLogs, getRoles, getUsers } from "@/lib/data";
 
 export const metadata: Metadata = {
   title: "FlowVault",
   description: "Document management and workflow automation.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const [clients, users, projects, books, documents, auditLogs, processingLogs, permissions, roles] = await Promise.all([
+    getClients(),
+    getUsers(),
+    getEnrichedProjects(),
+    getEnrichedBooks(),
+    getEnrichedDocuments(),
+    getEnrichedAuditLogs(),
+    getProcessingLogs(),
+    getPermissions(),
+    getRoles(),
+  ]);
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -27,8 +41,20 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        {children}
-        <Toaster />
+        <AppProvider
+          initialClients={clients}
+          initialUsers={users}
+          initialProjects={projects}
+          initialBooks={books}
+          initialDocuments={documents}
+          initialAuditLogs={auditLogs}
+          initialProcessingLogs={processingLogs}
+          initialPermissions={permissions}
+          initialRoles={roles}
+        >
+          {children}
+          <Toaster />
+        </AppProvider>
       </body>
     </html>
   );

@@ -1,17 +1,46 @@
+
+"use client";
+
 import Link from 'next/link';
+import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { FileLock2 } from 'lucide-react';
+import { useAppContext } from '@/context/workflow-context';
+import { useToast } from '@/hooks/use-toast';
 
 export default function LoginPage() {
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const router = useRouter();
+  const { login } = useAppContext();
+  const { toast } = useToast();
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    const success = login(email);
+
+    if (success) {
+      toast({ title: "Login Successful", description: "Welcome back!" });
+      router.push('/dashboard');
+    } else {
+      toast({
+        title: "Login Failed",
+        description: "Invalid email or password. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="mx-auto w-full max-w-sm">
         <CardHeader className="text-center">
           <div className="mb-4 inline-block">
-            <div className="rounded-full bg-primary p-3">
+            <div className="bg-primary rounded-lg p-3 inline-block">
               <FileLock2 className="h-8 w-8 text-primary-foreground" />
             </div>
           </div>
@@ -19,10 +48,17 @@ export default function LoginPage() {
           <CardDescription>Enter your credentials to access your account</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="m@example.com" required />
+              <Input 
+                id="email" 
+                type="email" 
+                placeholder="admin@flowvault.com" 
+                required 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <div className="flex items-center">
@@ -31,13 +67,18 @@ export default function LoginPage() {
                   Forgot your password?
                 </Link>
               </div>
-              <Input id="password" type="password" required />
+              <Input 
+                id="password" 
+                type="password" 
+                required 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
             </div>
-            {/* Using a Link wrapped Button for navigation simulation */}
-            <Button asChild className="w-full">
-              <Link href="/dashboard">Login</Link>
+            <Button type="submit" className="w-full">
+              Login
             </Button>
-          </div>
+          </form>
         </CardContent>
       </Card>
     </div>

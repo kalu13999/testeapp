@@ -1,13 +1,15 @@
 
 "use client";
 
-import React from 'react';
+import React, { useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { Sidebar, SidebarHeader, SidebarContent, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
 import { MainNav } from '@/components/layout/main-nav';
 import { UserNav } from '@/components/layout/user-nav';
 import { FileLock2 } from 'lucide-react';
 import { useAppContext } from '@/context/workflow-context';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
 
 // New component for the global filter to keep the layout cleaner
 const GlobalProjectFilter = () => {
@@ -33,7 +35,46 @@ const GlobalProjectFilter = () => {
   )
 }
 
-export const AppLayoutContent = ({ children, user }: { children: React.ReactNode, user: any }) => {
+export const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
+  const { currentUser, permissions } = useAppContext();
+  const router = useRouter();
+  const pathname = usePathname();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    // Route guarding logic
+    if (!currentUser) {
+      router.push('/');
+      return;
+    }
+
+    const userPermissions = permissions[currentUser.role] || [];
+    const isAdmin = userPermissions.includes('*');
+    if (isAdmin) return; // Admin can access everything
+
+    // Check if the current path is allowed
+    const isAllowed = userPermissions.some(p => {
+        const regex = new RegExp(`^${p.replace(/\[.*?\]/g, '[^/]+')}$`);
+        return regex.test(pathname);
+    });
+
+    if (!isAllowed) {
+        toast({
+            title: 'Access Denied',
+            description: "You don't have permission to view that page.",
+            variant: 'destructive',
+        });
+        // Redirect to the first allowed page or dashboard
+        const firstAllowedPage = userPermissions.find(p => !p.includes('[')) || '/dashboard';
+        router.push(firstAllowedPage);
+    }
+  }, [currentUser, pathname, permissions, router, toast]);
+
+  if (!currentUser) {
+    // Render nothing or a loading spinner while redirecting
+    return null;
+  }
+
   return (
     <>
       <Sidebar>
@@ -53,12 +94,12 @@ export const AppLayoutContent = ({ children, user }: { children: React.ReactNode
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm sm:px-6">
             <SidebarTrigger className="sm:hidden" />
             <div className="hidden sm:block">
-              <GlobalProjectFilter />
+              {currentUser?.role !== 'Client' && <GlobalProjectFilter />}
             </div>
             {/* Spacer for mobile view to push UserNav to the right */}
             <div className="flex-1 sm:hidden" /> 
             <div className="flex items-center gap-4">
-              <UserNav user={user} />
+              <UserNav user={currentUser} />
             </div>
         </header>
         <main className="flex-1 p-4 md:p-6">

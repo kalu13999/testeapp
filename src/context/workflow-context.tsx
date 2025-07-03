@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from 'react';
-import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog } from '@/lib/data';
+import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 
 // Define the shape of the book data when importing
@@ -32,7 +32,12 @@ const digitalStageTransitions: { [key: string]: string } = {
 export type AppDocument = RawDocument & { client: string; status: string; flag: 'error' | 'warning' | 'info' | null; flagComment?: string; };
 
 type AppContextType = {
-  // State (already filtered by project)
+  // Auth state
+  currentUser: User | null;
+  login: (email: string) => boolean;
+  logout: () => void;
+
+  // State (filtered by project or based on user)
   clients: Client[];
   users: User[];
   projects: EnrichedProject[];
@@ -40,6 +45,8 @@ type AppContextType = {
   documents: AppDocument[];
   auditLogs: (AuditLog & { user: string; })[];
   processingLogs: ProcessingLog[];
+  roles: string[];
+  permissions: Permissions;
   
   // Global Project Filter
   allProjects: EnrichedProject[];
@@ -52,8 +59,8 @@ type AppContextType = {
   deleteClient: (clientId: string) => void;
 
   // User Actions
-  addUser: (userData: Omit<User, 'id' | 'avatar'>) => void;
-  updateUser: (userId: string, userData: Partial<Omit<User, 'id' | 'avatar'>>) => void;
+  addUser: (userData: Omit<User, 'id' | 'avatar' | 'lastLogin'>) => void;
+  updateUser: (userId: string, userData: Partial<Omit<User, 'id' | 'avatar' | 'lastLogin'>>) => void;
   deleteUser: (userId: string) => void;
 
   // Project Actions
@@ -92,6 +99,8 @@ export function AppProvider({
   initialDocuments,
   initialAuditLogs,
   initialProcessingLogs,
+  initialPermissions,
+  initialRoles,
   children,
 }: {
   initialClients: Client[];
@@ -101,8 +110,11 @@ export function AppProvider({
   initialDocuments: AppDocument[];
   initialAuditLogs: (AuditLog & { user:string; })[];
   initialProcessingLogs: ProcessingLog[];
+  initialPermissions: Permissions;
+  initialRoles: string[];
   children: React.ReactNode;
 }) {
+  const [currentUser, setCurrentUser] = React.useState<User | null>(null);
   const [clients, setClients] = React.useState<Client[]>(initialClients);
   const [users, setUsers] = React.useState<User[]>(initialUsers);
   const [projects, setProjects] = React.useState<EnrichedProject[]>(initialProjects);
@@ -112,6 +124,33 @@ export function AppProvider({
   const [processingLogs, setProcessingLogs] = React.useState<ProcessingLog[]>(initialProcessingLogs);
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
   const { toast } = useToast();
+  
+  // Auto-login on mount
+  React.useEffect(() => {
+    const storedUserId = localStorage.getItem('flowvault_userid');
+    if (storedUserId) {
+      const user = initialUsers.find(u => u.id === storedUserId);
+      if (user) {
+        setCurrentUser(user);
+      }
+    }
+  }, [initialUsers]);
+
+  const login = (email: string): boolean => {
+    const user = initialUsers.find(u => u.email === email);
+    if (user) {
+      setCurrentUser(user);
+      localStorage.setItem('flowvault_userid', user.id);
+      return true;
+    }
+    return false;
+  };
+
+  const logout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('flowvault_userid');
+    // The redirect will be handled by the layout effect
+  };
   
   // --- UTILITY FUNCTIONS ---
   const enrichBook = React.useCallback((book: RawBook, allProjects: EnrichedProject[], allClients: Client[], allDocuments: AppDocument[]): EnrichedBook => {
@@ -177,13 +216,13 @@ export function AppProvider({
   };
   
   // Users
-  const addUser = (userData: Omit<User, 'id' | 'avatar'>) => {
+  const addUser = (userData: Omit<User, 'id' | 'avatar' | 'lastLogin'>) => {
     const newUser: User = { id: `u_${Date.now()}`, avatar: 'https://placehold.co/100x100.png', ...userData };
     setUsers(prev => [...prev, newUser]);
     toast({ title: "User Added", description: `User "${newUser.name}" has been created.` });
   };
 
-  const updateUser = (userId: string, userData: Partial<Omit<User, 'id' | 'avatar'>>) => {
+  const updateUser = (userId: string, userData: Partial<Omit<User, 'id' | 'avatar' | 'lastLogin'>>) => {
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...userData } : u));
     toast({ title: "User Updated", description: "User details have been saved." });
   };
@@ -497,12 +536,15 @@ export function AppProvider({
   }, [documents, selectedProjectId]);
 
   const value = { 
+    currentUser, login, logout,
     clients, users, 
     projects: filteredProjects, 
     books: filteredBooks, 
     documents: filteredDocuments, 
     auditLogs,
     processingLogs,
+    roles: initialRoles,
+    permissions: initialPermissions,
     allProjects: projects,
     selectedProjectId,
     setSelectedProjectId,

@@ -11,15 +11,17 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useAppContext } from '@/context/workflow-context';
 import { type User as UserData } from '@/lib/data';
 import { CreditCard, LogOut, Settings, User } from 'lucide-react';
-import Link from 'next/link';
 
 interface UserNavProps {
   user?: UserData;
 }
 
 export function UserNav({ user }: UserNavProps) {
+  const { logout } = useAppContext();
+
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('');
   }
@@ -27,6 +29,11 @@ export function UserNav({ user }: UserNavProps) {
   if (!user) {
     return null; // Or a login button
   }
+
+  const handleLogout = () => {
+    logout();
+    // The route guard in layout-client.tsx will handle the redirect
+  };
 
   return (
     <DropdownMenu>
@@ -64,12 +71,10 @@ export function UserNav({ user }: UserNavProps) {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href="/">
-            <LogOut className="mr-2 h-4 w-4" />
-            <span>Log out</span>
-            <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
-          </Link>
+        <DropdownMenuItem onClick={handleLogout}>
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>Log out</span>
+          <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

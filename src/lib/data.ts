@@ -99,6 +99,10 @@ export interface ProcessingLog {
     lastUpdate: string;
 }
 
+export type Permissions = {
+  [role: string]: string[];
+}
+
 // Enriched types for client-side use
 export interface EnrichedProject extends Project {
     clientName: string;
@@ -136,6 +140,8 @@ export const getAuditLogs = () => readJsonFile<AuditLog[]>('audit_logs.json');
 export const getRawProjects = () => readJsonFile<Project[]>('projects.json');
 export const getRawBooks = () => readJsonFile<RawBook[]>('books.json');
 export const getProcessingLogs = () => readJsonFile<ProcessingLog[]>('processing_logs.json');
+export const getPermissions = () => readJsonFile<Permissions>('permissions.json');
+export const getRoles = () => readJsonFile<string[]>('roles.json');
 
 
 export async function getUserById(id: string): Promise<User | undefined> {

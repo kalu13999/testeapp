@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -58,13 +59,13 @@ import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, Pagi
 const ITEMS_PER_PAGE = 10;
 
 export default function UsersClient() {
-  const { users, addUser, updateUser, deleteUser } = useAppContext();
+  const { users, roles, addUser, updateUser, deleteUser } = useAppContext();
   const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | 'details' | null; data?: User }>({ open: false, type: null })
   
   const [filters, setFilters] = React.useState({ query: '', role: 'all' });
   const [currentPage, setCurrentPage] = React.useState(1);
 
-  const roles = [...new Set(users.map(u => u.role))].filter(r => r !== 'System').sort();
+  const availableRoles = roles.filter(r => r !== 'System').sort();
 
   const handleFilterChange = (filterName: keyof typeof filters, value: string) => {
     setFilters(prev => ({ ...prev, [filterName]: value }));
@@ -174,7 +175,7 @@ export default function UsersClient() {
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="all">All Roles</SelectItem>
-                    {roles.map(role => <SelectItem key={role} value={role}>{role}</SelectItem>)}
+                    {availableRoles.map(role => <SelectItem key={role} value={role}>{role}</SelectItem>)}
                 </SelectContent>
             </Select>
           </div>
@@ -261,7 +262,7 @@ export default function UsersClient() {
               {dialogState.type === 'new' ? 'Add a new user to the system.' : `Editing user: ${dialogState.data?.name}`}
             </DialogDescription>
           </DialogHeader>
-          <UserForm user={dialogState.data} roles={roles} onSave={handleSave} onCancel={closeDialog} />
+          <UserForm user={dialogState.data} roles={availableRoles} onSave={handleSave} onCancel={closeDialog} />
         </DialogContent>
       </Dialog>
       

@@ -10,5 +10,6 @@
   { "id": "u_7", "name": "George Greeter", "email": "george@flowvault.com", "role": "Operator", "avatar": "https://placehold.co/100x100.png", "phone": "555-0116", "jobTitle": "Reception Specialist", "department": "Operations", "lastLogin": "2024-05-22T09:00:00Z", "info": "" },
   { "id": "u_8", "name": "Hannah Helper", "email": "hannah@flowvault.com", "role": "Operator", "avatar": "https://placehold.co/100x100.png", "phone": "555-0117", "jobTitle": "Indexing Clerk", "department": "Operations", "lastLogin": "2024-05-22T12:00:00Z", "info": "" },
   { "id": "u_9", "name": "Ian Inspector", "email": "ian@flowvault.com", "role": "QC Specialist", "avatar": "https://placehold.co/100x100.png", "phone": "555-0118", "jobTitle": "Senior QA", "department": "Quality", "lastLogin": "2024-05-21T18:00:00Z", "info": "" },
+  { "id": "u_client_1", "name": "Innovate Corp Client", "email": "client@innovatecorp.com", "role": "Client", "avatar": "https://placehold.co/100x100.png", "phone": "555-0101", "jobTitle": "External Reviewer", "department": "External", "lastLogin": "2024-05-22T18:00:00Z", "info": "" },
   { "id": "u_system", "name": "System", "email": null, "role": "System", "avatar": null, "info": "Automated system account for processes." }
 ]

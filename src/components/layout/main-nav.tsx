@@ -30,8 +30,9 @@ import { usePathname } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { User } from "lucide-react";
+import { useAppContext } from "@/context/workflow-context";
 
-const menuItems = [
+const allMenuItems = [
   {
     id: "dashboards",
     title: "Dashboards",
@@ -87,17 +88,34 @@ const menuItems = [
 
 export function MainNav() {
   const pathname = usePathname();
+  const { currentUser, permissions } = useAppContext();
 
   const isActive = (href: string) => {
-    // Exact match or sub-path match for parent routes
     return pathname === href || (href !== '/' && pathname.startsWith(`${href}/`));
   };
+  
+  if (!currentUser) return null; // Don't render nav if no user
+
+  const userPermissions = permissions[currentUser.role] || [];
+  const isAdmin = userPermissions.includes('*');
+
+  const menuItems = allMenuItems.map(menu => {
+    const filteredItems = menu.items.filter(item => {
+        if (isAdmin) return true;
+        return userPermissions.includes(item.href);
+    });
+    if (filteredItems.length > 0) {
+        return { ...menu, items: filteredItems };
+    }
+    return null;
+  }).filter(Boolean);
+
 
   return (
     <nav className="flex flex-col p-2">
       <ul className="space-y-4">
         {menuItems.map((menu) => (
-          <li key={menu.id}>
+          menu && <li key={menu.id}>
             <h3 className="px-2 mb-1 text-xs font-semibold text-muted-foreground/80 uppercase tracking-wider font-headline">
               {menu.title}
             </h3>

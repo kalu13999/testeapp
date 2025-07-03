@@ -1,0 +1,48 @@
+
+{
+  "Admin": [
+    "*"
+  ],
+  "Operator": [
+    "/dashboard",
+    "/projects",
+    "/projects/[id]",
+    "/clients",
+    "/clients/[id]",
+    "/users",
+    "/users/[id]",
+    "/book-management",
+    "/books/[id]",
+    "/documents",
+    "/documents/[id]",
+    "/workflow/reception",
+    "/workflow/scanning",
+    "/workflow/storage",
+    "/workflow/indexing",
+    "/workflow/quality-control",
+    "/workflow/ready-for-processing",
+    "/workflow/in-processing",
+    "/workflow/processed",
+    "/workflow/final-quality-control",
+    "/workflow/delivery",
+    "/workflow/client-rejections",
+    "/workflow/corrected",
+    "/finalized",
+    "/archive"
+  ],
+  "QC Specialist": [
+    "/dashboard",
+    "/documents",
+    "/documents/[id]",
+    "/books/[id]",
+    "/workflow/quality-control",
+    "/workflow/final-quality-control",
+    "/workflow/client-rejections"
+  ],
+  "Client": [
+    "/client-dashboard",
+    "/pending-deliveries",
+    "/validated-history",
+    "/documents/[id]"
+  ]
+}
