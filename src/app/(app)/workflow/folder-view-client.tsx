@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -109,7 +108,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   }, [documents, config.dataStage]);
 
   const groupedByBook = React.useMemo(() => {
-    return stageDocuments.reduce<GroupedDocuments>((acc, doc) => {
+    const initialGroups = stageDocuments.reduce<GroupedDocuments>((acc, doc) => {
       if (!doc.bookId) return acc;
       if (!acc[doc.bookId]) {
         const bookInfo = books.find(b => b.id === doc.bookId);
@@ -126,7 +125,22 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
       if (doc.flag === 'warning') acc[doc.bookId].hasWarning = true;
       return acc;
     }, {});
-  }, [stageDocuments, books]);
+    
+    // For the storage view, only show books that haven't been assigned an indexer yet.
+    // The book status after scanning is 'In Progress'. After assignment, it becomes 'To Indexing'.
+    if (stage === 'storage') {
+        const filteredGroups: GroupedDocuments = {};
+        for (const bookId in initialGroups) {
+            const book = books.find(b => b.id === bookId);
+            if (book && book.status === 'In Progress') {
+                filteredGroups[bookId] = initialGroups[bookId];
+            }
+        }
+        return filteredGroups;
+    }
+
+    return initialGroups;
+  }, [stageDocuments, books, stage]);
   
   const handleRejectSubmit = () => {
     if (!currentBook) return;
