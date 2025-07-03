@@ -158,62 +158,61 @@ export default function DashboardClient() {
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-                <Card className="lg:col-span-3">
-                    <CardHeader>
-                        <CardTitle className="font-headline flex items-center gap-2"><BarChart2 className="h-5 w-5"/> Workflow Overview</CardTitle>
-                        <CardDescription>Number of books currently in each major workflow phase.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <ResponsiveContainer width="100%" height={300}>
-                             <BarChart data={chartData}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-                                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false}/>
-                                <Tooltip
-                                    cursor={{ fill: "hsl(var(--muted))" }}
-                                    contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }}
-                                />
-                                <Bar dataKey="count" fill="hsl(var(--primary))" name="Books" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
-                <Card className="lg:col-span-2">
-                    <CardHeader>
-                        <CardTitle className="font-headline flex items-center gap-2"><Activity className="h-5 w-5" /> Recent Activity</CardTitle>
-                        <CardDescription>Latest actions performed across the system.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                         <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Details</TableHead>
-                                    <TableHead>User</TableHead>
-                                    <TableHead>Date</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {recentActivities.length > 0 ? recentActivities.map(activity => {
-                                    const targetLink = activity.documentId ? `/documents/${activity.documentId}` : (activity.bookId ? `/books/${activity.bookId}` : '#');
-                                    return (
-                                        <TableRow key={activity.id}>
-                                            <TableCell>
-                                                <Link href={targetLink} className="font-medium truncate hover:underline">{activity.action}</Link>
-                                                <div className="text-xs text-muted-foreground truncate">{activity.details}</div>
-                                            </TableCell>
-                                            <TableCell>{activity.user}</TableCell>
-                                            <TableCell className="text-xs">{new Date(activity.date).toLocaleString()}</TableCell>
-                                        </TableRow>
-                                    )
-                                }) : (
-                                    <TableRow><TableCell colSpan={3} className="h-24 text-center">No recent activity.</TableCell></TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
-            </div>
+            <Card>
+                <CardHeader>
+                    <CardTitle className="font-headline flex items-center gap-2"><BarChart2 className="h-5 w-5"/> Workflow Overview</CardTitle>
+                    <CardDescription>Number of books currently in each major workflow phase.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                         <BarChart data={chartData}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                            <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false}/>
+                            <Tooltip
+                                cursor={{ fill: "hsl(var(--muted))" }}
+                                contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }}
+                            />
+                            <Bar dataKey="count" fill="hsl(var(--primary))" name="Books" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="font-headline flex items-center gap-2"><Activity className="h-5 w-5" /> Recent Activity</CardTitle>
+                    <CardDescription>Latest actions performed across the system.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                     <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Details</TableHead>
+                                <TableHead>User</TableHead>
+                                <TableHead>Date</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {recentActivities.length > 0 ? recentActivities.map(activity => {
+                                const targetLink = activity.documentId ? `/documents/${activity.documentId}` : (activity.bookId ? `/books/${activity.bookId}` : '#');
+                                return (
+                                    <TableRow key={activity.id}>
+                                        <TableCell>
+                                            <Link href={targetLink} className="font-medium truncate hover:underline">{activity.action}</Link>
+                                            <div className="text-xs text-muted-foreground truncate">{activity.details}</div>
+                                        </TableCell>
+                                        <TableCell>{activity.user}</TableCell>
+                                        <TableCell className="text-xs">{new Date(activity.date).toLocaleString()}</TableCell>
+                                    </TableRow>
+                                )
+                            }) : (
+                                <TableRow><TableCell colSpan={3} className="h-24 text-center">No recent activity.</TableCell></TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
             
             {!selectedProjectId && projectProgressData.length > 0 && (
                  <Card>
