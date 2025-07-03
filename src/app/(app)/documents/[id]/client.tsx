@@ -31,8 +31,7 @@ export default function DocumentDetailClient({ docId }: { docId: string }) {
         comment: string;
     }>({ open: false, flag: null, comment: '' });
     
-    const firstLogDocId = auditLogs.length > 0 ? auditLogs[0].documentId : undefined;
-    const documentAuditLog = firstLogDocId ? auditLogs.filter(log => log.documentId === firstLogDocId) : [];
+    const documentAuditLog = auditLogs.filter(log => log.documentId === docId);
 
     if (!document) {
         return (
@@ -118,7 +117,7 @@ export default function DocumentDetailClient({ docId }: { docId: string }) {
                                     <div className="flex-1 -mt-1">
                                         <p className="font-medium">{log.action} by <span className="text-primary">{log.user}</span></p>
                                         <p className="text-sm text-muted-foreground">{log.details}</p>
-                                        <time className="text-xs text-muted-foreground">{log.date}</time>
+                                        <time className="text-xs text-muted-foreground">{new Date(log.date).toLocaleString()}</time>
                                     </div>
                                 </div>
                             )) : (

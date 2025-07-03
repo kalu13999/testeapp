@@ -32,6 +32,8 @@ const digitalStageTransitions: { [key: string]: string } = {
 // Client-side representation of a document
 export type AppDocument = RawDocument & { client: string; status: string; flag: 'error' | 'warning' | 'info' | null; flagComment?: string; };
 
+export type EnrichedAuditLog = AuditLog & { user: string; };
+
 type AppContextType = {
   // Auth state
   currentUser: User | null;
@@ -45,7 +47,7 @@ type AppContextType = {
   projects: EnrichedProject[];
   books: EnrichedBook[];
   documents: AppDocument[];
-  auditLogs: (AuditLog & { user: string; })[];
+  auditLogs: EnrichedAuditLog[];
   processingLogs: ProcessingLog[];
   roles: string[];
   permissions: Permissions;
@@ -110,7 +112,7 @@ export function AppProvider({
   initialProjects: EnrichedProject[];
   initialBooks: EnrichedBook[];
   initialDocuments: AppDocument[];
-  initialAuditLogs: (AuditLog & { user:string; })[];
+  initialAuditLogs: EnrichedAuditLog[];
   initialProcessingLogs: ProcessingLog[];
   initialPermissions: Permissions;
   initialRoles: string[];
@@ -122,7 +124,7 @@ export function AppProvider({
   const [projects, setProjects] = React.useState<EnrichedProject[]>(initialProjects);
   const [books, setBooks] = React.useState<EnrichedBook[]>(initialBooks);
   const [documents, setDocuments] = React.useState<AppDocument[]>(initialDocuments);
-  const [auditLogs, setAuditLogs] = React.useState<(AuditLog & { user: string; })[]>(initialAuditLogs);
+  const [auditLogs, setAuditLogs] = React.useState<EnrichedAuditLog[]>(initialAuditLogs);
   const [processingLogs, setProcessingLogs] = React.useState<ProcessingLog[]>(initialProcessingLogs);
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
   const { toast } = useToast();

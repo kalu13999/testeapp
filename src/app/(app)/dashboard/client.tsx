@@ -23,7 +23,7 @@ import { Progress } from "@/components/ui/progress"
 import { AlertTriangle, BookCopy, CheckCircle2, UserCheck, BarChart2, ListTodo, Activity } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import { useMemo } from "react"
-import type { EnrichedBook, AppDocument, EnrichedProject } from "@/context/workflow-context"
+import type { EnrichedBook, AppDocument, EnrichedProject, AuditLog } from "@/context/workflow-context"
 import Link from "next/link"
 
 const kpiIconMap: { [key: string]: React.ElementType } = {
@@ -48,8 +48,11 @@ type ChartData = {
 type RecentActivity = {
     id: string;
     bookName: string;
+    docId?: string;
     projectName: string;
-    status: string;
+    action: string;
+    user: string;
+    date: string;
 }
 
 type ProjectProgressData = {
@@ -70,13 +73,17 @@ const getStatusBadgeVariant = (status: string) => {
 }
 
 export default function DashboardClient() {
-    const { projects, books, documents, selectedProjectId } = useAppContext();
+    const { projects, books, documents, auditLogs, selectedProjectId } = useAppContext();
 
     const dashboardData = useMemo(() => {
         const relevantProjects = selectedProjectId ? projects.filter(p => p.id === selectedProjectId) : projects;
         const relevantProjectIds = new Set(relevantProjects.map(p => p.id));
         const relevantBooks = books.filter(b => relevantProjectIds.has(b.projectId));
         const relevantDocuments = documents.filter(d => relevantProjectIds.has(d.projectId));
+        const relevantAuditLogs = auditLogs.filter(log => {
+            const doc = documents.find(d => d.id === log.documentId);
+            return doc && relevantProjectIds.has(doc.projectId);
+        });
         
         // --- KPI Calculations ---
         const booksInWorkflow = relevantBooks.filter(b => !['Complete', 'Archived'].includes(b.status)).length;
@@ -133,15 +140,22 @@ export default function DashboardClient() {
         const chartData: ChartData[] = Object.entries(bookStageCounts).map(([name, count]) => ({ name, count }));
 
         // --- Table Data ---
-        const recentActivities: RecentActivity[] = relevantDocuments
-            .sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())
+        const recentActivities: RecentActivity[] = relevantAuditLogs
             .slice(0, 7)
-            .map(doc => ({
-                id: doc.id,
-                bookName: books.find(b => b.id === doc.bookId)?.name || 'N/A',
-                projectName: projects.find(p => p.id === doc.projectId)?.name || 'N/A',
-                status: doc.status
-            }));
+            .map(log => {
+                const doc = documents.find(d => d.id === log.documentId);
+                const book = doc ? books.find(b => b.id === doc.bookId) : null;
+                return {
+                    id: log.id,
+                    bookName: book?.name || doc?.name || 'N/A',
+                    docId: doc?.id,
+                    projectName: book?.projectName || 'N/A',
+                    action: log.action,
+                    user: log.user,
+                    date: new Date(log.date).toLocaleString(),
+                };
+            });
+
 
         const projectProgressData: ProjectProgressData[] = relevantProjects.map(p => ({
             id: p.id,
@@ -152,7 +166,7 @@ export default function DashboardClient() {
         }));
 
         return { kpiData, chartData, recentActivities, projectProgressData, selectedProjectId };
-    }, [projects, books, documents, selectedProjectId]);
+    }, [projects, books, documents, auditLogs, selectedProjectId]);
 
     const { kpiData, chartData, recentActivities, projectProgressData } = dashboardData;
 
@@ -201,27 +215,29 @@ export default function DashboardClient() {
                 <Card className="lg:col-span-2">
                     <CardHeader>
                         <CardTitle className="font-headline flex items-center gap-2"><Activity className="h-5 w-5" /> Recent Activity</CardTitle>
-                        <CardDescription>Latest document status changes.</CardDescription>
+                        <CardDescription>Latest actions performed across the system.</CardDescription>
                     </CardHeader>
                     <CardContent>
                          <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Book</TableHead>
-                                    <TableHead>Status</TableHead>
+                                    <TableHead>Details</TableHead>
+                                    <TableHead>User</TableHead>
+                                    <TableHead>Date</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {recentActivities.length > 0 ? recentActivities.map(activity => (
                                     <TableRow key={activity.id}>
                                         <TableCell>
-                                            <div className="font-medium truncate">{activity.bookName}</div>
-                                            <div className="text-xs text-muted-foreground truncate">{activity.projectName}</div>
+                                            <Link href={activity.docId ? `/documents/${activity.docId}` : '#'} className="font-medium truncate hover:underline">{activity.action}</Link>
+                                            <div className="text-xs text-muted-foreground truncate">{activity.bookName}</div>
                                         </TableCell>
-                                        <TableCell><Badge variant="outline">{activity.status}</Badge></TableCell>
+                                        <TableCell>{activity.user}</TableCell>
+                                        <TableCell className="text-xs">{activity.date}</TableCell>
                                     </TableRow>
                                 )) : (
-                                    <TableRow><TableCell colSpan={2} className="h-24 text-center">No recent activity.</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={3} className="h-24 text-center">No recent activity.</TableCell></TableRow>
                                 )}
                             </TableBody>
                         </Table>

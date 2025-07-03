@@ -80,6 +80,7 @@ export interface RawBook {
     scannerUserId?: string;
     scanStartTime?: string;
     scanEndTime?: string;
+    rejectionReason?: string;
 }
 
 export interface Project {
