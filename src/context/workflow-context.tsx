@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from 'react';
@@ -120,8 +119,8 @@ export function AppProvider({
   const [currentUser, setCurrentUser] = React.useState<User | null>(null);
   const [clients, setClients] = React.useState<Client[]>(initialClients);
   const [users, setUsers] = React.useState<User[]>(initialUsers);
-  const [projects, setProjects] = React.useState<Project[]>(initialProjects);
-  const [books, setBooks] = React.useState<RawBook[]>(initialBooks);
+  const [rawProjects, setRawProjects] = React.useState<Project[]>(initialProjects);
+  const [rawBooks, setRawBooks] = React.useState<RawBook[]>(initialBooks);
   const [documents, setDocuments] = React.useState<AppDocument[]>(initialDocuments);
   const [auditLogs, setAuditLogs] = React.useState<EnrichedAuditLog[]>(initialAuditLogs);
   const [processingLogs, setProcessingLogs] = React.useState<ProcessingLog[]>(initialProcessingLogs);
@@ -162,7 +161,7 @@ export function AppProvider({
   ) => {
     if (!currentUser) return;
     const newLogEntry: EnrichedAuditLog = {
-      id: `al_${Date.now()}`,
+      id: `al_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
       action,
       details,
       userId: currentUser.id,
@@ -175,8 +174,8 @@ export function AppProvider({
 
   // --- Memoized Data Enrichment ---
   const enrichedBooks: EnrichedBook[] = React.useMemo(() => {
-    return books.map(book => {
-      const project = projects.find(p => p.id === book.projectId);
+    return rawBooks.map(book => {
+      const project = rawProjects.find(p => p.id === book.projectId);
       const client = clients.find(c => c.id === project?.clientId);
       const bookDocuments = documents.filter(d => d.bookId === book.id);
       const bookProgress = book.expectedDocuments > 0 ? (bookDocuments.length / book.expectedDocuments) * 100 : 0;
@@ -190,10 +189,10 @@ export function AppProvider({
           progress: Math.min(100, bookProgress),
       }
     })
-  }, [books, projects, clients, documents]);
+  }, [rawBooks, rawProjects, clients, documents]);
 
   const enrichedProjects: EnrichedProject[] = React.useMemo(() => {
-    return projects.map(project => {
+    return rawProjects.map(project => {
         const client = clients.find(c => c.id === project.clientId);
         const projectBooks = enrichedBooks.filter(b => b.projectId === project.id);
         const projectDocuments = documents.filter(d => d.projectId === project.id);
@@ -210,7 +209,7 @@ export function AppProvider({
             books: projectBooks,
         };
     });
-  }, [projects, clients, enrichedBooks, documents]);
+  }, [rawProjects, clients, enrichedBooks, documents]);
 
 
   // --- CRUD ACTIONS ---
@@ -230,11 +229,11 @@ export function AppProvider({
 
   const deleteClient = (clientId: string) => {
     const clientToDelete = clients.find(c => c.id === clientId);
-    const associatedProjectIds = projects.filter(p => p.clientId === clientId).map(p => p.id);
+    const associatedProjectIds = rawProjects.filter(p => p.clientId === clientId).map(p => p.id);
     
     setClients(prev => prev.filter(c => c.id !== clientId));
-    setProjects(prev => prev.filter(p => p.clientId !== clientId));
-    setBooks(prev => prev.filter(b => !associatedProjectIds.includes(b.projectId)));
+    setRawProjects(prev => prev.filter(p => p.clientId !== clientId));
+    setRawBooks(prev => prev.filter(b => !associatedProjectIds.includes(b.projectId)));
     setDocuments(prev => prev.filter(d => d.clientId !== clientId));
 
     if (associatedProjectIds.includes(selectedProjectId!)) {
@@ -266,24 +265,24 @@ export function AppProvider({
   
   const addProject = (projectData: Omit<Project, 'id'>) => {
     const newProjectData: Project = { id: `proj_${Date.now()}`, ...projectData };
-    setProjects(prev => [...prev, newProjectData]);
+    setRawProjects(prev => [...prev, newProjectData]);
     logAction('Project Created', `New project "${newProjectData.name}" added.`, {});
     toast({ title: "Project Added", description: `Project "${newProjectData.name}" has been created.` });
   };
   
   const updateProject = (projectId: string, projectData: Partial<Omit<Project, 'id'>>) => {
-    setProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...projectData } : p));
+    setRawProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...projectData } : p));
     logAction('Project Updated', `Details for project "${projectData.name}" updated.`, {});
     toast({ title: "Project Updated" });
   };
 
   const deleteProject = (projectId: string) => {
-      const projectToDelete = projects.find(p => p.id === projectId);
+      const projectToDelete = rawProjects.find(p => p.id === projectId);
       if (selectedProjectId === projectId) {
         setSelectedProjectId(null);
       }
-      setProjects(prev => prev.filter(p => p.id !== projectId));
-      setBooks(prev => prev.filter(b => b.projectId !== projectId));
+      setRawProjects(prev => prev.filter(p => p.id !== projectId));
+      setRawBooks(prev => prev.filter(b => b.projectId !== projectId));
       setDocuments(prev => prev.filter(d => d.projectId !== projectId));
       logAction('Project Deleted', `Project "${projectToDelete?.name}" and all data deleted.`, {});
       toast({ title: "Project Deleted", variant: "destructive" });
@@ -296,20 +295,20 @@ export function AppProvider({
           projectId,
           ...bookData,
       };
-      setBooks(prev => [...prev, newRawBook]);
+      setRawBooks(prev => [...prev, newRawBook]);
       logAction('Book Added', `Book "${newRawBook.name}" was added to project.`, { bookId: newRawBook.id });
       toast({ title: "Book Added", description: `Book "${newRawBook.name}" has been added.` });
   };
   
   const updateBook = (bookId: string, bookData: Partial<Omit<RawBook, 'id' | 'projectId' | 'status'>>) => {
-      setBooks(prev => prev.map(b => b.id === bookId ? { ...b, ...bookData } : b));
+      setRawBooks(prev => prev.map(b => b.id === bookId ? { ...b, ...bookData } : b));
       logAction('Book Updated', `Details for book "${bookData.name}" were updated.`, { bookId });
       toast({ title: "Book Updated" });
   };
 
   const deleteBook = (bookId: string) => {
-      const bookToDelete = books.find(b => b.id === bookId);
-      setBooks(prev => prev.filter(b => b.id !== bookId));
+      const bookToDelete = rawBooks.find(b => b.id === bookId);
+      setRawBooks(prev => prev.filter(b => b.id !== bookId));
       setDocuments(prev => prev.filter(d => d.bookId !== bookId));
       logAction('Book Deleted', `Book "${bookToDelete?.name}" and its pages were deleted.`, { bookId });
       toast({ title: "Book Deleted", variant: "destructive" });
@@ -325,7 +324,7 @@ export function AppProvider({
         };
         return newRawBook;
     });
-    setBooks(prev => [...prev, ...booksToAdd]);
+    setRawBooks(prev => [...prev, ...booksToAdd]);
     logAction('Books Imported', `${booksToAdd.length} books imported for project.`, {});
     toast({
         title: "Import Successful",
@@ -336,7 +335,7 @@ export function AppProvider({
   // --- WORKFLOW ACTIONS ---
 
   const updateBookStatus = (bookId: string, newStatusName: string, updateFn?: (book: RawBook) => Partial<RawBook>) => {
-    setBooks(prevBooks =>
+    setRawBooks(prevBooks =>
       prevBooks.map(book =>
         book.id === bookId ? { ...book, status: newStatusName, ...(updateFn ? updateFn(book) : {}) } : book
       )
@@ -347,7 +346,7 @@ export function AppProvider({
     const nextStatus = bookStatusTransition[currentStatus];
     if (!nextStatus) return;
 
-    const book = books.find(b => b.id === bookId);
+    const book = rawBooks.find(b => b.id === bookId);
     if (!book) return;
 
     if (currentStatus === 'Pending' && payload?.scannerUserId) {
@@ -369,7 +368,7 @@ export function AppProvider({
       updateBookStatus(bookId, nextStatus, () => ({ scanEndTime: new Date().toISOString() }));
       logAction('Scanning Finished', `Scanning completed.`, { bookId });
       
-      const project = projects.find(p => p.id === book.projectId);
+      const project = rawProjects.find(p => p.id === book.projectId);
       const client = clients.find(c => c.id === project?.clientId);
       if (!project || !client) return;
 
@@ -422,14 +421,14 @@ export function AppProvider({
   const handleMoveBookToNextStage = (bookId: string, currentStage: string) => {
     const nextStage = digitalStageTransitions[currentStage];
     if (!nextStage) return;
-    const book = books.find(b => b.id === bookId);
+    const book = rawBooks.find(b => b.id === bookId);
     moveBookDocuments(bookId, nextStage);
     logAction('Workflow Step', `Book "${book?.name}" moved from ${currentStage} to ${nextStage}.`, { bookId });
     toast({ title: "Workflow Action", description: `Book moved to ${nextStage}.` });
   };
 
   const handleStartProcessing = (bookId: string) => {
-    const book = books.find(b => b.id === bookId);
+    const book = rawBooks.find(b => b.id === bookId);
     moveBookDocuments(bookId, 'In Processing');
     setProcessingLogs(prev => {
         const otherLogs = prev.filter(log => log.bookId !== bookId);
@@ -445,7 +444,7 @@ export function AppProvider({
   };
   
   const handleCompleteProcessing = (bookId: string) => {
-    const book = books.find(b => b.id === bookId);
+    const book = rawBooks.find(b => b.id === bookId);
     moveBookDocuments(bookId, 'Processed');
     setProcessingLogs(prev => prev.map(log => 
         log.bookId === bookId 
@@ -462,7 +461,7 @@ export function AppProvider({
     const book = enrichedBooks.find(b => b.id === bookId);
     moveBookDocuments(bookId, newStatus);
     
-    setBooks(prev => prev.map(b => b.id !== bookId ? b : { ...b, status: newStatus, rejectionReason: isApproval ? undefined : reason }));
+    setRawBooks(prev => prev.map(b => b.id !== bookId ? b : { ...b, status: newStatus, rejectionReason: isApproval ? undefined : reason }));
     
     logAction(
       `Client ${isApproval ? 'Approval' : 'Rejection'}`, 
@@ -474,7 +473,7 @@ export function AppProvider({
   };
 
   const handleFinalize = (bookId: string) => {
-    const book = books.find(b => b.id === bookId);
+    const book = rawBooks.find(b => b.id === bookId);
     moveBookDocuments(bookId, 'Archived');
     updateBookStatus(bookId, 'Complete');
     logAction('Book Archived', `Book "${book?.name}" was finalized and archived.`, { bookId });
@@ -482,7 +481,7 @@ export function AppProvider({
   };
   
   const handleMarkAsCorrected = (bookId: string) => {
-    const book = books.find(b => b.id === bookId);
+    const book = rawBooks.find(b => b.id === bookId);
     moveBookDocuments(bookId, 'Corrected');
     updateBookStatus(bookId, 'Corrected');
     logAction('Marked as Corrected', `Book "${book?.name}" marked as corrected after client rejection.`, { bookId });
@@ -490,7 +489,7 @@ export function AppProvider({
   };
 
   const handleResubmit = (bookId: string, targetStage: string) => {
-    const book = books.find(b => b.id === bookId);
+    const book = rawBooks.find(b => b.id === bookId);
     moveBookDocuments(bookId, targetStage);
     updateBookStatus(bookId, 'In Progress');
     logAction('Book Resubmitted', `Book "${book?.name}" resubmitted to ${targetStage}.`, { bookId });
@@ -534,7 +533,7 @@ export function AppProvider({
       return [...otherPages, ...updatedPages];
     });
 
-    setBooks(prev => prev.map(b => b.id === bookId ? { ...b, documentCount: (b.documentCount || 0) + 1, expectedDocuments: (b.expectedDocuments || 0) + 1 } : b));
+    setRawBooks(prev => prev.map(b => b.id === bookId ? { ...b, documentCount: (b.documentCount || 0) + 1, expectedDocuments: (b.expectedDocuments || 0) + 1 } : b));
     logAction('Page Added', `New page added to "${book.name}" at position ${position}.`, { bookId, documentId: newPageId });
     toast({ title: "Page Added" });
   }
@@ -542,7 +541,7 @@ export function AppProvider({
   const deletePageFromBook = (pageId: string, bookId: string) => {
     const page = documents.find(p => p.id === pageId);
     setDocuments(prev => prev.filter(p => p.id !== pageId));
-    setBooks(prev => prev.map(b => b.id === bookId ? {...b, documentCount: (b.documentCount || 1) - 1, expectedDocuments: (b.expectedDocuments || 1) - 1 } : b));
+    setRawBooks(prev => prev.map(b => b.id === bookId ? {...b, documentCount: (b.documentCount || 1) - 1, expectedDocuments: (b.expectedDocuments || 1) - 1 } : b));
     logAction('Page Deleted', `Page "${page?.name}" was deleted from book.`, { bookId, documentId: pageId });
   }
 
