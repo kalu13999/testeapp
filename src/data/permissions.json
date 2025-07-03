@@ -16,7 +16,8 @@
     "/documents",
     "/documents/[id]",
     "/workflow/reception",
-    "/workflow/scanning",
+    "/workflow/to-scan",
+    "/workflow/scanning-started",
     "/workflow/storage",
     "/workflow/indexing",
     "/workflow/quality-control",
@@ -53,7 +54,8 @@
   ],
   "Scanning": [
     "/dashboard",
-    "/workflow/scanning",
+    "/workflow/to-scan",
+    "/workflow/scanning-started",
     "/books/[id]",
     "/documents/[id]"
   ],

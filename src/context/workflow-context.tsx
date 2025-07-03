@@ -14,8 +14,9 @@ export interface BookImport {
 
 // This map defines the status transition for books (physical items)
 const bookStatusTransition: { [key: string]: string } = {
-  'Pending': 'Received',
-  'Received': 'Scanned',
+  'Pending': 'To Scan',
+  'To Scan': 'Scanning Started',
+  'Scanning Started': 'Scanned',
 };
 
 // This map defines the status transition for entire books of documents (digital items)
@@ -318,7 +319,7 @@ export function AppProvider({
     const nextStatus = bookStatusTransition[currentStatus];
     if (!nextStatus) return;
 
-    // Handle moving from Pending -> Received
+    // Handle moving from Pending -> To Scan (with scanner assignment)
     if (currentStatus === 'Pending' && payload?.scannerUserId) {
       updateBookStatus(bookId, nextStatus, () => ({ scannerUserId: payload.scannerUserId }));
       toast({
@@ -328,9 +329,19 @@ export function AppProvider({
       return;
     }
     
-    // Handle moving from Received -> Scanned
-    if (currentStatus === 'Received') {
-      updateBookStatus(bookId, nextStatus);
+    // Handle moving from To Scan -> Scanning Started
+    if (currentStatus === 'To Scan') {
+      updateBookStatus(bookId, nextStatus, () => ({ scanStartTime: new Date().toISOString() }));
+      toast({
+        title: "Scanning Started",
+        description: `Book moved to "${nextStatus}".`
+      });
+      return;
+    }
+
+    // Handle moving from Scanning Started -> Scanned
+    if (currentStatus === 'Scanning Started') {
+      updateBookStatus(bookId, nextStatus, () => ({ scanEndTime: new Date().toISOString() }));
       const book = books.find(b => b.id === bookId);
       if (!book) return;
 

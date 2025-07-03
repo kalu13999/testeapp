@@ -1,28 +1,40 @@
+
 import { notFound } from "next/navigation";
 import WorkflowClient from "./client";
 import FolderViewClient from "../folder-view-client";
 import CorrectionViewClient from "../correction-view-client";
 import ProcessingViewClient from "../processing-view-client";
+import { PlayCircle } from "lucide-react";
 
 const STAGE_CONFIG: { [key: string]: any } = {
   reception: {
     title: "Document Reception",
-    description: "Books that have been added to a project manifest but are awaiting physical confirmation.",
-    actionButtonLabel: "Confirm Receipt",
+    description: "Books that are awaiting physical confirmation and scanner assignment.",
+    actionButtonLabel: "Assign & Confirm",
     actionButtonIcon: "Check",
     emptyStateText: "No books are awaiting reception.",
     dataType: 'book',
     dataStatus: 'Pending',
     viewType: 'list',
   },
-  scanning: {
-    title: "Scanning Queue",
-    description: "Physical books that have been received and are awaiting scanning.",
-    actionButtonLabel: "Confirm Scanning",
-    actionButtonIcon: "ScanLine",
-    emptyStateText: "No books in the scanning queue.",
+  'to-scan': {
+    title: "To Scan Queue",
+    description: "Books that have been received and are ready to be scanned.",
+    actionButtonLabel: "Start Scanning",
+    actionButtonIcon: "Play",
+    emptyStateText: "No books in the 'To Scan' queue.",
     dataType: 'book',
-    dataStatus: 'Received',
+    dataStatus: 'To Scan',
+    viewType: 'list',
+  },
+  'scanning-started': {
+    title: "Scanning Started",
+    description: "Books that are currently being actively scanned.",
+    actionButtonLabel: "Confirm Scan Completion",
+    actionButtonIcon: "ScanLine",
+    emptyStateText: "No books are currently being scanned.",
+    dataType: 'book',
+    dataStatus: 'Scanning Started',
     viewType: 'list',
   },
   storage: {

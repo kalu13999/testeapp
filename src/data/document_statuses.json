@@ -2,7 +2,9 @@
 [
   { "id": "ds_1", "name": "Pending", "stage": "Reception" },
   { "id": "ds_2", "name": "Received", "stage": "Reception" },
-  { "id": "ds_3", "name": "Scanned", "stage": "Scanning" },
+  { "id": "ds_3", "name": "To Scan", "stage": "Scanning" },
+  { "id": "ds_18", "name": "Scanning Started", "stage": "Scanning" },
+  { "id": "ds_19", "name": "Scanned", "stage": "Scanning" },
   { "id": "ds_4", "name": "Storage", "stage": "Storage" },
   { "id": "ds_5", "name": "Indexing", "stage": "Indexing" },
   { "id": "ds_15", "name": "Quality Control", "stage": "Quality Control" },

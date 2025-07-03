@@ -78,6 +78,8 @@ export interface RawBook {
     priority?: 'Low' | 'Medium' | 'High';
     info?: string;
     scannerUserId?: string;
+    scanStartTime?: string;
+    scanEndTime?: string;
 }
 
 export interface Project {

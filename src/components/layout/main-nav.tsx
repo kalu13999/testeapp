@@ -24,6 +24,8 @@ import {
   Undo2,
   Users2,
   Warehouse,
+  Play,
+  PlayCircle
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -54,7 +56,8 @@ const allMenuItems = [
     items: [
       { href: "/documents", label: "All Books", icon: Files },
       { href: "/workflow/reception", label: "Reception", icon: ArrowDownToLine },
-      { href: "/workflow/scanning", label: "Scanning", icon: ScanLine },
+      { href: "/workflow/to-scan", label: "To Scan", icon: ScanLine },
+      { href: "/workflow/scanning-started", label: "Scanning Started", icon: PlayCircle },
       { href: "/workflow/storage", label: "Storage", icon: Warehouse },
       { href: "/workflow/indexing", label: "Indexing", icon: FileText },
       { href: "/workflow/quality-control", label: "Quality Control", icon: FileSearch2 },
@@ -102,6 +105,10 @@ export function MainNav() {
   const menuItems = allMenuItems.map(menu => {
     const filteredItems = menu.items.filter(item => {
         if (isAdmin) return true;
+        // A special check for scanning roles to see both pages
+        if (item.href.startsWith("/workflow/to-scan") || item.href.startsWith("/workflow/scanning-started")) {
+          return userPermissions.includes('/workflow/to-scan');
+        }
         return userPermissions.includes(item.href);
     });
     if (filteredItems.length > 0) {

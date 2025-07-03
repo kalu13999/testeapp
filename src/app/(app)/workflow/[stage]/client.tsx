@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/card"
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send, FolderSync, Upload, XCircle, CheckCircle, FileWarning } from "lucide-react";
+import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send, FolderSync, Upload, XCircle, CheckCircle, FileWarning, PlayCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppContext } from "@/context/workflow-context";
 import { EnrichedBook, AppDocument } from "@/context/workflow-context";
@@ -41,6 +41,7 @@ const iconMap: { [key: string]: LucideIcon } = {
     Play,
     Send,
     FolderSync,
+    PlayCircle
 };
 
 interface WorkflowClientProps {
@@ -74,6 +75,7 @@ const getBadgeVariant = (status: string): BadgeVariant => {
         case "Indexing":
         case "Storage":
         case "Final Quality Control":
+        case "Scanning Started":
             return "secondary"
         default:
             return "outline";
@@ -96,8 +98,8 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     if (dataType === 'book' && dataStatus) {
       let filteredBooks = books.filter(book => book.status === dataStatus);
 
-      // Filter for scanning stage based on user role
-      if (stage === 'scanning' && currentUser?.role === 'Scanning') {
+      // Filter for scanning stages based on user role
+      if ((stage === 'to-scan' || stage === 'scanning-started') && currentUser?.role === 'Scanning') {
         filteredBooks = filteredBooks.filter(book => book.scannerUserId === currentUser.id);
       }
       
@@ -192,7 +194,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const isScanFolderMatch = scanState.book?.name === scanState.folderName;
 
   const renderBookRow = (item: EnrichedBook) => {
-    const isScanningStage = stage === 'scanning';
+    const isScanningStartedStage = stage === 'scanning-started';
     const isReceptionStage = stage === 'reception';
 
     return (
@@ -212,7 +214,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                         {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
                         {actionButtonLabel}
                     </Button>
-                ) : isScanningStage ? (
+                ) : isScanningStartedStage ? (
                     <Button size="sm" onClick={() => setScanState({ open: true, book: item, folderName: null, fileCount: null })}>
                         {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
                         {actionButtonLabel}
@@ -374,7 +376,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         <DialogHeader>
           <DialogTitle>Assign Scanner for "{assignScannerState.book?.name}"</DialogTitle>
           <DialogDescription>
-            Select a scanner operator to process this book. The book will then move to the Scanning queue.
+            Select a scanner operator to process this book. The book will then move to the 'To Scan' queue.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
