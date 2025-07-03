@@ -1,58 +1,23 @@
 
 [
-  {
-    "id": "proj_1",
-    "name": "Innovate Corp Q4 Scanning",
-    "clientId": "cl_1",
-    "description": "Digitization of all Q4 2023 financial documents for Innovate Corp.",
-    "startDate": "2023-10-01",
-    "endDate": "2023-12-31",
-    "budget": 50000,
-    "status": "In Progress",
-    "info": "High priority project with tight deadlines."
-  },
-  {
-    "id": "proj_2",
-    "name": "Future Tech Onboarding",
-    "clientId": "cl_2",
-    "description": "Scanning and archiving all onboarding paperwork for new client Future Tech.",
-    "startDate": "2024-01-15",
-    "endDate": "2024-03-15",
-    "budget": 25000,
-    "status": "Complete",
-    "info": ""
-  },
-  {
-    "id": "proj_3",
-    "name": "Data Systems Archiving",
-    "clientId": "cl_3",
-    "description": "Legacy document archiving project for Data Systems Inc.",
-    "startDate": "2024-02-01",
-    "endDate": "2024-06-30",
-    "budget": 75000,
-    "status": "In Progress",
-    "info": ""
-  },
-  {
-    "id": "proj_4",
-    "name": "Quantum Leap Financials",
-    "clientId": "cl_4",
-    "description": "Annual financial document processing for Quantum Leap.",
-    "startDate": "2024-03-01",
-    "endDate": "2024-04-30",
-    "budget": 30000,
-    "status": "Planning",
-    "info": "Awaiting final go-ahead from client."
-  },
-  {
-    "id": "proj_5",
-    "name": "Global Solutions Migration",
-    "clientId": "cl_5",
-    "description": "Large-scale data migration from legacy systems to new digital archive.",
-    "startDate": "2024-05-01",
-    "endDate": "2025-05-01",
-    "budget": 250000,
-    "status": "On Hold",
-    "info": "Project on hold pending client-side infrastructure updates."
-  }
+  { "id": "proj_1", "name": "Innovate Corp Q4 Scanning", "clientId": "cl_1", "description": "Digitization of all Q4 2023 financial documents for Innovate Corp.", "startDate": "2023-10-01", "endDate": "2023-12-31", "budget": 50000, "status": "In Progress", "info": "High priority project with tight deadlines." },
+  { "id": "proj_2", "name": "Future Tech Onboarding", "clientId": "cl_2", "description": "Scanning and archiving all onboarding paperwork for new client Future Tech.", "startDate": "2024-01-15", "endDate": "2024-03-15", "budget": 25000, "status": "Complete", "info": "" },
+  { "id": "proj_3", "name": "Data Systems Archiving", "clientId": "cl_3", "description": "Legacy document archiving project for Data Systems Inc.", "startDate": "2024-02-01", "endDate": "2024-06-30", "budget": 75000, "status": "In Progress", "info": "" },
+  { "id": "proj_4", "name": "Quantum Leap Financials", "clientId": "cl_4", "description": "Annual financial document processing for Quantum Leap.", "startDate": "2024-03-01", "endDate": "2024-04-30", "budget": 30000, "status": "In Progress", "info": "" },
+  { "id": "proj_5", "name": "Global Solutions Migration", "clientId": "cl_5", "description": "Large-scale data migration from legacy systems to new digital archive.", "startDate": "2024-05-01", "endDate": "2025-05-01", "budget": 250000, "status": "On Hold", "info": "Project on hold pending client-side infrastructure updates." },
+  { "id": "proj_6", "name": "Synergy HR Records", "clientId": "cl_6", "description": "Digitization of all employee records for Synergy Inc.", "startDate": "2024-06-01", "endDate": "2024-09-30", "budget": 60000, "status": "Planning", "info": "Awaiting final book list from client." },
+  { "id": "proj_7", "name": "Pioneer Labs Research Papers", "clientId": "cl_7", "description": "Scanning and indexing of historical research papers.", "startDate": "2024-07-01", "endDate": "2024-12-31", "budget": 90000, "status": "Planning", "info": "" },
+  { "id": "proj_8", "name": "Apex Holdings Legal Discovery", "clientId": "cl_8", "description": "Urgent scanning for a legal discovery case.", "startDate": "2024-05-15", "endDate": "2024-06-15", "budget": 45000, "status": "In Progress", "info": "Extremely high priority and confidentiality." },
+  { "id": "proj_9", "name": "Nexus Group Marketing Archive", "clientId": "cl_9", "description": "Archiving of all marketing materials from 2010-2020.", "startDate": "2024-08-01", "endDate": "2024-10-31", "budget": 35000, "status": "Planning", "info": "" },
+  { "id": "proj_10", "name": "Legacy Systems Deed Conversion", "clientId": "cl_10", "description": "Conversion of 19th-century property deeds to digital format.", "startDate": "2023-01-01", "endDate": "2024-12-31", "budget": 150000, "status": "In Progress", "info": "Handle with extreme care." },
+  { "id": "proj_11", "name": "Innovate Corp 2024 Planning", "clientId": "cl_1", "description": "Scanning of strategic planning documents for 2024.", "startDate": "2024-02-01", "endDate": "2024-03-01", "budget": 15000, "status": "Complete", "info": "" },
+  { "id": "proj_12", "name": "Future Tech Patent Filings", "clientId": "cl_2", "description": "Digitization of all patent documentation.", "startDate": "2024-04-01", "endDate": "2024-05-31", "budget": 40000, "status": "In Progress", "info": "" },
+  { "id": "proj_13", "name": "Data Systems Server Logs", "clientId": "cl_3", "description": "Archiving of physical server log books from 2000-2010.", "startDate": "2024-07-01", "endDate": "2024-09-30", "budget": 55000, "status": "Planning", "info": "" },
+  { "id": "proj_14", "name": "Quantum Leap Lab Notebooks", "clientId": "cl_4", "description": "Scanning of all researcher lab notebooks.", "startDate": "2024-06-01", "endDate": "2024-08-31", "budget": 65000, "status": "Planning", "info": "" },
+  { "id": "proj_15", "name": "Global Solutions Board Minutes", "clientId": "cl_5", "description": "Digitization of all board meeting minutes from the last 20 years.", "startDate": "2024-09-01", "endDate": "2025-03-31", "budget": 120000, "status": "Planning", "info": "" },
+  { "id": "proj_16", "name": "Synergy Blueprints", "clientId": "cl_6", "description": "Scanning and vectorization of architectural blueprints.", "startDate": "2024-10-01", "endDate": "2025-01-31", "budget": 85000, "status": "Planning", "info": "Requires large format scanners." },
+  { "id": "proj_17", "name": "Pioneer Labs Grant Proposals", "clientId": "cl_7", "description": "Archiving all successful grant proposals.", "startDate": "2025-01-01", "endDate": "2025-02-28", "budget": 20000, "status": "Planning", "info": "" },
+  { "id": "proj_18", "name": "Apex Holdings Merger Docs", "clientId": "cl_8", "description": "Scanning of documents related to the 2021 merger.", "startDate": "2024-05-20", "endDate": "2024-07-20", "budget": 70000, "status": "In Progress", "info": "" },
+  { "id": "proj_19", "name": "Nexus Group User Studies", "clientId": "cl_9", "description": "Digitization of handwritten user study notes and reports.", "startDate": "2024-11-01", "endDate": "2024-12-31", "budget": 30000, "status": "Planning", "info": "" },
+  { "id": "proj_20", "name": "Legacy Systems Newspaper Archive", "clientId": "cl_10", "description": "Scanning of a local newspaper archive from 1950-1980.", "startDate": "2024-01-01", "endDate": "2025-12-31", "budget": 300000, "status": "In Progress", "info": "Fragile material." }
 ]

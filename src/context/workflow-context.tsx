@@ -32,7 +32,7 @@ const digitalStageTransitions: { [key: string]: string } = {
 export type AppDocument = RawDocument & { client: string; status: string; flag: 'error' | 'warning' | 'info' | null; flagComment?: string; };
 
 type AppContextType = {
-  // State
+  // State (already filtered by project)
   clients: Client[];
   users: User[];
   projects: EnrichedProject[];
@@ -40,6 +40,11 @@ type AppContextType = {
   documents: AppDocument[];
   auditLogs: (AuditLog & { user: string; })[];
   
+  // Global Project Filter
+  allProjects: EnrichedProject[];
+  selectedProjectId: string | null;
+  setSelectedProjectId: (projectId: string | null) => void;
+
   // Client Actions
   addClient: (clientData: Omit<Client, 'id'>) => void;
   updateClient: (clientId: string, clientData: Partial<Omit<Client, 'id'>>) => void;
@@ -99,13 +104,14 @@ export function AppProvider({
   const [books, setBooks] = React.useState<EnrichedBook[]>(initialBooks);
   const [documents, setDocuments] = React.useState<AppDocument[]>(initialDocuments);
   const [auditLogs, setAuditLogs] = React.useState<(AuditLog & { user: string; })[]>(initialAuditLogs);
+  const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
   const { toast } = useToast();
   
   // --- UTILITY FUNCTIONS ---
-  const enrichBook = (book: RawBook): EnrichedBook => {
-      const project = projects.find(p => p.id === book.projectId);
-      const client = clients.find(c => c.id === project?.clientId);
-      const bookDocuments = documents.filter(d => d.bookId === book.id);
+  const enrichBook = React.useCallback((book: RawBook, allProjects: EnrichedProject[], allClients: Client[], allDocuments: AppDocument[]): EnrichedBook => {
+      const project = allProjects.find(p => p.id === book.projectId);
+      const client = allClients.find(c => c.id === project?.clientId);
+      const bookDocuments = allDocuments.filter(d => d.bookId === book.id);
       const bookProgress = book.expectedDocuments > 0 ? (bookDocuments.length / book.expectedDocuments) * 100 : 0;
       
       return {
@@ -116,12 +122,12 @@ export function AppProvider({
           documentCount: bookDocuments.length,
           progress: Math.min(100, bookProgress),
       }
-  };
+  }, []);
 
-  const enrichProject = (project: Project): EnrichedProject => {
-      const client = clients.find(c => c.id === project.clientId);
-      const projectBooks = books.filter(b => b.projectId === project.id);
-      const projectDocuments = documents.filter(d => d.projectId === project.id);
+  const enrichProject = React.useCallback((project: Project, allClients: Client[], allBooks: EnrichedBook[], allDocuments: AppDocument[]): EnrichedProject => {
+      const client = allClients.find(c => c.id === project.clientId);
+      const projectBooks = allBooks.filter(b => b.projectId === project.id);
+      const projectDocuments = allDocuments.filter(d => d.projectId === project.id);
       
       const totalExpected = projectBooks.reduce((sum, book) => sum + book.expectedDocuments, 0);
       const progress = totalExpected > 0 ? (projectDocuments.length / totalExpected) * 100 : 0;
@@ -134,7 +140,7 @@ export function AppProvider({
           progress: Math.min(100, progress),
           books: projectBooks,
       };
-  };
+  }, []);
 
   // --- CRUD ACTIONS ---
 
@@ -151,12 +157,17 @@ export function AppProvider({
   };
 
   const deleteClient = (clientId: string) => {
+    const associatedProjectIds = projects.filter(p => p.clientId === clientId).map(p => p.id);
+    
     setClients(prev => prev.filter(c => c.id !== clientId));
-    // Also delete associated projects and books for data consistency
-    const projectsToDelete = projects.filter(p => p.clientId === clientId).map(p => p.id);
     setProjects(prev => prev.filter(p => p.clientId !== clientId));
-    setBooks(prev => prev.filter(b => !projectsToDelete.includes(b.projectId)));
-    toast({ title: "Client Deleted", description: "Client and all associated projects have been deleted.", variant: "destructive" });
+    setBooks(prev => prev.filter(b => !associatedProjectIds.includes(b.projectId)));
+    setDocuments(prev => prev.filter(d => d.clientId !== clientId));
+
+    if (associatedProjectIds.includes(selectedProjectId!)) {
+        setSelectedProjectId(null);
+    }
+    toast({ title: "Client Deleted", description: "Client and all associated projects/data have been deleted.", variant: "destructive" });
   };
   
   // Users
@@ -179,7 +190,7 @@ export function AppProvider({
   // Projects
   const addProject = (projectData: Omit<Project, 'id'>) => {
     const newProjectData: Project = { id: `proj_${Date.now()}`, ...projectData };
-    const newEnrichedProject = enrichProject(newProjectData);
+    const newEnrichedProject = enrichProject(newProjectData, clients, books, documents);
     setProjects(prev => [...prev, newEnrichedProject]);
     toast({ title: "Project Added", description: `Project "${newProjectData.name}" has been created.` });
   };
@@ -188,14 +199,18 @@ export function AppProvider({
       setProjects(prev => prev.map(p => {
           if (p.id !== projectId) return p;
           const updatedRaw: Project = { ...p, ...projectData, books: p.books };
-          return enrichProject(updatedRaw);
+          return enrichProject(updatedRaw, clients, books, documents);
       }));
       toast({ title: "Project Updated" });
   };
 
   const deleteProject = (projectId: string) => {
+      if (selectedProjectId === projectId) {
+        setSelectedProjectId(null);
+      }
       setProjects(prev => prev.filter(p => p.id !== projectId));
       setBooks(prev => prev.filter(b => b.projectId !== projectId));
+      setDocuments(prev => prev.filter(d => d.projectId !== projectId));
       toast({ title: "Project Deleted", variant: "destructive" });
   };
 
@@ -207,18 +222,19 @@ export function AppProvider({
           projectId,
           ...bookData,
       };
-      const newEnrichedBook = enrichBook(newRawBook);
+      const newEnrichedBook = enrichBook(newRawBook, projects, clients, documents);
       setBooks(prev => [...prev, newEnrichedBook]);
       toast({ title: "Book Added", description: `Book "${newRawBook.name}" has been added.` });
   };
   
   const updateBook = (bookId: string, bookData: Partial<Omit<RawBook, 'id' | 'projectId' | 'status'>>) => {
-      setBooks(prev => prev.map(b => b.id === bookId ? enrichBook({ ...b, ...bookData }) : b));
+      setBooks(prev => prev.map(b => b.id === bookId ? enrichBook({ ...b, ...bookData }, projects, clients, documents) : b));
       toast({ title: "Book Updated" });
   };
 
   const deleteBook = (bookId: string) => {
       setBooks(prev => prev.filter(b => b.id !== bookId));
+      setDocuments(prev => prev.filter(d => d.bookId !== bookId));
       toast({ title: "Book Deleted", variant: "destructive" });
   };
 
@@ -230,7 +246,7 @@ export function AppProvider({
             projectId,
             ...book
         };
-        return enrichBook(newRawBook);
+        return enrichBook(newRawBook, projects, clients, documents);
     });
     setBooks(prev => [...prev, ...booksToAdd]);
     toast({
@@ -429,8 +445,31 @@ export function AppProvider({
     toast({ title: `Flag ${flag ? 'Set' : 'Cleared'}`, description: `Document has been marked with: ${flagLabel}` });
   }
 
+  // Memoized filtered lists
+  const filteredProjects = React.useMemo(() => {
+    if (!selectedProjectId) return projects;
+    return projects.filter(p => p.id === selectedProjectId);
+  }, [projects, selectedProjectId]);
+
+  const filteredBooks = React.useMemo(() => {
+    if (!selectedProjectId) return books;
+    return books.filter(b => b.projectId === selectedProjectId);
+  }, [books, selectedProjectId]);
+
+  const filteredDocuments = React.useMemo(() => {
+    if (!selectedProjectId) return documents;
+    return documents.filter(d => d.projectId === selectedProjectId);
+  }, [documents, selectedProjectId]);
+
   const value = { 
-    clients, users, projects, books, documents, auditLogs,
+    clients, users, 
+    projects: filteredProjects, 
+    books: filteredBooks, 
+    documents: filteredDocuments, 
+    auditLogs,
+    allProjects: projects,
+    selectedProjectId,
+    setSelectedProjectId,
     addClient, updateClient, deleteClient,
     addUser, updateUser, deleteUser,
     addProject, updateProject, deleteProject,

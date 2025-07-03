@@ -19,8 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { MoreHorizontal, PlusCircle, BookUp, Trash2, Edit, Info } from "lucide-react"
+import { MoreHorizontal, PlusCircle, BookUp, Trash2, Edit, Info, FolderSearch } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,25 +57,18 @@ import { useToast } from "@/hooks/use-toast"
 
 
 export default function BookManagementClient() {
-  const { projects, books, addBook, updateBook, deleteBook, importBooks } = useAppContext();
-  const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null)
+  const { books, addBook, updateBook, deleteBook, importBooks, selectedProjectId } = useAppContext();
   const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | 'import' | 'details' | null; data?: EnrichedBook }>({ open: false, type: null })
   
   const [importJson, setImportJson] = React.useState("");
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-
-  const filteredBooks = React.useMemo(() => {
-    if (!selectedProjectId) return []
-    return books.filter(b => b.projectId === selectedProjectId)
-  }, [books, selectedProjectId])
-
   const openDialog = (type: 'new' | 'edit' | 'delete' | 'import' | 'details', data?: EnrichedBook) => {
-    if ((type === 'new' || type === 'edit' || type === 'import') && !selectedProjectId) {
+    if ((type === 'new' || type === 'import') && !selectedProjectId) {
       toast({
           title: "No Project Selected",
-          description: "Please select a project before adding or importing books.",
+          description: "Please select a project from the global filter in the header before adding or importing books.",
           variant: "destructive"
       });
       return;
@@ -137,7 +129,6 @@ export default function BookManagementClient() {
     }
   }
 
-
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
@@ -145,7 +136,7 @@ export default function BookManagementClient() {
           <h1 className="font-headline text-3xl font-bold tracking-tight">Book Management</h1>
           <p className="text-muted-foreground">Load and manage the list of books for each project.</p>
         </div>
-         <Button variant="outline" onClick={() => openDialog('import')}>
+         <Button variant="outline" onClick={() => openDialog('import')} disabled={!selectedProjectId}>
             <BookUp className="mr-2 h-4 w-4"/> Import Book List (JSON)
         </Button>
       </div>
@@ -155,21 +146,11 @@ export default function BookManagementClient() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Book Manifest</CardTitle>
-              <CardDescription>Select a project to view and manage its books.</CardDescription>
+              <CardDescription>
+                {selectedProjectId ? "Showing books for the selected project." : "Select a project from the top bar to manage its books."}
+              </CardDescription>
             </div>
             <div className="flex gap-2">
-               <Select onValueChange={setSelectedProjectId} value={selectedProjectId || ""}>
-                  <SelectTrigger className="w-[250px]">
-                    <SelectValue placeholder="Select a project" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {projects.map(project => (
-                      <SelectItem key={project.id} value={project.id}>
-                        {project.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
                 <Button onClick={() => openDialog('new')} disabled={!selectedProjectId}>
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Book
                 </Button>
@@ -189,7 +170,7 @@ export default function BookManagementClient() {
               </TableHeader>
               <TableBody>
                 {selectedProjectId ? (
-                  filteredBooks.length > 0 ? filteredBooks.map(book => (
+                  books.length > 0 ? books.map(book => (
                       <TableRow key={book.id}>
                           <TableCell className="font-medium">{book.name}</TableCell>
                           <TableCell><Badge variant="outline">{book.status}</Badge></TableCell>
@@ -229,7 +210,11 @@ export default function BookManagementClient() {
                 ) : (
                   <TableRow>
                     <TableCell colSpan={5} className="h-24 text-center">
-                      Please select a project to see its books.
+                       <div className="flex flex-col items-center gap-2">
+                            <FolderSearch className="h-10 w-10 text-muted-foreground"/>
+                            <span className="font-medium">No Project Selected</span>
+                            <p className="text-muted-foreground">Please use the global filter in the header to select a project.</p>
+                       </div>
                     </TableCell>
                   </TableRow>
                 )}
