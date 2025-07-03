@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -20,6 +19,7 @@ import {
   ScanLine,
   Send,
   Sliders,
+  SlidersHorizontal,
   ThumbsDown,
   Undo2,
   Users2,
