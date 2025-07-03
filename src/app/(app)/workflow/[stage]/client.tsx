@@ -22,10 +22,13 @@ import {
 } from "@/components/ui/card"
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send, FolderSync } from "lucide-react";
+import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send, FolderSync, Upload, XCircle, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppContext } from "@/context/workflow-context";
 import { EnrichedBook, AppDocument } from "@/context/workflow-context";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const iconMap: { [key: string]: LucideIcon } = {
     Check,
@@ -79,6 +82,9 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const { title, description, dataType, actionButtonLabel, actionButtonIcon, emptyStateText, dataStatus, dataStage } = config;
   const ActionIcon = actionButtonIcon ? iconMap[actionButtonIcon] : null;
 
+  const [scanningDialog, setScanningDialog] = React.useState<{ open: boolean, book: EnrichedBook | null }>({ open: false, book: null });
+  const [selectedFolderName, setSelectedFolderName] = React.useState<string | null>(null);
+
   const displayItems = React.useMemo(() => {
     if (dataType === 'book' && dataStatus) {
       return books.filter(book => book.status === dataStatus);
@@ -122,28 +128,68 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     })
   }
 
-  const renderBookRow = (item: EnrichedBook) => (
-    <TableRow key={item.id}>
-      <TableCell className="font-medium">
-         <Link href={`/books/${item.id}`} className="hover:underline">{item.name}</Link>
-      </TableCell>
-      <TableCell>{item.projectName}</TableCell>
-      <TableCell className="hidden md:table-cell">{item.clientName}</TableCell>
-      <TableCell>
-        <Badge variant={getBadgeVariant(item.status)}>{item.status}</Badge>
-      </TableCell>
-      {(actionButtonLabel) && (
-        <TableCell>
-            {actionButtonLabel && (
-                <Button size="sm" onClick={() => handleGenericAction(item)}>
-                    {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
-                    {actionButtonLabel}
-                </Button>
-            )}
+  const handleDirectorySelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const firstFile = files[0];
+      const pathParts = (firstFile as any).webkitRelativePath?.split('/') || [];
+      if (pathParts.length > 1) {
+        const folderName = pathParts[0];
+        setSelectedFolderName(folderName);
+      } else {
+        setSelectedFolderName(null);
+        toast({ title: "Invalid Selection", description: "Please select a folder, not an individual file.", variant: "destructive" });
+      }
+    } else {
+        setSelectedFolderName(null);
+    }
+  };
+
+  const handleConfirmScan = () => {
+    if (scanningDialog.book) {
+      handleBookAction(scanningDialog.book.id, scanningDialog.book.status);
+      closeScanningDialog();
+    }
+  };
+
+  const closeScanningDialog = () => {
+    setScanningDialog({ open: false, book: null });
+    setSelectedFolderName(null);
+  }
+
+  const isScanFolderMatch = scanningDialog.book?.name === selectedFolderName;
+
+  const renderBookRow = (item: EnrichedBook) => {
+    const isScanningStage = stage === 'scanning';
+
+    return (
+        <TableRow key={item.id}>
+        <TableCell className="font-medium">
+            <Link href={`/books/${item.id}`} className="hover:underline">{item.name}</Link>
         </TableCell>
-      )}
-    </TableRow>
-  )
+        <TableCell>{item.projectName}</TableCell>
+        <TableCell className="hidden md:table-cell">{item.clientName}</TableCell>
+        <TableCell>
+            <Badge variant={getBadgeVariant(item.status)}>{item.status}</Badge>
+        </TableCell>
+        {(actionButtonLabel) && (
+            <TableCell>
+                {isScanningStage ? (
+                    <Button size="sm" onClick={() => setScanningDialog({ open: true, book: item })}>
+                        {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
+                        {actionButtonLabel}
+                    </Button>
+                ) : (
+                    <Button size="sm" onClick={() => handleGenericAction(item)}>
+                        {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
+                        {actionButtonLabel}
+                    </Button>
+                )}
+            </TableCell>
+        )}
+        </TableRow>
+    )
+  }
   
   const renderDocumentRow = (item: AppDocument) => (
      <TableRow key={item.id}>
@@ -179,6 +225,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle className="font-headline">{title}</CardTitle>
@@ -231,5 +278,50 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         </div>
       </CardFooter>
     </Card>
+
+    <Dialog open={scanningDialog.open} onOpenChange={closeScanningDialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Confirm Scanning for "{scanningDialog.book?.name}"</DialogTitle>
+          <DialogDescription>
+            Select the folder containing the scanned pages. The folder name must exactly match the book name to proceed.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="grid w-full items-center gap-1.5">
+              <Label htmlFor="folder-upload">Select Scanned Folder</Label>
+              <div className="flex items-center gap-2">
+                <Input id="folder-upload" type="file" onChange={handleDirectorySelect} webkitdirectory="true" directory="true" className="hidden" />
+                <Button asChild variant="outline">
+                    <label htmlFor="folder-upload" className="cursor-pointer">
+                        <Upload className="mr-2 h-4 w-4" />
+                        Choose Directory
+                    </label>
+                </Button>
+                {selectedFolderName && (
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                        {isScanFolderMatch ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-destructive" />}
+                        <span>{selectedFolderName}</span>
+                    </div>
+                )}
+              </div>
+          </div>
+          {selectedFolderName && !isScanFolderMatch && (
+              <p className="text-sm text-destructive">
+                  Folder name does not match book name. Expected: "{scanningDialog.book?.name}".
+              </p>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={closeScanningDialog}>Cancel</Button>
+          <Button onClick={handleConfirmScan} disabled={!isScanFolderMatch}>
+            Confirm Scan
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }
+
+    
