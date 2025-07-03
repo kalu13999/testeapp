@@ -22,13 +22,15 @@ import {
 } from "@/components/ui/card"
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send, FolderSync, Upload, XCircle, CheckCircle } from "lucide-react";
+import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send, FolderSync, Upload, XCircle, CheckCircle, FileWarning } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppContext } from "@/context/workflow-context";
 import { EnrichedBook, AppDocument } from "@/context/workflow-context";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
 
 const iconMap: { [key: string]: LucideIcon } = {
     Check,
@@ -82,9 +84,8 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const { title, description, dataType, actionButtonLabel, actionButtonIcon, emptyStateText, dataStatus, dataStage } = config;
   const ActionIcon = actionButtonIcon ? iconMap[actionButtonIcon] : null;
 
-  const [scanningDialog, setScanningDialog] = React.useState<{ open: boolean, book: EnrichedBook | null }>({ open: false, book: null });
-  const [selectedFolderName, setSelectedFolderName] = React.useState<string | null>(null);
-
+  const [scanState, setScanState] = React.useState<{ open: boolean; book: EnrichedBook | null; folderName: string | null; fileCount: number | null; }>({ open: false, book: null, folderName: null, fileCount: null });
+  
   const displayItems = React.useMemo(() => {
     if (dataType === 'book' && dataStatus) {
       return books.filter(book => book.status === dataStatus);
@@ -133,31 +134,34 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     if (files && files.length > 0) {
       const firstFile = files[0];
       const pathParts = (firstFile as any).webkitRelativePath?.split('/') || [];
-      if (pathParts.length > 1) {
-        const folderName = pathParts[0];
-        setSelectedFolderName(folderName);
-      } else {
-        setSelectedFolderName(null);
+      const folderName = pathParts.length > 1 ? pathParts[0] : null;
+      
+      const tifFiles = Array.from(files).filter(file => file.name.toLowerCase().endsWith('.tif'));
+      const fileCount = tifFiles.length;
+
+      if (!folderName) {
         toast({ title: "Invalid Selection", description: "Please select a folder, not an individual file.", variant: "destructive" });
+        setScanState(prev => ({ ...prev, folderName: null, fileCount: null }));
+      } else {
+        setScanState(prev => ({ ...prev, folderName, fileCount }));
       }
     } else {
-        setSelectedFolderName(null);
+        setScanState(prev => ({ ...prev, folderName: null, fileCount: null }));
     }
   };
 
   const handleConfirmScan = () => {
-    if (scanningDialog.book) {
-      handleBookAction(scanningDialog.book.id, scanningDialog.book.status);
+    if (scanState.book) {
+      handleBookAction(scanState.book.id, scanState.book.status, scanState.fileCount ?? 0);
       closeScanningDialog();
     }
   };
 
   const closeScanningDialog = () => {
-    setScanningDialog({ open: false, book: null });
-    setSelectedFolderName(null);
+    setScanState({ open: false, book: null, folderName: null, fileCount: null });
   }
 
-  const isScanFolderMatch = scanningDialog.book?.name === selectedFolderName;
+  const isScanFolderMatch = scanState.book?.name === scanState.folderName;
 
   const renderBookRow = (item: EnrichedBook) => {
     const isScanningStage = stage === 'scanning';
@@ -175,7 +179,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         {(actionButtonLabel) && (
             <TableCell>
                 {isScanningStage ? (
-                    <Button size="sm" onClick={() => setScanningDialog({ open: true, book: item })}>
+                    <Button size="sm" onClick={() => setScanState({ open: true, book: item, folderName: null, fileCount: null })}>
                         {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
                         {actionButtonLabel}
                     </Button>
@@ -279,37 +283,47 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
       </CardFooter>
     </Card>
 
-    <Dialog open={scanningDialog.open} onOpenChange={closeScanningDialog}>
+    <Dialog open={scanState.open} onOpenChange={closeScanningDialog}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Confirm Scanning for "{scanningDialog.book?.name}"</DialogTitle>
+          <DialogTitle>Confirm Scanning for "{scanState.book?.name}"</DialogTitle>
           <DialogDescription>
-            Select the folder containing the scanned pages. The folder name must exactly match the book name to proceed.
+            Select the folder containing the scanned pages. The folder name must match the book name.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="grid w-full items-center gap-1.5">
               <Label htmlFor="folder-upload">Select Scanned Folder</Label>
               <div className="flex items-center gap-2">
-                <Input id="folder-upload" type="file" onChange={handleDirectorySelect} webkitdirectory="true" directory="true" className="hidden" />
+                <Input id="folder-upload" type="file" onChange={handleDirectorySelect} webkitdirectory="true" directory="true" className="hidden" accept=".tif" />
                 <Button asChild variant="outline">
                     <label htmlFor="folder-upload" className="cursor-pointer">
                         <Upload className="mr-2 h-4 w-4" />
                         Choose Directory
                     </label>
                 </Button>
-                {selectedFolderName && (
+                {scanState.folderName && (
                     <div className="flex items-center gap-2 text-sm font-medium">
                         {isScanFolderMatch ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-destructive" />}
-                        <span>{selectedFolderName}</span>
+                        <span>{scanState.folderName}</span>
                     </div>
                 )}
               </div>
           </div>
-          {selectedFolderName && !isScanFolderMatch && (
+          {scanState.folderName && !isScanFolderMatch && (
               <p className="text-sm text-destructive">
-                  Folder name does not match book name. Expected: "{scanningDialog.book?.name}".
+                  Folder name does not match book name. Expected: "{scanState.book?.name}".
               </p>
+          )}
+          {scanState.book && scanState.fileCount !== null && scanState.fileCount !== scanState.book.expectedDocuments && (
+            <Alert variant="destructive">
+              <FileWarning className="h-4 w-4" />
+              <AlertTitle>File Count Mismatch</AlertTitle>
+              <AlertDescription>
+                Found {scanState.fileCount} .tif files, but expected {scanState.book.expectedDocuments}.
+                Proceeding will only generate {scanState.fileCount} pages.
+              </AlertDescription>
+            </Alert>
           )}
         </div>
         <DialogFooter>
@@ -323,5 +337,3 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     </>
   )
 }
-
-    

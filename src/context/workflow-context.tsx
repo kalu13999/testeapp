@@ -61,7 +61,7 @@ type AppContextType = {
   importBooks: (projectId: string, newBooks: BookImport[]) => void;
 
   // Workflow Actions
-  handleBookAction: (bookId: string, currentStatus: string) => void;
+  handleBookAction: (bookId: string, currentStatus: string, actualPageCount?: number) => void;
   handleMoveBookToNextStage: (bookId: string, currentStage: string) => void;
   handleClientAction: (bookId: string, action: 'approve' | 'reject', reason?: string) => void;
   handleFinalize: (bookId: string) => void;
@@ -249,7 +249,7 @@ export function AppProvider({
     );
   };
   
-  const handleBookAction = (bookId: string, currentStatus: string) => {
+  const handleBookAction = (bookId: string, currentStatus: string, actualPageCount?: number) => {
     const nextStatus = bookStatusTransition[currentStatus];
     if (nextStatus) {
       updateBookStatus(bookId, nextStatus);
@@ -265,7 +265,9 @@ export function AppProvider({
         const existingDocs = documents.some(d => d.bookId === book.id);
         if (existingDocs) return;
 
-        const newDocs: AppDocument[] = Array.from({ length: book.expectedDocuments }).map((_, i) => {
+        const pagesToCreate = actualPageCount ?? book.expectedDocuments;
+
+        const newDocs: AppDocument[] = Array.from({ length: pagesToCreate }).map((_, i) => {
           const pageName = `${book.name} - Page ${i + 1}`;
           return {
             id: `doc_${book.id}_${i + 1}`,
@@ -288,7 +290,7 @@ export function AppProvider({
         setDocuments(prevDocs => [...prevDocs, ...newDocs]);
         toast({
           title: "Scanning Complete",
-          description: `${book.expectedDocuments} digital pages created in Storage.`
+          description: `${pagesToCreate} digital pages created in Storage.`
         });
       }
     }
@@ -316,11 +318,15 @@ export function AppProvider({
     const book = books.find(b => b.id === bookId);
     moveBookDocuments(bookId, newStatus);
     
-    updateBookStatus(bookId, newStatus, (b) => ({
+    setBooks(prev => prev.map(b => {
+      if (b.id !== bookId) return b;
+      return {
         ...b,
+        status: newStatus,
         rejectionReason: isApproval ? undefined : reason,
-        status: newStatus
+      };
     }));
+
 
     toast({
       title: `Book ${isApproval ? 'Approved' : 'Rejected'}`,
