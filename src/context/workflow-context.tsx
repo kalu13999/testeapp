@@ -473,41 +473,31 @@ export function AppProvider({
   const handleCancelTask = React.useCallback((bookId: string, currentStatus: string) => {
     const book = rawBooks.find(b => b.id === bookId);
     if (!book) return;
-    
-    let previousBookStatus = '';
-    let previousDocStatus = '';
-    let details = '';
-    let updater: (book: RawBook) => Partial<RawBook> = b => b;
 
-    switch (currentStatus) {
-      case 'Scanning Started':
-        previousBookStatus = 'To Scan';
-        previousDocStatus = 'To Scan'; 
-        updater = b => ({ ...b, scanStartTime: undefined });
-        details = `Scanning for book "${book.name}" was cancelled, returning to Scan Queue.`;
-        break;
-      case 'Indexing Started':
-        previousBookStatus = 'To Indexing';
-        previousDocStatus = 'To Indexing';
-        updater = b => ({ ...b, indexingStartTime: undefined });
-        details = `Indexing for book "${book.name}" was cancelled, returning to Indexing Queue.`;
-        break;
-      case 'Checking Started':
-        previousBookStatus = 'To Checking';
-        previousDocStatus = 'To Checking';
-        updater = b => ({ ...b, qcStartTime: undefined });
-        details = `Checking for book "${book.name}" was cancelled, returning to Checking Queue.`;
-        break;
-      default:
-        return;
+    if (currentStatus === 'Scanning Started') {
+      setRawBooks(prev => prev.map(b => b.id === bookId ? { ...b, status: 'To Scan', scanStartTime: undefined } : b));
+      moveBookDocuments(bookId, 'To Scan');
+      logAction('Task Cancelled', `Scanning for book "${book.name}" was cancelled.`, { bookId });
+      toast({ title: 'Task Cancelled', description: 'Book returned to Scan Queue.', variant: 'destructive'});
+      return;
     }
 
-    updateBookStatus(bookId, previousBookStatus, updater);
-    moveBookDocuments(bookId, previousDocStatus);
+    if (currentStatus === 'Indexing Started') {
+      setRawBooks(prev => prev.map(b => b.id === bookId ? { ...b, status: 'To Indexing', indexingStartTime: undefined } : b));
+      moveBookDocuments(bookId, 'To Indexing');
+      logAction('Task Cancelled', `Indexing for book "${book.name}" was cancelled.`, { bookId });
+      toast({ title: 'Task Cancelled', description: 'Book returned to Indexing Queue.', variant: 'destructive'});
+      return;
+    }
 
-    logAction('Task Cancelled', details, { bookId });
-    toast({ title: 'Task Cancelled', description: 'Book returned to the previous queue.', variant: 'destructive'});
-  }, [rawBooks, updateBookStatus, moveBookDocuments, logAction, toast]);
+    if (currentStatus === 'Checking Started') {
+      setRawBooks(prev => prev.map(b => b.id === bookId ? { ...b, status: 'To Checking', qcStartTime: undefined } : b));
+      moveBookDocuments(bookId, 'To Checking');
+      logAction('Task Cancelled', `Checking for book "${book.name}" was cancelled.`, { bookId });
+      toast({ title: 'Task Cancelled', description: 'Book returned to Checking Queue.', variant: 'destructive'});
+      return;
+    }
+  }, [rawBooks, moveBookDocuments, logAction, toast]);
   
   const handleAdminStatusOverride = (bookId: string, newStatus: string, reason: string) => {
     const book = rawBooks.find(b => b.id === bookId);
