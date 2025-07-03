@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { AppProvider } from "@/context/workflow-context";
-import { getClients, getEnrichedAuditLogs, getEnrichedBooks, getEnrichedDocuments, getEnrichedProjects, getPermissions, getProcessingLogs, getRoles, getUsers } from "@/lib/data";
+import { getClients, getEnrichedAuditLogs, getRawBooks, getEnrichedDocuments, getRawProjects, getPermissions, getProcessingLogs, getRoles, getUsers } from "@/lib/data";
 
 export const metadata: Metadata = {
   title: "FlowVault",
@@ -18,8 +18,8 @@ export default async function RootLayout({
   const [clients, users, projects, books, documents, auditLogs, processingLogs, permissions, roles] = await Promise.all([
     getClients(),
     getUsers(),
-    getEnrichedProjects(),
-    getEnrichedBooks(),
+    getRawProjects(),
+    getRawBooks(),
     getEnrichedDocuments(),
     getEnrichedAuditLogs(),
     getProcessingLogs(),

@@ -109,8 +109,8 @@ export function AppProvider({
 }: {
   initialClients: Client[];
   initialUsers: User[];
-  initialProjects: EnrichedProject[];
-  initialBooks: EnrichedBook[];
+  initialProjects: Project[];
+  initialBooks: RawBook[];
   initialDocuments: AppDocument[];
   initialAuditLogs: EnrichedAuditLog[];
   initialProcessingLogs: ProcessingLog[];
@@ -121,8 +121,8 @@ export function AppProvider({
   const [currentUser, setCurrentUser] = React.useState<User | null>(null);
   const [clients, setClients] = React.useState<Client[]>(initialClients);
   const [users, setUsers] = React.useState<User[]>(initialUsers);
-  const [projects, setProjects] = React.useState<EnrichedProject[]>(initialProjects);
-  const [books, setBooks] = React.useState<EnrichedBook[]>(initialBooks);
+  const [projects, setProjects] = React.useState<Project[]>(initialProjects);
+  const [books, setBooks] = React.useState<RawBook[]>(initialBooks);
   const [documents, setDocuments] = React.useState<AppDocument[]>(initialDocuments);
   const [auditLogs, setAuditLogs] = React.useState<EnrichedAuditLog[]>(initialAuditLogs);
   const [processingLogs, setProcessingLogs] = React.useState<ProcessingLog[]>(initialProcessingLogs);
@@ -158,11 +158,12 @@ export function AppProvider({
     // The redirect will be handled by the layout effect
   };
   
-  // --- UTILITY FUNCTIONS ---
-  const enrichBook = React.useCallback((book: RawBook, allProjects: EnrichedProject[], allClients: Client[], allDocuments: AppDocument[]): EnrichedBook => {
-      const project = allProjects.find(p => p.id === book.projectId);
-      const client = allClients.find(c => c.id === project?.clientId);
-      const bookDocuments = allDocuments.filter(d => d.bookId === book.id);
+  // --- Memoized Data Enrichment ---
+  const enrichedBooks: EnrichedBook[] = React.useMemo(() => {
+    return books.map(book => {
+      const project = projects.find(p => p.id === book.projectId);
+      const client = clients.find(c => c.id === project?.clientId);
+      const bookDocuments = documents.filter(d => d.bookId === book.id);
       const bookProgress = book.expectedDocuments > 0 ? (bookDocuments.length / book.expectedDocuments) * 100 : 0;
       
       return {
@@ -173,25 +174,29 @@ export function AppProvider({
           documentCount: bookDocuments.length,
           progress: Math.min(100, bookProgress),
       }
-  }, []);
+    })
+  }, [books, projects, clients, documents]);
 
-  const enrichProject = React.useCallback((project: Project, allClients: Client[], allBooks: EnrichedBook[], allDocuments: AppDocument[]): EnrichedProject => {
-      const client = allClients.find(c => c.id === project.clientId);
-      const projectBooks = allBooks.filter(b => b.projectId === project.id);
-      const projectDocuments = allDocuments.filter(d => d.projectId === project.id);
-      
-      const totalExpected = projectBooks.reduce((sum, book) => sum + book.expectedDocuments, 0);
-      const progress = totalExpected > 0 ? (projectDocuments.length / totalExpected) * 100 : 0;
-      
-      return {
-          ...project,
-          clientName: client?.name || 'Unknown Client',
-          documentCount: projectDocuments.length,
-          totalExpected,
-          progress: Math.min(100, progress),
-          books: projectBooks,
-      };
-  }, []);
+  const enrichedProjects: EnrichedProject[] = React.useMemo(() => {
+    return projects.map(project => {
+        const client = clients.find(c => c.id === project.clientId);
+        const projectBooks = enrichedBooks.filter(b => b.projectId === project.id);
+        const projectDocuments = documents.filter(d => d.projectId === project.id);
+        
+        const totalExpected = projectBooks.reduce((sum, book) => sum + book.expectedDocuments, 0);
+        const progress = totalExpected > 0 ? (projectDocuments.length / totalExpected) * 100 : 0;
+        
+        return {
+            ...project,
+            clientName: client?.name || 'Unknown Client',
+            documentCount: projectDocuments.length,
+            totalExpected,
+            progress: Math.min(100, progress),
+            books: projectBooks,
+        };
+    });
+  }, [projects, clients, enrichedBooks, documents]);
+
 
   // --- CRUD ACTIONS ---
 
@@ -241,18 +246,13 @@ export function AppProvider({
   // Projects
   const addProject = (projectData: Omit<Project, 'id'>) => {
     const newProjectData: Project = { id: `proj_${Date.now()}`, ...projectData };
-    const newEnrichedProject = enrichProject(newProjectData, clients, books, documents);
-    setProjects(prev => [...prev, newEnrichedProject]);
+    setProjects(prev => [...prev, newProjectData]);
     toast({ title: "Project Added", description: `Project "${newProjectData.name}" has been created.` });
   };
   
   const updateProject = (projectId: string, projectData: Partial<Omit<Project, 'id'>>) => {
-      setProjects(prev => prev.map(p => {
-          if (p.id !== projectId) return p;
-          const updatedRaw: Project = { ...p, ...projectData, books: p.books };
-          return enrichProject(updatedRaw, clients, books, documents);
-      }));
-      toast({ title: "Project Updated" });
+    setProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...projectData } : p));
+    toast({ title: "Project Updated" });
   };
 
   const deleteProject = (projectId: string) => {
@@ -273,13 +273,12 @@ export function AppProvider({
           projectId,
           ...bookData,
       };
-      const newEnrichedBook = enrichBook(newRawBook, projects, clients, documents);
-      setBooks(prev => [...prev, newEnrichedBook]);
+      setBooks(prev => [...prev, newRawBook]);
       toast({ title: "Book Added", description: `Book "${newRawBook.name}" has been added.` });
   };
   
   const updateBook = (bookId: string, bookData: Partial<Omit<RawBook, 'id' | 'projectId' | 'status'>>) => {
-      setBooks(prev => prev.map(b => b.id === bookId ? enrichBook({ ...b, ...bookData }, projects, clients, documents) : b));
+      setBooks(prev => prev.map(b => b.id === bookId ? { ...b, ...bookData } : b));
       toast({ title: "Book Updated" });
   };
 
@@ -297,7 +296,7 @@ export function AppProvider({
             projectId,
             ...book
         };
-        return enrichBook(newRawBook, projects, clients, documents);
+        return newRawBook;
     });
     setBooks(prev => [...prev, ...booksToAdd]);
     toast({
@@ -309,7 +308,7 @@ export function AppProvider({
 
   // --- WORKFLOW ACTIONS ---
 
-  const updateBookStatus = (bookId: string, newStatusName: string, updateFn?: (book: EnrichedBook) => Partial<EnrichedBook>) => {
+  const updateBookStatus = (bookId: string, newStatusName: string, updateFn?: (book: RawBook) => Partial<RawBook>) => {
     setBooks(prevBooks =>
       prevBooks.map(book =>
         book.id === bookId ? { ...book, status: newStatusName, ...(updateFn ? updateFn(book) : {}) } : book
@@ -320,6 +319,9 @@ export function AppProvider({
   const handleBookAction = (bookId: string, currentStatus: string, payload?: { actualPageCount?: number, scannerUserId?: string }) => {
     const nextStatus = bookStatusTransition[currentStatus];
     if (!nextStatus) return;
+
+    const book = books.find(b => b.id === bookId);
+    if (!book) return;
 
     // Handle moving from Pending -> To Scan (with scanner assignment)
     if (currentStatus === 'Pending' && payload?.scannerUserId) {
@@ -344,8 +346,9 @@ export function AppProvider({
     // Handle moving from Scanning Started -> Scanned
     if (currentStatus === 'Scanning Started') {
       updateBookStatus(bookId, nextStatus, () => ({ scanEndTime: new Date().toISOString() }));
-      const book = books.find(b => b.id === bookId);
-      if (!book) return;
+      const project = projects.find(p => p.id === book.projectId);
+      const client = clients.find(c => c.id === project?.clientId);
+      if (!project || !client) return;
 
       const existingDocs = documents.some(d => d.bookId === book.id);
       if (existingDocs) {
@@ -360,8 +363,8 @@ export function AppProvider({
         return {
           id: `doc_${book.id}_${i + 1}`,
           name: pageName,
-          clientId: book.clientId,
-          client: book.clientName,
+          clientId: client.id,
+          client: client.name,
           status: 'Storage',
           statusId: 'ds_4', // Corresponds to 'Storage'
           type: 'Scanned Page',
@@ -436,7 +439,7 @@ export function AppProvider({
   const handleClientAction = (bookId: string, action: 'approve' | 'reject', reason?: string) => {
     const isApproval = action === 'approve';
     const newStatus = isApproval ? 'Finalized' : 'Client Rejected';
-    const book = books.find(b => b.id === bookId);
+    const book = enrichedBooks.find(b => b.id === bookId);
     moveBookDocuments(bookId, newStatus);
     
     setBooks(prev => prev.map(b => {
@@ -474,7 +477,7 @@ export function AppProvider({
   };
   
   const addPageToBook = (bookId: string, position: number) => {
-    const book = books.find(b => b.id === bookId);
+    const book = enrichedBooks.find(b => b.id === bookId);
     if (!book) return;
 
     setDocuments(prevDocs => {
@@ -549,18 +552,18 @@ export function AppProvider({
     toast({ title: `Flag ${flag ? 'Set' : 'Cleared'}`, description: `Document has been marked with: ${flagLabel}` });
   }
 
-  // Memoized lists
+  // Memoized lists filtered by selected project
   const scannerUsers = React.useMemo(() => users.filter(user => user.role === 'Scanning'), [users]);
 
   const filteredProjects = React.useMemo(() => {
-    if (!selectedProjectId) return projects;
-    return projects.filter(p => p.id === selectedProjectId);
-  }, [projects, selectedProjectId]);
+    if (!selectedProjectId) return enrichedProjects;
+    return enrichedProjects.filter(p => p.id === selectedProjectId);
+  }, [enrichedProjects, selectedProjectId]);
 
   const filteredBooks = React.useMemo(() => {
-    if (!selectedProjectId) return books;
-    return books.filter(b => b.projectId === selectedProjectId);
-  }, [books, selectedProjectId]);
+    if (!selectedProjectId) return enrichedBooks;
+    return enrichedBooks.filter(b => b.projectId === selectedProjectId);
+  }, [enrichedBooks, selectedProjectId]);
 
   const filteredDocuments = React.useMemo(() => {
     if (!selectedProjectId) return documents;
@@ -577,7 +580,7 @@ export function AppProvider({
     processingLogs,
     roles: initialRoles,
     permissions: initialPermissions,
-    allProjects: projects,
+    allProjects: enrichedProjects,
     selectedProjectId,
     setSelectedProjectId,
     addClient, updateClient, deleteClient,
