@@ -2,9 +2,9 @@
 [
     { "id": "book_01", "name": "Financial Statements 2023", "status": "Pending", "expectedDocuments": 15, "projectId": "proj_1", "isbn": "978-1-23-456789-0", "author": "Innovate Corp Finance Dept.", "publicationYear": 2023, "priority": "High", "info": "Contains sensitive financial data." },
     { "id": "book_02", "name": "Employee Records", "status": "Pending", "expectedDocuments": 120, "projectId": "proj_1", "author": "Innovate Corp HR", "publicationYear": 2023, "priority": "High", "info": "Contains PII." },
-    { "id": "book_03", "name": "Client Contracts", "status": "Scanned", "expectedDocuments": 5, "projectId": "proj_1", "author": "Innovate Corp Legal", "publicationYear": 2023, "priority": "Medium", "info": "" },
+    { "id": "book_03", "name": "Client Contracts", "status": "Received", "expectedDocuments": 5, "projectId": "proj_1", "author": "Innovate Corp Legal", "publicationYear": 2023, "priority": "Medium", "info": "" },
     { "id": "book_04", "name": "Master Services Agreement", "status": "Complete", "expectedDocuments": 1, "projectId": "proj_2", "author": "Future Tech Legal", "publicationYear": 2024, "priority": "High", "info": "" },
-    { "id": "book_05", "name": "Security Compliance", "status": "Scanned", "expectedDocuments": 5, "projectId": "proj_2", "author": "Future Tech Security", "publicationYear": 2024, "priority": "Medium", "info": "Security audit documents." },
+    { "id": "book_05", "name": "Security Compliance", "status": "Received", "expectedDocuments": 5, "projectId": "proj_2", "author": "Future Tech Security", "publicationYear": 2024, "priority": "Medium", "info": "Security audit documents." },
     { "id": "book_06", "name": "Q1-Q2 Reports", "status": "Complete", "expectedDocuments": 15, "projectId": "proj_3", "publicationYear": 2022, "priority": "Low", "info": "" },
     { "id": "book_07", "name": "Q3-Q4 Reports", "status": "Pending", "expectedDocuments": 15, "projectId": "proj_3", "publicationYear": 2022, "priority": "Low", "info": "" },
     { "id": "book_08", "name": "Annual General Meeting Minutes", "status": "Pending", "expectedDocuments": 50, "projectId": "proj_4", "publicationYear": 2023, "priority": "Medium", "info": "" },
