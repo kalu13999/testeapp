@@ -22,10 +22,10 @@ import {
 } from "@/components/ui/card"
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send, FolderSync, Upload, XCircle, CheckCircle, FileWarning, PlayCircle } from "lucide-react";
+import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send, FolderSync, Upload, XCircle, CheckCircle, FileWarning, PlayCircle, UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppContext } from "@/context/workflow-context";
-import { EnrichedBook, AppDocument } from "@/context/workflow-context";
+import { EnrichedBook, AppDocument, User } from "@/context/workflow-context";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,7 +43,8 @@ const iconMap: { [key: string]: LucideIcon } = {
     Play,
     Send,
     FolderSync,
-    PlayCircle
+    PlayCircle,
+    UserPlus
 };
 
 interface WorkflowClientProps {
@@ -61,6 +62,7 @@ interface WorkflowClientProps {
 }
 
 type BadgeVariant = "default" | "destructive" | "secondary" | "outline";
+type AssignmentRole = 'scanner' | 'indexer' | 'qc';
 
 const getBadgeVariant = (status: string): BadgeVariant => {
     switch (status) {
@@ -88,18 +90,22 @@ const getBadgeVariant = (status: string): BadgeVariant => {
 
 
 export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
-  const { books, documents, handleBookAction, handleMoveBookToNextStage, updateDocumentStatus, currentUser, scannerUsers, handleStartTask } = useAppContext();
+  const { 
+    books, documents, handleBookAction, handleMoveBookToNextStage, 
+    updateDocumentStatus, currentUser, scannerUsers, indexerUsers, qcUsers,
+    handleStartTask, handleAssignUser
+  } = useAppContext();
+
   const { toast } = useToast();
   const { title, description, dataType, actionButtonLabel, actionButtonIcon, emptyStateText, dataStatus, dataStage } = config;
   const ActionIcon = actionButtonIcon ? iconMap[actionButtonIcon] : null;
 
   const [scanState, setScanState] = React.useState<{ open: boolean; book: EnrichedBook | null; folderName: string | null; fileCount: number | null; }>({ open: false, book: null, folderName: null, fileCount: null });
-  const [assignScannerState, setAssignScannerState] = React.useState<{ open: boolean; book: EnrichedBook | null }>({ open: false, book: null });
-  const [bulkAssignScannerState, setBulkAssignScannerState] = React.useState<{ open: boolean }>({ open: false });
-  const [selectedScannerId, setSelectedScannerId] = React.useState<string>("");
-
   const [selection, setSelection] = React.useState<string[]>([]);
   const [confirmationState, setConfirmationState] = React.useState({ open: false, title: '', description: '', onConfirm: () => {} });
+  const [assignState, setAssignState] = React.useState<{ open: boolean; book: EnrichedBook | null; role: AssignmentRole | null }>({ open: false, book: null, role: null });
+  const [bulkAssignState, setBulkAssignState] = React.useState<{ open: boolean; role: AssignmentRole | null }>({ open: false, role: null });
+  const [selectedUserId, setSelectedUserId] = React.useState<string>("");
 
   
   const displayItems = React.useMemo(() => {
@@ -110,10 +116,10 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
       if (stage === 'to-scan' && currentUser?.role === 'Scanning') {
         filteredBooks = filteredBooks.filter(book => book.scannerUserId === currentUser.id);
       }
-      if (stage === 'to-indexing' && currentUser?.role === 'Indexing') {
+      if ((stage === 'to-indexing' || stage === 'indexing-started') && currentUser?.role === 'Indexing') {
         filteredBooks = filteredBooks.filter(book => book.indexerUserId === currentUser.id);
       }
-      if (stage === 'to-checking' && currentUser?.role === 'QC Specialist') {
+      if ((stage === 'to-checking' || stage === 'checking-started') && currentUser?.role === 'QC Specialist') {
         filteredBooks = filteredBooks.filter(book => book.qcUserId === currentUser.id);
       }
       
@@ -131,35 +137,6 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   
   const openConfirmationDialog = ({ title, description, onConfirm}: Omit<typeof confirmationState, 'open'>) => {
     setConfirmationState({ open: true, title, description, onConfirm });
-  }
-
-  const handleGenericAction = (item: any) => {
-    if (stage === 'to-indexing') {
-        handleStartTask(item.id, 'indexing');
-    } else if (stage === 'to-checking') {
-        handleStartTask(item.id, 'qc');
-    } else if (dataType === 'book') {
-        handleBookAction(item.id, item.status);
-    } else { // It's a document
-        handleMoveBookToNextStage(item.bookId, item.status);
-    }
-  };
-
-  const handleBulkAction = () => {
-    const isReceptionStage = stage === 'reception';
-    if (isReceptionStage) {
-        // For reception, the confirmation dialog leads to the bulk assignment dialog.
-        setBulkAssignScannerState({ open: true });
-    } else {
-        // For other stages, perform the generic bulk action directly after confirmation.
-        selection.forEach(id => {
-          const item = displayItems.find(d => d.id === id);
-          if (item) {
-            handleGenericAction(item);
-          }
-        });
-        setSelection([]);
-    }
   }
   
   const handleQCAction = (item: any, newStatus: string) => {
@@ -219,30 +196,60 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     setScanState({ open: false, book: null, folderName: null, fileCount: null });
   }
 
-  const handleConfirmAssignment = () => {
-    if (assignScannerState.book && selectedScannerId) {
-      handleBookAction(assignScannerState.book.id, assignScannerState.book.status, { scannerUserId: selectedScannerId });
-      closeAssignmentDialog();
-    } else {
-      toast({ title: "No Scanner Selected", description: "Please select a scanner to assign the book.", variant: "destructive" });
-    }
+  // --- Assignment Dialog Logic ---
+  const assignmentConfig: { [key in AssignmentRole]: { users: User[], title: string, description: string } } = {
+    scanner: { users: scannerUsers, title: "Assign Scanner", description: "Select a scanner operator to process this book." },
+    indexer: { users: indexerUsers, title: "Assign Indexer", description: "Select an indexer to process this book." },
+    qc: { users: qcUsers, title: "Assign for QC", description: "Select a QC specialist to review this book." }
   };
 
+  const openAssignmentDialog = (book: EnrichedBook, role: AssignmentRole) => {
+    setAssignState({ open: true, book, role });
+  };
+  
   const closeAssignmentDialog = () => {
-    setAssignScannerState({ open: false, book: null });
-    setSelectedScannerId("");
+    setAssignState({ open: false, book: null, role: null });
+    setSelectedUserId("");
+  };
+
+  const handleConfirmAssignment = () => {
+    if (assignState.book && selectedUserId && assignState.role) {
+      const { book, role } = assignState;
+      if (role === 'scanner') {
+        handleBookAction(book.id, book.status, { scannerUserId: selectedUserId });
+      } else {
+        handleAssignUser(book.id, selectedUserId, role);
+      }
+      closeAssignmentDialog();
+    } else {
+      toast({ title: "No User Selected", description: "Please select a user to assign the task.", variant: "destructive" });
+    }
+  };
+  
+  const openBulkAssignmentDialog = (role: AssignmentRole) => {
+    setBulkAssignState({ open: true, role });
+  };
+  
+  const closeBulkAssignmentDialog = () => {
+    setBulkAssignState({ open: false, role: null });
+    setSelectedUserId("");
   };
 
   const handleConfirmBulkAssignment = () => {
-    if (!selectedScannerId) {
-      toast({ title: "No Scanner Selected", description: "Please select a scanner to assign the books.", variant: "destructive" });
+    const role = bulkAssignState.role;
+    if (!selectedUserId || !role) {
+      toast({ title: "No User Selected", description: "Please select a user to assign the books.", variant: "destructive" });
       return;
     }
 
     selection.forEach(bookId => {
       const book = displayItems.find(b => b.id === bookId) as EnrichedBook;
       if (book) {
-        handleBookAction(book.id, book.status, { scannerUserId: selectedScannerId });
+        if (role === 'scanner') {
+          handleBookAction(book.id, book.status, { scannerUserId: selectedUserId });
+        } else {
+          handleAssignUser(book.id, selectedUserId, role);
+        }
       }
     });
 
@@ -250,28 +257,56 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     setSelection([]);
   };
 
-  const closeBulkAssignmentDialog = () => {
-    setBulkAssignScannerState({ open: false });
-    setSelectedScannerId("");
+  const handleSingleItemAction = (item: EnrichedBook) => {
+      switch (stage) {
+        case 'reception':
+            openAssignmentDialog(item, 'scanner');
+            break;
+        case 'scanning-started':
+            setScanState({ open: true, book: item, folderName: null, fileCount: null });
+            break;
+        case 'indexing-started':
+            openAssignmentDialog(item, 'qc');
+            break;
+        case 'checking-started':
+            handleMoveBookToNextStage(item.id, item.status);
+            break;
+        case 'to-indexing':
+            handleStartTask(item.id, 'indexing');
+            break;
+        case 'to-checking':
+            handleStartTask(item.id, 'qc');
+            break;
+        default: // Covers to-scan
+            handleBookAction(item.id, item.status);
+            break;
+      }
   };
 
+  const handleBulkAction = () => {
+      switch (stage) {
+        case 'reception':
+            openBulkAssignmentDialog('scanner');
+            break;
+        case 'indexing-started':
+            openBulkAssignmentDialog('qc');
+            break;
+        default:
+            selection.forEach(id => {
+              const item = displayItems.find(d => d.id === id) as EnrichedBook;
+              if (item) {
+                // This covers all other bulk actions that don't need a dialog
+                handleSingleItemAction(item);
+              }
+            });
+            setSelection([]);
+            break;
+      }
+  };
 
   const isScanFolderMatch = scanState.book?.name === scanState.folderName;
 
   const renderBookRow = (item: EnrichedBook, index: number) => {
-    const isScanningStartedStage = stage === 'scanning-started';
-    const isReceptionStage = stage === 'reception';
-    
-    const singleItemAction = () => {
-        if (isReceptionStage) {
-            setAssignScannerState({ open: true, book: item });
-        } else if (isScanningStartedStage) {
-            setScanState({ open: true, book: item, folderName: null, fileCount: null });
-        } else {
-            handleGenericAction(item);
-        }
-    }
-
     return (
         <TableRow key={item.id} data-state={selection.includes(item.id) && "selected"}>
         <TableCell>
@@ -296,7 +331,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                 <Button size="sm" onClick={() => openConfirmationDialog({
                     title: `Are you sure?`,
                     description: `This will perform the action "${actionButtonLabel}" on "${item.name}".`,
-                    onConfirm: singleItemAction
+                    onConfirm: () => handleSingleItemAction(item)
                 })}>
                     {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
                     {actionButtonLabel}
@@ -340,7 +375,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                  <Button size="sm" onClick={() => openConfirmationDialog({
                     title: `Are you sure?`,
                     description: `This will move the book for "${item.name}" to the next stage.`,
-                    onConfirm: () => handleGenericAction(item)
+                    onConfirm: () => handleMoveBookToNextStage(item.bookId, item.status)
                 })}>
                     {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
                     {actionButtonLabel}
@@ -505,63 +540,65 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
       </DialogContent>
     </Dialog>
 
-    <Dialog open={assignScannerState.open} onOpenChange={closeAssignmentDialog}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Assign Scanner for "{assignScannerState.book?.name}"</DialogTitle>
-          <DialogDescription>
-            Select a scanner operator to process this book. The book will then move to the 'To Scan' queue.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <Select value={selectedScannerId} onValueChange={setSelectedScannerId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select a scanner..." />
-            </SelectTrigger>
-            <SelectContent>
-              {scannerUsers.map(user => (
-                <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={closeAssignmentDialog}>Cancel</Button>
-          <Button onClick={handleConfirmAssignment} disabled={!selectedScannerId}>
-            Assign and Confirm
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-
-    <Dialog open={bulkAssignScannerState.open} onOpenChange={closeBulkAssignmentDialog}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Assign Scanner for {selection.length} Books</DialogTitle>
-          <DialogDescription>
-            Select a scanner operator to process the selected books. They will then move to the 'To Scan' queue.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <Select value={selectedScannerId} onValueChange={setSelectedScannerId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select a scanner..." />
-            </SelectTrigger>
-            <SelectContent>
-              {scannerUsers.map(user => (
-                <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={closeBulkAssignmentDialog}>Cancel</Button>
-          <Button onClick={handleConfirmBulkAssignment} disabled={!selectedScannerId}>
-            Assign and Confirm
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    {/* Single Assignment Dialog */}
+    {assignState.role && (
+      <Dialog open={assignState.open} onOpenChange={closeAssignmentDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{assignmentConfig[assignState.role].title} for "{assignState.book?.name}"</DialogTitle>
+            <DialogDescription>{assignmentConfig[assignState.role].description}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+              <SelectTrigger>
+                <SelectValue placeholder={`Select a ${assignState.role}...`} />
+              </SelectTrigger>
+              <SelectContent>
+                {assignmentConfig[assignState.role].users.map(user => (
+                  <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeAssignmentDialog}>Cancel</Button>
+            <Button onClick={handleConfirmAssignment} disabled={!selectedUserId}>
+              Assign and Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    )}
+    
+    {/* Bulk Assignment Dialog */}
+    {bulkAssignState.role && (
+      <Dialog open={bulkAssignState.open} onOpenChange={closeBulkAssignmentDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{assignmentConfig[bulkAssignState.role].title} for {selection.length} Books</DialogTitle>
+            <DialogDescription>{assignmentConfig[bulkAssignState.role].description}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+              <SelectTrigger>
+                <SelectValue placeholder={`Select a ${bulkAssignState.role}...`} />
+              </SelectTrigger>
+              <SelectContent>
+                {assignmentConfig[bulkAssignState.role].users.map(user => (
+                  <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeBulkAssignmentDialog}>Cancel</Button>
+            <Button onClick={handleConfirmBulkAssignment} disabled={!selectedUserId}>
+              Assign and Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    )}
     </>
   )
 }
