@@ -29,7 +29,7 @@ const digitalStageTransitions: { [key: string]: string } = {
 }
 
 // Client-side representation of a document
-export type AppDocument = RawDocument & { client: string; status: string; flag: 'error' | 'warning' | 'info' | null; };
+export type AppDocument = RawDocument & { client: string; status: string; flag: 'error' | 'warning' | 'info' | null; flagComment?: string; };
 
 type AppContextType = {
   // State
@@ -71,7 +71,7 @@ type AppContextType = {
   addPageToBook: (bookId: string, position: number) => void;
   deletePageFromBook: (pageId: string, bookId: string) => void;
   updateDocumentStatus: (docId: string, newStatus: string) => void;
-  updateDocumentFlag: (docId: string, flag: AppDocument['flag']) => void;
+  updateDocumentFlag: (docId: string, flag: AppDocument['flag'], comment?: string) => void;
 };
 
 const AppContext = React.createContext<AppContextType | undefined>(undefined);
@@ -419,10 +419,10 @@ export function AppProvider({
     );
   };
 
-  const updateDocumentFlag = (docId: string, flag: AppDocument['flag']) => {
+  const updateDocumentFlag = (docId: string, flag: AppDocument['flag'], comment?: string) => {
     setDocuments(prevDocs =>
       prevDocs.map(doc =>
-        doc.id === docId ? { ...doc, flag: flag } : doc
+        doc.id === docId ? { ...doc, flag, flagComment: flag ? comment : undefined } : doc
       )
     );
     const flagLabel = flag ? flag.charAt(0).toUpperCase() + flag.slice(1) : 'Cleared';

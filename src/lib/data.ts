@@ -38,6 +38,7 @@ export interface Document {
     projectId?: string | null;
     bookId?: string | null;
     flag?: 'error' | 'warning' | 'info' | null;
+    flagComment?: string;
     imageUrl?: string;
 }
 
