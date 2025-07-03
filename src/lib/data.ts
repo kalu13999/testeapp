@@ -89,6 +89,16 @@ export interface Project {
     info?: string;
 }
 
+export interface ProcessingLog {
+    id: string;
+    bookId: string;
+    status: 'In Progress' | 'Complete' | 'Failed';
+    progress: number;
+    log: string;
+    startTime: string;
+    lastUpdate: string;
+}
+
 // Enriched types for client-side use
 export interface EnrichedProject extends Project {
     clientName: string;
@@ -125,6 +135,7 @@ export const getUsers = () => readJsonFile<User[]>('users.json');
 export const getAuditLogs = () => readJsonFile<AuditLog[]>('audit_logs.json');
 export const getRawProjects = () => readJsonFile<Project[]>('projects.json');
 export const getRawBooks = () => readJsonFile<RawBook[]>('books.json');
+export const getProcessingLogs = () => readJsonFile<ProcessingLog[]>('processing_logs.json');
 
 
 export async function getUserById(id: string): Promise<User | undefined> {

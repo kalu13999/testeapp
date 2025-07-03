@@ -66,7 +66,8 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   const { 
     documents, 
     books, 
-    handleMoveBookToNextStage, 
+    handleMoveBookToNextStage,
+    handleStartProcessing,
     handleClientAction,
     handleFinalize,
     handleMarkAsCorrected,
@@ -140,12 +141,20 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     closeFlagDialog();
   };
 
+  const handleMainAction = (bookId: string) => {
+    if (stage === 'ready-for-processing') {
+      handleStartProcessing(bookId);
+    } else {
+      handleMoveBookToNextStage(bookId, config.dataStage);
+    }
+  }
+
 
   const renderActions = (bookId: string, bookName: string, hasError: boolean) => {
     const actionButton = (
         <Button 
             size="sm" 
-            onClick={() => handleMoveBookToNextStage(bookId, config.dataStage)}
+            onClick={() => handleMainAction(bookId)}
             disabled={hasError}
         >
             <ActionIcon className="mr-2 h-4 w-4" />
@@ -189,7 +198,6 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuItem onClick={() => handleResubmit(bookId, 'Indexing')}>Indexing</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleResubmit(bookId, 'Processing')}>Processing</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleResubmit(bookId, 'Quality Control')}>Quality Control</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleResubmit(bookId, 'Delivery')}>Delivery</DropdownMenuItem>
               </DropdownMenuContent>

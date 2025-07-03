@@ -1,14 +1,14 @@
 
 import React from 'react';
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { getEnrichedBooks, getEnrichedDocuments, getUserById, getEnrichedAuditLogs, getClients, getUsers, getEnrichedProjects } from '@/lib/data';
+import { getEnrichedBooks, getEnrichedDocuments, getUserById, getEnrichedAuditLogs, getClients, getUsers, getEnrichedProjects, getProcessingLogs } from '@/lib/data';
 import { AppProvider } from '@/context/workflow-context';
 import { AppLayoutContent } from './layout-client';
 
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   // Fetch all initial data on the server
-  const [user, clients, users, projects, books, documents, auditLogs] = await Promise.all([
+  const [user, clients, users, projects, books, documents, auditLogs, processingLogs] = await Promise.all([
     getUserById('u_admin'),
     getClients(),
     getUsers(),
@@ -16,6 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     getEnrichedBooks(),
     getEnrichedDocuments(),
     getEnrichedAuditLogs(),
+    getProcessingLogs(),
   ]);
 
   return (
@@ -27,6 +28,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         initialBooks={books} 
         initialDocuments={documents} 
         initialAuditLogs={auditLogs}
+        initialProcessingLogs={processingLogs}
       >
         <AppLayoutContent user={user}>
           {children}

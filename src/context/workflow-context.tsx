@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from 'react';
-import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog } from '@/lib/data';
+import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 
 // Define the shape of the book data when importing
@@ -22,8 +22,8 @@ const bookStatusTransition: { [key: string]: string } = {
 const digitalStageTransitions: { [key: string]: string } = {
     'Storage': 'Indexing',
     'Indexing': 'Quality Control',
-    'Quality Control': 'Processing',
-    'Processing': 'Final Quality Control',
+    'Quality Control': 'Ready for Processing',
+    'Processed': 'Final Quality Control',
     'Final Quality Control': 'Delivery',
     'Delivery': 'Pending Validation',
 }
@@ -39,6 +39,7 @@ type AppContextType = {
   books: EnrichedBook[];
   documents: AppDocument[];
   auditLogs: (AuditLog & { user: string; })[];
+  processingLogs: ProcessingLog[];
   
   // Global Project Filter
   allProjects: EnrichedProject[];
@@ -69,6 +70,8 @@ type AppContextType = {
   // Workflow Actions
   handleBookAction: (bookId: string, currentStatus: string, actualPageCount?: number) => void;
   handleMoveBookToNextStage: (bookId: string, currentStage: string) => void;
+  handleStartProcessing: (bookId: string) => void;
+  handleCompleteProcessing: (bookId: string) => void;
   handleClientAction: (bookId: string, action: 'approve' | 'reject', reason?: string) => void;
   handleFinalize: (bookId: string) => void;
   handleMarkAsCorrected: (bookId: string) => void;
@@ -88,6 +91,7 @@ export function AppProvider({
   initialBooks,
   initialDocuments,
   initialAuditLogs,
+  initialProcessingLogs,
   children,
 }: {
   initialClients: Client[];
@@ -96,6 +100,7 @@ export function AppProvider({
   initialBooks: EnrichedBook[];
   initialDocuments: AppDocument[];
   initialAuditLogs: (AuditLog & { user:string; })[];
+  initialProcessingLogs: ProcessingLog[];
   children: React.ReactNode;
 }) {
   const [clients, setClients] = React.useState<Client[]>(initialClients);
@@ -104,6 +109,7 @@ export function AppProvider({
   const [books, setBooks] = React.useState<EnrichedBook[]>(initialBooks);
   const [documents, setDocuments] = React.useState<AppDocument[]>(initialDocuments);
   const [auditLogs, setAuditLogs] = React.useState<(AuditLog & { user: string; })[]>(initialAuditLogs);
+  const [processingLogs, setProcessingLogs] = React.useState<ProcessingLog[]>(initialProcessingLogs);
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
   const { toast } = useToast();
   
@@ -329,6 +335,35 @@ export function AppProvider({
     toast({ title: "Workflow Action", description: `Book moved to ${nextStage}.` });
   };
 
+  const handleStartProcessing = (bookId: string) => {
+    moveBookDocuments(bookId, 'In Processing');
+    setProcessingLogs(prev => {
+        // Remove old log if it exists
+        const otherLogs = prev.filter(log => log.bookId !== bookId);
+        const newLog: ProcessingLog = {
+            id: `pl_${Date.now()}`,
+            bookId: bookId,
+            status: 'In Progress',
+            progress: 0,
+            log: `[${new Date().toLocaleTimeString()}] Processing initiated.`,
+            startTime: new Date().toISOString(),
+            lastUpdate: new Date().toISOString(),
+        };
+        return [...otherLogs, newLog];
+    });
+    toast({ title: 'Processing Started', description: 'The book has been sent to the processing queue.' });
+  };
+  
+  const handleCompleteProcessing = (bookId: string) => {
+    moveBookDocuments(bookId, 'Processed');
+    setProcessingLogs(prev => prev.map(log => 
+        log.bookId === bookId 
+            ? { ...log, status: 'Complete', progress: 100, log: `${log.log}\n[${new Date().toLocaleTimeString()}] Processing complete.` } 
+            : log
+    ));
+    toast({ title: 'Processing Complete', description: 'The book is now ready for Final QC.' });
+  };
+
   const handleClientAction = (bookId: string, action: 'approve' | 'reject', reason?: string) => {
     const isApproval = action === 'approve';
     const newStatus = isApproval ? 'Finalized' : 'Client Rejected';
@@ -467,6 +502,7 @@ export function AppProvider({
     books: filteredBooks, 
     documents: filteredDocuments, 
     auditLogs,
+    processingLogs,
     allProjects: projects,
     selectedProjectId,
     setSelectedProjectId,
@@ -477,7 +513,7 @@ export function AppProvider({
     handleBookAction, handleMoveBookToNextStage, handleClientAction,
     handleFinalize, handleMarkAsCorrected, handleResubmit,
     addPageToBook, deletePageFromBook, updateDocumentStatus,
-    updateDocumentFlag,
+    updateDocumentFlag, handleStartProcessing, handleCompleteProcessing,
   };
 
   return (

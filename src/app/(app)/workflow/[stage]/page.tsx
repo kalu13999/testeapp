@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import WorkflowClient from "./client";
 import FolderViewClient from "../folder-view-client";
 import CorrectionViewClient from "../correction-view-client";
+import ProcessingViewClient from "../workflow/processing-view-client";
 
 const STAGE_CONFIG: { [key: string]: any } = {
   reception: {
@@ -55,14 +56,31 @@ const STAGE_CONFIG: { [key: string]: any } = {
     dataStage: "Quality Control",
     viewType: 'folder',
   },
-  processing: {
-    title: "Processing",
+  'ready-for-processing': {
+    title: "Ready for Processing",
     description: "Documents ready for technical processing like OCR.",
-    actionButtonLabel: "Send to Final QC",
+    actionButtonLabel: "Start Processing",
     actionButtonIcon: "Play",
     emptyStateText: "No documents to process.",
     dataType: 'document',
-    dataStage: "Processing",
+    dataStage: "Ready for Processing",
+    viewType: 'folder',
+  },
+  'in-processing': {
+    title: "In Processing",
+    description: "Monitoring documents currently being processed by automated scripts.",
+    emptyStateText: "No documents are currently being processed.",
+    dataStage: "In Processing",
+    viewType: 'processing',
+  },
+  'processed': {
+    title: "Processed",
+    description: "Documents that have completed automated processing and are ready for final review.",
+    actionButtonLabel: "Send to Final QC",
+    actionButtonIcon: "Send",
+    emptyStateText: "No documents have been processed.",
+    dataType: 'document',
+    dataStage: "Processed",
     viewType: 'folder',
   },
   'final-quality-control': {
@@ -116,6 +134,10 @@ export default async function WorkflowStagePage({ params }: { params: { stage: s
     
     if (config.viewType === 'correction') {
       return <CorrectionViewClient config={config} stage={params.stage} />;
+    }
+
+    if (config.viewType === 'processing') {
+      return <ProcessingViewClient config={config} stage={params.stage} />;
     }
     
     return <WorkflowClient config={config} stage={params.stage} />;
