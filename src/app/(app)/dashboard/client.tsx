@@ -1,7 +1,15 @@
 
 "use client"
 
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, LineChart, AreaChart, Line, Area } from "recharts"
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, LineChart, AreaChart, Line, Area } from "recharts"
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
+  type ChartConfig,
+} from "@/components/ui/chart"
 import * as React from "react"
 import {
   Table,
@@ -20,12 +28,13 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { AlertTriangle, BookCopy, CheckCircle2, UserCheck, BarChart2, ListTodo, Activity } from "lucide-react"
+import { AlertTriangle, BookCopy, CheckCircle2, UserCheck, BarChart2, ListTodo, Activity, TrendingUp } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import { useMemo } from "react"
 import type { EnrichedBook, AppDocument, EnrichedProject, EnrichedAuditLog } from "@/context/workflow-context"
 import Link from "next/link"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { subDays, format } from "date-fns"
 
 
 const kpiIconMap: { [key: string]: React.ElementType } = {
@@ -92,7 +101,7 @@ export default function DashboardClient() {
             { title: "Actions Today", value: processedToday.toLocaleString(), icon: Activity, description: "Any action performed today" },
         ];
 
-        // --- Chart Data Calculation ---
+        // --- Workflow Chart Calculation ---
         const chartStageMapping: { [key: string]: string } = {
             'Pending': 'Reception',
             'To Scan': 'To Scan',
@@ -113,7 +122,6 @@ export default function DashboardClient() {
         const bookStageCounts = Object.fromEntries(orderedStageNames.map(name => [name, 0]));
 
         relevantBooks.forEach(book => {
-            // If a book has documents, its true status is determined by its documents' status.
             const bookDocs = documents.filter(d => d.bookId === book.id);
             if (bookDocs.length > 0) {
                  const firstDocStatus = bookDocs[0].status;
@@ -122,7 +130,6 @@ export default function DashboardClient() {
                     bookStageCounts[stageName]++;
                  }
             } else {
-                // If no docs, the book's own status is authoritative (e.g., Pending, To Scan).
                 const stageName = chartStageMapping[book.status];
                 if (stageName) {
                     bookStageCounts[stageName]++;
@@ -135,9 +142,56 @@ export default function DashboardClient() {
             count: bookStageCounts[name] || 0
         }));
 
+        // --- Daily Throughput Chart ---
+        const dailyActivity: { [date: string]: { [action: string]: number } } = {};
+        const sevenDaysAgo = subDays(new Date(), 6);
+
+        const actionsToTrack: { [key: string]: string } = {
+            'Reception Confirmed': 'Received',
+            'Scanning Finished': 'Scanned',
+            'Processing Completed': 'Processed',
+            'Client Approval': 'Finalized',
+            'Book Archived': 'Archived'
+        };
+        const actionKeys = Object.keys(actionsToTrack);
+
+        relevantAuditLogs
+            .filter(log => new Date(log.date) >= sevenDaysAgo && actionKeys.includes(log.action))
+            .forEach(log => {
+                const date = log.date.slice(0, 10);
+                const actionName = actionsToTrack[log.action as keyof typeof actionsToTrack];
+
+                if (!dailyActivity[date]) dailyActivity[date] = {};
+                if (!dailyActivity[date][actionName]) dailyActivity[date][actionName] = 0;
+                dailyActivity[date][actionName]++;
+            });
+
+        relevantAuditLogs
+            .filter(log => new Date(log.date) >= sevenDaysAgo && log.details.includes('to Delivery'))
+            .forEach(log => {
+                const date = log.date.slice(0, 10);
+                if (!dailyActivity[date]) dailyActivity[date] = {};
+                if (!dailyActivity[date]['Delivered']) dailyActivity[date]['Delivered'] = 0;
+                dailyActivity[date]['Delivered']++;
+            });
+
+        const dateRange = Array.from({ length: 7 }, (_, i) => format(subDays(new Date(), i), 'yyyy-MM-dd')).reverse();
+
+        const dailyChartData = dateRange.map(dateStr => {
+            const dayData = dailyActivity[dateStr] || {};
+            return {
+                date: format(new Date(dateStr), 'MMM d'),
+                Received: dayData.Received || 0,
+                Scanned: dayData.Scanned || 0,
+                Processed: dayData.Processed || 0,
+                Delivered: dayData.Delivered || 0,
+                Finalized: dayData.Finalized || 0,
+                Archived: dayData.Archived || 0,
+            };
+        });
+
         // --- Table Data ---
         const recentActivities = relevantAuditLogs.slice(0, 7)
-
         const projectProgressData: ProjectProgressData[] = relevantProjects.map(p => ({
             id: p.id,
             name: p.name,
@@ -146,10 +200,10 @@ export default function DashboardClient() {
             status: p.status
         }));
 
-        return { kpiData, chartData, recentActivities, projectProgressData, selectedProjectId };
+        return { kpiData, chartData, dailyChartData, recentActivities, projectProgressData, selectedProjectId };
     }, [projects, books, documents, auditLogs, selectedProjectId]);
 
-    const { kpiData, chartData, recentActivities, projectProgressData } = dashboardData;
+    const { kpiData, chartData, dailyChartData, recentActivities, projectProgressData } = dashboardData;
     
     const ChartComponent = {
         bar: BarChart,
@@ -162,6 +216,14 @@ export default function DashboardClient() {
         line: <Line type="monotone" dataKey="count" stroke="hsl(var(--primary))" strokeWidth={2} name="Books" />,
         area: <Area type="monotone" dataKey="count" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.3} name="Books" />,
     }[chartType];
+
+    const dailyChartConfig = {
+      Received: { label: "Received", color: "hsl(var(--chart-1))" },
+      Scanned: { label: "Scanned", color: "hsl(var(--chart-2))" },
+      Processed: { label: "Processed", color: "hsl(var(--chart-3))" },
+      Delivered: { label: "Delivered", color: "hsl(var(--chart-4))" },
+      Finalized: { label: "Finalized", color: "hsl(var(--chart-5))" },
+    } satisfies ChartConfig;
 
 
     return (
@@ -206,13 +268,48 @@ export default function DashboardClient() {
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                 <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} angle={-40} textAnchor="end" height={60} interval={0} />
                                 <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false}/>
-                                <Tooltip
+                                <ChartTooltip
                                     cursor={{ fill: "hsl(var(--muted))" }}
-                                    contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }}
+                                    content={<ChartTooltipContent hideLabel />}
                                 />
                                 {ChartElement}
                             </ChartComponent>
                         </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="font-headline flex items-center gap-2"><TrendingUp className="h-5 w-5"/> Daily Throughput</CardTitle>
+                        <CardDescription>
+                            Count of books completing key stages over the last 7 days.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ChartContainer config={dailyChartConfig} className="h-[250px] w-full">
+                            <LineChart data={dailyChartData} margin={{ left: 12, right: 12 }}>
+                                <CartesianGrid vertical={false} />
+                                <XAxis
+                                    dataKey="date"
+                                    tickLine={false}
+                                    axisLine={false}
+                                    tickMargin={8}
+                                />
+                                <YAxis allowDecimals={false} />
+                                <ChartTooltip content={<ChartTooltipContent indicator="dot" />} />
+                                <ChartLegend content={<ChartLegendContent />} />
+                                {Object.keys(dailyChartConfig).map((key) => (
+                                    <Line
+                                        key={key}
+                                        dataKey={key}
+                                        type="monotone"
+                                        stroke={`var(--color-${key})`}
+                                        strokeWidth={2}
+                                        dot={false}
+                                    />
+                                ))}
+                            </LineChart>
+                        </ChartContainer>
                     </CardContent>
                 </Card>
 
