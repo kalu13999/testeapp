@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from 'react';
@@ -15,14 +16,12 @@ export interface BookImport {
 const bookStatusTransition: { [key: string]: string } = {
   'Pending': 'To Scan',
   'To Scan': 'Scanning Started',
-  'Scanning Started': 'Scanned',
+  'Scanning Started': 'Storage', // After scan, docs are in Storage
 };
 
 // This map defines the status transition for entire books of documents (digital items)
 const digitalStageTransitions: { [key: string]: string } = {
-    'Storage': 'Indexing',
-    'Indexing': 'Quality Control',
-    'Quality Control': 'Ready for Processing',
+    'Checking Started': 'Ready for Processing',
     'Processed': 'Final Quality Control',
     'Final Quality Control': 'Delivery',
     'Delivery': 'Pending Validation',
@@ -42,6 +41,8 @@ type AppContextType = {
   clients: Client[];
   users: User[];
   scannerUsers: User[];
+  indexerUsers: User[];
+  qcUsers: User[];
   projects: EnrichedProject[];
   books: EnrichedBook[];
   documents: AppDocument[];
@@ -79,6 +80,8 @@ type AppContextType = {
   // Workflow Actions
   handleBookAction: (bookId: string, currentStatus: string, payload?: { actualPageCount?: number, scannerUserId?: string }) => void;
   handleMoveBookToNextStage: (bookId: string, currentStage: string) => void;
+  handleAssignUser: (bookId: string, userId: string, role: 'indexer' | 'qc') => void;
+  handleStartTask: (bookId: string, role: 'indexing' | 'qc') => void;
   handleStartProcessing: (bookId: string) => void;
   handleCompleteProcessing: (bookId: string) => void;
   handleClientAction: (bookId: string, action: 'approve' | 'reject', reason?: string) => void;
@@ -365,18 +368,9 @@ export function AppProvider({
     }
 
     if (currentStatus === 'Scanning Started') {
-      updateBookStatus(bookId, nextStatus, () => ({ scanEndTime: new Date().toISOString() }));
-      logAction('Scanning Finished', `Scanning completed.`, { bookId });
-      
       const project = rawProjects.find(p => p.id === book.projectId);
       const client = clients.find(c => c.id === project?.clientId);
       if (!project || !client) return;
-
-      const existingDocs = documents.some(d => d.bookId === book.id);
-      if (existingDocs) {
-         toast({ title: "Scanning Complete" });
-         return;
-      }
 
       const pagesToCreate = payload?.actualPageCount ?? book.expectedDocuments;
 
@@ -400,14 +394,15 @@ export function AppProvider({
         };
       });
 
-      setDocuments(prevDocs => [...prevDocs, ...newDocs]);
-      logAction('Pages Created', `${pagesToCreate} digital pages created.`, { bookId });
+      setDocuments(prevDocs => {
+          const otherDocs = prevDocs.filter(d => d.bookId !== bookId);
+          return [...otherDocs, ...newDocs];
+      });
+      updateBookStatus(bookId, "In Progress", () => ({ scanEndTime: new Date().toISOString() }));
+      logAction('Scanning Finished', `${pagesToCreate} pages created. Book moved to Storage.`, { bookId });
       toast({ title: "Scanning Complete", description: `${pagesToCreate} pages created.` });
       return;
     }
-    
-    updateBookStatus(bookId, nextStatus);
-    logAction('Status Change', `Book moved to ${nextStatus}`, { bookId });
   };
   
   const moveBookDocuments = (bookId: string, newStatus: string) => {
@@ -426,6 +421,40 @@ export function AppProvider({
     logAction('Workflow Step', `Book "${book?.name}" moved from ${currentStage} to ${nextStage}.`, { bookId });
     toast({ title: "Workflow Action", description: `Book moved to ${nextStage}.` });
   };
+
+  const handleAssignUser = (bookId: string, userId: string, role: 'indexer' | 'qc') => {
+    const user = users.find(u => u.id === userId);
+    const book = rawBooks.find(b => b.id === bookId);
+    if (!user || !book) return;
+
+    if (role === 'indexer') {
+        updateBookStatus(bookId, "To Indexing", () => ({ indexerUserId: userId }));
+        logAction('Assigned to Indexer', `Book "${book.name}" assigned to ${user.name}.`, { bookId });
+        toast({ title: "Book Assigned", description: `Assigned to ${user.name} for indexing.` });
+    } else if (role === 'qc') {
+        updateBookStatus(bookId, "To Checking", () => ({ qcUserId: userId }));
+        logAction('Assigned for QC', `Book "${book.name}" assigned to ${user.name}.`, { bookId });
+        toast({ title: "Book Assigned", description: `Assigned to ${user.name} for checking.` });
+    }
+  };
+
+  const handleStartTask = (bookId: string, role: 'indexing' | 'qc') => {
+    const book = rawBooks.find(b => b.id === bookId);
+    if (!book) return;
+    
+    if (role === 'indexing') {
+        updateBookStatus(bookId, 'Indexing Started', () => ({ indexingStartTime: new Date().toISOString() }));
+        moveBookDocuments(bookId, 'Indexing Started');
+        logAction('Indexing Started', `Indexing started for book "${book.name}".`, { bookId });
+        toast({ title: "Indexing Started" });
+    } else if (role === 'qc') {
+        updateBookStatus(bookId, 'Checking Started', () => ({ qcStartTime: new Date().toISOString() }));
+        moveBookDocuments(bookId, 'Checking Started');
+        logAction('Checking Started', `Initial QC started for book "${book.name}".`, { bookId });
+        toast({ title: "Checking Started" });
+    }
+  }
+
 
   const handleStartProcessing = (bookId: string) => {
     const book = rawBooks.find(b => b.id === bookId);
@@ -490,8 +519,22 @@ export function AppProvider({
 
   const handleResubmit = (bookId: string, targetStage: string) => {
     const book = rawBooks.find(b => b.id === bookId);
-    moveBookDocuments(bookId, targetStage);
-    updateBookStatus(bookId, 'In Progress');
+    let bookStatus = '';
+    let docStatus = '';
+
+    if (targetStage === 'To Indexing') {
+      bookStatus = 'To Indexing';
+      docStatus = 'Storage'; // Docs go back to storage to be assigned
+    } else if (targetStage === 'To Checking') {
+      bookStatus = 'To Checking';
+      docStatus = 'Indexing Started'; // Docs go back to indexed to be assigned
+    } else {
+       bookStatus = 'In Progress';
+       docStatus = targetStage;
+    }
+
+    moveBookDocuments(bookId, docStatus);
+    updateBookStatus(bookId, bookStatus);
     logAction('Book Resubmitted', `Book "${book?.name}" resubmitted to ${targetStage}.`, { bookId });
     toast({ title: "Book Resubmitted" });
   };
@@ -576,6 +619,8 @@ export function AppProvider({
   }
 
   const scannerUsers = React.useMemo(() => users.filter(user => user.role === 'Scanning'), [users]);
+  const indexerUsers = React.useMemo(() => users.filter(user => user.role === 'Indexing'), [users]);
+  const qcUsers = React.useMemo(() => users.filter(user => user.role === 'QC Specialist'), [users]);
 
   const filteredProjects = React.useMemo(() => {
     if (!selectedProjectId) return enrichedProjects;
@@ -594,7 +639,7 @@ export function AppProvider({
 
   const value = { 
     currentUser, login, logout,
-    clients, users, scannerUsers,
+    clients, users, scannerUsers, indexerUsers, qcUsers,
     projects: filteredProjects, 
     books: filteredBooks, 
     documents: filteredDocuments, 
@@ -613,6 +658,7 @@ export function AppProvider({
     handleFinalize, handleMarkAsCorrected, handleResubmit,
     addPageToBook, deletePageFromBook, updateDocumentStatus,
     updateDocumentFlag, handleStartProcessing, handleCompleteProcessing,
+    handleAssignUser, handleStartTask,
   };
 
   return (

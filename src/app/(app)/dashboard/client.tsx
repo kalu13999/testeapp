@@ -107,8 +107,10 @@ export default function DashboardClient() {
             'To Scan': 'To Scan',
             'Scanning Started': 'Scanning',
             'Storage': 'Storage',
-            'Indexing': 'Indexing',
-            'Quality Control': 'Initial QC',
+            'To Indexing': 'To Indexing',
+            'Indexing Started': 'Indexing',
+            'To Checking': 'Initial QC',
+            'Checking Started': 'Initial QC',
             'Ready for Processing': 'Ready to Process',
             'In Processing': 'Processing',
             'Processed': 'Processed',
@@ -118,22 +120,13 @@ export default function DashboardClient() {
             'Client Rejected': 'Rejections',
         };
 
-        const orderedStageNames = Object.values(chartStageMapping);
+        const orderedStageNames = ['Reception', 'To Scan', 'Scanning', 'Storage', 'To Indexing', 'Indexing', 'Initial QC', 'Ready to Process', 'Processing', 'Processed', 'Final QC', 'Delivery', 'Client Validation', 'Rejections'];
         const bookStageCounts = Object.fromEntries(orderedStageNames.map(name => [name, 0]));
 
         relevantBooks.forEach(book => {
-            const bookDocs = documents.filter(d => d.bookId === book.id);
-            if (bookDocs.length > 0) {
-                 const firstDocStatus = bookDocs[0].status;
-                 const stageName = chartStageMapping[firstDocStatus];
-                 if (stageName) {
-                    bookStageCounts[stageName]++;
-                 }
-            } else {
-                const stageName = chartStageMapping[book.status];
-                if (stageName) {
-                    bookStageCounts[stageName]++;
-                }
+            const stageName = chartStageMapping[book.status];
+            if (stageName) {
+                bookStageCounts[stageName]++;
             }
         });
 
@@ -393,5 +386,3 @@ export default function DashboardClient() {
         </div>
     )
 }
-
-    

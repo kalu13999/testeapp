@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FolderSync, FileText, FileJson, Play, ThumbsUp, ThumbsDown, Send, Archive, Undo2, AlertTriangle, ShieldAlert, MoreHorizontal, Info } from "lucide-react";
+import { FolderSync, FileText, FileJson, Play, ThumbsUp, ThumbsDown, Send, Archive, Undo2, AlertTriangle, ShieldAlert, MoreHorizontal, Info, UserPlus } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { useToast } from "@/hooks/use-toast";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -22,8 +22,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { AppDocument } from "@/context/workflow-context";
+import { AppDocument, User } from "@/context/workflow-context";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type IconMap = {
   [key: string]: React.ElementType;
@@ -38,6 +39,7 @@ const iconMap: IconMap = {
   Send,
   Archive,
   Undo2,
+  UserPlus
 };
 
 interface FolderViewClientProps {
@@ -73,6 +75,9 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     handleMarkAsCorrected,
     handleResubmit,
     updateDocumentFlag,
+    indexerUsers,
+    qcUsers,
+    handleAssignUser,
   } = useAppContext();
   const { toast } = useToast();
   const ActionIcon = config.actionButtonIcon ? iconMap[config.actionButtonIcon] : FolderSync;
@@ -89,7 +94,15 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   }>({ open: false, docId: null, docName: null, flag: null, comment: '' });
   
   const [confirmationState, setConfirmationState] = React.useState({ open: false, title: '', description: '', onConfirm: () => {} });
-
+  
+  const [assignmentState, setAssignmentState] = React.useState<{
+    open: boolean;
+    bookId: string | null;
+    bookName: string | null;
+    role: 'indexer' | 'qc' | null;
+    users: User[];
+    selectedUserId: string;
+  }>({ open: false, bookId: null, bookName: null, role: null, users: [], selectedUserId: '' });
 
   const stageDocuments = React.useMemo(() => {
     return documents.filter(doc => doc.status === config.dataStage);
@@ -147,9 +160,31 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     closeFlagDialog();
   };
 
-  const handleMainAction = (bookId: string) => {
+  const openAssignmentDialog = (bookId: string, bookName: string, role: 'indexer' | 'qc') => {
+    const users = role === 'indexer' ? indexerUsers : qcUsers;
+    setAssignmentState({ open: true, bookId, bookName, role, users, selectedUserId: '' });
+  };
+
+  const closeAssignmentDialog = () => {
+    setAssignmentState({ open: false, bookId: null, bookName: null, role: null, users: [], selectedUserId: '' });
+  };
+
+  const handleAssignmentSubmit = () => {
+    if (assignmentState.bookId && assignmentState.selectedUserId && assignmentState.role) {
+      handleAssignUser(assignmentState.bookId, assignmentState.selectedUserId, assignmentState.role);
+      closeAssignmentDialog();
+    }
+  };
+
+  const handleMainAction = (bookId: string, bookName: string) => {
     if (stage === 'ready-for-processing') {
       handleStartProcessing(bookId);
+    } else if (stage === 'storage') {
+      openAssignmentDialog(bookId, bookName, 'indexer');
+    } else if (stage === 'indexing-started') {
+      openAssignmentDialog(bookId, bookName, 'qc');
+    } else if (stage === 'checking-started') {
+      handleMoveBookToNextStage(bookId, config.dataStage);
     } else {
       handleMoveBookToNextStage(bookId, config.dataStage);
     }
@@ -163,7 +198,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
             onClick={() => openConfirmationDialog({
               title: `Are you sure?`,
               description: `This will perform the action "${config.actionButtonLabel}" on "${bookName}".`,
-              onConfirm: () => handleMainAction(bookId)
+              onConfirm: () => handleMainAction(bookId, bookName)
             })}
             disabled={hasError}
         >
@@ -219,8 +254,8 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => handleResubmit(bookId, 'Indexing')}>Indexing</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleResubmit(bookId, 'Quality Control')}>Quality Control</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleResubmit(bookId, 'To Indexing')}>Indexing</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleResubmit(bookId, 'To Checking')}>Quality Control</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleResubmit(bookId, 'Delivery')}>Delivery</DropdownMenuItem>
               </DropdownMenuContent>
            </DropdownMenu>
@@ -427,6 +462,35 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                 <Button onClick={handleFlagSubmit} disabled={!flagDialogState.comment.trim()}>Save Comment</Button>
             </DialogFooter>
         </DialogContent>
+    </Dialog>
+
+    <Dialog open={assignmentState.open} onOpenChange={closeAssignmentDialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Assign User for "{assignmentState.bookName}"</DialogTitle>
+          <DialogDescription>
+            Select a user to process this book. It will then move to their personal queue.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <Select value={assignmentState.selectedUserId} onValueChange={(val) => setAssignmentState(s => ({...s, selectedUserId: val}))}>
+            <SelectTrigger>
+              <SelectValue placeholder={`Select an ${assignmentState.role}...`} />
+            </SelectTrigger>
+            <SelectContent>
+              {assignmentState.users.map(user => (
+                <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={closeAssignmentDialog}>Cancel</Button>
+          <Button onClick={handleAssignmentSubmit} disabled={!assignmentState.selectedUserId}>
+            Assign and Confirm
+          </Button>
+        </DialogFooter>
+      </DialogContent>
     </Dialog>
     </>
   )

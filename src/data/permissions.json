@@ -19,8 +19,10 @@
     "/workflow/to-scan",
     "/workflow/scanning-started",
     "/workflow/storage",
-    "/workflow/indexing",
-    "/workflow/quality-control",
+    "/workflow/to-indexing",
+    "/workflow/indexing-started",
+    "/workflow/to-checking",
+    "/workflow/checking-started",
     "/workflow/ready-for-processing",
     "/workflow/in-processing",
     "/workflow/processed",
@@ -36,7 +38,8 @@
     "/documents",
     "/documents/[id]",
     "/books/[id]",
-    "/workflow/quality-control",
+    "/workflow/to-checking",
+    "/workflow/checking-started",
     "/workflow/final-quality-control",
     "/workflow/client-rejections"
   ],
@@ -59,11 +62,16 @@
     "/books/[id]",
     "/documents/[id]"
   ],
+  "Indexing": [
+    "/dashboard",
+    "/workflow/to-indexing",
+    "/workflow/indexing-started",
+    "/books/[id]",
+    "/documents/[id]"
+  ],
   "Processing": [
     "/dashboard",
     "/workflow/storage",
-    "/workflow/indexing",
-    "/workflow/quality-control",
     "/workflow/ready-for-processing",
     "/workflow/in-processing",
     "/workflow/processed",

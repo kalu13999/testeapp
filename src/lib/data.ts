@@ -81,6 +81,10 @@ export interface RawBook {
     scannerUserId?: string;
     scanStartTime?: string;
     scanEndTime?: string;
+    indexerUserId?: string;
+    indexingStartTime?: string;
+    qcUserId?: string;
+    qcStartTime?: string;
     rejectionReason?: string;
 }
 

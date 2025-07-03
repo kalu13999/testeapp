@@ -4,7 +4,7 @@ import WorkflowClient from "./client";
 import FolderViewClient from "../folder-view-client";
 import CorrectionViewClient from "../correction-view-client";
 import ProcessingViewClient from "../processing-view-client";
-import { PlayCircle } from "lucide-react";
+import { ClipboardCheck, FileSearch2, FileText, PencilRuler, PlayCircle } from "lucide-react";
 
 const STAGE_CONFIG: { [key: string]: any } = {
   reception: {
@@ -39,32 +39,52 @@ const STAGE_CONFIG: { [key: string]: any } = {
   },
   storage: {
     title: "Storage",
-    description: "Scanned documents are organized by book. Promote books to the next stage.",
-    actionButtonLabel: "Send to Indexing",
+    description: "Scanned documents are organized by book. Assign books to an indexer.",
+    actionButtonLabel: "Assign for Indexing",
     actionButtonIcon: "FileText",
     emptyStateText: "No scanned documents are waiting in storage.",
     dataType: 'document',
     dataStage: 'Storage',
     viewType: 'folder',
   },
-  indexing: {
-    title: "Indexing",
-    description: "Documents that have been scanned and are ready for metadata assignment.",
-    actionButtonLabel: "Send to Quality Control",
-    actionButtonIcon: "FileJson",
-    emptyStateText: "No documents to index.",
+  'to-indexing': {
+    title: "To Indexing Queue",
+    description: "Books that have been assigned and are ready to be indexed.",
+    actionButtonLabel: "Start Indexing",
+    actionButtonIcon: "Play",
+    emptyStateText: "No books in the 'To Indexing' queue for you.",
+    dataType: 'book',
+    dataStatus: 'To Indexing',
+    viewType: 'list',
+  },
+  'indexing-started': {
+    title: "Indexing Started",
+    description: "Books that are currently being indexed. Assign to a QC specialist when complete.",
+    actionButtonLabel: "Assign for QC",
+    actionButtonIcon: "Send",
+    emptyStateText: "No books are currently being indexed.",
     dataType: 'document',
-    dataStage: "Indexing",
+    dataStage: 'Indexing Started',
     viewType: 'folder',
   },
-  'quality-control': {
-    title: "Quality Control",
-    description: "Initial check on documents for scanning quality and completeness.",
+  'to-checking': {
+    title: "To Checking Queue",
+    description: "Books that have been indexed and are ready for initial quality control.",
+    actionButtonLabel: "Start Checking",
+    actionButtonIcon: "Play",
+    emptyStateText: "No books in the 'To Checking' queue for you.",
+    dataType: 'book',
+    dataStatus: 'To Checking',
+    viewType: 'list',
+  },
+  'checking-started': {
+    title: "Checking Started",
+    description: "Books that are currently undergoing initial quality control.",
     actionButtonLabel: "Send to Processing",
     actionButtonIcon: "Play",
-    emptyStateText: "No documents for initial QC.",
+    emptyStateText: "No books are currently being checked.",
     dataType: 'document',
-    dataStage: "Quality Control",
+    dataStage: 'Checking Started',
     viewType: 'folder',
   },
   'ready-for-processing': {

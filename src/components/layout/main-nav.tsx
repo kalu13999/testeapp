@@ -25,7 +25,9 @@ import {
   Users2,
   Warehouse,
   Play,
-  PlayCircle
+  PlayCircle,
+  PencilRuler,
+  ClipboardCheck
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -59,8 +61,10 @@ const allMenuItems = [
       { href: "/workflow/to-scan", label: "To Scan", icon: ScanLine },
       { href: "/workflow/scanning-started", label: "Scanning Started", icon: PlayCircle },
       { href: "/workflow/storage", label: "Storage", icon: Warehouse },
-      { href: "/workflow/indexing", label: "Indexing", icon: FileText },
-      { href: "/workflow/quality-control", label: "Quality Control", icon: FileSearch2 },
+      { href: "/workflow/to-indexing", label: "To Indexing", icon: FileText },
+      { href: "/workflow/indexing-started", label: "Indexing Started", icon: PencilRuler },
+      { href: "/workflow/to-checking", label: "To Checking", icon: FileSearch2 },
+      { href: "/workflow/checking-started", label: "Checking Started", icon: ClipboardCheck },
       { href: "/workflow/ready-for-processing", label: "Ready for Processing", icon: FileCog },
       { href: "/workflow/in-processing", label: "In Processing", icon: Loader2 },
       { href: "/workflow/processed", label: "Processed", icon: FileCheck2 },

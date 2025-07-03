@@ -10,7 +10,7 @@
     { "id": "book_08", "name": "Annual General Meeting Minutes", "status": "Pending", "expectedDocuments": 50, "projectId": "proj_4", "publicationYear": 2023, "priority": "Medium", "info": "" },
     { "id": "book_09", "name": "Investment Portfolio 2024", "status": "Client Rejected", "expectedDocuments": 10, "projectId": "proj_4", "publicationYear": 2024, "priority": "High", "info": "", "rejectionReason": "Pages 3 and 7 are out of order. Please correct and resubmit." },
     { "id": "book_10", "name": "Legacy System Data", "status": "Pending", "expectedDocuments": 500, "projectId": "proj_5", "publicationYear": 2010, "priority": "Low", "info": "Data from old mainframe." },
-    { "id": "book_11", "name": "Legal Case File 778-A", "status": "In Progress", "expectedDocuments": 250, "projectId": "proj_8", "author": "Apex Legal Team", "publicationYear": 2024, "priority": "High", "info": "Discovery documents.", "scannerUserId": "u_scanner" },
+    { "id": "book_11", "name": "Legal Case File 778-A", "status": "To Checking", "expectedDocuments": 250, "projectId": "proj_8", "author": "Apex Legal Team", "publicationYear": 2024, "priority": "High", "info": "Discovery documents.", "scannerUserId": "u_scanner", "indexerUserId": "u_indexer_1", "qcUserId": "u_qc" },
     { "id": "book_12", "name": "Legal Case File 778-B", "status": "Pending", "expectedDocuments": 150, "projectId": "proj_8", "author": "Apex Legal Team", "publicationYear": 2024, "priority": "High", "info": "Witness statements." },
     { "id": "book_13", "name": "County Deeds: A-C", "status": "To Scan", "expectedDocuments": 1000, "projectId": "proj_10", "publicationYear": 1880, "priority": "Medium", "info": "", "scannerUserId": "u_scanner_2" },
     { "id": "book_14", "name": "County Deeds: D-F", "status": "Pending", "expectedDocuments": 1200, "projectId": "proj_10", "publicationYear": 1885, "priority": "Medium", "info": "" },
@@ -18,7 +18,7 @@
     { "id": "book_16", "name": "Patent A113", "status": "Scanning Started", "expectedDocuments": 30, "projectId": "proj_12", "publicationYear": 2023, "priority": "High", "info": "", "scannerUserId": "u_scanner", "scanStartTime": "2024-05-28T11:00:00Z" },
     { "id": "book_17", "name": "Patent B204", "status": "Pending", "expectedDocuments": 45, "projectId": "proj_12", "publicationYear": 2024, "priority": "High", "info": "" },
     { "id": "book_18", "name": "Financial Projections 2025", "status": "Pending", "expectedDocuments": 5, "projectId": "proj_4", "author": "Quantum Finance", "publicationYear": 2024, "priority": "Medium", "info": "" },
-    { "id": "book_19", "name": "Merger Docs - Financials", "status": "In Progress", "expectedDocuments": 150, "projectId": "proj_18", "priority": "High", "info": "", "scannerUserId": "u_scanner_2" },
+    { "id": "book_19", "name": "Merger Docs - Financials", "status": "In Processing", "expectedDocuments": 150, "projectId": "proj_18", "priority": "High", "info": "", "scannerUserId": "u_scanner_2" },
     { "id": "book_20", "name": "Merger Docs - HR", "status": "Pending", "expectedDocuments": 200, "projectId": "proj_18", "priority": "High", "info": "" },
     { "id": "book_21", "name": "Newspaper Jan-Mar 1955", "status": "To Scan", "expectedDocuments": 90, "projectId": "proj_20", "priority": "Low", "info": "Very fragile.", "scannerUserId": "u_scanner" },
     { "id": "book_22", "name": "Newspaper Apr-Jun 1955", "status": "Pending", "expectedDocuments": 90, "projectId": "proj_20", "priority": "Low", "info": "Very fragile." }

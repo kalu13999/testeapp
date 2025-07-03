@@ -78,6 +78,8 @@ const getBadgeVariant = (status: string): BadgeVariant => {
         case "Storage":
         case "Final Quality Control":
         case "Scanning Started":
+        case "Indexing Started":
+        case "Checking Started":
             return "secondary"
         default:
             return "outline";
@@ -86,7 +88,7 @@ const getBadgeVariant = (status: string): BadgeVariant => {
 
 
 export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
-  const { books, documents, handleBookAction, handleMoveBookToNextStage, updateDocumentStatus, currentUser, scannerUsers } = useAppContext();
+  const { books, documents, handleBookAction, handleMoveBookToNextStage, updateDocumentStatus, currentUser, scannerUsers, handleStartTask } = useAppContext();
   const { toast } = useToast();
   const { title, description, dataType, actionButtonLabel, actionButtonIcon, emptyStateText, dataStatus, dataStage } = config;
   const ActionIcon = actionButtonIcon ? iconMap[actionButtonIcon] : null;
@@ -104,9 +106,15 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     if (dataType === 'book' && dataStatus) {
       let filteredBooks = books.filter(book => book.status === dataStatus);
 
-      // Filter for scanning stages based on user role
-      if ((stage === 'to-scan' || stage === 'scanning-started') && currentUser?.role === 'Scanning') {
+      // Filter for assignment stages based on user role
+      if (stage === 'to-scan' && currentUser?.role === 'Scanning') {
         filteredBooks = filteredBooks.filter(book => book.scannerUserId === currentUser.id);
+      }
+      if (stage === 'to-indexing' && currentUser?.role === 'Indexing') {
+        filteredBooks = filteredBooks.filter(book => book.indexerUserId === currentUser.id);
+      }
+      if (stage === 'to-checking' && currentUser?.role === 'QC Specialist') {
+        filteredBooks = filteredBooks.filter(book => book.qcUserId === currentUser.id);
       }
       
       return filteredBooks;
@@ -126,7 +134,11 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   }
 
   const handleGenericAction = (item: any) => {
-    if (dataType === 'book') {
+    if (stage === 'to-indexing') {
+        handleStartTask(item.id, 'indexing');
+    } else if (stage === 'to-checking') {
+        handleStartTask(item.id, 'qc');
+    } else if (dataType === 'book') {
         handleBookAction(item.id, item.status);
     } else { // It's a document
         handleMoveBookToNextStage(item.bookId, item.status);
