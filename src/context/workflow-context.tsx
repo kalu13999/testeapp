@@ -21,7 +21,6 @@ const bookStatusTransition: { [key: string]: string } = {
 
 // This map defines the status transition for entire books of documents (digital items)
 const digitalStageTransitions: { [key: string]: string } = {
-    'Checking Started': 'Ready for Processing',
     'Processed': 'Final Quality Control',
     'Final Quality Control': 'Delivery',
     'Delivery': 'Pending Validation',
@@ -415,9 +414,19 @@ export function AppProvider({
   };
 
   const handleMoveBookToNextStage = (bookId: string, currentStage: string) => {
+    const book = rawBooks.find(b => b.id === bookId);
+    
+    // This is a special handler for marking checking as complete
+    if (currentStage === 'Checking Started') {
+        moveBookDocuments(bookId, 'Ready for Processing');
+        logAction('Initial QC Complete', `Book "${book?.name}" has passed initial checks.`, { bookId });
+        toast({ title: "Initial QC Complete", description: 'Book moved to Ready for Processing.' });
+        return;
+    }
+
     const nextStage = digitalStageTransitions[currentStage];
     if (!nextStage) return;
-    const book = rawBooks.find(b => b.id === bookId);
+
     moveBookDocuments(bookId, nextStage);
     logAction('Workflow Step', `Book "${book?.name}" moved from ${currentStage} to ${nextStage}.`, { bookId });
     toast({ title: "Workflow Action", description: `Book moved to ${nextStage}.` });
@@ -433,7 +442,7 @@ export function AppProvider({
         logAction('Assigned to Indexer', `Book "${book.name}" assigned to ${user.name}.`, { bookId });
         toast({ title: "Book Assigned", description: `Assigned to ${user.name} for indexing.` });
     } else if (role === 'qc') {
-        updateBookStatus(bookId, "To Checking", () => ({ qcUserId: userId }));
+        updateBookStatus(bookId, "To Checking", () => ({ qcUserId: userId, indexingStartTime: undefined, indexingEndTime: new Date().toISOString() }));
         logAction('Assigned for QC', `Book "${book.name}" assigned to ${user.name}.`, { bookId });
         toast({ title: "Book Assigned", description: `Assigned to ${user.name} for checking.` });
     }
@@ -468,13 +477,13 @@ export function AppProvider({
         break;
       case 'Indexing Started':
         updateBookStatus(bookId, 'To Indexing', b => ({...b, indexingStartTime: undefined}));
-        moveBookDocuments(bookId, 'Storage'); // Revert docs to pre-indexing state
+        moveBookDocuments(bookId, 'Storage');
         logAction('Indexing Cancelled', `Indexing for book "${book.name}" was cancelled.`, { bookId });
         toast({ title: 'Indexing Cancelled', variant: 'destructive'});
         break;
       case 'Checking Started':
         updateBookStatus(bookId, 'To Checking', b => ({...b, qcStartTime: undefined}));
-        moveBookDocuments(bookId, 'Indexing Started'); // Revert docs to pre-checking state
+        moveBookDocuments(bookId, 'Indexing Started');
         logAction('Checking Cancelled', `Checking for book "${book.name}" was cancelled.`, { bookId });
         toast({ title: 'Checking Cancelled', variant: 'destructive'});
         break;
@@ -703,3 +712,5 @@ export function useAppContext() {
   }
   return context;
 }
+
+    
