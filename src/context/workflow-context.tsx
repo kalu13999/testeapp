@@ -419,6 +419,7 @@ export function AppProvider({
     // This is a special handler for marking checking as complete
     if (currentStage === 'Checking Started') {
         moveBookDocuments(bookId, 'Ready for Processing');
+        updateBookStatus(bookId, 'Ready for Processing');
         logAction('Initial QC Complete', `Book "${book?.name}" has passed initial checks.`, { bookId });
         toast({ title: "Initial QC Complete", description: 'Book moved to Ready for Processing.' });
         return;
@@ -470,34 +471,35 @@ export function AppProvider({
   const handleCancelTask = (bookId: string, currentStatus: string) => {
     const book = rawBooks.find(b => b.id === bookId);
     if (!book) return;
+    let details = '';
 
     switch (currentStatus) {
       case 'Scanning Started':
         updateBookStatus(bookId, 'To Scan', b => ({...b, scanStartTime: undefined}));
-        logAction('Scanning Cancelled', `Scanning for book "${book.name}" was cancelled.`, { bookId });
-        toast({ title: 'Scanning Cancelled', variant: 'destructive'});
+        details = `Scanning for book "${book.name}" was cancelled.`;
         break;
       case 'Indexing Started':
         updateBookStatus(bookId, 'To Indexing', b => ({...b, indexingStartTime: undefined}));
         moveBookDocuments(bookId, 'To Indexing');
-        logAction('Indexing Cancelled', `Indexing for book "${book.name}" was cancelled.`, { bookId });
-        toast({ title: 'Indexing Cancelled', variant: 'destructive'});
+        details = `Indexing for book "${book.name}" was cancelled.`;
         break;
       case 'Checking Started':
         updateBookStatus(bookId, 'To Checking', b => ({...b, qcStartTime: undefined}));
         moveBookDocuments(bookId, 'To Checking');
-        logAction('Checking Cancelled', `Checking for book "${book.name}" was cancelled.`, { bookId });
-        toast({ title: 'Checking Cancelled', variant: 'destructive'});
+        details = `Checking for book "${book.name}" was cancelled.`;
         break;
       default:
-        break;
+        return;
     }
+    logAction('Task Cancelled', details, { bookId });
+    toast({ title: 'Task Cancelled', variant: 'destructive'});
   };
 
 
   const handleStartProcessing = (bookId: string) => {
     const book = rawBooks.find(b => b.id === bookId);
     moveBookDocuments(bookId, 'In Processing');
+    updateBookStatus(bookId, 'In Processing');
     setProcessingLogs(prev => {
         const otherLogs = prev.filter(log => log.bookId !== bookId);
         const newLog: ProcessingLog = {
@@ -514,6 +516,7 @@ export function AppProvider({
   const handleCompleteProcessing = (bookId: string) => {
     const book = rawBooks.find(b => b.id === bookId);
     moveBookDocuments(bookId, 'Processed');
+    updateBookStatus(bookId, 'Processed');
     setProcessingLogs(prev => prev.map(log => 
         log.bookId === bookId 
             ? { ...log, status: 'Complete', progress: 100, log: `${log.log}\n[${new Date().toLocaleTimeString()}] Processing complete.` } 
@@ -563,10 +566,10 @@ export function AppProvider({
 
     if (targetStage === 'To Indexing') {
       bookStatus = 'To Indexing';
-      docStatus = 'Storage'; // Docs go back to storage to be assigned
+      docStatus = 'To Indexing'; // Docs go back to storage to be assigned
     } else if (targetStage === 'To Checking') {
       bookStatus = 'To Checking';
-      docStatus = 'Indexing Started'; // Docs go back to indexed to be assigned
+      docStatus = 'To Checking'; // Docs go back to indexed to be assigned
     } else {
        bookStatus = 'In Progress';
        docStatus = targetStage;

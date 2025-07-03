@@ -2,9 +2,13 @@
 [
   { "id": "al_1", "documentId": "doc_book_09_3", "bookId": "book_09", "action": "Flagged with Error", "userId": "u_qc", "date": "2024-05-29T10:05:00Z", "details": "User marked page as unreadable." },
   { "id": "al_2", "documentId": "doc_book_09_7", "bookId": "book_09", "action": "Flagged with Warning", "userId": "u_qc", "date": "2024-05-29T10:04:00Z", "details": "User noted a coffee stain." },
-  { "id": "al_3", "bookId": "book_11", "action": "Moved to Quality Control", "userId": "u_system", "date": "2024-05-28T14:00:00Z", "details": "Book 'Legal Case File 778-A' moved from Indexing." },
+  { "id": "al_3", "bookId": "book_11", "action": "Assigned to Indexer", "userId": "u_admin", "date": "2024-05-29T14:00:00Z", "details": "Book 'Legal Case File 778-A' assigned to Ida Indexer." },
   { "id": "al_4", "bookId": "book_04", "action": "Archived", "userId": "u_admin", "date": "2024-04-15T11:30:00Z", "details": "Book 'Master Services Agreement' archived." },
   { "id": "al_5", "bookId": "book_19", "action": "Processing Started", "userId": "u_processor", "date": "2024-06-03T11:10:00Z", "details": "Script initiated for 'Merger Docs - Financials'." },
   { "id": "al_6", "bookId": "book_05", "action": "Scanning Started", "userId": "u_scanner", "date": "2024-05-28T10:30:00Z", "details": "Scanner began working on 'Security Compliance'." },
-  { "id": "al_7", "bookId": "book_01", "action": "Assigned to Scanner", "userId": "u_admin", "date": "2024-05-27T16:00:00Z", "details": "'Financial Statements 2023' assigned to Sam Scanner." }
+  { "id": "al_7", "bookId": "book_01", "action": "Assigned to Scanner", "userId": "u_admin", "date": "2024-05-27T16:00:00Z", "details": "'Financial Statements 2023' assigned to Sam Scanner." },
+  { "id": "al_8", "bookId": "book_12", "action": "Indexing Started", "userId": "u_indexer_1", "date": "2024-05-30T09:00:00Z", "details": "Indexing started for book 'Legal Case File 778-B'." },
+  { "id": "al_9", "bookId": "book_12", "action": "Assigned for QC", "userId": "u_indexer_1", "date": "2024-05-30T11:00:00Z", "details": "Book 'Legal Case File 778-B' assigned to Charlie QC." },
+  { "id": "al_10", "bookId": "book_17", "action": "Checking Started", "userId": "u_qc_2", "date": "2024-06-01T10:00:00Z", "details": "Initial QC started for book 'Patent B204'." },
+  { "id": "al_11", "bookId": "book_17", "action": "Initial QC Complete", "userId": "u_qc_2", "date": "2024-06-01T11:00:00Z", "details": "Book 'Patent B204' has passed initial checks." }
 ]

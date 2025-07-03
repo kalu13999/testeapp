@@ -106,10 +106,10 @@ export default function DashboardClient() {
             'Pending': 'Reception',
             'To Scan': 'To Scan',
             'Scanning Started': 'Scanning',
-            'Storage': 'Storage',
+            'Storage': 'Storage', // Represents books in 'In Progress' status post-scan
             'To Indexing': 'To Indexing',
             'Indexing Started': 'Indexing',
-            'To Checking': 'Initial QC',
+            'To Checking': 'To Checking',
             'Checking Started': 'Initial QC',
             'Ready for Processing': 'Ready to Process',
             'In Processing': 'Processing',
@@ -120,11 +120,15 @@ export default function DashboardClient() {
             'Client Rejected': 'Rejections',
         };
 
-        const orderedStageNames = ['Reception', 'To Scan', 'Scanning', 'Storage', 'To Indexing', 'Indexing', 'Initial QC', 'Ready to Process', 'Processing', 'Processed', 'Final QC', 'Delivery', 'Client Validation', 'Rejections'];
+        const orderedStageNames = ['Reception', 'To Scan', 'Scanning', 'Storage', 'To Indexing', 'Indexing', 'To Checking', 'Initial QC', 'Ready to Process', 'Processing', 'Processed', 'Final QC', 'Delivery', 'Client Validation', 'Rejections'];
         const bookStageCounts = Object.fromEntries(orderedStageNames.map(name => [name, 0]));
 
         relevantBooks.forEach(book => {
-            const stageName = chartStageMapping[book.status];
+            let stageName = chartStageMapping[book.status];
+            // Special case for 'Storage' where book status is 'In Progress' after scanning
+            if (book.status === 'In Progress' && documents.some(d => d.bookId === book.id && d.status === 'Storage')) {
+                stageName = 'Storage';
+            }
             if (stageName) {
                 bookStageCounts[stageName]++;
             }
@@ -135,6 +139,7 @@ export default function DashboardClient() {
             count: bookStageCounts[name] || 0
         }));
 
+
         // --- Daily Throughput Chart ---
         const dailyActivity: { [date: string]: { [action: string]: number } } = {};
         const sevenDaysAgo = subDays(new Date(), 6);
@@ -142,6 +147,8 @@ export default function DashboardClient() {
         const actionsToTrack: { [key: string]: string } = {
             'Reception Confirmed': 'Received',
             'Scanning Finished': 'Scanned',
+            'Indexing Started': 'Indexed',
+            'Checking Started': 'Checked',
             'Processing Completed': 'Processed',
             'Client Approval': 'Finalized',
             'Book Archived': 'Archived'
@@ -176,6 +183,8 @@ export default function DashboardClient() {
                 date: format(new Date(dateStr), 'MMM d'),
                 Received: dayData.Received || 0,
                 Scanned: dayData.Scanned || 0,
+                Indexed: dayData.Indexed || 0,
+                Checked: dayData.Checked || 0,
                 Processed: dayData.Processed || 0,
                 Delivered: dayData.Delivered || 0,
                 Finalized: dayData.Finalized || 0,
@@ -220,9 +229,11 @@ export default function DashboardClient() {
     const dailyChartConfig = {
       Received: { label: "Received", color: "hsl(var(--chart-1))" },
       Scanned: { label: "Scanned", color: "hsl(var(--chart-2))" },
-      Processed: { label: "Processed", color: "hsl(var(--chart-3))" },
-      Delivered: { label: "Delivered", color: "hsl(var(--chart-4))" },
-      Finalized: { label: "Finalized", color: "hsl(var(--chart-5))" },
+      Indexed: { label: "Indexed", color: "hsl(var(--chart-3))" },
+      Checked: { label: "Checked", color: "hsl(var(--chart-4))" },
+      Processed: { label: "Processed", color: "hsl(var(--chart-5))" },
+      Delivered: { label: "Delivered", color: "hsl(200, 80%, 50%)" },
+      Finalized: { label: "Finalized", color: "hsl(100, 80%, 50%)" },
     } satisfies ChartConfig;
 
 
