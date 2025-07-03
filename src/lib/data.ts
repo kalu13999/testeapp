@@ -44,11 +44,12 @@ export interface Document {
 
 export interface AuditLog {
     id: string;
-    documentId: string;
     action: string;
     userId: string;
     date: string;
     details: string;
+    documentId?: string;
+    bookId?: string;
 }
 
 export interface User {

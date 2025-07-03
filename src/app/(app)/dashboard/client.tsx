@@ -23,7 +23,7 @@ import { Progress } from "@/components/ui/progress"
 import { AlertTriangle, BookCopy, CheckCircle2, UserCheck, BarChart2, ListTodo, Activity } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import { useMemo } from "react"
-import type { EnrichedBook, AppDocument, EnrichedProject, AuditLog } from "@/context/workflow-context"
+import type { EnrichedBook, AppDocument, EnrichedProject, EnrichedAuditLog } from "@/context/workflow-context"
 import Link from "next/link"
 
 const kpiIconMap: { [key: string]: React.ElementType } = {
@@ -43,16 +43,6 @@ type KpiData = {
 type ChartData = {
     name: string;
     count: number;
-}
-
-type RecentActivity = {
-    id: string;
-    bookName: string;
-    docId?: string;
-    projectName: string;
-    action: string;
-    user: string;
-    date: string;
 }
 
 type ProjectProgressData = {
@@ -80,10 +70,7 @@ export default function DashboardClient() {
         const relevantProjectIds = new Set(relevantProjects.map(p => p.id));
         const relevantBooks = books.filter(b => relevantProjectIds.has(b.projectId));
         const relevantDocuments = documents.filter(d => relevantProjectIds.has(d.projectId));
-        const relevantAuditLogs = auditLogs.filter(log => {
-            const doc = documents.find(d => d.id === log.documentId);
-            return doc && relevantProjectIds.has(doc.projectId);
-        });
+        const relevantAuditLogs = auditLogs.filter(log => log.bookId && relevantProjectIds.has(books.find(b => b.id === log.bookId)?.projectId || ''));
         
         // --- KPI Calculations ---
         const booksInWorkflow = relevantBooks.filter(b => !['Complete', 'Archived'].includes(b.status)).length;
@@ -92,19 +79,19 @@ export default function DashboardClient() {
             : 0;
         const slaWarnings = relevantProjects.filter(p => p.status === 'In Progress' && new Date(p.endDate) < new Date()).length;
         const today = new Date().toISOString().slice(0, 10);
-        const processedToday = relevantDocuments.filter(d => d.lastUpdated === today).length;
+        const processedToday = relevantAuditLogs.filter(d => d.date.startsWith(today)).length;
 
         const kpiData: KpiData[] = [
             { title: "Books in Workflow", value: booksInWorkflow.toLocaleString(), icon: BookCopy, description: "Active books across all stages" },
             { title: "Pending Client Action", value: pendingClientAction.toLocaleString(), icon: UserCheck, description: "Books awaiting client approval" },
             { title: "SLA Warnings", value: slaWarnings.toLocaleString(), icon: AlertTriangle, description: "Projects past their due date" },
-            { title: "Pages Processed Today", value: processedToday.toLocaleString(), icon: CheckCircle2, description: "Documents updated today" },
+            { title: "Actions Today", value: processedToday.toLocaleString(), icon: Activity, description: "Any action performed today" },
         ];
 
         // --- Chart Data Calculation ---
         const workflowStages: { [key: string]: string[] } = {
-            'Reception': ['Pending'],
-            'Scanning': ['To Scan', 'Scanning Started', 'Scanned'],
+            'Reception': ['Pending', 'To Scan'],
+            'Scanning': ['Scanning Started', 'Scanned'],
             'Processing': ['Storage', 'Indexing', 'Quality Control', 'Ready for Processing', 'In Processing', 'Processed'],
             'Final Review': ['Final Quality Control', 'Delivery', 'Pending Validation'],
             'Correction': ['Client Rejected', 'Corrected'],
@@ -112,50 +99,30 @@ export default function DashboardClient() {
 
         const bookStageCounts = Object.fromEntries(Object.keys(workflowStages).map(k => [k, 0]));
         
-        const getBookStage = (book: EnrichedBook, docs: AppDocument[]): string | null => {
+        relevantBooks.forEach(book => {
             for (const [stage, statuses] of Object.entries(workflowStages)) {
                 if (statuses.includes(book.status)) {
-                    return stage;
+                    bookStageCounts[stage]++;
+                    return;
                 }
             }
-            const bookDocs = docs.filter(d => d.bookId === book.id);
+            // Fallback for document-level status checks if book status is generic like 'In Progress'
+            const bookDocs = relevantDocuments.filter(d => d.bookId === book.id);
             if (bookDocs.length > 0) {
-                 const docStatus = bookDocs[0].status; // Assume all docs in a book are in the same stage for simplicity
+                 const docStatus = bookDocs[0].status;
                  for (const [stage, statuses] of Object.entries(workflowStages)) {
                     if (statuses.includes(docStatus)) {
-                        return stage;
+                        bookStageCounts[stage]++;
+                        return;
                     }
                 }
-            }
-            return null;
-        }
-
-        relevantBooks.forEach(book => {
-            const stage = getBookStage(book, relevantDocuments);
-            if (stage && bookStageCounts.hasOwnProperty(stage)) {
-                bookStageCounts[stage]++;
             }
         });
 
         const chartData: ChartData[] = Object.entries(bookStageCounts).map(([name, count]) => ({ name, count }));
 
         // --- Table Data ---
-        const recentActivities: RecentActivity[] = relevantAuditLogs
-            .slice(0, 7)
-            .map(log => {
-                const doc = documents.find(d => d.id === log.documentId);
-                const book = doc ? books.find(b => b.id === doc.bookId) : null;
-                return {
-                    id: log.id,
-                    bookName: book?.name || doc?.name || 'N/A',
-                    docId: doc?.id,
-                    projectName: book?.projectName || 'N/A',
-                    action: log.action,
-                    user: log.user,
-                    date: new Date(log.date).toLocaleString(),
-                };
-            });
-
+        const recentActivities = relevantAuditLogs.slice(0, 7)
 
         const projectProgressData: ProjectProgressData[] = relevantProjects.map(p => ({
             id: p.id,
@@ -227,16 +194,19 @@ export default function DashboardClient() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {recentActivities.length > 0 ? recentActivities.map(activity => (
-                                    <TableRow key={activity.id}>
-                                        <TableCell>
-                                            <Link href={activity.docId ? `/documents/${activity.docId}` : '#'} className="font-medium truncate hover:underline">{activity.action}</Link>
-                                            <div className="text-xs text-muted-foreground truncate">{activity.bookName}</div>
-                                        </TableCell>
-                                        <TableCell>{activity.user}</TableCell>
-                                        <TableCell className="text-xs">{activity.date}</TableCell>
-                                    </TableRow>
-                                )) : (
+                                {recentActivities.length > 0 ? recentActivities.map(activity => {
+                                    const targetLink = activity.documentId ? `/documents/${activity.documentId}` : (activity.bookId ? `/books/${activity.bookId}` : '#');
+                                    return (
+                                        <TableRow key={activity.id}>
+                                            <TableCell>
+                                                <Link href={targetLink} className="font-medium truncate hover:underline">{activity.action}</Link>
+                                                <div className="text-xs text-muted-foreground truncate">{activity.details}</div>
+                                            </TableCell>
+                                            <TableCell>{activity.user}</TableCell>
+                                            <TableCell className="text-xs">{new Date(activity.date).toLocaleString()}</TableCell>
+                                        </TableRow>
+                                    )
+                                }) : (
                                     <TableRow><TableCell colSpan={3} className="h-24 text-center">No recent activity.</TableCell></TableRow>
                                 )}
                             </TableBody>

@@ -12,9 +12,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import type { EnrichedBook, AppDocument } from "@/context/workflow-context";
+import type { EnrichedBook, AppDocument, EnrichedAuditLog } from "@/context/workflow-context";
 import { useAppContext } from "@/context/workflow-context";
-import { Info, BookOpen } from "lucide-react";
+import { Info, BookOpen, History, InfoIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
@@ -24,17 +24,20 @@ interface BookDetailClientProps {
 
 const DetailItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
   <div>
-    <p className="text-muted-foreground">{label}</p>
+    <p className="text-sm text-muted-foreground">{label}</p>
     <div className="font-medium">{value}</div>
   </div>
 );
 
 export default function BookDetailClient({ bookId }: BookDetailClientProps) {
-  const { books, documents, users } = useAppContext();
+  const { books, documents, users, auditLogs } = useAppContext();
 
   const book = books.find(b => b.id === bookId);
   const pages = documents.filter(d => d.bookId === bookId);
   const scanner = users.find(u => u.id === book?.scannerUserId);
+  const bookAuditLogs = auditLogs.filter(log => log.bookId === bookId)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
 
   if (!book) {
     return (
@@ -53,7 +56,8 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="grid lg:grid-cols-3 gap-6">
+      <div className="lg:col-span-2 space-y-6">
         <div>
             <p className="text-sm text-muted-foreground">{book.projectName} / {book.clientName}</p>
             <h1 className="font-headline text-3xl font-bold tracking-tight">{book.name}</h1>
@@ -62,45 +66,8 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
             </p>
         </div>
 
-        <Card>
-            <CardHeader>
-                <CardTitle>Book Details</CardTitle>
-            </CardHeader>
-            <CardContent>
-                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 text-sm">
-                    <DetailItem label="Project" value={<Link href={`/projects/${book.projectId}`} className="text-primary hover:underline">{book.projectName}</Link>} />
-                    <DetailItem label="Client" value={book.clientName} />
-                    <DetailItem label="Status" value={<Badge variant="outline">{book.status}</Badge>} />
-                    
-                    <DetailItem label="Priority" value={book.priority || '—'} />
-                    <DetailItem label="Author" value={book.author || '—'} />
-                    <DetailItem label="ISBN" value={book.isbn || '—'} />
-
-                    <DetailItem label="Publication Year" value={book.publicationYear || '—'} />
-                    <DetailItem label="Expected Pages" value={book.expectedDocuments} />
-                    <DetailItem label="Scanned Pages" value={book.documentCount} />
-                    
-                    <DetailItem label="Scanner Assigned" value={scanner?.name || '—'} />
-                    <DetailItem label="Scan Started" value={book.scanStartTime ? new Date(book.scanStartTime).toLocaleString() : '—'} />
-                    <DetailItem label="Scan Ended" value={book.scanEndTime ? new Date(book.scanEndTime).toLocaleString() : '—'} />
-                </div>
-            </CardContent>
-        </Card>
-        
-         {book.info && (
-            <Card className="bg-background">
-                <CardHeader className="flex flex-row items-center gap-2 pb-2">
-                    <Info className="h-4 w-4" />
-                    <CardTitle className="text-base">Additional Info</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-sm text-muted-foreground">{book.info}</p>
-                </CardContent>
-            </Card>
-        )}
-
         {pages.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                 {pages.map(page => (
                     <Link href={`/documents/${page.id}`} key={page.id}>
                         <Card className="overflow-hidden hover:shadow-lg transition-shadow">
@@ -128,6 +95,68 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
                 <p className="text-muted-foreground">No pages have been scanned for this book yet.</p>
             </div>
         )}
+      </div>
+
+      <div className="lg:col-span-1 space-y-6">
+        <Card>
+            <CardHeader>
+                <CardTitle>Book Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+                  <DetailItem label="Project" value={<Link href={`/projects/${book.projectId}`} className="text-primary hover:underline">{book.projectName}</Link>} />
+                  <DetailItem label="Client" value={book.clientName} />
+                  <DetailItem label="Status" value={<Badge variant="outline">{book.status}</Badge>} />
+                  <Separator />
+                  <DetailItem label="Priority" value={book.priority || '—'} />
+                  <DetailItem label="Author" value={book.author || '—'} />
+                  <DetailItem label="ISBN" value={book.isbn || '—'} />
+                  <Separator />
+                  <DetailItem label="Publication Year" value={book.publicationYear || '—'} />
+                  <DetailItem label="Expected Pages" value={book.expectedDocuments} />
+                  <DetailItem label="Scanned Pages" value={book.documentCount} />
+                  <Separator />
+                  <DetailItem label="Scanner Assigned" value={scanner?.name || '—'} />
+                  <DetailItem label="Scan Started" value={book.scanStartTime ? new Date(book.scanStartTime).toLocaleString() : '—'} />
+                  <DetailItem label="Scan Ended" value={book.scanEndTime ? new Date(book.scanEndTime).toLocaleString() : '—'} />
+            </CardContent>
+             {book.info && (
+                <>
+                <Separator />
+                <CardContent className="pt-4">
+                  <DetailItem label="Additional Info" value={book.info} />
+                </CardContent>
+                </>
+             )}
+        </Card>
+
+        <Card>
+            <CardHeader>
+                <CardTitle className="font-headline flex items-center gap-2"><History className="h-5 w-5"/> Book History</CardTitle>
+                <CardDescription>Key events in this book's lifecycle.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="space-y-4">
+                {bookAuditLogs.length > 0 ? bookAuditLogs.map((log, index) => (
+                    <div key={log.id} className="flex items-start gap-3 relative">
+                        {index < bookAuditLogs.length - 1 && <div className="absolute left-[7px] top-6 w-px h-full bg-border" />}
+                        <div className="flex-shrink-0 z-10">
+                            <div className="h-4 w-4 rounded-full bg-primary/20 flex items-center justify-center ring-4 ring-background">
+                                <InfoIcon className="h-2.5 w-2.5 text-primary"/>
+                            </div>
+                        </div>
+                        <div className="flex-1 -mt-1.5">
+                            <p className="font-medium text-xs">{log.action}</p>
+                            <p className="text-xs text-muted-foreground">{log.details}</p>
+                            <time className="text-xs text-muted-foreground/80">{new Date(log.date).toLocaleString()} by {log.user}</time>
+                        </div>
+                    </div>
+                )) : (
+                        <p className="text-sm text-muted-foreground">No history available for this book.</p>
+                )}
+                </div>
+            </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

@@ -30,8 +30,7 @@ const digitalStageTransitions: { [key: string]: string } = {
 }
 
 // Client-side representation of a document
-export type AppDocument = RawDocument & { client: string; status: string; flag: 'error' | 'warning' | 'info' | null; flagComment?: string; };
-
+export type AppDocument = RawDocument & { client: string; status: string; };
 export type EnrichedAuditLog = AuditLog & { user: string; };
 
 type AppContextType = {
@@ -141,8 +140,6 @@ export function AppProvider({
   }, [initialUsers]);
 
   const login = (username: string, password: string): boolean => {
-    // Find user by username and password. For this example, passwords are in plain text.
-    // In a real application, you would hash and compare passwords.
     const user = initialUsers.find(u => u.username === username && u.password === password);
     if (user) {
       setCurrentUser(user);
@@ -155,9 +152,27 @@ export function AppProvider({
   const logout = () => {
     setCurrentUser(null);
     localStorage.removeItem('flowvault_userid');
-    // The redirect will be handled by the layout effect
   };
   
+  // --- Centralized Action Logger ---
+  const logAction = React.useCallback((
+    action: string, 
+    details: string, 
+    ids: { bookId?: string, documentId?: string }
+  ) => {
+    if (!currentUser) return;
+    const newLogEntry: EnrichedAuditLog = {
+      id: `al_${Date.now()}`,
+      action,
+      details,
+      userId: currentUser.id,
+      user: currentUser.name,
+      date: new Date().toISOString(),
+      ...ids,
+    };
+    setAuditLogs(prev => [newLogEntry, ...prev]);
+  }, [currentUser]);
+
   // --- Memoized Data Enrichment ---
   const enrichedBooks: EnrichedBook[] = React.useMemo(() => {
     return books.map(book => {
@@ -200,19 +215,21 @@ export function AppProvider({
 
   // --- CRUD ACTIONS ---
 
-  // Clients
   const addClient = (clientData: Omit<Client, 'id'>) => {
     const newClient: Client = { id: `cl_${Date.now()}`, ...clientData };
     setClients(prev => [...prev, newClient]);
+    logAction('Client Created', `New client "${newClient.name}" added.`, {});
     toast({ title: "Client Added", description: `Client "${newClient.name}" has been created.` });
   };
 
   const updateClient = (clientId: string, clientData: Partial<Omit<Client, 'id'>>) => {
     setClients(prev => prev.map(c => c.id === clientId ? { ...c, ...clientData } : c));
+    logAction('Client Updated', `Details for "${clientData.name}" updated.`, {});
     toast({ title: "Client Updated", description: "Client details have been saved." });
   };
 
   const deleteClient = (clientId: string) => {
+    const clientToDelete = clients.find(c => c.id === clientId);
     const associatedProjectIds = projects.filter(p => p.clientId === clientId).map(p => p.id);
     
     setClients(prev => prev.filter(c => c.id !== clientId));
@@ -223,49 +240,55 @@ export function AppProvider({
     if (associatedProjectIds.includes(selectedProjectId!)) {
         setSelectedProjectId(null);
     }
+    logAction('Client Deleted', `Client "${clientToDelete?.name}" and all data deleted.`, {});
     toast({ title: "Client Deleted", description: "Client and all associated projects/data have been deleted.", variant: "destructive" });
   };
   
-  // Users
   const addUser = (userData: Omit<User, 'id' | 'avatar' | 'lastLogin'>) => {
     const newUser: User = { id: `u_${Date.now()}`, avatar: 'https://placehold.co/100x100.png', ...userData };
     setUsers(prev => [...prev, newUser]);
+    logAction('User Created', `New user "${newUser.name}" added with role ${newUser.role}.`, {});
     toast({ title: "User Added", description: `User "${newUser.name}" has been created.` });
   };
 
   const updateUser = (userId: string, userData: Partial<Omit<User, 'id' | 'avatar' | 'lastLogin'>>) => {
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...userData } : u));
+    logAction('User Updated', `Details for user "${userData.name}" updated.`, {});
     toast({ title: "User Updated", description: "User details have been saved." });
   };
 
   const deleteUser = (userId: string) => {
+    const userToDelete = users.find(u => u.id === userId);
     setUsers(prev => prev.filter(u => u.id !== userId));
+    logAction('User Deleted', `User "${userToDelete?.name}" was deleted.`, {});
     toast({ title: "User Deleted", description: "The user has been deleted.", variant: "destructive" });
   };
   
-  // Projects
   const addProject = (projectData: Omit<Project, 'id'>) => {
     const newProjectData: Project = { id: `proj_${Date.now()}`, ...projectData };
     setProjects(prev => [...prev, newProjectData]);
+    logAction('Project Created', `New project "${newProjectData.name}" added.`, {});
     toast({ title: "Project Added", description: `Project "${newProjectData.name}" has been created.` });
   };
   
   const updateProject = (projectId: string, projectData: Partial<Omit<Project, 'id'>>) => {
     setProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...projectData } : p));
+    logAction('Project Updated', `Details for project "${projectData.name}" updated.`, {});
     toast({ title: "Project Updated" });
   };
 
   const deleteProject = (projectId: string) => {
+      const projectToDelete = projects.find(p => p.id === projectId);
       if (selectedProjectId === projectId) {
         setSelectedProjectId(null);
       }
       setProjects(prev => prev.filter(p => p.id !== projectId));
       setBooks(prev => prev.filter(b => b.projectId !== projectId));
       setDocuments(prev => prev.filter(d => d.projectId !== projectId));
+      logAction('Project Deleted', `Project "${projectToDelete?.name}" and all data deleted.`, {});
       toast({ title: "Project Deleted", variant: "destructive" });
   };
 
-  // Books
   const addBook = (projectId: string, bookData: Omit<RawBook, 'id' | 'projectId' | 'status'>) => {
       const newRawBook: RawBook = {
           id: `book_${Date.now()}`,
@@ -274,17 +297,21 @@ export function AppProvider({
           ...bookData,
       };
       setBooks(prev => [...prev, newRawBook]);
+      logAction('Book Added', `Book "${newRawBook.name}" was added to project.`, { bookId: newRawBook.id });
       toast({ title: "Book Added", description: `Book "${newRawBook.name}" has been added.` });
   };
   
   const updateBook = (bookId: string, bookData: Partial<Omit<RawBook, 'id' | 'projectId' | 'status'>>) => {
       setBooks(prev => prev.map(b => b.id === bookId ? { ...b, ...bookData } : b));
+      logAction('Book Updated', `Details for book "${bookData.name}" were updated.`, { bookId });
       toast({ title: "Book Updated" });
   };
 
   const deleteBook = (bookId: string) => {
+      const bookToDelete = books.find(b => b.id === bookId);
       setBooks(prev => prev.filter(b => b.id !== bookId));
       setDocuments(prev => prev.filter(d => d.bookId !== bookId));
+      logAction('Book Deleted', `Book "${bookToDelete?.name}" and its pages were deleted.`, { bookId });
       toast({ title: "Book Deleted", variant: "destructive" });
   };
 
@@ -299,12 +326,12 @@ export function AppProvider({
         return newRawBook;
     });
     setBooks(prev => [...prev, ...booksToAdd]);
+    logAction('Books Imported', `${booksToAdd.length} books imported for project.`, {});
     toast({
         title: "Import Successful",
         description: `${booksToAdd.length} books have been added to the project.`
     });
   };
-
 
   // --- WORKFLOW ACTIONS ---
 
@@ -323,36 +350,32 @@ export function AppProvider({
     const book = books.find(b => b.id === bookId);
     if (!book) return;
 
-    // Handle moving from Pending -> To Scan (with scanner assignment)
     if (currentStatus === 'Pending' && payload?.scannerUserId) {
+      const scanner = users.find(u => u.id === payload.scannerUserId);
       updateBookStatus(bookId, nextStatus, () => ({ scannerUserId: payload.scannerUserId }));
-      toast({
-        title: "Book Receipt Confirmed",
-        description: `Book assigned and moved to "${nextStatus}".`
-      });
+      logAction('Reception Confirmed', `Assigned to scanner ${scanner?.name || 'Unknown'}.`, { bookId });
+      toast({ title: "Book Receipt Confirmed" });
       return;
     }
     
-    // Handle moving from To Scan -> Scanning Started
     if (currentStatus === 'To Scan') {
       updateBookStatus(bookId, nextStatus, () => ({ scanStartTime: new Date().toISOString() }));
-      toast({
-        title: "Scanning Started",
-        description: `Book moved to "${nextStatus}".`
-      });
+      logAction('Scanning Started', `Scanning process initiated for book.`, { bookId });
+      toast({ title: "Scanning Started" });
       return;
     }
 
-    // Handle moving from Scanning Started -> Scanned
     if (currentStatus === 'Scanning Started') {
       updateBookStatus(bookId, nextStatus, () => ({ scanEndTime: new Date().toISOString() }));
+      logAction('Scanning Finished', `Scanning completed.`, { bookId });
+      
       const project = projects.find(p => p.id === book.projectId);
       const client = clients.find(c => c.id === project?.clientId);
       if (!project || !client) return;
 
       const existingDocs = documents.some(d => d.bookId === book.id);
       if (existingDocs) {
-         toast({ title: "Scanning Complete", description: `Book status updated to "${nextStatus}".` });
+         toast({ title: "Scanning Complete" });
          return;
       }
 
@@ -366,7 +389,7 @@ export function AppProvider({
           clientId: client.id,
           client: client.name,
           status: 'Storage',
-          statusId: 'ds_4', // Corresponds to 'Storage'
+          statusId: 'ds_4',
           type: 'Scanned Page',
           lastUpdated: new Date().toISOString().slice(0, 10),
           tags: [],
@@ -379,16 +402,13 @@ export function AppProvider({
       });
 
       setDocuments(prevDocs => [...prevDocs, ...newDocs]);
-      toast({
-        title: "Scanning Complete",
-        description: `${pagesToCreate} digital pages created in Storage.`
-      });
+      logAction('Pages Created', `${pagesToCreate} digital pages created.`, { bookId });
+      toast({ title: "Scanning Complete", description: `${pagesToCreate} pages created.` });
       return;
     }
     
-    // Fallback for other potential simple transitions if any
     updateBookStatus(bookId, nextStatus);
-    toast({ title: "Book Status Updated", description: `Book moved to "${nextStatus}".` });
+    logAction('Status Change', `Book moved to ${nextStatus}`, { bookId });
   };
   
   const moveBookDocuments = (bookId: string, newStatus: string) => {
@@ -402,38 +422,38 @@ export function AppProvider({
   const handleMoveBookToNextStage = (bookId: string, currentStage: string) => {
     const nextStage = digitalStageTransitions[currentStage];
     if (!nextStage) return;
-
+    const book = books.find(b => b.id === bookId);
     moveBookDocuments(bookId, nextStage);
+    logAction('Workflow Step', `Book "${book?.name}" moved from ${currentStage} to ${nextStage}.`, { bookId });
     toast({ title: "Workflow Action", description: `Book moved to ${nextStage}.` });
   };
 
   const handleStartProcessing = (bookId: string) => {
+    const book = books.find(b => b.id === bookId);
     moveBookDocuments(bookId, 'In Processing');
     setProcessingLogs(prev => {
-        // Remove old log if it exists
         const otherLogs = prev.filter(log => log.bookId !== bookId);
         const newLog: ProcessingLog = {
-            id: `pl_${Date.now()}`,
-            bookId: bookId,
-            status: 'In Progress',
-            progress: 0,
+            id: `pl_${Date.now()}`, bookId: bookId, status: 'In Progress', progress: 0,
             log: `[${new Date().toLocaleTimeString()}] Processing initiated.`,
-            startTime: new Date().toISOString(),
-            lastUpdate: new Date().toISOString(),
+            startTime: new Date().toISOString(), lastUpdate: new Date().toISOString(),
         };
         return [...otherLogs, newLog];
     });
-    toast({ title: 'Processing Started', description: 'The book has been sent to the processing queue.' });
+    logAction('Processing Started', `Automated processing started for book "${book?.name}".`, { bookId });
+    toast({ title: 'Processing Started' });
   };
   
   const handleCompleteProcessing = (bookId: string) => {
+    const book = books.find(b => b.id === bookId);
     moveBookDocuments(bookId, 'Processed');
     setProcessingLogs(prev => prev.map(log => 
         log.bookId === bookId 
             ? { ...log, status: 'Complete', progress: 100, log: `${log.log}\n[${new Date().toLocaleTimeString()}] Processing complete.` } 
             : log
     ));
-    toast({ title: 'Processing Complete', description: 'The book is now ready for Final QC.' });
+    logAction('Processing Completed', `Automated processing finished for book "${book?.name}".`, { bookId });
+    toast({ title: 'Processing Complete' });
   };
 
   const handleClientAction = (bookId: string, action: 'approve' | 'reject', reason?: string) => {
@@ -442,43 +462,55 @@ export function AppProvider({
     const book = enrichedBooks.find(b => b.id === bookId);
     moveBookDocuments(bookId, newStatus);
     
-    setBooks(prev => prev.map(b => {
-      if (b.id !== bookId) return b;
-      return {
-        ...b,
-        status: newStatus,
-        rejectionReason: isApproval ? undefined : reason,
-      };
-    }));
+    setBooks(prev => prev.map(b => b.id !== bookId ? b : { ...b, status: newStatus, rejectionReason: isApproval ? undefined : reason }));
+    
+    logAction(
+      `Client ${isApproval ? 'Approval' : 'Rejection'}`, 
+      isApproval ? `Book "${book?.name}" approved.` : `Book "${book?.name}" rejected. Reason: ${reason}`,
+      { bookId }
+    );
 
-
-    toast({
-      title: `Book ${isApproval ? 'Approved' : 'Rejected'}`,
-      description: `"${book?.name}" has been ${isApproval ? 'approved' : 'rejected'}.`,
-    });
+    toast({ title: `Book ${isApproval ? 'Approved' : 'Rejected'}` });
   };
 
   const handleFinalize = (bookId: string) => {
+    const book = books.find(b => b.id === bookId);
     moveBookDocuments(bookId, 'Archived');
     updateBookStatus(bookId, 'Complete');
-    toast({ title: "Book Archived", description: "The book has been moved to long-term storage." });
+    logAction('Book Archived', `Book "${book?.name}" was finalized and archived.`, { bookId });
+    toast({ title: "Book Archived" });
   };
   
   const handleMarkAsCorrected = (bookId: string) => {
+    const book = books.find(b => b.id === bookId);
     moveBookDocuments(bookId, 'Corrected');
     updateBookStatus(bookId, 'Corrected');
-    toast({ title: "Book Corrected", description: "The book is now ready for resubmission." });
+    logAction('Marked as Corrected', `Book "${book?.name}" marked as corrected after client rejection.`, { bookId });
+    toast({ title: "Book Corrected" });
   };
 
   const handleResubmit = (bookId: string, targetStage: string) => {
+    const book = books.find(b => b.id === bookId);
     moveBookDocuments(bookId, targetStage);
     updateBookStatus(bookId, 'In Progress');
-    toast({ title: "Book Resubmitted", description: `The book has been sent back to ${targetStage}.` });
+    logAction('Book Resubmitted', `Book "${book?.name}" resubmitted to ${targetStage}.`, { bookId });
+    toast({ title: "Book Resubmitted" });
   };
   
   const addPageToBook = (bookId: string, position: number) => {
     const book = enrichedBooks.find(b => b.id === bookId);
     if (!book) return;
+
+    const newPageName = `${book.name} - Page ${position} (Added)`;
+    const newPageId = `doc_${book.id}_new_${Date.now()}`;
+    const newPage: AppDocument = {
+      id: newPageId,
+      name: newPageName,
+      clientId: book.clientId, client: book.clientName, status: 'Client Rejected', statusId: 'ds_13',
+      type: 'Added Page', lastUpdated: new Date().toISOString().slice(0, 10), tags: ['added', 'corrected'],
+      folderId: null, projectId: book.projectId, bookId: book.id, flag: 'info',
+      imageUrl: `https://dummyimage.com/400x550/e0e0e0/5c5c5c.png&text=${encodeURIComponent(newPageName)}`
+    };
 
     setDocuments(prevDocs => {
       const otherPages = prevDocs.filter(p => p.bookId !== bookId);
@@ -487,24 +519,6 @@ export function AppProvider({
       const getPageNum = (name: string): number | null => {
         const match = name.match(/ - Page (\d+)/);
         return match ? parseInt(match[1], 10) : null;
-      };
-
-      const newPageName = `${book.name} - Page ${position} (Added)`;
-      const newPage: AppDocument = {
-        id: `doc_${book.id}_new_${Date.now()}`,
-        name: newPageName,
-        clientId: book.clientId,
-        client: book.clientName,
-        status: 'Client Rejected',
-        statusId: 'ds_13',
-        type: 'Added Page',
-        lastUpdated: new Date().toISOString().slice(0, 10),
-        tags: ['added', 'corrected'],
-        folderId: null,
-        projectId: book.projectId,
-        bookId: book.id,
-        flag: 'info',
-        imageUrl: `https://dummyimage.com/400x550/e0e0e0/5c5c5c.png&text=${encodeURIComponent(newPageName)}`
       };
 
       const updatedPages = bookPages.map(page => {
@@ -517,42 +531,51 @@ export function AppProvider({
       });
       
       updatedPages.splice(position - 1, 0, newPage);
-
       return [...otherPages, ...updatedPages];
     });
 
-    setBooks(prev => prev.map(b => b.id === bookId ? { ...b, documentCount: b.documentCount + 1, expectedDocuments: b.expectedDocuments + 1 } : b));
-    
-    toast({
-      title: "Page Added",
-      description: `A new page has been inserted at position ${position} in "${book.name}".`,
-    });
+    setBooks(prev => prev.map(b => b.id === bookId ? { ...b, documentCount: (b.documentCount || 0) + 1, expectedDocuments: (b.expectedDocuments || 0) + 1 } : b));
+    logAction('Page Added', `New page added to "${book.name}" at position ${position}.`, { bookId, documentId: newPageId });
+    toast({ title: "Page Added" });
   }
 
   const deletePageFromBook = (pageId: string, bookId: string) => {
+    const page = documents.find(p => p.id === pageId);
     setDocuments(prev => prev.filter(p => p.id !== pageId));
-    setBooks(prev => prev.map(b => b.id === bookId ? {...b, documentCount: b.documentCount - 1, expectedDocuments: b.expectedDocuments - 1 } : b));
+    setBooks(prev => prev.map(b => b.id === bookId ? {...b, documentCount: (b.documentCount || 1) - 1, expectedDocuments: (b.expectedDocuments || 1) - 1 } : b));
+    logAction('Page Deleted', `Page "${page?.name}" was deleted from book.`, { bookId, documentId: pageId });
   }
 
   const updateDocumentStatus = (docId: string, newStatus: string) => {
+    let docName = '';
     setDocuments(prevDocs =>
-        prevDocs.map(doc =>
-            doc.id === docId ? { ...doc, status: newStatus } : doc
-        )
+        prevDocs.map(doc => {
+          if (doc.id === docId) {
+            docName = doc.name;
+            return { ...doc, status: newStatus };
+          }
+          return doc;
+        })
     );
+    logAction('Document Status Changed', `Status of "${docName}" changed to ${newStatus}.`, { documentId: docId });
   };
 
   const updateDocumentFlag = (docId: string, flag: AppDocument['flag'], comment?: string) => {
+    const doc = documents.find(d => d.id === docId);
     setDocuments(prevDocs =>
-      prevDocs.map(doc =>
-        doc.id === docId ? { ...doc, flag, flagComment: flag ? comment : undefined } : doc
+      prevDocs.map(d =>
+        d.id === docId ? { ...d, flag, flagComment: flag ? comment : undefined } : d
       )
     );
     const flagLabel = flag ? flag.charAt(0).toUpperCase() + flag.slice(1) : 'Cleared';
-    toast({ title: `Flag ${flag ? 'Set' : 'Cleared'}`, description: `Document has been marked with: ${flagLabel}` });
+    logAction(
+      `Flag ${flag ? 'Set' : 'Cleared'}`, 
+      `Document "${doc?.name}" marked with ${flagLabel}. Comment: ${comment || 'N/A'}`, 
+      { documentId: docId, bookId: doc?.bookId }
+    );
+    toast({ title: `Flag ${flag ? 'Set' : 'Cleared'}`});
   }
 
-  // Memoized lists filtered by selected project
   const scannerUsers = React.useMemo(() => users.filter(user => user.role === 'Scanning'), [users]);
 
   const filteredProjects = React.useMemo(() => {

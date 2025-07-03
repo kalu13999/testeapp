@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { useAppContext } from '@/context/workflow-context';
 import { ShieldAlert, AlertTriangle, InfoIcon, CircleX, History, MessageSquareQuote } from "lucide-react";
-import type { AppDocument } from '@/context/workflow-context';
+import type { AppDocument, EnrichedAuditLog } from '@/context/workflow-context';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
@@ -31,7 +31,10 @@ export default function DocumentDetailClient({ docId }: { docId: string }) {
         comment: string;
     }>({ open: false, flag: null, comment: '' });
     
-    const documentAuditLog = auditLogs.filter(log => log.documentId === docId);
+    const documentAuditLogs = auditLogs
+      .filter(log => log.documentId === docId)
+      .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
 
     if (!document) {
         return (
@@ -106,9 +109,9 @@ export default function DocumentDetailClient({ docId }: { docId: string }) {
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-4">
-                            {documentAuditLog.length > 0 ? documentAuditLog.map((log, index) => (
+                            {documentAuditLogs.length > 0 ? documentAuditLogs.map((log, index) => (
                                 <div key={log.id} className="flex items-start gap-4 relative">
-                                    {index < documentAuditLog.length - 1 && <div className="absolute left-4 top-8 w-px h-full bg-border" />}
+                                    {index < documentAuditLogs.length - 1 && <div className="absolute left-4 top-8 w-px h-full bg-border" />}
                                     <div className="flex-shrink-0 z-10">
                                         <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center ring-4 ring-background">
                                             <InfoIcon className="h-4 w-4 text-primary"/>
@@ -145,7 +148,7 @@ export default function DocumentDetailClient({ docId }: { docId: string }) {
                                 <InfoIcon className="mr-2 h-4 w-4" /> Mark with Info
                             </Button>
                             {document.flag && (
-                                <Button variant="ghost" className="w-full" onClick={() => updateDocumentFlag(document.id, null)}>
+                                <Button variant="ghost" className="w-full" onClick={() => updateDocumentFlag(document.id, null, '')}>
                                 <CircleX className="mr-2 h-4 w-4" /> Clear Flag
                                 </Button>
                             )}
