@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -20,6 +19,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -51,12 +51,73 @@ import { type User } from "@/lib/data"
 import { UserForm } from "./user-form"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAppContext } from "@/context/workflow-context"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
+
+const ITEMS_PER_PAGE = 10;
 
 export default function UsersClient() {
   const { users, addUser, updateUser, deleteUser } = useAppContext();
   const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | 'details' | null; data?: User }>({ open: false, type: null })
   
+  const [filters, setFilters] = React.useState({ query: '', role: 'all' });
+  const [currentPage, setCurrentPage] = React.useState(1);
+
   const roles = [...new Set(users.map(u => u.role))].filter(r => r !== 'System').sort();
+
+  const handleFilterChange = (filterName: keyof typeof filters, value: string) => {
+    setFilters(prev => ({ ...prev, [filterName]: value }));
+    setCurrentPage(1); 
+  };
+  
+  const filteredUsers = React.useMemo(() => {
+    return users.filter(user => {
+        const queryMatch = filters.query.trim() === '' || 
+            user.name.toLowerCase().includes(filters.query.toLowerCase()) ||
+            (user.email && user.email.toLowerCase().includes(filters.query.toLowerCase()));
+        
+        const roleMatch = filters.role === 'all' || user.role === filters.role;
+        
+        return queryMatch && roleMatch;
+    });
+  }, [users, filters]);
+
+  const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
+  const paginatedUsers = filteredUsers.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  const PaginationNav = () => {
+    if (totalPages <= 1) return null;
+    const pageNumbers: number[] = [];
+    const maxPagesToShow = 5;
+
+    if (totalPages <= maxPagesToShow) {
+        for (let i = 1; i <= totalPages; i++) { pageNumbers.push(i); }
+    } else {
+        pageNumbers.push(1);
+        if (currentPage > 3) { pageNumbers.push(-1); }
+        let start = Math.max(2, currentPage - 1);
+        let end = Math.min(totalPages - 1, currentPage + 1);
+        if (currentPage <= 2) { end = 3; }
+        if (currentPage >= totalPages - 1) { start = totalPages - 2; }
+        for (let i = start; i <= end; i++) { pageNumbers.push(i); }
+        if (currentPage < totalPages - 2) { pageNumbers.push(-1); }
+        pageNumbers.push(totalPages);
+    }
+    
+    return (
+      <Pagination>
+        <PaginationContent>
+          <PaginationItem><PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }} className={currentPage === 1 ? "pointer-events-none opacity-50" : undefined}/></PaginationItem>
+          {pageNumbers.map((num, i) => num === -1 ? <PaginationItem key={`ellipsis-${i}`}><PaginationEllipsis /></PaginationItem> : <PaginationItem key={num}><PaginationLink href="#" isActive={currentPage === num} onClick={(e) => { e.preventDefault(); setCurrentPage(num); }}>{num}</PaginationLink></PaginationItem>)}
+          <PaginationItem><PaginationNext href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }} className={currentPage === totalPages ? "pointer-events-none opacity-50" : undefined}/></PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    );
+  }
 
   const getInitials = (name: string) => {
     if (!name) return "";
@@ -100,8 +161,23 @@ export default function UsersClient() {
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>All Users</CardTitle>
-          <CardDescription>A list of all users in the system.</CardDescription>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Input 
+                placeholder="Search by name or email..." 
+                className="max-w-xs"
+                value={filters.query}
+                onChange={(e) => handleFilterChange('query', e.target.value)}
+            />
+            <Select value={filters.role} onValueChange={(value) => handleFilterChange('role', value)}>
+                <SelectTrigger className="w-auto min-w-[180px]">
+                    <SelectValue placeholder="Filter by Role" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Roles</SelectItem>
+                    {roles.map(role => <SelectItem key={role} value={role}>{role}</SelectItem>)}
+                </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -117,7 +193,7 @@ export default function UsersClient() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users.map((user) => (
+              {paginatedUsers.length > 0 ? paginatedUsers.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-3">
@@ -159,10 +235,22 @@ export default function UsersClient() {
                     )}
                   </TableCell>
                 </TableRow>
-              ))}
+              )) : (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center">
+                    No users found matching your filters.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
+         <CardFooter className="flex items-center justify-between">
+            <div className="text-xs text-muted-foreground">
+              Showing <strong>{paginatedUsers.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-{(currentPage - 1) * ITEMS_PER_PAGE + paginatedUsers.length}</strong> of <strong>{filteredUsers.length}</strong> users
+            </div>
+            <PaginationNav />
+        </CardFooter>
       </Card>
 
       <Dialog open={dialogState.open && (dialogState.type === 'new' || dialogState.type === 'edit')} onOpenChange={closeDialog}>

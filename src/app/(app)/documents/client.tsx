@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react";
@@ -39,7 +38,7 @@ import { useAppContext } from "@/context/workflow-context";
 const ITEMS_PER_PAGE = 10;
 
 export default function DocumentsClient() {
-  const { books, projects } = useAppContext();
+  const { books } = useAppContext();
   const [filters, setFilters] = React.useState({
     query: '',
     project: 'all',
@@ -145,33 +144,13 @@ export default function DocumentsClient() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2 flex-wrap">
-        <Input 
-            placeholder="Search by book name..." 
-            className="max-w-xs"
-            value={filters.query}
-            onChange={(e) => handleFilterChange('query', e.target.value)}
-        />
-        <Select value={filters.project} onValueChange={(value) => handleFilterChange('project', value)}>
-            <SelectTrigger className="w-auto min-w-[180px]">
-                <SelectValue placeholder="Filter by Project" />
-            </SelectTrigger>
-            <SelectContent>
-                <SelectItem value="all">All Projects</SelectItem>
-                {projectNames.map(project => <SelectItem key={project} value={project}>{project}</SelectItem>)}
-            </SelectContent>
-        </Select>
-        <Select value={filters.client} onValueChange={(value) => handleFilterChange('client', value)}>
-            <SelectTrigger className="w-auto min-w-[180px]">
-                <SelectValue placeholder="Filter by Client" />
-            </SelectTrigger>
-            <SelectContent>
-                <SelectItem value="all">All Clients</SelectItem>
-                {clientNames.map(client => <SelectItem key={client} value={client}>{client}</SelectItem>)}
-            </SelectContent>
-        </Select>
-        <div className="ml-auto flex items-center gap-2">
+    <div className="space-y-6">
+       <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-headline text-3xl font-bold tracking-tight">All Books</h1>
+          <p className="text-muted-foreground">Manage and track all books in the workflow.</p>
+        </div>
+        <div className="flex items-center gap-2">
             <Button size="sm" variant="outline" className="h-9 gap-1">
                 <FileIcon className="h-3.5 w-3.5" />
                 <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
@@ -182,10 +161,32 @@ export default function DocumentsClient() {
       </div>
       <Card>
         <CardHeader>
-          <CardTitle className="font-headline">All Books</CardTitle>
-          <CardDescription>
-            Manage and track all books in the workflow. Each book is a collection of documents.
-          </CardDescription>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Input 
+                placeholder="Search by book name..." 
+                className="max-w-xs"
+                value={filters.query}
+                onChange={(e) => handleFilterChange('query', e.target.value)}
+            />
+            <Select value={filters.project} onValueChange={(value) => handleFilterChange('project', value)}>
+                <SelectTrigger className="w-auto min-w-[180px]">
+                    <SelectValue placeholder="Filter by Project" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Projects</SelectItem>
+                    {projectNames.map(project => <SelectItem key={project} value={project}>{project}</SelectItem>)}
+                </SelectContent>
+            </Select>
+            <Select value={filters.client} onValueChange={(value) => handleFilterChange('client', value)}>
+                <SelectTrigger className="w-auto min-w-[180px]">
+                    <SelectValue placeholder="Filter by Client" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Clients</SelectItem>
+                    {clientNames.map(client => <SelectItem key={client} value={client}>{client}</SelectItem>)}
+                </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -196,8 +197,8 @@ export default function DocumentsClient() {
                 <TableHead>Client</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Priority</TableHead>
-                <TableHead>Progress</TableHead>
-                <TableHead className="text-center">Pages</TableHead>
+                <TableHead className="w-[150px]">Progress</TableHead>
+                <TableHead className="text-center w-[120px]">Pages</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -222,7 +223,7 @@ export default function DocumentsClient() {
               )) : (
                 <TableRow>
                   <TableCell colSpan={7} className="h-24 text-center">
-                    No books found.
+                    No books found matching your filters.
                   </TableCell>
                 </TableRow>
               )}
@@ -231,7 +232,7 @@ export default function DocumentsClient() {
         </CardContent>
         <CardFooter className="flex items-center justify-between">
           <div className="text-xs text-muted-foreground">
-            Showing <strong>{(currentPage - 1) * ITEMS_PER_PAGE + 1}-{(currentPage - 1) * ITEMS_PER_PAGE + paginatedBooks.length}</strong> of <strong>{filteredBooks.length}</strong> books
+            Showing <strong>{paginatedBooks.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-{(currentPage - 1) * ITEMS_PER_PAGE + paginatedBooks.length}</strong> of <strong>{filteredBooks.length}</strong> books
           </div>
            <PaginationNav />
         </CardFooter>

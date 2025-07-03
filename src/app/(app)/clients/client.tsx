@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -19,6 +18,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -49,10 +49,60 @@ import {
 import { type Client } from "@/lib/data"
 import { ClientForm } from "./client-form"
 import { useAppContext } from "@/context/workflow-context"
+import { Input } from "@/components/ui/input"
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
+
+const ITEMS_PER_PAGE = 10;
 
 export default function ClientsClient() {
   const { clients, addClient, updateClient, deleteClient } = useAppContext();
   const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | 'details' | null; data?: Client }>({ open: false, type: null })
+  
+  const [query, setQuery] = React.useState("");
+  const [currentPage, setCurrentPage] = React.useState(1);
+
+  const filteredClients = React.useMemo(() => {
+    return clients.filter(client =>
+      client.name.toLowerCase().includes(query.toLowerCase()) ||
+      client.contactEmail.toLowerCase().includes(query.toLowerCase())
+    );
+  }, [clients, query]);
+
+  const totalPages = Math.ceil(filteredClients.length / ITEMS_PER_PAGE);
+  const paginatedClients = filteredClients.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  const PaginationNav = () => {
+    if (totalPages <= 1) return null;
+    const pageNumbers: number[] = [];
+    const maxPagesToShow = 5;
+
+    if (totalPages <= maxPagesToShow) {
+        for (let i = 1; i <= totalPages; i++) { pageNumbers.push(i); }
+    } else {
+        pageNumbers.push(1);
+        if (currentPage > 3) { pageNumbers.push(-1); }
+        let start = Math.max(2, currentPage - 1);
+        let end = Math.min(totalPages - 1, currentPage + 1);
+        if (currentPage <= 2) { end = 3; }
+        if (currentPage >= totalPages - 1) { start = totalPages - 2; }
+        for (let i = start; i <= end; i++) { pageNumbers.push(i); }
+        if (currentPage < totalPages - 2) { pageNumbers.push(-1); }
+        pageNumbers.push(totalPages);
+    }
+    
+    return (
+      <Pagination>
+        <PaginationContent>
+          <PaginationItem><PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }} className={currentPage === 1 ? "pointer-events-none opacity-50" : undefined}/></PaginationItem>
+          {pageNumbers.map((num, i) => num === -1 ? <PaginationItem key={`ellipsis-${i}`}><PaginationEllipsis /></PaginationItem> : <PaginationItem key={num}><PaginationLink href="#" isActive={currentPage === num} onClick={(e) => { e.preventDefault(); setCurrentPage(num); }}>{num}</PaginationLink></PaginationItem>)}
+          <PaginationItem><PaginationNext href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }} className={currentPage === totalPages ? "pointer-events-none opacity-50" : undefined}/></PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    );
+  }
 
   const openDialog = (type: 'new' | 'edit' | 'delete' | 'details', data?: Client) => {
     setDialogState({ open: true, type, data })
@@ -91,8 +141,17 @@ export default function ClientsClient() {
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>All Clients</CardTitle>
-          <CardDescription>A list of all clients in the system.</CardDescription>
+          <div className="flex items-center gap-2">
+            <Input 
+                placeholder="Search by name or email..." 
+                className="max-w-xs"
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+            />
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -108,7 +167,7 @@ export default function ClientsClient() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {clients.map((client) => (
+              {paginatedClients.length > 0 ? paginatedClients.map((client) => (
                 <TableRow key={client.id}>
                   <TableCell className="font-medium">{client.name}</TableCell>
                   <TableCell>{client.contactEmail}</TableCell>
@@ -138,10 +197,22 @@ export default function ClientsClient() {
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))}
+              )) : (
+                 <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center">
+                    No clients found matching your search.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
+        <CardFooter className="flex items-center justify-between">
+            <div className="text-xs text-muted-foreground">
+              Showing <strong>{paginatedClients.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-{(currentPage - 1) * ITEMS_PER_PAGE + paginatedClients.length}</strong> of <strong>{filteredClients.length}</strong> clients
+            </div>
+            <PaginationNav />
+        </CardFooter>
       </Card>
 
       <Dialog open={dialogState.open && (dialogState.type === 'new' || dialogState.type === 'edit')} onOpenChange={closeDialog}>

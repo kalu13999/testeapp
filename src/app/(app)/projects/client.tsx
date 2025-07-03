@@ -1,4 +1,3 @@
-
 "use client"
 
 import Link from "next/link";
@@ -17,6 +16,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -36,7 +36,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -52,6 +51,11 @@ import {
 } from "@/components/ui/alert-dialog"
 import { ProjectForm } from "./project-form";
 import { useAppContext } from "@/context/workflow-context";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+
+const ITEMS_PER_PAGE = 10;
 
 const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -65,6 +69,66 @@ const getStatusBadgeVariant = (status: string) => {
 export default function ProjectsClient() {
   const { projects, clients, addProject, updateProject, deleteProject } = useAppContext();
   const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | 'details' | null; data?: EnrichedProject }>({ open: false, type: null })
+  
+  const [filters, setFilters] = React.useState({ query: '', client: 'all', status: 'all' });
+  const [currentPage, setCurrentPage] = React.useState(1);
+
+  const clientNames = [...new Set(clients.map(c => c.name))].sort();
+  const statuses = [...new Set(projects.map(p => p.status))].sort();
+
+  const handleFilterChange = (filterName: keyof typeof filters, value: string) => {
+    setFilters(prev => ({ ...prev, [filterName]: value }));
+    setCurrentPage(1); 
+  };
+
+  const filteredProjects = React.useMemo(() => {
+    return projects.filter(project => {
+        const queryMatch = filters.query.trim() === '' || 
+            project.name.toLowerCase().includes(filters.query.toLowerCase());
+        
+        const clientMatch = filters.client === 'all' || project.clientName === filters.client;
+        const statusMatch = filters.status === 'all' || project.status === filters.status;
+        
+        return queryMatch && clientMatch && statusMatch;
+    });
+  }, [projects, filters]);
+
+  const totalPages = Math.ceil(filteredProjects.length / ITEMS_PER_PAGE);
+  const paginatedProjects = filteredProjects.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  const PaginationNav = () => {
+    if (totalPages <= 1) return null;
+    const pageNumbers: number[] = [];
+    // ... logic to build pageNumbers array with ellipses
+    const maxPagesToShow = 5;
+
+    if (totalPages <= maxPagesToShow) {
+        for (let i = 1; i <= totalPages; i++) { pageNumbers.push(i); }
+    } else {
+        pageNumbers.push(1);
+        if (currentPage > 3) { pageNumbers.push(-1); }
+        let start = Math.max(2, currentPage - 1);
+        let end = Math.min(totalPages - 1, currentPage + 1);
+        if (currentPage <= 2) { end = 3; }
+        if (currentPage >= totalPages - 1) { start = totalPages - 2; }
+        for (let i = start; i <= end; i++) { pageNumbers.push(i); }
+        if (currentPage < totalPages - 2) { pageNumbers.push(-1); }
+        pageNumbers.push(totalPages);
+    }
+    
+    return (
+      <Pagination>
+        <PaginationContent>
+          <PaginationItem><PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }} className={currentPage === 1 ? "pointer-events-none opacity-50" : undefined}/></PaginationItem>
+          {pageNumbers.map((num, i) => num === -1 ? <PaginationItem key={`ellipsis-${i}`}><PaginationEllipsis /></PaginationItem> : <PaginationItem key={num}><PaginationLink href="#" isActive={currentPage === num} onClick={(e) => { e.preventDefault(); setCurrentPage(num); }}>{num}</PaginationLink></PaginationItem>)}
+          <PaginationItem><PaginationNext href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }} className={currentPage === totalPages ? "pointer-events-none opacity-50" : undefined}/></PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    );
+  }
 
   const openDialog = (type: 'new' | 'edit' | 'delete' | 'details', data?: EnrichedProject) => {
     setDialogState({ open: true, type, data })
@@ -105,8 +169,32 @@ export default function ProjectsClient() {
           </div>
           <Card>
               <CardHeader>
-                  <CardTitle>All Projects</CardTitle>
-                  <CardDescription>An overview of all projects currently in the system.</CardDescription>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Input 
+                        placeholder="Search by project name..." 
+                        className="max-w-xs"
+                        value={filters.query}
+                        onChange={(e) => handleFilterChange('query', e.target.value)}
+                    />
+                    <Select value={filters.client} onValueChange={(value) => handleFilterChange('client', value)}>
+                        <SelectTrigger className="w-auto min-w-[180px]">
+                            <SelectValue placeholder="Filter by Client" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Clients</SelectItem>
+                            {clientNames.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    <Select value={filters.status} onValueChange={(value) => handleFilterChange('status', value)}>
+                        <SelectTrigger className="w-auto min-w-[180px]">
+                            <SelectValue placeholder="Filter by Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Statuses</SelectItem>
+                            {statuses.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                  </div>
               </CardHeader>
               <CardContent>
               <Table>
@@ -121,7 +209,7 @@ export default function ProjectsClient() {
                   </TableRow>
                   </TableHeader>
                   <TableBody>
-                  {projects.map((project) => (
+                  {paginatedProjects.length > 0 ? paginatedProjects.map((project) => (
                       <TableRow key={project.id}>
                           <TableCell className="font-medium">
                               <Link href={`/projects/${project.id}`} className="hover:underline">
@@ -162,10 +250,22 @@ export default function ProjectsClient() {
                               </DropdownMenu>
                           </TableCell>
                       </TableRow>
-                  ))}
+                  )) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="h-24 text-center">
+                        No projects found matching your filters.
+                      </TableCell>
+                    </TableRow>
+                  )}
                   </TableBody>
               </Table>
               </CardContent>
+              <CardFooter className="flex items-center justify-between">
+                <div className="text-xs text-muted-foreground">
+                  Showing <strong>{paginatedProjects.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-{(currentPage - 1) * ITEMS_PER_PAGE + paginatedProjects.length}</strong> of <strong>{filteredProjects.length}</strong> projects
+                </div>
+                <PaginationNav />
+              </CardFooter>
           </Card>
       </div>
 
