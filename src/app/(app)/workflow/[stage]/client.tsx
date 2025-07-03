@@ -93,7 +93,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const { 
     books, documents, handleBookAction, handleMoveBookToNextStage, 
     updateDocumentStatus, currentUser, scannerUsers, indexerUsers, qcUsers,
-    handleStartTask, handleAssignUser
+    handleStartTask, handleAssignUser, handleStartProcessing
   } = useAppContext();
 
   const { toast } = useToast();
@@ -110,6 +110,14 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   
   const displayItems = React.useMemo(() => {
     if (dataType === 'book' && dataStatus) {
+      // Special case for 'Ready for Processing' which is a document status, but we show books.
+      if (stage === 'ready-for-processing') {
+        const booksWithReadyDocs = new Set(
+          documents.filter(doc => doc.status === 'Ready for Processing').map(doc => doc.bookId)
+        );
+        return books.filter(book => booksWithReadyDocs.has(book.id));
+      }
+
       let filteredBooks = books.filter(book => book.status === dataStatus);
 
       // Filter for assignment stages based on user role
@@ -276,6 +284,9 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
             break;
         case 'to-checking':
             handleStartTask(item.id, 'qc');
+            break;
+        case 'ready-for-processing':
+            handleStartProcessing(item.id);
             break;
         default: // Covers to-scan
             handleBookAction(item.id, item.status);

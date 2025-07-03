@@ -88,13 +88,13 @@ const STAGE_CONFIG: { [key: string]: any } = {
   },
   'ready-for-processing': {
     title: "Ready for Processing",
-    description: "Documents ready for technical processing like OCR.",
+    description: "Books with documents ready for technical processing like OCR.",
     actionButtonLabel: "Start Processing",
     actionButtonIcon: "Play",
-    emptyStateText: "No documents to process.",
-    dataType: 'document',
-    dataStage: "Ready for Processing",
-    viewType: 'folder',
+    emptyStateText: "No books are ready to be processed.",
+    dataType: 'book',
+    dataStatus: 'Ready for Processing', // Special key
+    viewType: 'list',
   },
   'in-processing': {
     title: "In Processing",
