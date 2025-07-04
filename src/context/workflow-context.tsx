@@ -696,32 +696,27 @@ export function AppProvider({
   const qcUsers = React.useMemo(() => users.filter(user => user.role === 'QC Specialist'), [users]);
 
   // --- Contextual Data Filtering ---
+  const projectsForContext = React.useMemo(() => {
+    if (currentUser?.role === 'Client' && currentUser.clientId) {
+        return enrichedProjects.filter(p => p.clientId === currentUser.clientId);
+    }
+    return enrichedProjects;
+  }, [enrichedProjects, currentUser]);
+  
   const booksForContext = React.useMemo(() => {
     if (currentUser?.role === 'Client' && currentUser.clientId) {
         return enrichedBooks.filter(b => b.clientId === currentUser.clientId);
     }
-    if (selectedProjectId) {
-        return enrichedBooks.filter(b => b.projectId === selectedProjectId);
-    }
     return enrichedBooks;
-  }, [enrichedBooks, currentUser, selectedProjectId]);
+  }, [enrichedBooks, currentUser]);
 
   const documentsForContext = React.useMemo(() => {
       if (currentUser?.role === 'Client' && currentUser.clientId) {
         return documents.filter(d => d.clientId === currentUser.clientId);
     }
-    if (selectedProjectId) {
-        return documents.filter(d => d.projectId === selectedProjectId);
-    }
     return documents;
-  }, [documents, currentUser, selectedProjectId]);
+  }, [documents, currentUser]);
 
-  const projectsForContext = React.useMemo(() => {
-    if (selectedProjectId) {
-        return enrichedProjects.filter(p => p.id === selectedProjectId);
-    }
-    return enrichedProjects;
-  }, [enrichedProjects, selectedProjectId]);
 
   const value = { 
     currentUser, login, logout,
