@@ -18,7 +18,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { type User } from "@/lib/data"
+import { type User, type Client } from "@/lib/data"
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -28,18 +28,28 @@ const formSchema = z.object({
   jobTitle: z.string().optional(),
   department: z.string().optional(),
   info: z.string().optional(),
-})
+  clientId: z.string().optional(),
+}).refine(data => {
+    if (data.role === 'Client' && !data.clientId) {
+        return false;
+    }
+    return true;
+}, {
+    message: "A client must be selected for users with the 'Client' role.",
+    path: ["clientId"],
+});
 
 type UserFormValues = z.infer<typeof formSchema>
 
 interface UserFormProps {
   user?: Partial<User> | null
   roles: string[]
+  clients: Client[]
   onSave: (values: UserFormValues) => void
   onCancel: () => void
 }
 
-export function UserForm({ user, roles, onSave, onCancel }: UserFormProps) {
+export function UserForm({ user, roles, clients, onSave, onCancel }: UserFormProps) {
   const form = useForm<UserFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -50,8 +60,18 @@ export function UserForm({ user, roles, onSave, onCancel }: UserFormProps) {
       jobTitle: user?.jobTitle || "",
       department: user?.department || "",
       info: user?.info || "",
+      clientId: user?.clientId || undefined,
     },
   })
+  
+  const role = form.watch("role");
+
+  React.useEffect(() => {
+    // When role changes, if it's not 'Client', clear the clientId
+    if (role !== 'Client' && form.getValues('clientId')) {
+      form.setValue('clientId', undefined, { shouldValidate: true });
+    }
+  }, [role, form]);
 
   React.useEffect(() => {
     form.reset({
@@ -62,6 +82,7 @@ export function UserForm({ user, roles, onSave, onCancel }: UserFormProps) {
       jobTitle: user?.jobTitle || "",
       department: user?.department || "",
       info: user?.info || "",
+      clientId: user?.clientId || undefined,
     })
   }, [user, form])
 
@@ -139,6 +160,34 @@ export function UserForm({ user, roles, onSave, onCancel }: UserFormProps) {
             )}
           />
         </div>
+
+        {role === 'Client' && (
+            <FormField
+            control={form.control}
+            name="clientId"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Associated Client</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select a client for this user" />
+                    </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                    {clients.map(client => (
+                        <SelectItem key={client.id} value={client.id}>
+                        {client.name}
+                        </SelectItem>
+                    ))}
+                    </SelectContent>
+                </Select>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+        )}
+        
          <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}

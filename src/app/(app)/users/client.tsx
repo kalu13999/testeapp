@@ -48,7 +48,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { type User } from "@/lib/data"
+import { type User, type Client } from "@/lib/data"
 import { UserForm } from "./user-form"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAppContext } from "@/context/workflow-context"
@@ -59,7 +59,7 @@ import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, Pagi
 const ITEMS_PER_PAGE = 10;
 
 export default function UsersClient() {
-  const { users, roles, addUser, updateUser, deleteUser } = useAppContext();
+  const { users, roles, clients, addUser, updateUser, deleteUser } = useAppContext();
   const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | 'details' | null; data?: User }>({ open: false, type: null })
   
   const [filters, setFilters] = React.useState({ query: '', role: 'all' });
@@ -262,7 +262,12 @@ export default function UsersClient() {
               {dialogState.type === 'new' ? 'Add a new user to the system.' : `Editing user: ${dialogState.data?.name}`}
             </DialogDescription>
           </DialogHeader>
-          <UserForm user={dialogState.data} roles={availableRoles} onSave={handleSave} onCancel={closeDialog} />
+          <UserForm 
+            user={dialogState.data} 
+            roles={availableRoles} 
+            clients={clients}
+            onSave={handleSave} 
+            onCancel={closeDialog} />
         </DialogContent>
       </Dialog>
       
@@ -300,6 +305,12 @@ export default function UsersClient() {
               <p className="text-muted-foreground">Role</p>
               <p className="col-span-2 font-medium">{dialogState.data?.role}</p>
             </div>
+             {dialogState.data?.clientId && (
+                <div className="grid grid-cols-3 items-center gap-x-4">
+                    <p className="text-muted-foreground">Client</p>
+                    <p className="col-span-2 font-medium">{clients.find(c => c.id === dialogState.data?.clientId)?.name || 'N/A'}</p>
+                </div>
+             )}
             <div className="grid grid-cols-3 items-center gap-x-4">
               <p className="text-muted-foreground">Job Title</p>
               <p className="col-span-2 font-medium">{dialogState.data?.jobTitle || '—'}</p>
