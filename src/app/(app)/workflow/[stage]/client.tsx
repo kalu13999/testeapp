@@ -102,7 +102,8 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const { 
     books, documents, handleBookAction, handleMoveBookToNextStage, 
     updateDocumentStatus, currentUser, users,
-    handleStartTask, handleAssignUser, handleStartProcessing, handleCancelTask
+    handleStartTask, handleAssignUser, handleStartProcessing, handleCancelTask,
+    selectedProjectId
   } = useAppContext();
 
   const { toast } = useToast();
@@ -119,16 +120,25 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
   
   const displayItems = React.useMemo(() => {
+    let baseBooks = books;
+    let baseDocuments = documents;
+
+    // Apply the global project filter if it's selected
+    if (selectedProjectId) {
+      baseBooks = books.filter(b => b.projectId === selectedProjectId);
+      baseDocuments = documents.filter(d => d.projectId === selectedProjectId);
+    }
+
     if (dataType === 'book' && dataStatus) {
       // Special case for 'Ready for Processing' which is a document status, but we show books.
       if (stage === 'ready-for-processing') {
         const booksWithReadyDocs = new Set(
-          documents.filter(doc => doc.status === 'Ready for Processing').map(doc => doc.bookId)
+          baseDocuments.filter(doc => doc.status === 'Ready for Processing').map(doc => doc.bookId)
         );
-        return books.filter(book => booksWithReadyDocs.has(book.id));
+        return baseBooks.filter(book => booksWithReadyDocs.has(book.id));
       }
 
-      let filteredBooks = books.filter(book => book.status === dataStatus);
+      let filteredBooks = baseBooks.filter(book => book.status === dataStatus);
 
       // Filter for assignment stages based on user role
       if (stage === 'to-scan' && currentUser?.role === 'Scanning') {
@@ -144,10 +154,10 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
       return filteredBooks;
     }
     if (dataType === 'document' && dataStage) {
-      return documents.filter(doc => doc.status === dataStage);
+      return baseDocuments.filter(doc => doc.status === dataStage);
     }
     return [];
-  }, [books, documents, dataType, dataStatus, dataStage, currentUser, stage]);
+  }, [books, documents, dataType, dataStatus, dataStage, currentUser, stage, selectedProjectId]);
 
   React.useEffect(() => {
     setSelection([]);

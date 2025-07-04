@@ -33,15 +33,22 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
     documents, 
     books,
     processingLogs,
-    handleCompleteProcessing
+    handleCompleteProcessing,
+    selectedProjectId
   } = useAppContext();
   
   const [confirmationState, setConfirmationState] = React.useState({ open: false, title: '', description: '', onConfirm: () => {} });
   
   const booksInProcessing = React.useMemo(() => {
-    const bookIds = new Set(documents.filter(doc => doc.status === config.dataStage).map(doc => doc.bookId));
+    let docsInStage = documents.filter(doc => doc.status === config.dataStage);
+
+    if (selectedProjectId) {
+      docsInStage = docsInStage.filter(doc => doc.projectId === selectedProjectId);
+    }
+    
+    const bookIds = new Set(docsInStage.map(doc => doc.bookId));
     return books.filter(book => bookIds.has(book.id));
-  }, [documents, books, config.dataStage]);
+  }, [documents, books, config.dataStage, selectedProjectId]);
   
   const openConfirmationDialog = ({ title, description, onConfirm}: Omit<typeof confirmationState, 'open'>) => {
     setConfirmationState({ open: true, title, description, onConfirm });

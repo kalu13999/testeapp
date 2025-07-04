@@ -85,6 +85,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     updateDocumentFlag,
     users,
     handleAssignUser,
+    selectedProjectId
   } = useAppContext();
   const { toast } = useToast();
   const ActionIcon = config.actionButtonIcon ? iconMap[config.actionButtonIcon] : FolderSync;
@@ -112,8 +113,12 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   }>({ open: false, bookId: null, bookName: null, projectId: null, role: null, selectedUserId: '' });
 
   const stageDocuments = React.useMemo(() => {
-    return documents.filter(doc => doc.status === config.dataStage);
-  }, [documents, config.dataStage]);
+    let baseDocs = documents.filter(doc => doc.status === config.dataStage);
+    if(selectedProjectId) {
+      baseDocs = baseDocs.filter(doc => doc.projectId === selectedProjectId);
+    }
+    return baseDocs;
+  }, [documents, config.dataStage, selectedProjectId]);
 
   const groupedByBook = React.useMemo(() => {
     const initialGroups = stageDocuments.reduce<GroupedDocuments>((acc, doc) => {

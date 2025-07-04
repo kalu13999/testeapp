@@ -48,6 +48,7 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
     handleMarkAsCorrected,
     addPageToBook,
     deletePageFromBook,
+    selectedProjectId
   } = useAppContext();
   const { toast } = useToast();
   
@@ -56,8 +57,12 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
   const [confirmationState, setConfirmationState] = React.useState({ open: false, title: '', description: '', onConfirm: () => {} });
 
   const rejectedBooks = React.useMemo(() => {
-    return books.filter(book => book.status === config.dataStage);
-  }, [books, config.dataStage]);
+    let baseBooks = books.filter(book => book.status === config.dataStage);
+    if (selectedProjectId) {
+      baseBooks = baseBooks.filter(book => book.projectId === selectedProjectId);
+    }
+    return baseBooks;
+  }, [books, config.dataStage, selectedProjectId]);
 
   const getPagesForBook = (bookId: string) => {
     const getPageNum = (name: string): number => {
