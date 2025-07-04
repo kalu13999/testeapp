@@ -65,9 +65,9 @@ type GroupedDocuments = {
 };
 
 const DetailItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
-  <div className="flex justify-between">
-    <p className="text-sm text-muted-foreground">{label}</p>
-    <p className="text-sm font-medium text-right">{value}</p>
+  <div className="grid grid-cols-3 items-center gap-x-4">
+    <p className="text-muted-foreground">{label}</p>
+    <p className="col-span-2 font-medium">{value}</p>
   </div>
 );
 
@@ -350,25 +350,29 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                     <AccordionContent>
                       <div className="p-4 space-y-4">
                           <Card>
-                              <CardHeader className="flex flex-row items-center gap-2 pb-2">
-                                  <Info className="h-4 w-4" />
-                                  <CardTitle className="text-base">Book Details</CardTitle>
-                              </CardHeader>
-                              <CardContent className="space-y-2">
+                            <CardHeader className="flex flex-row items-center gap-2 pb-2">
+                                <Info className="h-4 w-4" />
+                                <CardTitle className="text-base">Book Details</CardTitle>
+                            </CardHeader>
+                            <CardContent className="text-sm space-y-4">
                                 <DetailItem label="Project" value={<Link href={`/projects/${book.projectId}`} className="text-primary hover:underline">{book.projectName}</Link>} />
+                                <DetailItem label="Client" value={book.clientName} />
+                                <Separator />
                                 <DetailItem label="Author" value={book.author || '—'} />
                                 <DetailItem label="ISBN" value={book.isbn || '—'} />
+                                <DetailItem label="Publication Year" value={book.publicationYear || '—'} />
+                                <Separator />
                                 <DetailItem label="Priority" value={book.priority || '—'} />
                                 {book.info && (
                                 <>
                                 <Separator />
-                                <div className="pt-2">
-                                    <p className="text-sm text-muted-foreground">Additional Info</p>
-                                    <p className="text-sm font-medium whitespace-pre-wrap">{book.info}</p>
+                                <div className="pt-2 grid grid-cols-1 gap-2">
+                                    <p className="text-muted-foreground">Additional Info</p>
+                                    <p className="font-medium whitespace-pre-wrap">{book.info}</p>
                                 </div>
                                 </>
                                 )}
-                              </CardContent>
+                            </CardContent>
                           </Card>
                           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
                             {pages.map(page => (

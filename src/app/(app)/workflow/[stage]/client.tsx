@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/card"
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send, FolderSync, Upload, XCircle, CheckCircle, FileWarning, PlayCircle, UserPlus, Info } from "lucide-react";
+import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send, FolderSync, Upload, XCircle, CheckCircle, FileWarning, PlayCircle, UserPlus, Info, MoreHorizontal } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppContext } from "@/context/workflow-context";
 import { EnrichedBook, AppDocument, User } from "@/context/workflow-context";
@@ -34,7 +34,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 
@@ -368,6 +367,17 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
             <Badge variant={getBadgeVariant(item.status)}>{item.status}</Badge>
         </TableCell>
         <TableCell>
+          <div className="flex items-center justify-end gap-2">
+            {actionButtonLabel && (
+              <Button size="sm" onClick={() => openConfirmationDialog({
+                  title: `Are you sure?`,
+                  description: `This will perform the action "${actionButtonLabel}" on "${item.name}".`,
+                  onConfirm: () => handleSingleItemAction(item)
+              })}>
+                  {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
+                  {actionButtonLabel}
+              </Button>
+            )}
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button aria-haspopup="true" size="icon" variant="ghost">
@@ -377,33 +387,26 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                    {actionButtonLabel && (
-                        <DropdownMenuItem onSelect={() => openConfirmationDialog({
-                            title: `Are you sure?`,
-                            description: `This will perform the action "${actionButtonLabel}" on "${item.name}".`,
-                            onConfirm: () => handleSingleItemAction(item)
-                        })}>
-                             {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
-                            {actionButtonLabel}
-                        </DropdownMenuItem>
-                    )}
-                    {isCancelable && (
-                        <DropdownMenuItem onSelect={() => openConfirmationDialog({
-                                title: `Cancel task for "${item.name}"?`,
-                                description: "This will return the book to the previous step.",
-                                onConfirm: () => handleCancelTask(item.id, item.status)
-                            })}>
-                            <Undo2 className="mr-2 h-4 w-4" />
-                            Cancel Task
-                        </DropdownMenuItem>
-                    )}
-                    <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={() => setDetailsState({ open: true, book: item })}>
                         <Info className="mr-2 h-4 w-4" />
                         Details
                     </DropdownMenuItem>
+                    {isCancelable && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onSelect={() => openConfirmationDialog({
+                                title: `Cancel task for "${item.name}"?`,
+                                description: "This will return the book to the previous step.",
+                                onConfirm: () => handleCancelTask(item.id, item.status)
+                            })} className="text-destructive">
+                            <Undo2 className="mr-2 h-4 w-4" />
+                            Cancel Task
+                        </DropdownMenuItem>
+                      </>
+                    )}
                 </DropdownMenuContent>
             </DropdownMenu>
+          </div>
         </TableCell>
         </TableRow>
     )
@@ -512,7 +515,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                     <TableHead>Project</TableHead>
                     <TableHead className="hidden md:table-cell">Client</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               ) : (
                  <TableRow>
@@ -691,18 +694,21 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
             <DialogDescription>{detailsState.book?.name}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4 text-sm">
+            <DetailItem label="Project" value={detailsState.book?.projectName} />
+            <DetailItem label="Client" value={detailsState.book?.clientName} />
+            <Separator />
             <DetailItem label="Author" value={detailsState.book?.author || '—'} />
             <DetailItem label="ISBN" value={detailsState.book?.isbn || '—'} />
             <DetailItem label="Publication Year" value={detailsState.book?.publicationYear || '—'} />
             <Separator />
             <DetailItem label="Priority" value={detailsState.book?.priority || '—'} />
-            <DetailItem label="Project" value={detailsState.book?.projectName || '—'} />
-            <DetailItem label="Client" value={detailsState.book?.clientName || '—'} />
+            <DetailItem label="Expected Pages" value={detailsState.book?.expectedDocuments} />
+            <DetailItem label="Scanned Pages" value={detailsState.book?.documentCount} />
             <Separator />
             {detailsState.book?.info && (
-               <div className="grid grid-cols-3 items-start gap-x-4">
+               <div className="grid grid-cols-1 gap-2">
                 <p className="text-muted-foreground">Additional Info</p>
-                <p className="col-span-2 font-medium whitespace-pre-wrap">{detailsState.book.info}</p>
+                <p className="font-medium whitespace-pre-wrap">{detailsState.book.info}</p>
               </div>
             )}
           </div>

@@ -34,9 +34,9 @@ interface CorrectionViewClientProps {
 }
 
 const DetailItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
-  <div className="flex justify-between">
-    <p className="text-sm text-muted-foreground">{label}</p>
-    <p className="text-sm font-medium">{value}</p>
+  <div className="grid grid-cols-3 items-center gap-x-4">
+    <p className="text-muted-foreground">{label}</p>
+    <p className="col-span-2 font-medium">{value}</p>
   </div>
 );
 
@@ -144,17 +144,21 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
                                 <Info className="h-4 w-4" />
                                 <CardTitle className="text-base">Book Details</CardTitle>
                             </CardHeader>
-                            <CardContent className="space-y-2">
+                            <CardContent className="space-y-4 text-sm">
                                 <DetailItem label="Project" value={<Link href={`/projects/${book.projectId}`} className="text-primary hover:underline">{book.projectName}</Link>} />
+                                <DetailItem label="Client" value={book.clientName} />
+                                <Separator />
                                 <DetailItem label="Author" value={book.author || '—'} />
                                 <DetailItem label="ISBN" value={book.isbn || '—'} />
+                                <DetailItem label="Publication Year" value={book.publicationYear || '—'} />
+                                <Separator />
                                 <DetailItem label="Priority" value={book.priority || '—'} />
                                 {book.info && (
                                 <>
                                 <Separator />
-                                <div className="pt-2">
-                                    <p className="text-sm text-muted-foreground">Additional Info</p>
-                                    <p className="text-sm font-medium whitespace-pre-wrap">{book.info}</p>
+                                <div className="pt-2 grid grid-cols-1 gap-2">
+                                    <p className="text-muted-foreground">Additional Info</p>
+                                    <p className="font-medium whitespace-pre-wrap">{book.info}</p>
                                 </div>
                                 </>
                                 )}
