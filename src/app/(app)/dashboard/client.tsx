@@ -42,6 +42,7 @@ import type { EnrichedBook, AppDocument, EnrichedProject, EnrichedAuditLog } fro
 import Link from "next/link"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { subDays, format } from "date-fns"
+import { Input } from "@/components/ui/input"
 
 
 const kpiIconMap: { [key: string]: React.ElementType } = {
@@ -89,6 +90,7 @@ export default function DashboardClient() {
       items: (EnrichedBook | EnrichedAuditLog)[];
       type: 'books' | 'activities' | null;
     }>({ open: false, title: '', items: [], type: null });
+    const [detailFilter, setDetailFilter] = React.useState('');
 
 
     const dashboardData = useMemo(() => {
@@ -272,6 +274,7 @@ export default function DashboardClient() {
 
     const handleCloseDetailDialog = () => {
       setDetailState({ open: false, title: '', items: [], type: null });
+      setDetailFilter('');
     }
 
     const handleWorkflowChartClick = (data: any) => {
@@ -279,6 +282,7 @@ export default function DashboardClient() {
         const stageName = data.activePayload[0].payload.name as string;
         const booksForStage = booksByStage[stageName] || [];
         
+        setDetailFilter('');
         setDetailState({
             open: true,
             title: `Books in Stage: ${stageName}`,
@@ -294,6 +298,7 @@ export default function DashboardClient() {
         
         const activitiesForDay = allRelevantAuditLogs.filter(log => log.date.startsWith(fullDate));
 
+        setDetailFilter('');
         setDetailState({
             open: true,
             title: `Activity for ${format(new Date(fullDate), 'MMMM d, yyyy')}`,
@@ -301,6 +306,31 @@ export default function DashboardClient() {
             type: 'activities'
         });
     };
+
+    const filteredDialogItems = React.useMemo(() => {
+        if (!detailState.open) return [];
+        if (!detailFilter) return detailState.items;
+
+        const query = detailFilter.toLowerCase();
+
+        if (detailState.type === 'books') {
+            return (detailState.items as EnrichedBook[]).filter(book => 
+                book.name.toLowerCase().includes(query) ||
+                book.projectName.toLowerCase().includes(query) ||
+                book.clientName.toLowerCase().includes(query)
+            );
+        }
+
+        if (detailState.type === 'activities') {
+            return (detailState.items as EnrichedAuditLog[]).filter(log =>
+                log.action.toLowerCase().includes(query) ||
+                log.details.toLowerCase().includes(query) ||
+                log.user.toLowerCase().includes(query)
+            );
+        }
+
+        return detailState.items;
+    }, [detailState.items, detailState.type, detailFilter, detailState.open]);
 
 
     return (
@@ -468,57 +498,69 @@ export default function DashboardClient() {
                 <DialogHeader>
                     <DialogTitle>{detailState.title}</DialogTitle>
                     <DialogDescription>
-                        {detailState.type === 'books'
-                            ? `Found ${detailState.items.length} book(s) in this stage.`
-                            : `Found ${detailState.items.length} activities on this day.`
-                        }
+                         Showing {filteredDialogItems.length} of {detailState.items.length} total items.
                     </DialogDescription>
                 </DialogHeader>
-                <div className="max-h-[60vh] overflow-y-auto">
-                    {detailState.type === 'books' && (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Book Name</TableHead>
-                                    <TableHead>Project</TableHead>
-                                    <TableHead>Client</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {(detailState.items as EnrichedBook[]).map(book => (
-                                    <TableRow key={book.id}>
-                                        <TableCell className="font-medium">
-                                            <Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link>
-                                        </TableCell>
-                                        <TableCell>{book.projectName}</TableCell>
-                                        <TableCell>{book.clientName}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    )}
-                    {detailState.type === 'activities' && (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Action</TableHead>
-                                    <TableHead>Details</TableHead>
-                                    <TableHead>User</TableHead>
-                                    <TableHead>Time</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {(detailState.items as EnrichedAuditLog[]).map(log => (
-                                     <TableRow key={log.id}>
-                                        <TableCell className="font-medium">{log.action}</TableCell>
-                                        <TableCell>{log.details}</TableCell>
-                                        <TableCell>{log.user}</TableCell>
-                                        <TableCell>{new Date(log.date).toLocaleTimeString()}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    )}
+                <div className="py-2">
+                    <Input 
+                        placeholder={detailState.type === 'books' ? "Filter by book, project, or client..." : "Filter by action, details, or user..."}
+                        value={detailFilter}
+                        onChange={(e) => setDetailFilter(e.target.value)}
+                    />
+                </div>
+                <div className="max-h-[60vh] overflow-y-auto pr-4">
+                     {filteredDialogItems.length > 0 ? (
+                        <>
+                            {detailState.type === 'books' && (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Book Name</TableHead>
+                                            <TableHead>Project</TableHead>
+                                            <TableHead>Client</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {(filteredDialogItems as EnrichedBook[]).map(book => (
+                                            <TableRow key={book.id}>
+                                                <TableCell className="font-medium">
+                                                    <Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link>
+                                                </TableCell>
+                                                <TableCell>{book.projectName}</TableCell>
+                                                <TableCell>{book.clientName}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            )}
+                            {detailState.type === 'activities' && (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Action</TableHead>
+                                            <TableHead>Details</TableHead>
+                                            <TableHead>User</TableHead>
+                                            <TableHead>Time</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {(filteredDialogItems as EnrichedAuditLog[]).map(log => (
+                                            <TableRow key={log.id}>
+                                                <TableCell className="font-medium">{log.action}</TableCell>
+                                                <TableCell>{log.details}</TableCell>
+                                                <TableCell>{log.user}</TableCell>
+                                                <TableCell>{new Date(log.date).toLocaleTimeString()}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            )}
+                        </>
+                     ) : (
+                        <div className="text-center py-10 text-muted-foreground">
+                            <p>No items match your filter.</p>
+                        </div>
+                     )}
                 </div>
             </DialogContent>
         </Dialog>
@@ -526,3 +568,4 @@ export default function DashboardClient() {
     )
 
     
+}
