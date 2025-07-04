@@ -66,6 +66,7 @@ export interface User {
     lastLogin?: string;
     info?: string;
     clientId?: string;
+    projectIds?: string[];
 }
 
 export interface RawBook {

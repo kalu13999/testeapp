@@ -18,7 +18,12 @@ import {
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { type User, type Client } from "@/lib/data"
+import { type User, type Client, type Project } from "@/lib/data"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Check, ChevronsUpDown } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { cn } from "@/lib/utils"
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -29,6 +34,7 @@ const formSchema = z.object({
   department: z.string().optional(),
   info: z.string().optional(),
   clientId: z.string().optional(),
+  projectIds: z.array(z.string()).optional(),
 }).refine(data => {
     if (data.role === 'Client' && !data.clientId) {
         return false;
@@ -45,11 +51,12 @@ interface UserFormProps {
   user?: Partial<User> | null
   roles: string[]
   clients: Client[]
+  projects: Project[]
   onSave: (values: UserFormValues) => void
   onCancel: () => void
 }
 
-export function UserForm({ user, roles, clients, onSave, onCancel }: UserFormProps) {
+export function UserForm({ user, roles, clients, projects, onSave, onCancel }: UserFormProps) {
   const form = useForm<UserFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -61,15 +68,18 @@ export function UserForm({ user, roles, clients, onSave, onCancel }: UserFormPro
       department: user?.department || "",
       info: user?.info || "",
       clientId: user?.clientId || undefined,
+      projectIds: user?.projectIds || [],
     },
   })
   
   const role = form.watch("role");
 
   React.useEffect(() => {
-    // When role changes, if it's not 'Client', clear the clientId
     if (role !== 'Client' && form.getValues('clientId')) {
       form.setValue('clientId', undefined, { shouldValidate: true });
+    }
+    if (role === 'Client' || role === 'Admin') {
+      form.setValue('projectIds', [], { shouldValidate: true });
     }
   }, [role, form]);
 
@@ -83,12 +93,15 @@ export function UserForm({ user, roles, clients, onSave, onCancel }: UserFormPro
       department: user?.department || "",
       info: user?.info || "",
       clientId: user?.clientId || undefined,
+      projectIds: user?.projectIds || [],
     })
   }, [user, form])
 
   const onSubmit = (values: UserFormValues) => {
     onSave(values)
   }
+
+  const isOperatorRole = role && !['Admin', 'Client', 'System'].includes(role);
 
   return (
     <Form {...form}>
@@ -186,6 +199,77 @@ export function UserForm({ user, roles, clients, onSave, onCancel }: UserFormPro
                 </FormItem>
             )}
             />
+        )}
+        
+        {isOperatorRole && (
+          <FormField
+            control={form.control}
+            name="projectIds"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Associated Projects</FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        className={cn(
+                          "w-full justify-between",
+                          !field.value?.length && "text-muted-foreground"
+                        )}
+                      >
+                        {field.value?.length > 0
+                          ? `${field.value.length} project(s) selected`
+                          : "Select projects"}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                    <ScrollArea className="h-48">
+                      <div className="p-4">
+                        {projects.map((project) => (
+                          <FormField
+                            key={project.id}
+                            control={form.control}
+                            name="projectIds"
+                            render={({ field }) => {
+                              return (
+                                <FormItem
+                                  key={project.id}
+                                  className="flex flex-row items-start space-x-3 space-y-0"
+                                >
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value?.includes(project.id)}
+                                      onCheckedChange={(checked) => {
+                                        return checked
+                                          ? field.onChange([...(field.value || []), project.id])
+                                          : field.onChange(
+                                              field.value?.filter(
+                                                (value) => value !== project.id
+                                              )
+                                            )
+                                      }}
+                                    />
+                                  </FormControl>
+                                  <FormLabel className="font-normal">
+                                    {project.name}
+                                  </FormLabel>
+                                </FormItem>
+                              )
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </PopoverContent>
+                </Popover>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         )}
         
          <div className="grid grid-cols-2 gap-4">

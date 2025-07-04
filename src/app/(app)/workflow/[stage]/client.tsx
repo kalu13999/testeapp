@@ -92,7 +92,7 @@ const getBadgeVariant = (status: string): BadgeVariant => {
 export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const { 
     books, documents, handleBookAction, handleMoveBookToNextStage, 
-    updateDocumentStatus, currentUser, scannerUsers, indexerUsers, qcUsers,
+    updateDocumentStatus, currentUser, users,
     handleStartTask, handleAssignUser, handleStartProcessing, handleCancelTask
   } = useAppContext();
 
@@ -205,11 +205,19 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   }
 
   // --- Assignment Dialog Logic ---
-  const assignmentConfig: { [key in AssignmentRole]: { users: User[], title: string, description: string } } = {
-    scanner: { users: scannerUsers, title: "Assign Scanner", description: "Select a scanner operator to process this book." },
-    indexer: { users: indexerUsers, title: "Assign Indexer", description: "Select an indexer to process this book." },
-    qc: { users: qcUsers, title: "Assign for QC", description: "Select a QC specialist to review this book." }
+  const assignmentConfig: { [key in AssignmentRole]: { roleName: string, title: string, description: string } } = {
+    scanner: { roleName: 'Scanning', title: "Assign Scanner", description: "Select a scanner operator to process this book." },
+    indexer: { roleName: 'Indexing', title: "Assign Indexer", description: "Select an indexer to process this book." },
+    qc: { roleName: 'QC Specialist', title: "Assign for QC", description: "Select a QC specialist to review this book." }
   };
+  
+  const getAssignableUsers = (role: AssignmentRole, projectId: string) => {
+      const targetRole = assignmentConfig[role].roleName;
+      return users.filter(user => 
+        user.role === targetRole && 
+        (user.projectIds?.includes(projectId))
+      );
+  }
 
   const openAssignmentDialog = (book: EnrichedBook, role: AssignmentRole) => {
     setAssignState({ open: true, book, role });
@@ -597,7 +605,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     </Dialog>
 
     {/* Single Assignment Dialog */}
-    {assignState.role && (
+    {assignState.role && assignState.book && (
       <Dialog open={assignState.open} onOpenChange={closeAssignmentDialog}>
         <DialogContent>
           <DialogHeader>
@@ -610,7 +618,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                 <SelectValue placeholder={`Select a ${assignState.role}...`} />
               </SelectTrigger>
               <SelectContent>
-                {assignmentConfig[assignState.role].users.map(user => (
+                {getAssignableUsers(assignState.role, assignState.book.projectId).map(user => (
                   <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
                 ))}
               </SelectContent>
@@ -640,7 +648,8 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                 <SelectValue placeholder={`Select a ${bulkAssignState.role}...`} />
               </SelectTrigger>
               <SelectContent>
-                {assignmentConfig[bulkAssignState.role].users.map(user => (
+                 {/* Note: Bulk assignment will only show users who can be assigned to the FIRST selected book's project. A more robust solution might show users common to ALL selected projects. */}
+                 {getAssignableUsers(bulkAssignState.role, (displayItems.find(item => item.id === selection[0]) as EnrichedBook)?.projectId).map(user => (
                   <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
                 ))}
               </SelectContent>

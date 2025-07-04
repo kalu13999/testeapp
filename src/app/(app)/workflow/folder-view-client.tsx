@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -55,7 +56,9 @@ interface FolderViewClientProps {
 
 type GroupedDocuments = {
   [bookId: string]: {
+    bookId: string;
     bookName: string;
+    projectId: string;
     projectName: string;
     pages: AppDocument[];
     hasError: boolean;
@@ -74,8 +77,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     handleMarkAsCorrected,
     handleResubmit,
     updateDocumentFlag,
-    indexerUsers,
-    qcUsers,
+    users,
     handleAssignUser,
   } = useAppContext();
   const { toast } = useToast();
@@ -98,10 +100,10 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     open: boolean;
     bookId: string | null;
     bookName: string | null;
+    projectId: string | null;
     role: 'indexer' | 'qc' | null;
-    users: User[];
     selectedUserId: string;
-  }>({ open: false, bookId: null, bookName: null, role: null, users: [], selectedUserId: '' });
+  }>({ open: false, bookId: null, bookName: null, projectId: null, role: null, selectedUserId: '' });
 
   const stageDocuments = React.useMemo(() => {
     return documents.filter(doc => doc.status === config.dataStage);
@@ -113,7 +115,9 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
       if (!acc[doc.bookId]) {
         const bookInfo = books.find(b => b.id === doc.bookId);
         acc[doc.bookId] = {
+          bookId: doc.bookId,
           bookName: bookInfo?.name || 'Unknown Book',
+          projectId: bookInfo?.projectId || 'Unknown Project',
           projectName: bookInfo?.projectName || 'Unknown Project',
           pages: [],
           hasError: false,
@@ -126,8 +130,6 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
       return acc;
     }, {});
     
-    // For the storage view, only show books that haven't been assigned an indexer yet.
-    // The book status after scanning is 'In Progress'. After assignment, it becomes 'To Indexing'.
     if (stage === 'storage') {
         const filteredGroups: GroupedDocuments = {};
         for (const bookId in initialGroups) {
@@ -174,13 +176,12 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     closeFlagDialog();
   };
 
-  const openAssignmentDialog = (bookId: string, bookName: string, role: 'indexer' | 'qc') => {
-    const users = role === 'indexer' ? indexerUsers : qcUsers;
-    setAssignmentState({ open: true, bookId, bookName, role, users, selectedUserId: '' });
+  const openAssignmentDialog = (bookId: string, bookName: string, projectId: string, role: 'indexer' | 'qc') => {
+    setAssignmentState({ open: true, bookId, bookName, projectId, role, selectedUserId: '' });
   };
 
   const closeAssignmentDialog = () => {
-    setAssignmentState({ open: false, bookId: null, bookName: null, role: null, users: [], selectedUserId: '' });
+    setAssignmentState({ open: false, bookId: null, bookName: null, projectId: null, role: null, selectedUserId: '' });
   };
 
   const handleAssignmentSubmit = () => {
@@ -189,14 +190,22 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
       closeAssignmentDialog();
     }
   };
+  
+  const getAssignableUsers = (role: 'indexer' | 'qc', projectId: string) => {
+      const targetRole = role === 'indexer' ? 'Indexing' : 'QC Specialist';
+      return users.filter(user => 
+        user.role === targetRole && 
+        (user.projectIds?.includes(projectId))
+      );
+  }
 
-  const handleMainAction = (bookId: string, bookName: string) => {
+  const handleMainAction = (bookId: string, bookName: string, projectId: string) => {
     if (stage === 'ready-for-processing') {
       handleStartProcessing(bookId);
     } else if (stage === 'storage') {
-      openAssignmentDialog(bookId, bookName, 'indexer');
+      openAssignmentDialog(bookId, bookName, projectId, 'indexer');
     } else if (stage === 'indexing-started') {
-      openAssignmentDialog(bookId, bookName, 'qc');
+      openAssignmentDialog(bookId, bookName, projectId, 'qc');
     } else if (stage === 'checking-started') {
       handleMoveBookToNextStage(bookId, config.dataStage);
     } else {
@@ -205,14 +214,15 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   }
 
 
-  const renderActions = (bookId: string, bookName: string, hasError: boolean) => {
+  const renderActions = (book: GroupedDocuments[string]) => {
+    const { bookId, bookName, projectId, hasError } = book;
     const actionButton = (
         <Button 
             size="sm" 
             onClick={() => openConfirmationDialog({
               title: `Are you sure?`,
               description: `This will perform the action "${config.actionButtonLabel}" on "${bookName}".`,
-              onConfirm: () => handleMainAction(bookId, bookName)
+              onConfirm: () => handleMainAction(bookId, bookName, projectId)
             })}
             disabled={hasError}
         >
@@ -307,29 +317,29 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
           <CardContent>
             {Object.keys(groupedByBook).length > 0 ? (
               <Accordion type="multiple" className="w-full">
-                {Object.entries(groupedByBook).map(([bookId, { bookName, projectName, pages, hasError, hasWarning }]) => (
-                  <AccordionItem value={bookId} key={bookId}>
+                {Object.values(groupedByBook).map((book) => (
+                  <AccordionItem value={book.bookId} key={book.bookId}>
                     <div className="flex items-center justify-between hover:bg-muted/50 rounded-md">
                         <AccordionTrigger className="flex-1 px-4 py-2">
                             <div className="flex items-center gap-3 text-left">
                                 <FolderSync className="h-5 w-5 text-primary" />
                                 <div>
                                     <p className="font-semibold text-base flex items-center gap-2">
-                                      {bookName}
-                                      {hasError && <ShieldAlert className="h-4 w-4 text-destructive" />}
-                                      {hasWarning && !hasError && <AlertTriangle className="h-4 w-4 text-orange-500" />}
+                                      {book.bookName}
+                                      {book.hasError && <ShieldAlert className="h-4 w-4 text-destructive" />}
+                                      {book.hasWarning && !book.hasError && <AlertTriangle className="h-4 w-4 text-orange-500" />}
                                     </p>
-                                    <p className="text-sm text-muted-foreground">{projectName} - {pages.length} pages</p>
+                                    <p className="text-sm text-muted-foreground">{book.projectName} - {book.pages.length} pages</p>
                                 </div>
                             </div>
                         </AccordionTrigger>
                         <div className="px-4">
-                          {renderActions(bookId, bookName, hasError)}
+                          {renderActions(book)}
                         </div>
                     </div>
                     <AccordionContent>
                       <div className="pt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
-                        {pages.map(page => (
+                        {book.pages.map(page => (
                             <div key={page.id} className="relative group">
                               <Link href={`/documents/${page.id}`}>
                                   <Card className="overflow-hidden hover:shadow-lg transition-shadow relative">
@@ -492,8 +502,9 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
               <SelectValue placeholder={`Select an ${assignmentState.role}...`} />
             </SelectTrigger>
             <SelectContent>
-              {assignmentState.users.map(user => (
-                <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+              {assignmentState.projectId && assignmentState.role && 
+                getAssignableUsers(assignmentState.role, assignmentState.projectId).map(user => (
+                  <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>

@@ -59,7 +59,7 @@ import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, Pagi
 const ITEMS_PER_PAGE = 10;
 
 export default function UsersClient() {
-  const { users, roles, clients, addUser, updateUser, deleteUser } = useAppContext();
+  const { users, roles, clients, addUser, updateUser, deleteUser, allProjects } = useAppContext();
   const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | 'details' | null; data?: User }>({ open: false, type: null })
   
   const [filters, setFilters] = React.useState({ query: '', role: 'all' });
@@ -266,6 +266,7 @@ export default function UsersClient() {
             user={dialogState.data} 
             roles={availableRoles} 
             clients={clients}
+            projects={allProjects}
             onSave={handleSave} 
             onCancel={closeDialog} />
         </DialogContent>
@@ -323,6 +324,17 @@ export default function UsersClient() {
               <p className="text-muted-foreground">Last Login</p>
               <p className="col-span-2 font-medium">{dialogState.data?.lastLogin ? new Date(dialogState.data.lastLogin).toLocaleString() : '—'}</p>
             </div>
+             {dialogState.data?.projectIds && dialogState.data.projectIds.length > 0 && (
+                <div className="grid grid-cols-3 items-start gap-x-4">
+                    <p className="text-muted-foreground">Projects</p>
+                     <div className="col-span-2 flex flex-wrap gap-1">
+                        {dialogState.data.projectIds.map(id => {
+                            const project = allProjects.find(p => p.id === id);
+                            return <Badge key={id} variant="secondary">{project?.name || 'Unknown'}</Badge>
+                        })}
+                    </div>
+                </div>
+             )}
             {dialogState.data?.info && (
               <div className="grid grid-cols-3 items-start gap-x-4">
                 <p className="text-muted-foreground">Additional Info</p>

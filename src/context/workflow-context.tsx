@@ -98,6 +98,8 @@ type AppContextType = {
 
 const AppContext = React.createContext<AppContextType | undefined>(undefined);
 
+const OPERATOR_ROLES = ["Operator", "QC Specialist", "Reception", "Scanning", "Indexing", "Processing", "Delivery"];
+
 export function AppProvider({
   initialClients,
   initialUsers,
@@ -196,7 +198,7 @@ export function AppProvider({
     })
   }, [rawBooks, rawProjects, clients, documents]);
 
-  const enrichedProjects: EnrichedProject[] = React.useMemo(() => {
+  const allEnrichedProjects: EnrichedProject[] = React.useMemo(() => {
     return rawProjects.map(project => {
         const client = clients.find(c => c.id === project.clientId);
         const projectBooks = enrichedBooks.filter(b => b.projectId === project.id);
@@ -697,22 +699,37 @@ export function AppProvider({
 
   // --- Contextual Data Filtering ---
   const projectsForContext = React.useMemo(() => {
-    if (currentUser?.role === 'Client' && currentUser.clientId) {
-        return enrichedProjects.filter(p => p.clientId === currentUser.clientId);
+    if (!currentUser) return [];
+    if (currentUser.role === 'Client' && currentUser.clientId) {
+        return allEnrichedProjects.filter(p => p.clientId === currentUser.clientId);
     }
-    return enrichedProjects;
-  }, [enrichedProjects, currentUser]);
+    if (OPERATOR_ROLES.includes(currentUser.role) && currentUser.projectIds?.length) {
+      const operatorProjectIds = new Set(currentUser.projectIds);
+      return allEnrichedProjects.filter(p => operatorProjectIds.has(p.id));
+    }
+    return allEnrichedProjects;
+  }, [allEnrichedProjects, currentUser]);
   
   const booksForContext = React.useMemo(() => {
-    if (currentUser?.role === 'Client' && currentUser.clientId) {
+    if (!currentUser) return [];
+    if (currentUser.role === 'Client' && currentUser.clientId) {
         return enrichedBooks.filter(b => b.clientId === currentUser.clientId);
+    }
+    if (OPERATOR_ROLES.includes(currentUser.role) && currentUser.projectIds?.length) {
+      const operatorProjectIds = new Set(currentUser.projectIds);
+      return enrichedBooks.filter(b => operatorProjectIds.has(b.projectId));
     }
     return enrichedBooks;
   }, [enrichedBooks, currentUser]);
 
   const documentsForContext = React.useMemo(() => {
-      if (currentUser?.role === 'Client' && currentUser.clientId) {
+      if (!currentUser) return [];
+      if (currentUser.role === 'Client' && currentUser.clientId) {
         return documents.filter(d => d.clientId === currentUser.clientId);
+    }
+    if (OPERATOR_ROLES.includes(currentUser.role) && currentUser.projectIds?.length) {
+      const operatorProjectIds = new Set(currentUser.projectIds);
+      return documents.filter(d => d.projectId && operatorProjectIds.has(d.projectId));
     }
     return documents;
   }, [documents, currentUser]);
@@ -728,7 +745,7 @@ export function AppProvider({
     processingLogs,
     roles: initialRoles,
     permissions: initialPermissions,
-    allProjects: enrichedProjects,
+    allProjects: projectsForContext, // This should now be filtered for operators
     selectedProjectId,
     setSelectedProjectId,
     addClient, updateClient, deleteClient,
