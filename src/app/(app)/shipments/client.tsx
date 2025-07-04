@@ -9,7 +9,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -21,7 +20,6 @@ import {
 } from "@/components/ui/card"
 import { Send, PackageSearch } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
-import { EnrichedBook } from "@/context/workflow-context"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   AlertDialog,
@@ -36,15 +34,13 @@ import {
 
 
 export default function ShipmentsClient() {
-  const { books, currentUser, handleMarkAsShipped } = useAppContext();
+  const { books, handleMarkAsShipped } = useAppContext();
   const [selection, setSelection] = React.useState<string[]>([]);
   const [isConfirmOpen, setIsConfirmOpen] = React.useState(false);
 
-  const pendingBooks = React.useMemo(() => {
-    if (currentUser?.role !== 'Client') return [];
-    // The books from context are already pre-filtered for the client user
-    return books.filter(book => book.status === 'Pending');
-  }, [books, currentUser]);
+  // The 'books' from context are already filtered for the client user.
+  // We just need to show the ones that are in 'Pending' status.
+  const pendingBooks = books.filter(book => book.status === 'Pending');
 
   const handleConfirmShipment = () => {
     if (selection.length > 0) {
