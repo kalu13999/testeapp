@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FolderSync, FileText, FileJson, Play, ThumbsUp, ThumbsDown, Send, Archive, Undo2, AlertTriangle, ShieldAlert, MoreHorizontal, Info, UserPlus } from "lucide-react";
+import { FolderSync, FileText, FileJson, Play, ThumbsUp, ThumbsDown, Send, Archive, Undo2, AlertTriangle, ShieldAlert, MoreHorizontal, Info, UserPlus, BookOpen } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { useToast } from "@/hooks/use-toast";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -22,9 +22,10 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { AppDocument, User } from "@/context/workflow-context";
+import { AppDocument, EnrichedBook, User } from "@/context/workflow-context";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 
 type IconMap = {
   [key: string]: React.ElementType;
@@ -56,15 +57,20 @@ interface FolderViewClientProps {
 
 type GroupedDocuments = {
   [bookId: string]: {
-    bookId: string;
-    bookName: string;
-    projectId: string;
-    projectName: string;
+    book: EnrichedBook;
     pages: AppDocument[];
     hasError: boolean;
     hasWarning: boolean;
   };
 };
+
+const DetailItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
+  <div className="flex justify-between">
+    <p className="text-sm text-muted-foreground">{label}</p>
+    <p className="text-sm font-medium text-right">{value}</p>
+  </div>
+);
+
 
 export default function FolderViewClient({ stage, config }: FolderViewClientProps) {
   const { 
@@ -112,13 +118,12 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   const groupedByBook = React.useMemo(() => {
     const initialGroups = stageDocuments.reduce<GroupedDocuments>((acc, doc) => {
       if (!doc.bookId) return acc;
+      const bookInfo = books.find(b => b.id === doc.bookId);
+      if (!bookInfo) return acc;
+
       if (!acc[doc.bookId]) {
-        const bookInfo = books.find(b => b.id === doc.bookId);
         acc[doc.bookId] = {
-          bookId: doc.bookId,
-          bookName: bookInfo?.name || 'Unknown Book',
-          projectId: bookInfo?.projectId || 'Unknown Project',
-          projectName: bookInfo?.projectName || 'Unknown Project',
+          book: bookInfo,
           pages: [],
           hasError: false,
           hasWarning: false,
@@ -199,7 +204,8 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
       );
   }
 
-  const handleMainAction = (bookId: string, bookName: string, projectId: string) => {
+  const handleMainAction = (book: EnrichedBook) => {
+    const { id: bookId, name: bookName, projectId } = book;
     if (stage === 'ready-for-processing') {
       handleStartProcessing(bookId);
     } else if (stage === 'storage') {
@@ -214,15 +220,17 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   }
 
 
-  const renderActions = (book: GroupedDocuments[string]) => {
-    const { bookId, bookName, projectId, hasError } = book;
+  const renderActions = (bookGroup: GroupedDocuments[string]) => {
+    const { book, hasError } = bookGroup;
+    const { id: bookId, name: bookName } = book;
+    
     const actionButton = (
         <Button 
             size="sm" 
             onClick={() => openConfirmationDialog({
               title: `Are you sure?`,
               description: `This will perform the action "${config.actionButtonLabel}" on "${bookName}".`,
-              onConfirm: () => handleMainAction(bookId, bookName, projectId)
+              onConfirm: () => handleMainAction(book)
             })}
             disabled={hasError}
         >
@@ -317,102 +325,126 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
           <CardContent>
             {Object.keys(groupedByBook).length > 0 ? (
               <Accordion type="multiple" className="w-full">
-                {Object.values(groupedByBook).map((book) => (
-                  <AccordionItem value={book.bookId} key={book.bookId}>
+                {Object.values(groupedByBook).map((bookGroup) => {
+                  const { book, pages, hasError, hasWarning } = bookGroup;
+                  return (
+                  <AccordionItem value={book.id} key={book.id}>
                     <div className="flex items-center justify-between hover:bg-muted/50 rounded-md">
                         <AccordionTrigger className="flex-1 px-4 py-2">
                             <div className="flex items-center gap-3 text-left">
                                 <FolderSync className="h-5 w-5 text-primary" />
                                 <div>
                                     <p className="font-semibold text-base flex items-center gap-2">
-                                      <Link href={`/books/${book.bookId}`} onClick={(e) => e.stopPropagation()} className="hover:underline">
-                                        {book.bookName}
-                                      </Link>
-                                      {book.hasError && <ShieldAlert className="h-4 w-4 text-destructive" />}
-                                      {book.hasWarning && !book.hasError && <AlertTriangle className="h-4 w-4 text-orange-500" />}
+                                      {book.name}
+                                      {hasError && <ShieldAlert className="h-4 w-4 text-destructive" />}
+                                      {hasWarning && !hasError && <AlertTriangle className="h-4 w-4 text-orange-500" />}
                                     </p>
-                                    <p className="text-sm text-muted-foreground">{book.projectName} - {book.pages.length} pages</p>
+                                    <p className="text-sm text-muted-foreground">{book.projectName} - {pages.length} pages</p>
                                 </div>
                             </div>
                         </AccordionTrigger>
                         <div className="px-4">
-                          {renderActions(book)}
+                          {renderActions(bookGroup)}
                         </div>
                     </div>
                     <AccordionContent>
-                      <div className="pt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
-                        {book.pages.map(page => (
-                            <div key={page.id} className="relative group">
-                              <Link href={`/documents/${page.id}`}>
-                                  <Card className="overflow-hidden hover:shadow-lg transition-shadow relative">
-                                      <CardContent className="p-0">
-                                          <Image
-                                              src={page.imageUrl || "https://placehold.co/400x550.png"}
-                                              alt={`Preview of ${page.name}`}
-                                              data-ai-hint="document page"
-                                              width={400}
-                                              height={550}
-                                              className="aspect-[4/5.5] object-cover w-full h-full"
-                                          />
-                                          {page.flag === 'error' && <div className="absolute inset-0 bg-destructive/20 border-2 border-destructive"></div>}
-                                          {page.flag === 'warning' && <div className="absolute inset-0 bg-orange-500/20 border-2 border-orange-500"></div>}
-                                      </CardContent>
-                                      <CardFooter className="p-2 flex items-center justify-between">
-                                          <p className="text-xs font-medium truncate">{page.name}</p>
-                                          {page.flag && (
-                                            <TooltipProvider>
-                                                <Tooltip>
-                                                    <TooltipTrigger>
-                                                      {page.flag === 'error' && <ShieldAlert className="h-3 w-3 text-destructive flex-shrink-0"/>}
-                                                      {page.flag === 'warning' && <AlertTriangle className="h-3 w-3 text-orange-500 flex-shrink-0"/>}
-                                                      {page.flag === 'info' && <Info className="h-3 w-3 text-primary flex-shrink-0"/>}
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <p>{page.flagComment}</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
-                                          )}
-                                      </CardFooter>
-                                  </Card>
-                              </Link>
-                               <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                          <Button variant="secondary" size="icon" className="h-7 w-7">
-                                              <MoreHorizontal className="h-4 w-4" />
-                                          </Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end">
-                                          <DropdownMenuItem onClick={() => openFlagDialog(page, 'error')}>
-                                              <ShieldAlert className="mr-2 h-4 w-4 text-destructive" /> Mark Error
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => openFlagDialog(page, 'warning')}>
-                                              <AlertTriangle className="mr-2 h-4 w-4 text-orange-500" /> Mark Warning
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => openFlagDialog(page, 'info')}>
-                                              <Info className="mr-2 h-4 w-4 text-primary" /> Mark Info
-                                          </DropdownMenuItem>
-                                          {page.flag && (
-                                            <>
-                                              <DropdownMenuSeparator />
-                                              <DropdownMenuItem onClick={() => updateDocumentFlag(page.id, null)}>
-                                                  Clear Flag
+                      <div className="p-4 space-y-4">
+                          <Card>
+                              <CardHeader className="flex flex-row items-center gap-2 pb-2">
+                                  <Info className="h-4 w-4" />
+                                  <CardTitle className="text-base">Book Details</CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-2">
+                                <DetailItem label="Project" value={<Link href={`/projects/${book.projectId}`} className="text-primary hover:underline">{book.projectName}</Link>} />
+                                <DetailItem label="Author" value={book.author || '—'} />
+                                <DetailItem label="ISBN" value={book.isbn || '—'} />
+                                <DetailItem label="Priority" value={book.priority || '—'} />
+                                {book.info && (
+                                <>
+                                <Separator />
+                                <div className="pt-2">
+                                    <p className="text-sm text-muted-foreground">Additional Info</p>
+                                    <p className="text-sm font-medium whitespace-pre-wrap">{book.info}</p>
+                                </div>
+                                </>
+                                )}
+                              </CardContent>
+                          </Card>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
+                            {pages.map(page => (
+                                <div key={page.id} className="relative group">
+                                  <Link href={`/documents/${page.id}`}>
+                                      <Card className="overflow-hidden hover:shadow-lg transition-shadow relative">
+                                          <CardContent className="p-0">
+                                              <Image
+                                                  src={page.imageUrl || "https://placehold.co/400x550.png"}
+                                                  alt={`Preview of ${page.name}`}
+                                                  data-ai-hint="document page"
+                                                  width={400}
+                                                  height={550}
+                                                  className="aspect-[4/5.5] object-cover w-full h-full"
+                                              />
+                                              {page.flag === 'error' && <div className="absolute inset-0 bg-destructive/20 border-2 border-destructive"></div>}
+                                              {page.flag === 'warning' && <div className="absolute inset-0 bg-orange-500/20 border-2 border-orange-500"></div>}
+                                          </CardContent>
+                                          <CardFooter className="p-2 flex items-center justify-between">
+                                              <p className="text-xs font-medium truncate">{page.name}</p>
+                                              {page.flag && (
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger>
+                                                          {page.flag === 'error' && <ShieldAlert className="h-3 w-3 text-destructive flex-shrink-0"/>}
+                                                          {page.flag === 'warning' && <AlertTriangle className="h-3 w-3 text-orange-500 flex-shrink-0"/>}
+                                                          {page.flag === 'info' && <Info className="h-3 w-3 text-primary flex-shrink-0"/>}
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>{page.flagComment}</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                              )}
+                                          </CardFooter>
+                                      </Card>
+                                  </Link>
+                                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <DropdownMenu>
+                                          <DropdownMenuTrigger asChild>
+                                              <Button variant="secondary" size="icon" className="h-7 w-7">
+                                                  <MoreHorizontal className="h-4 w-4" />
+                                              </Button>
+                                          </DropdownMenuTrigger>
+                                          <DropdownMenuContent align="end">
+                                              <DropdownMenuItem onClick={() => openFlagDialog(page, 'error')}>
+                                                  <ShieldAlert className="mr-2 h-4 w-4 text-destructive" /> Mark Error
                                               </DropdownMenuItem>
-                                            </>
-                                          )}
-                                      </DropdownMenuContent>
-                                  </DropdownMenu>
-                              </div>
-                            </div>
-                        ))}
+                                              <DropdownMenuItem onClick={() => openFlagDialog(page, 'warning')}>
+                                                  <AlertTriangle className="mr-2 h-4 w-4 text-orange-500" /> Mark Warning
+                                              </DropdownMenuItem>
+                                              <DropdownMenuItem onClick={() => openFlagDialog(page, 'info')}>
+                                                  <Info className="mr-2 h-4 w-4 text-primary" /> Mark Info
+                                              </DropdownMenuItem>
+                                              {page.flag && (
+                                                <>
+                                                  <DropdownMenuSeparator />
+                                                  <DropdownMenuItem onClick={() => updateDocumentFlag(page.id, null)}>
+                                                      Clear Flag
+                                                  </DropdownMenuItem>
+                                                </>
+                                              )}
+                                          </DropdownMenuContent>
+                                      </DropdownMenu>
+                                  </div>
+                                </div>
+                            ))}
+                          </div>
                       </div>
                     </AccordionContent>
                   </AccordionItem>
-                ))}
+                )})}
               </Accordion>
             ) : (
-              <div className="text-center py-10 text-muted-foreground">
+              <div className="text-center py-10 text-muted-foreground flex flex-col items-center gap-4">
+                  <BookOpen className="h-12 w-12"/>
                   <p>{config.emptyStateText}</p>
               </div>
             )}

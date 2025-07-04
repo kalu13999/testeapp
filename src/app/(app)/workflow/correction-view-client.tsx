@@ -14,13 +14,14 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2 } from "lucide-react";
+import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 
 interface CorrectionViewClientProps {
   stage: string;
@@ -31,6 +32,14 @@ interface CorrectionViewClientProps {
     dataStage: string;
   };
 }
+
+const DetailItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
+  <div className="flex justify-between">
+    <p className="text-sm text-muted-foreground">{label}</p>
+    <p className="text-sm font-medium">{value}</p>
+  </div>
+);
+
 
 export default function CorrectionViewClient({ config }: CorrectionViewClientProps) {
   const { 
@@ -112,9 +121,7 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
                             <FolderSync className="h-5 w-5 text-destructive" />
                             <div>
                                 <p className="font-semibold text-base">
-                                  <Link href={`/books/${book.id}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>
-                                    {book.name}
-                                  </Link>
+                                  {book.name}
                                 </p>
                                 <p className="text-sm text-muted-foreground">{book.projectName} - {pages.length} pages</p>
                             </div>
@@ -132,6 +139,28 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
                 </div>
                 <AccordionContent>
                     <div className="px-4 py-4 space-y-4">
+                        <Card>
+                            <CardHeader className="flex flex-row items-center gap-2 pb-2">
+                                <Info className="h-4 w-4" />
+                                <CardTitle className="text-base">Book Details</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-2">
+                                <DetailItem label="Project" value={<Link href={`/projects/${book.projectId}`} className="text-primary hover:underline">{book.projectName}</Link>} />
+                                <DetailItem label="Author" value={book.author || '—'} />
+                                <DetailItem label="ISBN" value={book.isbn || '—'} />
+                                <DetailItem label="Priority" value={book.priority || '—'} />
+                                {book.info && (
+                                <>
+                                <Separator />
+                                <div className="pt-2">
+                                    <p className="text-sm text-muted-foreground">Additional Info</p>
+                                    <p className="text-sm font-medium whitespace-pre-wrap">{book.info}</p>
+                                </div>
+                                </>
+                                )}
+                            </CardContent>
+                        </Card>
+
                         <Card className="bg-destructive/10 border-destructive/50">
                             <CardHeader className="pb-2">
                                 <CardTitle className="flex items-center gap-2 text-base text-destructive font-semibold">
@@ -200,7 +229,8 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
             )})}
           </Accordion>
         ) : (
-           <div className="text-center py-10 text-muted-foreground">
+           <div className="text-center py-10 text-muted-foreground flex flex-col items-center gap-4">
+              <BookOpen className="h-12 w-12"/>
               <p>{config.emptyStateText}</p>
            </div>
         )}

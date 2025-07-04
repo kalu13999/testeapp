@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/card"
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send, FolderSync, Upload, XCircle, CheckCircle, FileWarning, PlayCircle, UserPlus } from "lucide-react";
+import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send, FolderSync, Upload, XCircle, CheckCircle, FileWarning, PlayCircle, UserPlus, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppContext } from "@/context/workflow-context";
 import { EnrichedBook, AppDocument, User } from "@/context/workflow-context";
@@ -33,6 +33,9 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 
 const iconMap: { [key: string]: LucideIcon } = {
@@ -88,6 +91,13 @@ const getBadgeVariant = (status: string): BadgeVariant => {
     }
 }
 
+const DetailItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
+  <div className="grid grid-cols-3 items-center gap-x-4">
+    <p className="text-muted-foreground">{label}</p>
+    <p className="col-span-2 font-medium">{value}</p>
+  </div>
+);
+
 
 export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const { 
@@ -106,6 +116,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const [assignState, setAssignState] = React.useState<{ open: boolean; book: EnrichedBook | null; role: AssignmentRole | null }>({ open: false, book: null, role: null });
   const [bulkAssignState, setBulkAssignState] = React.useState<{ open: boolean; role: AssignmentRole | null }>({ open: false, role: null });
   const [selectedUserId, setSelectedUserId] = React.useState<string>("");
+  const [detailsState, setDetailsState] = React.useState<{ open: boolean; book?: EnrichedBook }>({ open: false });
 
   
   const displayItems = React.useMemo(() => {
@@ -356,36 +367,44 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         <TableCell>
             <Badge variant={getBadgeVariant(item.status)}>{item.status}</Badge>
         </TableCell>
-        {(actionButtonLabel || isCancelable) && (
-            <TableCell>
-                <div className="flex gap-2">
-                    {isCancelable && (
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => openConfirmationDialog({
-                                title: `Cancel task for "${item.name}"?`,
-                                description: "This will return the book to the previous step.",
-                                onConfirm: () => handleCancelTask(item.id, item.status)
-                            })}
-                        >
-                            <Undo2 className="mr-2 h-4 w-4" />
-                            Cancel
-                        </Button>
-                    )}
+        <TableCell>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button aria-haspopup="true" size="icon" variant="ghost">
+                        <MoreHorizontal className="h-4 w-4" />
+                        <span className="sr-only">Toggle menu</span>
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
                     {actionButtonLabel && (
-                        <Button size="sm" onClick={() => openConfirmationDialog({
+                        <DropdownMenuItem onSelect={() => openConfirmationDialog({
                             title: `Are you sure?`,
                             description: `This will perform the action "${actionButtonLabel}" on "${item.name}".`,
                             onConfirm: () => handleSingleItemAction(item)
                         })}>
-                            {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
+                             {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
                             {actionButtonLabel}
-                        </Button>
+                        </DropdownMenuItem>
                     )}
-                </div>
-            </TableCell>
-        )}
+                    {isCancelable && (
+                        <DropdownMenuItem onSelect={() => openConfirmationDialog({
+                                title: `Cancel task for "${item.name}"?`,
+                                description: "This will return the book to the previous step.",
+                                onConfirm: () => handleCancelTask(item.id, item.status)
+                            })}>
+                            <Undo2 className="mr-2 h-4 w-4" />
+                            Cancel Task
+                        </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => setDetailsState({ open: true, book: item })}>
+                        <Info className="mr-2 h-4 w-4" />
+                        Details
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </TableCell>
         </TableRow>
     )
   }
@@ -493,7 +512,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                     <TableHead>Project</TableHead>
                     <TableHead className="hidden md:table-cell">Client</TableHead>
                     <TableHead>Status</TableHead>
-                    {(actionButtonLabel) && <TableHead>Actions</TableHead>}
+                    <TableHead>Actions</TableHead>
                 </TableRow>
               ) : (
                  <TableRow>
@@ -664,6 +683,34 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         </DialogContent>
       </Dialog>
     )}
+
+     <Dialog open={detailsState.open} onOpenChange={() => setDetailsState({ open: false, book: undefined })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Book Details</DialogTitle>
+            <DialogDescription>{detailsState.book?.name}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4 text-sm">
+            <DetailItem label="Author" value={detailsState.book?.author || '—'} />
+            <DetailItem label="ISBN" value={detailsState.book?.isbn || '—'} />
+            <DetailItem label="Publication Year" value={detailsState.book?.publicationYear || '—'} />
+            <Separator />
+            <DetailItem label="Priority" value={detailsState.book?.priority || '—'} />
+            <DetailItem label="Project" value={detailsState.book?.projectName || '—'} />
+            <DetailItem label="Client" value={detailsState.book?.clientName || '—'} />
+            <Separator />
+            {detailsState.book?.info && (
+               <div className="grid grid-cols-3 items-start gap-x-4">
+                <p className="text-muted-foreground">Additional Info</p>
+                <p className="col-span-2 font-medium whitespace-pre-wrap">{detailsState.book.info}</p>
+              </div>
+            )}
+          </div>
+           <DialogFooter>
+              <Button type="button" variant="secondary" onClick={() => setDetailsState({ open: false, book: undefined })}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
