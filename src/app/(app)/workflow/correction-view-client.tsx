@@ -111,7 +111,11 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
                         <div className="flex items-center gap-3 text-left">
                             <FolderSync className="h-5 w-5 text-destructive" />
                             <div>
-                                <p className="font-semibold text-base">{book.name}</p>
+                                <p className="font-semibold text-base">
+                                  <Link href={`/books/${book.id}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>
+                                    {book.name}
+                                  </Link>
+                                </p>
                                 <p className="text-sm text-muted-foreground">{book.projectName} - {pages.length} pages</p>
                             </div>
                         </div>

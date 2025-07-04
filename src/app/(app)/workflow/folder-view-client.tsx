@@ -325,7 +325,9 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                                 <FolderSync className="h-5 w-5 text-primary" />
                                 <div>
                                     <p className="font-semibold text-base flex items-center gap-2">
-                                      {book.bookName}
+                                      <Link href={`/books/${book.bookId}`} onClick={(e) => e.stopPropagation()} className="hover:underline">
+                                        {book.bookName}
+                                      </Link>
                                       {book.hasError && <ShieldAlert className="h-4 w-4 text-destructive" />}
                                       {book.hasWarning && !book.hasError && <AlertTriangle className="h-4 w-4 text-orange-500" />}
                                     </p>
