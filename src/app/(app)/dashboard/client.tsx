@@ -27,6 +27,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
 import { AlertTriangle, BookCopy, CheckCircle2, UserCheck, BarChart2, ListTodo, Activity, TrendingUp } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
@@ -76,6 +83,12 @@ const getStatusBadgeVariant = (status: string) => {
 export default function DashboardClient() {
     const { projects, books, documents, auditLogs, selectedProjectId } = useAppContext();
     const [chartType, setChartType] = React.useState<'bar' | 'line' | 'area'>('bar');
+    const [detailState, setDetailState] = React.useState<{
+      open: boolean;
+      title: string;
+      items: (EnrichedBook | EnrichedAuditLog)[];
+      type: 'books' | 'activities' | null;
+    }>({ open: false, title: '', items: [], type: null });
 
 
     const dashboardData = useMemo(() => {
@@ -87,9 +100,7 @@ export default function DashboardClient() {
         
         // --- KPI Calculations ---
         const booksInWorkflow = relevantBooks.filter(b => !['Complete', 'Archived'].includes(b.status)).length;
-        const pendingClientAction = relevantDocuments.filter(doc => doc.status === 'Pending Validation').length > 0
-            ? new Set(relevantDocuments.filter(doc => doc.status === 'Pending Validation').map(doc => doc.bookId)).size
-            : 0;
+        const pendingClientAction = relevantBooks.filter(book => book.status === 'Pending Validation').length;
         const slaWarnings = relevantProjects.filter(p => p.status === 'In Progress' && new Date(p.endDate) < new Date()).length;
         const today = new Date().toISOString().slice(0, 10);
         const processedToday = relevantAuditLogs.filter(d => d.date.startsWith(today)).length;
@@ -102,44 +113,63 @@ export default function DashboardClient() {
         ];
 
         // --- Workflow Chart Calculation ---
+        const orderedStageNames = [
+          'Pending Shipment', 'In Transit', 'To Scan', 'Scanning', 'Storage', 
+          'To Indexing', 'Indexing', 'To Checking', 'Initial QC', 
+          'Ready to Process', 'Processing', 'Processed', 'Final QC', 
+          'Delivery', 'Client Validation', 'Rejections', 'Corrected', 
+          'Complete', 'Archived'
+        ];
+        
         const chartStageMapping: { [key: string]: string } = {
-            'Pending': 'Pending Shipment',
-            'In Transit': 'In Transit',
-            'To Scan': 'To Scan',
-            'Scanning Started': 'Scanning',
-            'Storage': 'Storage',
-            'To Indexing': 'To Indexing',
-            'Indexing Started': 'Indexing',
-            'To Checking': 'To Checking',
-            'Checking Started': 'Initial QC',
-            'Ready for Processing': 'Ready to Process',
-            'In Processing': 'Processing',
-            'Processed': 'Processed',
-            'Final Quality Control': 'Final QC',
-            'Delivery': 'Delivery',
-            'Pending Validation': 'Client Validation',
-            'Client Rejected': 'Rejections',
+          'Pending': 'Pending Shipment',
+          'In Transit': 'In Transit',
+          'To Scan': 'To Scan',
+          'Scanning Started': 'Scanning',
+          'To Indexing': 'To Indexing',
+          'Indexing Started': 'Indexing',
+          'To Checking': 'To Checking',
+          'Checking Started': 'Initial QC',
+          'In Processing': 'Processing',
+          'Pending Validation': 'Client Validation',
+          'Client Rejected': 'Rejections',
+          'Corrected': 'Corrected',
+          'Complete': 'Complete',
+          'Archived': 'Archived'
         };
 
-        const orderedStageNames = ['Pending Shipment', 'In Transit', 'To Scan', 'Scanning', 'Storage', 'To Indexing', 'Indexing', 'To Checking', 'Initial QC', 'Ready to Process', 'Processing', 'Processed', 'Final QC', 'Delivery', 'Client Validation', 'Rejections'];
-        const bookStageCounts = Object.fromEntries(orderedStageNames.map(name => [name, 0]));
+        const booksByStage: { [key: string]: EnrichedBook[] } = {};
+
+        const getBookDisplayStage = (book: EnrichedBook): string | null => {
+            if (book.status === 'In Progress' && documents.some(d => d.bookId === book.id && d.status === 'Storage')) {
+                return 'Storage';
+            }
+            if (book.status === 'Ready for Processing') {
+                return 'Ready to Process';
+            }
+            const docStatuses = new Set(documents.filter(d => d.bookId === book.id).map(d => d.status));
+            if (docStatuses.has('Processed')) return 'Processed';
+            if (docStatuses.has('Final Quality Control')) return 'Final QC';
+            if (docStatuses.has('Delivery')) return 'Delivery';
+            if (docStatuses.has('In Processing')) return 'Processing';
+
+            return chartStageMapping[book.status] || null;
+        }
 
         relevantBooks.forEach(book => {
-            let stageName = chartStageMapping[book.status];
-            // Special case for 'Storage' where book status is 'In Progress' after scanning
-            if (book.status === 'In Progress' && documents.some(d => d.bookId === book.id && d.status === 'Storage')) {
-                stageName = 'Storage';
-            }
-            if (stageName) {
-                bookStageCounts[stageName]++;
+            const stageName = getBookDisplayStage(book);
+            if (stageName && orderedStageNames.includes(stageName)) {
+                if (!booksByStage[stageName]) {
+                    booksByStage[stageName] = [];
+                }
+                booksByStage[stageName].push(book);
             }
         });
 
         const chartData: ChartData[] = orderedStageNames.map(name => ({
             name,
-            count: bookStageCounts[name] || 0
+            count: booksByStage[name]?.length || 0
         }));
-
 
         // --- Daily Throughput Chart ---
         const dailyActivity: { [date: string]: { [action: string]: number } } = {};
@@ -183,6 +213,7 @@ export default function DashboardClient() {
             const dayData = dailyActivity[dateStr] || {};
             return {
                 date: format(new Date(dateStr), 'MMM d'),
+                fullDate: dateStr,
                 Shipped: dayData.Shipped || 0,
                 Received: dayData.Received || 0,
                 Scanned: dayData.Scanned || 0,
@@ -205,10 +236,10 @@ export default function DashboardClient() {
             status: p.status
         }));
 
-        return { kpiData, chartData, dailyChartData, recentActivities, projectProgressData, selectedProjectId };
+        return { kpiData, chartData, dailyChartData, recentActivities, projectProgressData, selectedProjectId, booksByStage, allRelevantAuditLogs: relevantAuditLogs };
     }, [projects, books, documents, auditLogs, selectedProjectId]);
 
-    const { kpiData, chartData, dailyChartData, recentActivities, projectProgressData } = dashboardData;
+    const { kpiData, chartData, dailyChartData, recentActivities, projectProgressData, booksByStage, allRelevantAuditLogs } = dashboardData;
     
     const workflowChartConfig = {
       count: {
@@ -239,8 +270,41 @@ export default function DashboardClient() {
       Finalized: { label: "Finalized", color: "hsl(100, 80%, 50%)" },
     } satisfies ChartConfig;
 
+    const handleCloseDetailDialog = () => {
+      setDetailState({ open: false, title: '', items: [], type: null });
+    }
+
+    const handleWorkflowChartClick = (data: any) => {
+        if (!data || !data.activePayload?.length) return;
+        const stageName = data.activePayload[0].payload.name as string;
+        const booksForStage = booksByStage[stageName] || [];
+        
+        setDetailState({
+            open: true,
+            title: `Books in Stage: ${stageName}`,
+            items: booksForStage,
+            type: 'books'
+        });
+    };
+
+    const handleDailyChartClick = (data: any) => {
+        if (!data || !data.activePayload?.length) return;
+        const fullDate = data.activePayload[0].payload.fullDate as string;
+        if (!fullDate) return;
+        
+        const activitiesForDay = allRelevantAuditLogs.filter(log => log.date.startsWith(fullDate));
+
+        setDetailState({
+            open: true,
+            title: `Activity for ${format(new Date(fullDate), 'MMMM d, yyyy')}`,
+            items: activitiesForDay,
+            type: 'activities'
+        });
+    };
+
 
     return (
+      <>
         <div className="flex flex-col gap-6">
             <h1 className="font-headline text-3xl font-bold tracking-tight">
                 {selectedProjectId ? `${projects.find(p=>p.id === selectedProjectId)?.name} Dashboard` : "Global Dashboard"}
@@ -266,7 +330,7 @@ export default function DashboardClient() {
                      <CardHeader className="flex flex-row items-start justify-between">
                         <div>
                             <CardTitle className="font-headline flex items-center gap-2"><BarChart2 className="h-5 w-5"/> Workflow Overview</CardTitle>
-                            <CardDescription>Number of books currently in each workflow phase.</CardDescription>
+                            <CardDescription>Number of books currently in each workflow phase. Click a bar for details.</CardDescription>
                         </div>
                         <Tabs value={chartType} onValueChange={(value) => setChartType(value as any)} className="w-auto">
                             <TabsList>
@@ -277,10 +341,10 @@ export default function DashboardClient() {
                         </Tabs>
                     </CardHeader>
                     <CardContent>
-                        <ChartContainer config={workflowChartConfig} className="h-[300px] w-full">
-                             <ChartComponent data={chartData}>
+                        <ChartContainer config={workflowChartConfig} className="h-[300px] w-full cursor-pointer">
+                             <ChartComponent data={chartData} onClick={handleWorkflowChartClick}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} angle={-40} textAnchor="end" height={60} interval={0} />
+                                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} angle={-40} textAnchor="end" height={80} interval={0} />
                                 <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false}/>
                                 <ChartTooltip
                                     cursor={{ fill: "hsl(var(--muted))" }}
@@ -296,12 +360,12 @@ export default function DashboardClient() {
                     <CardHeader>
                         <CardTitle className="font-headline flex items-center gap-2"><TrendingUp className="h-5 w-5"/> Daily Throughput</CardTitle>
                         <CardDescription>
-                            Count of books completing key stages over the last 7 days.
+                            Count of books completing key stages over the last 7 days. Click the chart for details.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <ChartContainer config={dailyChartConfig} className="h-[250px] w-full">
-                            <LineChart data={dailyChartData} margin={{ left: 12, right: 12 }}>
+                        <ChartContainer config={dailyChartConfig} className="h-[250px] w-full cursor-pointer">
+                            <LineChart data={dailyChartData} margin={{ left: 12, right: 12 }} onClick={handleDailyChartClick}>
                                 <CartesianGrid vertical={false} />
                                 <XAxis
                                     dataKey="date"
@@ -326,6 +390,41 @@ export default function DashboardClient() {
                         </ChartContainer>
                     </CardContent>
                 </Card>
+
+                {!selectedProjectId && projectProgressData.length > 0 && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="font-headline flex items-center gap-2"><ListTodo className="h-5 w-5" /> Project Health</CardTitle>
+                            <CardDescription>Overview of all active and recently completed projects.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Project Name</TableHead>
+                                        <TableHead>Client</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead className="w-[200px]">Progress</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {projectProgressData.map(project => (
+                                        <TableRow key={project.id}>
+                                            <TableCell className="font-medium">
+                                                <Link href={`/projects/${project.id}`} className="hover:underline">
+                                                    {project.name}
+                                                </Link>
+                                            </TableCell>
+                                            <TableCell>{project.client}</TableCell>
+                                            <TableCell><Badge variant={getStatusBadgeVariant(project.status)}>{project.status}</Badge></TableCell>
+                                            <TableCell><Progress value={project.progress} className="h-2"/></TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                )}
 
                 <Card>
                     <CardHeader>
@@ -361,42 +460,69 @@ export default function DashboardClient() {
                         </Table>
                     </CardContent>
                 </Card>
-                
-                {!selectedProjectId && projectProgressData.length > 0 && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="font-headline flex items-center gap-2"><ListTodo className="h-5 w-5" /> Project Health</CardTitle>
-                            <CardDescription>Overview of all active and recently completed projects.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Project Name</TableHead>
-                                        <TableHead>Client</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead className="w-[200px]">Progress</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {projectProgressData.map(project => (
-                                        <TableRow key={project.id}>
-                                            <TableCell className="font-medium">
-                                                <Link href={`/projects/${project.id}`} className="hover:underline">
-                                                    {project.name}
-                                                </Link>
-                                            </TableCell>
-                                            <TableCell>{project.client}</TableCell>
-                                            <TableCell><Badge variant={getStatusBadgeVariant(project.status)}>{project.status}</Badge></TableCell>
-                                            <TableCell><Progress value={project.progress} className="h-2"/></TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
-                )}
             </div>
         </div>
+
+        <Dialog open={detailState.open} onOpenChange={handleCloseDetailDialog}>
+            <DialogContent className="max-w-3xl">
+                <DialogHeader>
+                    <DialogTitle>{detailState.title}</DialogTitle>
+                    <DialogDescription>
+                        {detailState.type === 'books'
+                            ? `Found ${detailState.items.length} book(s) in this stage.`
+                            : `Found ${detailState.items.length} activities on this day.`
+                        }
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="max-h-[60vh] overflow-y-auto">
+                    {detailState.type === 'books' && (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Book Name</TableHead>
+                                    <TableHead>Project</TableHead>
+                                    <TableHead>Client</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {(detailState.items as EnrichedBook[]).map(book => (
+                                    <TableRow key={book.id}>
+                                        <TableCell className="font-medium">
+                                            <Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link>
+                                        </TableCell>
+                                        <TableCell>{book.projectName}</TableCell>
+                                        <TableCell>{book.clientName}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    )}
+                    {detailState.type === 'activities' && (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Action</TableHead>
+                                    <TableHead>Details</TableHead>
+                                    <TableHead>User</TableHead>
+                                    <TableHead>Time</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {(detailState.items as EnrichedAuditLog[]).map(log => (
+                                     <TableRow key={log.id}>
+                                        <TableCell className="font-medium">{log.action}</TableCell>
+                                        <TableCell>{log.details}</TableCell>
+                                        <TableCell>{log.user}</TableCell>
+                                        <TableCell>{new Date(log.date).toLocaleTimeString()}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    )}
+                </div>
+            </DialogContent>
+        </Dialog>
+      </>
     )
-}
+
+    
