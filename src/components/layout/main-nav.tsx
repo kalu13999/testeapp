@@ -98,7 +98,7 @@ const allMenuItems = [
     title: "Client Portal",
     roles: ['Client', 'Admin'],
     items: [
-      { href: "/dashboard", label: "Client Dashboard", icon: Home },
+      { href: "/dashboard", label: "Client Dashboard", icon: Home, roles: ['Client'] },
       { href: "/shipments", label: "Prepare Shipment", icon: Send },
       { href: "/pending-deliveries", label: "Pending Deliveries", icon: FileClock },
       { href: "/validated-history", label: "Validated History", icon: FileCheck },
@@ -145,6 +145,12 @@ export function MainNav() {
     .filter(menu => menu.roles.includes(currentUser.role))
     .map(menu => {
       const filteredItems = menu.items.filter(item => {
+          // If an item has specific roles defined, check against them first.
+          // This applies to all users, including admin.
+          if (item.roles && !item.roles.includes(currentUser.role)) {
+            return false;
+          }
+
           if (isAdmin) return true;
           // A special check for scanning roles to see both pages
           if (item.href.startsWith("/workflow/to-scan") || item.href.startsWith("/workflow/scanning-started")) {

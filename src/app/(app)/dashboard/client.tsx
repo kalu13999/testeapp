@@ -36,7 +36,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
-import { AlertTriangle, BookCopy, CheckCircle2, UserCheck, BarChart2, ListTodo, Activity, TrendingUp, ScanLine, Clock, ThumbsUp, Package, Send, FileClock, CheckCheck } from "lucide-react"
+import { AlertTriangle, BookCopy, CheckCircle2, UserCheck, BarChart2, ListTodo, Activity, TrendingUp, ScanLine, Clock, ThumbsUp, Package, Send, FileClock, CheckCheck, ArrowDownToLine } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import { useMemo } from "react"
 import type { EnrichedBook, AppDocument, EnrichedProject, EnrichedAuditLog, User } from "@/context/workflow-context"
@@ -360,16 +360,16 @@ function ClientDashboard() {
 
     const clientData = useMemo(() => {
         if (!currentUser || !currentUser.clientId) {
-            return { pendingShipping: [], inTransit: [], pendingValidation: [], completed: [], recentDeliveries: [] };
+            return { pendingShipping: [], inTransit: [], pendingValidation: [], received: [] };
         }
         const clientBooks = books.filter(b => b.clientId === currentUser.clientId);
         
         const pendingShipping = clientBooks.filter(b => b.status === 'Pending');
         const inTransit = clientBooks.filter(b => b.status === 'In Transit');
         const pendingValidation = clientBooks.filter(b => b.status === 'Pending Validation');
-        const completed = clientBooks.filter(b => b.status === 'Complete');
+        const received = clientBooks.filter(b => b.status === 'To Scan');
 
-        return { pendingShipping, inTransit, pendingValidation, completed, recentDeliveries: completed.slice(0, 10) };
+        return { pendingShipping, inTransit, pendingValidation, received };
     }, [books, currentUser]);
 
     return (
@@ -377,7 +377,7 @@ function ClientDashboard() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Batches Pending Shipping</CardTitle>
+                        <CardTitle className="text-sm font-medium">Pending Shipping</CardTitle>
                         <Package className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
@@ -387,7 +387,7 @@ function ClientDashboard() {
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Batches In Transit</CardTitle>
+                        <CardTitle className="text-sm font-medium">In Transit</CardTitle>
                         <Send className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
@@ -395,24 +395,24 @@ function ClientDashboard() {
                         <p className="text-xs text-muted-foreground">Batches you have shipped to us</p>
                     </CardContent>
                 </Card>
+                 <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Received by Us</CardTitle>
+                        <ArrowDownToLine className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{clientData.received.length}</div>
+                        <p className="text-xs text-muted-foreground">Batches confirmed at our facility</p>
+                    </CardContent>
+                </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Batches Pending Approval</CardTitle>
+                        <CardTitle className="text-sm font-medium">Pending Approval</CardTitle>
                         <FileClock className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{clientData.pendingValidation.length}</div>
                         <p className="text-xs text-muted-foreground">Batches awaiting your review</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Completed Batches</CardTitle>
-                        <CheckCheck className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{clientData.completed.length}</div>
-                        <p className="text-xs text-muted-foreground">Total completed and validated batches</p>
                     </CardContent>
                 </Card>
             </div>
@@ -463,6 +463,7 @@ function ClientDashboard() {
     );
 }
 
+
 // --- MAIN DASHBOARD ROUTER ---
 
 export default function DashboardClient() {
@@ -479,9 +480,10 @@ export default function DashboardClient() {
             case 'Client':
                 return <ClientDashboard />;
             default:
+                // Operator users are redirected to their profile page, so this is a fallback.
                 return (
                     <Card>
-                        <CardHeader><CardTitle>Welcome</CardTitle></CardHeader>
+                        <CardHeader><CardTitle>Welcome, {currentUser.name}</CardTitle></CardHeader>
                         <CardContent><p>Select an item from the menu to get started.</p></CardContent>
                     </Card>
                 );
