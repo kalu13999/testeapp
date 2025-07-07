@@ -41,12 +41,17 @@ export default function ShipmentsClient() {
   const { books, handleMarkAsShipped } = useAppContext();
   const [selection, setSelection] = React.useState<string[]>([]);
   const [isConfirmOpen, setIsConfirmOpen] = React.useState(false);
-  const [query, setQuery] = React.useState("");
   const { toast } = useToast();
+  
+  const [columnFilters, setColumnFilters] = React.useState<{ [key: string]: string }>({});
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
     { id: 'name', desc: false }
   ]);
   
+  const handleColumnFilterChange = (columnId: string, value: string) => {
+    setColumnFilters(prev => ({ ...prev, [columnId]: value }));
+  };
+
   const handleSort = (columnId: string, isShift: boolean) => {
     setSorting(currentSorting => {
         const existingSortIndex = currentSorting.findIndex(s => s.id === columnId);
@@ -91,28 +96,19 @@ export default function ShipmentsClient() {
         </div>
     );
   }
-
-  const globalSearch = (item: object, query: string) => {
-    if (!query) return true;
-    const lowerCaseQuery = query.toLowerCase();
-
-    for (const key in item) {
-        if (Object.prototype.hasOwnProperty.call(item, key)) {
-            const value = item[key as keyof typeof item];
-            if (typeof value === 'string' || typeof value === 'number') {
-                if (String(value).toLowerCase().includes(lowerCaseQuery)) {
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
-  };
   
   const sortedAndFilteredBooks = React.useMemo(() => {
     let filtered = books
-      .filter(book => book.status === 'Pending')
-      .filter(book => globalSearch(book, query));
+      .filter(book => book.status === 'Pending');
+      
+    Object.entries(columnFilters).forEach(([columnId, value]) => {
+      if (value) {
+        filtered = filtered.filter(book => {
+          const bookValue = book[columnId as keyof EnrichedBook] ?? (columnId === 'priority' ? 'Medium' : '');
+          return String(bookValue).toLowerCase().includes(value.toLowerCase());
+        });
+      }
+    });
       
     if (sorting.length > 0) {
         filtered.sort((a, b) => {
@@ -141,7 +137,7 @@ export default function ShipmentsClient() {
 
     return filtered;
 
-  }, [books, query, sorting]);
+  }, [books, columnFilters, sorting]);
 
   const selectedBooks = React.useMemo(() => {
     return sortedAndFilteredBooks.filter(book => selection.includes(book.id));
@@ -236,14 +232,6 @@ export default function ShipmentsClient() {
                 </Button>
               </div>
           </div>
-          <div className="pt-4">
-              <Input
-                placeholder="Search all columns..."
-                className="max-w-sm"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-          </div>
         </CardHeader>
         <CardContent>
           {sortedAndFilteredBooks.length > 0 ? (
@@ -277,6 +265,21 @@ export default function ShipmentsClient() {
                       Priority {getSortIndicator('priority')}
                     </div>
                   </TableHead>
+                </TableRow>
+                <TableRow>
+                    <TableHead />
+                    <TableHead>
+                        <Input placeholder="Filter name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/>
+                    </TableHead>
+                    <TableHead>
+                        <Input placeholder="Filter project..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/>
+                    </TableHead>
+                    <TableHead>
+                         <Input placeholder="Filter pages..." value={columnFilters['expectedDocuments'] || ''} onChange={(e) => handleColumnFilterChange('expectedDocuments', e.target.value)} className="h-8"/>
+                    </TableHead>
+                    <TableHead>
+                        <Input placeholder="Filter priority..." value={columnFilters['priority'] || ''} onChange={(e) => handleColumnFilterChange('priority', e.target.value)} className="h-8"/>
+                    </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

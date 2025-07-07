@@ -1,12 +1,12 @@
 
 [
   {
-    "id": "pl_1",
-    "bookId": "book_19",
+    "id": "pl_901",
+    "bookId": "book_901",
     "status": "In Progress",
-    "progress": 65,
-    "log": "[11:20:00] OCR completed on page 98/150.\n[11:15:30] Starting OCR process...\n[11:15:00] Image pre-processing complete.\n[11:10:00] Process initiated by u_admin.",
-    "startTime": "2024-06-03T11:10:00Z",
-    "lastUpdate": "2024-06-03T11:20:00Z"
+    "progress": 75,
+    "log": "[5:15:35 PM] Processing initiated.\n[5:15:35 PM] OCR at page 15/20.",
+    "startTime": "2024-07-26T17:15:35.341Z",
+    "lastUpdate": "2024-07-27T17:15:35.341Z"
   }
 ]
