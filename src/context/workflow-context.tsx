@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from 'react';
@@ -63,6 +64,11 @@ type AppContextType = {
   addUser: (userData: Omit<User, 'id' | 'avatar' | 'lastLogin'>) => void;
   updateUser: (userId: string, userData: Partial<Omit<User, 'id' | 'avatar' | 'lastLogin'>>) => void;
   deleteUser: (userId: string) => void;
+  
+  // Role Actions
+  addRole: (roleName: string, permissions: string[]) => void;
+  updateRole: (roleName: string, permissions: string[]) => void;
+  deleteRole: (roleName: string) => void;
 
   // Project Actions
   addProject: (projectData: Omit<Project, 'id'>) => void;
@@ -130,6 +136,8 @@ export function AppProvider({
   const [documents, setDocuments] = React.useState<AppDocument[]>(initialDocuments);
   const [auditLogs, setAuditLogs] = React.useState<EnrichedAuditLog[]>(initialAuditLogs);
   const [processingLogs, setProcessingLogs] = React.useState<ProcessingLog[]>(initialProcessingLogs);
+  const [roles, setRoles] = React.useState<string[]>(initialRoles);
+  const [permissions, setPermissions] = React.useState<Permissions>(initialPermissions);
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
   const { toast } = useToast();
   
@@ -337,6 +345,37 @@ export function AppProvider({
         description: `${booksToAdd.length} books have been added to the project.`
     });
   };
+
+  // --- ROLE ACTIONS ---
+  const addRole = (roleName: string, rolePermissions: string[]) => {
+    if (roles.includes(roleName)) {
+      toast({ title: "Role Exists", description: "A role with this name already exists.", variant: "destructive" });
+      return;
+    }
+    setRoles(prev => [...prev, roleName]);
+    setPermissions(prev => ({...prev, [roleName]: rolePermissions }));
+    logAction('Role Created', `New role "${roleName}" was created.`, {});
+    toast({ title: "Role Created", description: `Role "${roleName}" has been added.` });
+  };
+
+  const updateRole = (roleName: string, rolePermissions: string[]) => {
+    setPermissions(prev => ({...prev, [roleName]: rolePermissions }));
+    logAction('Role Updated', `Permissions for role "${roleName}" were updated.`, {});
+    toast({ title: "Role Updated", description: `Permissions for "${roleName}" have been saved.` });
+  };
+  
+  const deleteRole = (roleName: string) => {
+    setRoles(prev => prev.filter(r => r !== roleName));
+    setPermissions(prev => {
+      const newPerms = { ...prev };
+      delete newPerms[roleName];
+      return newPerms;
+    });
+    setUsers(prev => prev.map(u => u.role === roleName ? { ...u, role: '' } : u)); // Unassign users
+    logAction('Role Deleted', `Role "${roleName}" was deleted.`, {});
+    toast({ title: "Role Deleted", description: `Role "${roleName}" has been deleted.`, variant: "destructive" });
+  };
+
 
   // --- WORKFLOW ACTIONS ---
 
@@ -742,13 +781,14 @@ export function AppProvider({
     documents: documentsForContext, 
     auditLogs,
     processingLogs,
-    roles: initialRoles,
-    permissions: initialPermissions,
+    roles,
+    permissions,
     allProjects: projectsForContext, // This should now be filtered for operators
     selectedProjectId,
     setSelectedProjectId,
     addClient, updateClient, deleteClient,
     addUser, updateUser, deleteUser,
+    addRole, updateRole, deleteRole,
     addProject, updateProject, deleteProject,
     addBook, updateBook, deleteBook, importBooks,
     handleMarkAsShipped,
