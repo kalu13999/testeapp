@@ -24,6 +24,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { STAGE_CONFIG, WORKFLOW_STAGE_GROUPS } from "@/lib/workflow-config";
+import { cn } from "@/lib/utils";
 
 interface ProjectDetailClientProps {
   projectId: string;
@@ -69,7 +70,9 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
             if (existingSortIndex > -1) {
                 if (newSorting[existingSortIndex].desc) { newSorting.splice(existingSortIndex, 1); } 
                 else { newSorting[existingSortIndex].desc = true; }
-            } else { newSorting.push({ id: columnId, desc: false }); }
+            } else {
+                newSorting.push({ id: columnId, desc: false });
+            }
             return newSorting;
         } else {
             if (currentSorting.length === 1 && currentSorting[0].id === columnId) {
