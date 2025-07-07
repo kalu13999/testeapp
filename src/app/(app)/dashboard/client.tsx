@@ -101,15 +101,25 @@ function AdminDashboard() {
         const relevantDocuments = documents.filter(d => relevantProjectIds.has(d.projectId));
         const relevantAuditLogs = auditLogs.filter(log => log.bookId && relevantProjectIds.has(books.find(b => b.id === log.bookId)?.projectId || ''));
         
+        // Combine all KPIs
         const booksInWorkflow = relevantBooks.filter(b => !['Complete', 'Archived'].includes(b.status)).length;
         const pendingClientAction = relevantBooks.filter(book => book.status === 'Pending Validation').length;
         const slaWarnings = relevantProjects.filter(p => p.status === 'In Progress' && new Date(p.endDate) < new Date()).length;
         const today = new Date().toISOString().slice(0, 10);
         const processedToday = relevantAuditLogs.filter(d => d.date.startsWith(today)).length;
+        const pendingShipping = relevantBooks.filter(b => b.status === 'Pending').length;
+        const inTransit = relevantBooks.filter(b => b.status === 'In Transit').length;
+        const receivedAtFacility = relevantBooks.filter(b => b.status === 'To Scan').length;
+        const completedBooks = relevantBooks.filter(b => b.status === 'Complete').length;
 
         const kpiData: KpiData[] = [
-            { title: "Books in Workflow", value: booksInWorkflow.toLocaleString(), icon: BookCopy, description: "Active books across all stages" },
-            { title: "Pending Client Action", value: pendingClientAction.toLocaleString(), icon: UserCheck, description: "Books awaiting client approval" },
+            { title: "Pending Shipping", value: pendingShipping.toLocaleString(), icon: Package, description: "Batches awaiting client shipment" },
+            { title: "In Transit", value: inTransit.toLocaleString(), icon: Send, description: "Batches shipped by clients" },
+            { title: "Received by Us", value: receivedAtFacility.toLocaleString(), icon: ArrowDownToLine, description: "Batches confirmed at our facility" },
+            { title: "Pending Client Action", value: pendingClientAction.toLocaleString(), icon: UserCheck, description: "Batches awaiting client approval" },
+
+            { title: "Total Books in Workflow", value: booksInWorkflow.toLocaleString(), icon: BookCopy, description: "All active books being processed" },
+            { title: "Completed Books", value: completedBooks.toLocaleString(), icon: CheckCheck, description: "Books that are finalized" },
             { title: "SLA Warnings", value: slaWarnings.toLocaleString(), icon: AlertTriangle, description: "Projects past their due date" },
             { title: "Actions Today", value: processedToday.toLocaleString(), icon: Activity, description: "Any action performed today" },
         ];
