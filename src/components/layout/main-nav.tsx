@@ -39,10 +39,13 @@ import { Button } from "@/components/ui/button";
 import { User } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 
+const INTERNAL_ROLES = ['Admin', 'Operator', 'QC Specialist', 'Reception', 'Scanning', 'Indexing', 'Processing', 'Delivery'];
+
 const allMenuItems = [
   {
     id: "account",
     title: "Account",
+    roles: [...INTERNAL_ROLES],
     items: [
       { href: "/profile", label: "My Profile", icon: User },
     ],
@@ -50,11 +53,13 @@ const allMenuItems = [
   {
     id: "dashboards",
     title: "Dashboards",
+    roles: ['Admin'],
     items: [{ href: "/dashboard", label: "Overview", icon: SlidersHorizontal }],
   },
   {
     id: "management",
     title: "Management",
+    roles: ['Admin'],
     items: [
       { href: "/projects", label: "Projects", icon: Briefcase },
       { href: "/clients", label: "Clients", icon: Users2 },
@@ -66,6 +71,7 @@ const allMenuItems = [
   {
     id: "workflow",
     title: "Workflow",
+    roles: [...INTERNAL_ROLES],
     items: [
       { href: "/documents", label: "All Books", icon: Files },
       { href: "/workflow/pending-shipment", label: "Pending Shipment", icon: FileClock },
@@ -89,6 +95,7 @@ const allMenuItems = [
   {
     id: "client",
     title: "Client Portal",
+    roles: ['Client'],
     items: [
       { href: "/dashboard", label: "Client Dashboard", icon: Home },
       { href: "/shipments", label: "Prepare Shipment", icon: Send },
@@ -99,6 +106,7 @@ const allMenuItems = [
   {
     id: "admin",
     title: "Admin Tools",
+    roles: ['Admin'],
     items: [
       { href: "/admin/status-override", label: "Status Override", icon: Sliders }
     ]
@@ -106,6 +114,7 @@ const allMenuItems = [
   {
     id: "finalization",
     title: "Finalization",
+    roles: [...INTERNAL_ROLES],
     items: [
       { href: "/finalized", label: "Finalized", icon: CheckCheck },
       { href: "/archive", label: "Archive", icon: Archive },
@@ -130,23 +139,25 @@ export function MainNav() {
   const userPermissions = permissions[currentUser.role] || [];
   const isAdmin = userPermissions.includes('*');
 
-  const menuItems = allMenuItems.map(menu => {
-    const filteredItems = menu.items.filter(item => {
-        if (isAdmin) return true;
-        // A special check for scanning roles to see both pages
-        if (item.href.startsWith("/workflow/to-scan") || item.href.startsWith("/workflow/scanning-started")) {
-          return userPermissions.includes('/workflow/to-scan');
-        }
-        return userPermissions.some(p => {
-          const regex = new RegExp(`^${p.replace(/\[.*?\]/g, '[^/]+')}$`);
-          return regex.test(item.href);
-        });
-    });
-    if (filteredItems.length > 0) {
-        return { ...menu, items: filteredItems };
-    }
-    return null;
-  }).filter(Boolean);
+  const menuItems = allMenuItems
+    .filter(menu => menu.roles.includes(currentUser.role))
+    .map(menu => {
+      const filteredItems = menu.items.filter(item => {
+          if (isAdmin) return true;
+          // A special check for scanning roles to see both pages
+          if (item.href.startsWith("/workflow/to-scan") || item.href.startsWith("/workflow/scanning-started")) {
+            return userPermissions.includes('/workflow/to-scan');
+          }
+          return userPermissions.some(p => {
+            const regex = new RegExp(`^${p.replace(/\[.*?\]/g, '[^/]+')}$`);
+            return regex.test(item.href);
+          });
+      });
+      if (filteredItems.length > 0) {
+          return { ...menu, items: filteredItems };
+      }
+      return null;
+    }).filter(Boolean);
 
 
   return (

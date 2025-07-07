@@ -36,7 +36,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
-import { AlertTriangle, BookCopy, CheckCircle2, UserCheck, BarChart2, ListTodo, Activity, TrendingUp, ScanLine, Clock, ThumbsUp } from "lucide-react"
+import { AlertTriangle, BookCopy, CheckCircle2, UserCheck, BarChart2, ListTodo, Activity, TrendingUp, ScanLine, Clock, ThumbsUp, Package, Send, FileClock, CheckCheck } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import { useMemo } from "react"
 import type { EnrichedBook, AppDocument, EnrichedProject, EnrichedAuditLog, User } from "@/context/workflow-context"
@@ -358,23 +358,90 @@ function ClientDashboard() {
     const { books, currentUser } = useAppContext();
 
     const clientData = useMemo(() => {
-        if (!currentUser) return { pendingValidation: [], recentDeliveries: [] };
-        const pendingValidation = books.filter(b => b.clientId === currentUser.clientId && b.status === 'Pending Validation');
-        const recentDeliveries = books.filter(b => b.clientId === currentUser.clientId && b.status === 'Complete').slice(0, 10);
-        return { pendingValidation, recentDeliveries };
+        if (!currentUser || !currentUser.clientId) {
+            return { pendingShipping: [], inTransit: [], pendingValidation: [], completed: [], recentDeliveries: [] };
+        }
+        const clientBooks = books.filter(b => b.clientId === currentUser.clientId);
+        
+        const pendingShipping = clientBooks.filter(b => b.status === 'Pending');
+        const inTransit = clientBooks.filter(b => b.status === 'In Transit');
+        const pendingValidation = clientBooks.filter(b => b.status === 'Pending Validation');
+        const completed = clientBooks.filter(b => b.status === 'Complete');
+
+        return { pendingShipping, inTransit, pendingValidation, completed, recentDeliveries: completed.slice(0, 10) };
     }, [books, currentUser]);
 
     return (
         <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Pending Your Approval</CardTitle><Clock className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{clientData.pendingValidation.length}</div><p className="text-xs text-muted-foreground">Batches awaiting your review</p></CardContent></Card>
-                <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Deliveries</CardTitle><ThumbsUp className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{clientData.recentDeliveries.length}</div><p className="text-xs text-muted-foreground">Completed and validated batches</p></CardContent></Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Batches Pending Shipping</CardTitle>
+                        <Package className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{clientData.pendingShipping.length}</div>
+                        <p className="text-xs text-muted-foreground">Batches ready for you to send</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Batches In Transit</CardTitle>
+                        <Send className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{clientData.inTransit.length}</div>
+                        <p className="text-xs text-muted-foreground">Batches you have shipped to us</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Batches Pending Approval</CardTitle>
+                        <FileClock className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{clientData.pendingValidation.length}</div>
+                        <p className="text-xs text-muted-foreground">Batches awaiting your review</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Completed Batches</CardTitle>
+                        <CheckCheck className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{clientData.completed.length}</div>
+                        <p className="text-xs text-muted-foreground">Total completed and validated batches</p>
+                    </CardContent>
+                </Card>
             </div>
             <div className="grid gap-6 md:grid-cols-2">
                 <Card>
-                    <CardHeader><CardTitle>Awaiting Your Validation</CardTitle><CardDescription>These batches are ready for your review and approval.</CardDescription></CardHeader>
+                    <CardHeader>
+                        <CardTitle>Ready to Ship</CardTitle>
+                        <CardDescription>These batches are ready to be sent to us for processing.</CardDescription>
+                    </CardHeader>
                     <CardContent>
                          <Table>
+                            <TableHeader><TableRow><TableHead>Batch Name</TableHead><TableHead>Project</TableHead><TableHead>Action</TableHead></TableRow></TableHeader>
+                            <TableBody>
+                                {clientData.pendingShipping.length > 0 ? clientData.pendingShipping.map(book => (
+                                    <TableRow key={book.id}>
+                                        <TableCell className="font-medium">{book.name}</TableCell>
+                                        <TableCell>{book.projectName}</TableCell>
+                                        <TableCell><Button asChild variant="secondary" size="sm"><Link href="/shipments">Prepare Shipment</Link></Button></TableCell>
+                                    </TableRow>
+                                )) : (
+                                    <TableRow><TableCell colSpan={3} className="h-24 text-center">You have no batches to ship.</TableCell></TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader><CardTitle>Awaiting Your Validation</CardTitle><CardDescription>These batches are ready for your review and approval.</CardDescription></CardHeader>
+                    <CardContent>
+                        <Table>
                             <TableHeader><TableRow><TableHead>Batch Name</TableHead><TableHead>Project</TableHead><TableHead>Action</TableHead></TableRow></TableHeader>
                             <TableBody>
                                 {clientData.pendingValidation.length > 0 ? clientData.pendingValidation.map(book => (
@@ -385,25 +452,6 @@ function ClientDashboard() {
                                     </TableRow>
                                 )) : (
                                     <TableRow><TableCell colSpan={3} className="h-24 text-center">No batches are awaiting your approval.</TableCell></TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader><CardTitle>Recent Deliveries</CardTitle><CardDescription>Your most recently validated and completed batches.</CardDescription></CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader><TableRow><TableHead>Batch Name</TableHead><TableHead>Project</TableHead><TableHead>Action</TableHead></TableRow></TableHeader>
-                            <TableBody>
-                                 {clientData.recentDeliveries.length > 0 ? clientData.recentDeliveries.map(book => (
-                                    <TableRow key={book.id}>
-                                        <TableCell className="font-medium">{book.name}</TableCell>
-                                        <TableCell>{book.projectName}</TableCell>
-                                        <TableCell><Button asChild variant="outline" size="sm"><Link href={`/books/${book.id}`}>View Details</Link></Button></TableCell>
-                                    </TableRow>
-                                )) : (
-                                    <TableRow><TableCell colSpan={3} className="h-24 text-center">No recent deliveries.</TableCell></TableRow>
                                 )}
                             </TableBody>
                         </Table>
@@ -432,8 +480,8 @@ export default function DashboardClient() {
             default:
                 return (
                     <Card>
-                        <CardHeader><CardTitle>Access Denied</CardTitle></CardHeader>
-                        <CardContent><p>You do not have permission to view a dashboard.</p></CardContent>
+                        <CardHeader><CardTitle>Welcome</CardTitle></CardHeader>
+                        <CardContent><p>Select an item from the menu to get started.</p></CardContent>
                     </Card>
                 );
         }
@@ -448,5 +496,3 @@ export default function DashboardClient() {
         </div>
     )
 }
-
-    
