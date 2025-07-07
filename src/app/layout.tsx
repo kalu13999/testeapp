@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { AppProvider } from "@/context/workflow-context";
-import { getClients, getEnrichedAuditLogs, getRawBooks, getEnrichedDocuments, getRawProjects, getPermissions, getProcessingLogs, getRoles, getUsers } from "@/lib/data";
+import { getClients, getEnrichedAuditLogs, getRawBooks, getEnrichedDocuments, getRawProjects, getPermissions, getProcessingLogs, getRoles, getUsers, getProjectWorkflows } from "@/lib/data";
 
 export const metadata: Metadata = {
   title: "FlowVault",
@@ -15,7 +15,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [clients, users, projects, books, documents, auditLogs, processingLogs, permissions, roles] = await Promise.all([
+  const [clients, users, projects, books, documents, auditLogs, processingLogs, permissions, roles, projectWorkflows] = await Promise.all([
     getClients(),
     getUsers(),
     getRawProjects(),
@@ -25,6 +25,7 @@ export default async function RootLayout({
     getProcessingLogs(),
     getPermissions(),
     getRoles(),
+    getProjectWorkflows(),
   ]);
 
   return (
@@ -52,6 +53,7 @@ export default async function RootLayout({
           initialProcessingLogs={processingLogs}
           initialPermissions={permissions}
           initialRoles={roles}
+          initialProjectWorkflows={projectWorkflows}
         >
           {children}
           <Toaster />
