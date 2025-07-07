@@ -70,7 +70,6 @@ export default function ValidatedHistoryClient() {
                 } else {
                     newSorting.push({ id: columnId, desc: false });
                 }
-                return newSorting;
             } else {
                 if (currentSorting.length === 1 && currentSorting[0].id === columnId) {
                     if (currentSorting[0].desc) {
@@ -122,11 +121,26 @@ export default function ValidatedHistoryClient() {
         });
     }, [books, auditLogs, currentUser]);
 
+    const globalSearch = (item: object, query: string) => {
+        if (!query) return true;
+        const lowerCaseQuery = query.toLowerCase();
+
+        for (const key in item) {
+            if (Object.prototype.hasOwnProperty.call(item, key)) {
+                const value = item[key as keyof typeof item];
+                if (typeof value === 'string' || typeof value === 'number') {
+                    if (String(value).toLowerCase().includes(lowerCaseQuery)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    };
+
     const sortedAndFilteredHistory = React.useMemo(() => {
         let filtered = validationHistory.filter(item => {
-            const queryMatch = filters.query.trim() === '' ||
-                item.name.toLowerCase().includes(filters.query.toLowerCase()) ||
-                (currentUser?.role === 'Admin' && item.clientName.toLowerCase().includes(filters.query.toLowerCase()));
+            const queryMatch = globalSearch(item, filters.query);
             const projectMatch = filters.project === 'all' || item.projectName === filters.project;
             const outcomeMatch = filters.outcome === 'all' || item.validationStatus === filters.outcome;
             return queryMatch && projectMatch && outcomeMatch;
@@ -156,7 +170,7 @@ export default function ValidatedHistoryClient() {
             });
         }
         return filtered;
-    }, [validationHistory, filters, sorting, currentUser?.role]);
+    }, [validationHistory, filters, sorting]);
     
     const selectedHistory = React.useMemo(() => {
         return sortedAndFilteredHistory.filter(item => selection.includes(item.id));
@@ -282,7 +296,7 @@ export default function ValidatedHistoryClient() {
                 
                 <div className="flex items-center gap-2 pt-2 flex-wrap">
                     <Input
-                        placeholder={currentUser?.role === 'Admin' ? "Search by book or client..." : "Search by book name..."}
+                        placeholder="Search all columns..."
                         className="max-w-xs"
                         value={filters.query}
                         onChange={(e) => handleFilterChange('query', e.target.value)}

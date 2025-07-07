@@ -136,11 +136,26 @@ export default function ProjectsClient() {
     );
   }
 
+  const globalSearch = (item: object, query: string) => {
+    if (!query) return true;
+    const lowerCaseQuery = query.toLowerCase();
+
+    for (const key in item) {
+        if (Object.prototype.hasOwnProperty.call(item, key)) {
+            const value = item[key as keyof typeof item];
+            if (typeof value === 'string' || typeof value === 'number') {
+                if (String(value).toLowerCase().includes(lowerCaseQuery)) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+  };
+
   const sortedAndFilteredProjects = React.useMemo(() => {
     let filtered = projects.filter(project => {
-        const queryMatch = filters.query.trim() === '' || 
-            project.name.toLowerCase().includes(filters.query.toLowerCase());
-        
+        const queryMatch = globalSearch(project, filters.query);
         const clientMatch = filters.client === 'all' || project.clientName === filters.client;
         const statusMatch = filters.status === 'all' || project.status === filters.status;
         
@@ -329,7 +344,7 @@ export default function ProjectsClient() {
               <CardHeader>
                   <div className="flex items-center gap-2 flex-wrap">
                     <Input 
-                        placeholder="Search by project name..." 
+                        placeholder="Search all columns..." 
                         className="max-w-xs"
                         value={filters.query}
                         onChange={(e) => handleFilterChange('query', e.target.value)}

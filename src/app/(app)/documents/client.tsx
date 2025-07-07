@@ -123,11 +123,26 @@ export default function DocumentsClient() {
     );
   }
 
+  const globalSearch = (item: object, query: string) => {
+    if (!query) return true;
+    const lowerCaseQuery = query.toLowerCase();
+
+    for (const key in item) {
+        if (Object.prototype.hasOwnProperty.call(item, key)) {
+            const value = item[key as keyof typeof item];
+            if (typeof value === 'string' || typeof value === 'number') {
+                if (String(value).toLowerCase().includes(lowerCaseQuery)) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+  };
+
   const sortedAndFilteredBooks = React.useMemo(() => {
     let filtered = books.filter(book => {
-      const queryMatch = filters.query.trim() === '' || 
-        book.name.toLowerCase().includes(filters.query.toLowerCase());
-      
+      const queryMatch = globalSearch(book, filters.query);
       const projectMatch = filters.project === 'all' || book.projectName === filters.project;
       const clientMatch = filters.client === 'all' || book.clientName === filters.client;
       const statusMatch = filters.status === 'all' || book.status === filters.status;
@@ -390,7 +405,7 @@ export default function DocumentsClient() {
         <CardHeader>
           <div className="flex items-center gap-2 flex-wrap">
             <Input 
-                placeholder="Search by book name..." 
+                placeholder="Search all columns..." 
                 className="max-w-xs"
                 value={filters.query}
                 onChange={(e) => handleFilterChange('query', e.target.value)}

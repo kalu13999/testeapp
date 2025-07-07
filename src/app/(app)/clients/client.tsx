@@ -114,11 +114,25 @@ export default function ClientsClient() {
     );
   }
 
+  const globalSearch = (item: object, query: string) => {
+    if (!query) return true;
+    const lowerCaseQuery = query.toLowerCase();
+
+    for (const key in item) {
+        if (Object.prototype.hasOwnProperty.call(item, key)) {
+            const value = item[key as keyof typeof item];
+            if (typeof value === 'string' || typeof value === 'number') {
+                if (String(value).toLowerCase().includes(lowerCaseQuery)) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+  };
+
   const sortedAndFilteredClients = React.useMemo(() => {
-    let filtered = clients.filter(client =>
-      client.name.toLowerCase().includes(query.toLowerCase()) ||
-      client.contactEmail.toLowerCase().includes(query.toLowerCase())
-    );
+    let filtered = clients.filter(client => globalSearch(client, query));
 
      if (sorting.length > 0) {
         filtered.sort((a, b) => {
@@ -300,7 +314,7 @@ export default function ClientsClient() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Input 
-                placeholder="Search by name or email..." 
+                placeholder="Search all columns..." 
                 className="max-w-xs"
                 value={query}
                 onChange={(e) => {

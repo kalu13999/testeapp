@@ -197,11 +197,27 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     const icon = sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />;
     return <div className="flex items-center gap-1">{icon}{sorting.length > 1 && (<span className="text-xs font-bold text-muted-foreground">{sortIndex + 1}</span>)}</div>;
   }
+  
+  const globalSearch = (item: object, query: string) => {
+    if (!query) return true;
+    const lowerCaseQuery = query.toLowerCase();
+
+    for (const key in item) {
+        if (Object.prototype.hasOwnProperty.call(item, key)) {
+            const value = item[key as keyof typeof item];
+            if (typeof value === 'string' || typeof value === 'number') {
+                if (String(value).toLowerCase().includes(lowerCaseQuery)) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+  };
 
   const sortedAndFilteredItems = React.useMemo(() => {
     let filtered = allDisplayItems.filter((item: EnrichedBook | AppDocument) => {
-        const queryMatch = filters.query.trim() === '' || 
-            item.name.toLowerCase().includes(filters.query.toLowerCase());
+        const queryMatch = globalSearch(item, filters.query);
         
         let priorityMatch = true;
         if (dataType === 'book' && filters.priority !== 'all') {
@@ -699,7 +715,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         </div>
         <div className="flex items-center gap-2 pt-4">
             <Input 
-                placeholder="Search by name..." 
+                placeholder="Search all columns..." 
                 className="max-w-xs"
                 value={filters.query}
                 onChange={(e) => handleFilterChange('query', e.target.value)}

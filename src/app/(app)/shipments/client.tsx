@@ -91,11 +91,28 @@ export default function ShipmentsClient() {
         </div>
     );
   }
+
+  const globalSearch = (item: object, query: string) => {
+    if (!query) return true;
+    const lowerCaseQuery = query.toLowerCase();
+
+    for (const key in item) {
+        if (Object.prototype.hasOwnProperty.call(item, key)) {
+            const value = item[key as keyof typeof item];
+            if (typeof value === 'string' || typeof value === 'number') {
+                if (String(value).toLowerCase().includes(lowerCaseQuery)) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+  };
   
   const sortedAndFilteredBooks = React.useMemo(() => {
     let filtered = books
       .filter(book => book.status === 'Pending')
-      .filter(book => book.name.toLowerCase().includes(query.toLowerCase()));
+      .filter(book => globalSearch(book, query));
       
     if (sorting.length > 0) {
         filtered.sort((a, b) => {
@@ -221,7 +238,7 @@ export default function ShipmentsClient() {
           </div>
           <div className="pt-4">
               <Input
-                placeholder="Filter by book name..."
+                placeholder="Search all columns..."
                 className="max-w-sm"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}

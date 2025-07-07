@@ -126,13 +126,27 @@ export default function UsersClient() {
         </div>
     );
   }
+
+  const globalSearch = (item: object, query: string) => {
+    if (!query) return true;
+    const lowerCaseQuery = query.toLowerCase();
+
+    for (const key in item) {
+        if (Object.prototype.hasOwnProperty.call(item, key)) {
+            const value = item[key as keyof typeof item];
+            if (typeof value === 'string' || typeof value === 'number') {
+                if (String(value).toLowerCase().includes(lowerCaseQuery)) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+  };
   
   const sortedAndFilteredUsers = React.useMemo(() => {
     let filtered = users.filter(user => {
-        const queryMatch = filters.query.trim() === '' || 
-            user.name.toLowerCase().includes(filters.query.toLowerCase()) ||
-            (user.email && user.email.toLowerCase().includes(filters.query.toLowerCase()));
-        
+        const queryMatch = globalSearch(user, filters.query);
         const roleMatch = filters.role === 'all' || user.role === filters.role;
         const departmentMatch = filters.department === 'all' || user.department === filters.department;
         
@@ -324,7 +338,7 @@ export default function UsersClient() {
         <CardHeader>
           <div className="flex items-center gap-2 flex-wrap">
             <Input 
-                placeholder="Search by name or email..." 
+                placeholder="Search all columns..." 
                 className="max-w-xs"
                 value={filters.query}
                 onChange={(e) => handleFilterChange('query', e.target.value)}
