@@ -16,10 +16,11 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { MoreHorizontal, PlusCircle, BookUp, Trash2, Edit, Info, FolderSearch } from "lucide-react"
+import { MoreHorizontal, PlusCircle, BookUp, Trash2, Edit, Info, FolderSearch, ChevronsUpDown, ArrowUp, ArrowDown } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,7 +55,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
 
+const ITEMS_PER_PAGE = 10;
 
 export default function BookManagementClient() {
   const { books, addBook, updateBook, deleteBook, importBooks, selectedProjectId } = useAppContext();
@@ -63,6 +66,124 @@ export default function BookManagementClient() {
   const [importJson, setImportJson] = React.useState("");
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  
+  const [query, setQuery] = React.useState("");
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
+    { id: 'name', desc: false }
+  ]);
+  
+  const handleSort = (columnId: string, isShift: boolean) => {
+    setSorting(currentSorting => {
+        const existingSortIndex = currentSorting.findIndex(s => s.id === columnId);
+
+        if (isShift) {
+            let newSorting = [...currentSorting];
+            if (existingSortIndex > -1) {
+                if (newSorting[existingSortIndex].desc) {
+                    newSorting.splice(existingSortIndex, 1);
+                } else {
+                    newSorting[existingSortIndex].desc = true;
+                }
+            } else {
+                newSorting.push({ id: columnId, desc: false });
+            }
+            return newSorting;
+        } else {
+            if (currentSorting.length === 1 && currentSorting[0].id === columnId) {
+                if (currentSorting[0].desc) {
+                    return [];
+                }
+                return [{ id: columnId, desc: true }];
+            }
+            return [{ id: columnId, desc: false }];
+        }
+    });
+  };
+
+  const getSortIndicator = (columnId: string) => {
+    const sortIndex = sorting.findIndex(s => s.id === columnId);
+    if (sortIndex === -1) return <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-0 group-hover:opacity-50" />;
+    
+    const sort = sorting[sortIndex];
+    const icon = sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />;
+    
+    return (
+        <div className="flex items-center gap-1">
+            {icon}
+            {sorting.length > 1 && (
+                <span className="text-xs font-bold text-muted-foreground">{sortIndex + 1}</span>
+            )}
+        </div>
+    );
+  }
+
+  const sortedAndFilteredBooks = React.useMemo(() => {
+    let filtered = books.filter(book => book.name.toLowerCase().includes(query.toLowerCase()));
+
+    if (sorting.length > 0) {
+        filtered.sort((a, b) => {
+            for (const s of sorting) {
+                const key = s.id as keyof EnrichedBook;
+                const valA = a[key] ?? (key === 'priority' ? 'Medium' : '');
+                const valB = b[key] ?? (key === 'priority' ? 'Medium' : '');
+
+                let result = 0;
+                if (key === 'priority') {
+                    const order = { 'High': 0, 'Medium': 1, 'Low': 2 };
+                    result = order[valA as 'High' | 'Medium' | 'Low'] - order[valB as 'High' | 'Medium' | 'Low'];
+                } else if (typeof valA === 'number' && typeof valB === 'number') {
+                    result = valA - valB;
+                } else {
+                    result = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' });
+                }
+
+                if (result !== 0) {
+                    return s.desc ? -result : result;
+                }
+            }
+            return 0;
+        });
+    }
+
+    return filtered;
+  }, [books, query, sorting]);
+
+  const totalPages = Math.ceil(sortedAndFilteredBooks.length / ITEMS_PER_PAGE);
+  const paginatedBooks = sortedAndFilteredBooks.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  const PaginationNav = () => {
+    if (totalPages <= 1) return null;
+    const pageNumbers: number[] = [];
+    const maxPagesToShow = 5;
+
+    if (totalPages <= maxPagesToShow) {
+        for (let i = 1; i <= totalPages; i++) { pageNumbers.push(i); }
+    } else {
+        pageNumbers.push(1);
+        if (currentPage > 3) { pageNumbers.push(-1); }
+        let start = Math.max(2, currentPage - 1);
+        let end = Math.min(totalPages - 1, currentPage + 1);
+        if (currentPage <= 2) { end = 3; }
+        if (currentPage >= totalPages - 1) { start = totalPages - 2; }
+        for (let i = start; i <= end; i++) { pageNumbers.push(i); }
+        if (currentPage < totalPages - 2) { pageNumbers.push(-1); }
+        pageNumbers.push(totalPages);
+    }
+    
+    return (
+      <Pagination>
+        <PaginationContent>
+          <PaginationItem><PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }} className={currentPage === 1 ? "pointer-events-none opacity-50" : undefined}/></PaginationItem>
+          {pageNumbers.map((num, i) => num === -1 ? <PaginationItem key={`ellipsis-${i}`}><PaginationEllipsis /></PaginationItem> : <PaginationItem key={num}><PaginationLink href="#" isActive={currentPage === num} onClick={(e) => { e.preventDefault(); setCurrentPage(num); }}>{num}</PaginationLink></PaginationItem>)}
+          <PaginationItem><PaginationNext href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }} className={currentPage === totalPages ? "pointer-events-none opacity-50" : undefined}/></PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    );
+  }
 
   const openDialog = (type: 'new' | 'edit' | 'delete' | 'import' | 'details', data?: EnrichedBook) => {
     if ((type === 'new' || type === 'import') && !selectedProjectId) {
@@ -156,21 +277,48 @@ export default function BookManagementClient() {
                 </Button>
             </div>
           </div>
+          <div className="flex items-center gap-2 pt-4">
+             <Input 
+                placeholder="Filter by book name..." 
+                className="max-w-sm"
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+            />
+          </div>
         </CardHeader>
         <CardContent>
            <Table>
               <TableHeader>
                   <TableRow>
-                      <TableHead>Book Name</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Priority</TableHead>
-                      <TableHead className="text-center">Expected Pages</TableHead>
+                      <TableHead>
+                        <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>
+                            Book Name {getSortIndicator('name')}
+                        </div>
+                      </TableHead>
+                      <TableHead>
+                         <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>
+                            Status {getSortIndicator('status')}
+                         </div>
+                      </TableHead>
+                      <TableHead>
+                         <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('priority', e.shiftKey)}>
+                           Priority {getSortIndicator('priority')}
+                         </div>
+                      </TableHead>
+                      <TableHead className="text-center">
+                        <div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('expectedDocuments', e.shiftKey)}>
+                            Expected Pages {getSortIndicator('expectedDocuments')}
+                        </div>
+                      </TableHead>
                       <TableHead><span className="sr-only">Actions</span></TableHead>
                   </TableRow>
               </TableHeader>
               <TableBody>
                 {selectedProjectId ? (
-                  books.length > 0 ? books.map(book => (
+                  paginatedBooks.length > 0 ? paginatedBooks.map(book => (
                       <TableRow key={book.id}>
                           <TableCell className="font-medium">{book.name}</TableCell>
                           <TableCell><Badge variant="outline">{book.status}</Badge></TableCell>
@@ -221,6 +369,12 @@ export default function BookManagementClient() {
               </TableBody>
            </Table>
         </CardContent>
+        <CardFooter className="flex items-center justify-between">
+          <div className="text-xs text-muted-foreground">
+            Showing <strong>{paginatedBooks.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-{(currentPage - 1) * ITEMS_PER_PAGE + paginatedBooks.length}</strong> of <strong>{sortedAndFilteredBooks.length}</strong> books
+          </div>
+          <PaginationNav />
+        </CardFooter>
       </Card>
 
       <Dialog open={dialogState.open && (dialogState.type === 'new' || dialogState.type === 'edit')} onOpenChange={closeDialog}>
