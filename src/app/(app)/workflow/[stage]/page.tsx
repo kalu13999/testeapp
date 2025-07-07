@@ -34,6 +34,7 @@ const STAGE_CONFIG: { [key: string]: any } = {
     dataType: 'book',
     dataStatus: 'To Scan',
     viewType: 'list',
+    assigneeRole: 'scanner',
   },
   'scanning-started': {
     title: "Scanning Started",
@@ -44,6 +45,7 @@ const STAGE_CONFIG: { [key: string]: any } = {
     dataType: 'book',
     dataStatus: 'Scanning Started',
     viewType: 'list',
+    assigneeRole: 'scanner',
   },
   storage: {
     title: "Storage",
@@ -63,6 +65,7 @@ const STAGE_CONFIG: { [key: string]: any } = {
     dataType: 'book',
     dataStatus: 'To Indexing',
     viewType: 'list',
+    assigneeRole: 'indexer',
   },
   'indexing-started': {
     title: "Indexing Started",
@@ -73,6 +76,7 @@ const STAGE_CONFIG: { [key: string]: any } = {
     dataType: 'book',
     dataStatus: 'Indexing Started',
     viewType: 'list',
+    assigneeRole: 'indexer',
   },
   'to-checking': {
     title: "To Checking Queue",
@@ -83,6 +87,7 @@ const STAGE_CONFIG: { [key: string]: any } = {
     dataType: 'book',
     dataStatus: 'To Checking',
     viewType: 'list',
+    assigneeRole: 'qc',
   },
   'checking-started': {
     title: "Checking Started",
@@ -93,6 +98,7 @@ const STAGE_CONFIG: { [key: string]: any } = {
     dataType: 'book',
     dataStatus: 'Checking Started',
     viewType: 'list',
+    assigneeRole: 'qc',
   },
   'ready-for-processing': {
     title: "Ready for Processing",

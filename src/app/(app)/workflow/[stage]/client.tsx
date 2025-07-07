@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react";
@@ -61,6 +62,7 @@ interface WorkflowClientProps {
     emptyStateText: string;
     dataStatus?: string; // For books
     dataStage?: string; // For documents
+    assigneeRole?: 'scanner' | 'indexer' | 'qc';
   };
   stage: string;
 }
@@ -133,34 +135,51 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
       baseBooks = books.filter(b => b.projectId === selectedProjectId);
       baseDocuments = documents.filter(d => d.projectId === selectedProjectId);
     }
+    
+    let items: (EnrichedBook | AppDocument)[] = [];
 
     if (dataType === 'book' && dataStatus) {
       if (stage === 'ready-for-processing') {
         const booksWithReadyDocs = new Set(
           baseDocuments.filter(doc => doc.status === 'Ready for Processing').map(doc => doc.bookId)
         );
-        return baseBooks.filter(book => booksWithReadyDocs.has(book.id));
-      }
-
-      let filteredBooks = baseBooks.filter(book => book.status === dataStatus);
-
-      if (stage === 'to-scan' && currentUser?.role === 'Scanning') {
-        filteredBooks = filteredBooks.filter(book => book.scannerUserId === currentUser.id);
-      }
-      if ((stage === 'to-indexing' || stage === 'indexing-started') && currentUser?.role === 'Indexing') {
-        filteredBooks = filteredBooks.filter(book => book.indexerUserId === currentUser.id);
-      }
-      if ((stage === 'to-checking' || stage === 'checking-started') && currentUser?.role === 'QC Specialist') {
-        filteredBooks = filteredBooks.filter(book => book.qcUserId === currentUser.id);
+        items = baseBooks.filter(book => booksWithReadyDocs.has(book.id));
+      } else {
+        items = baseBooks.filter(book => book.status === dataStatus);
       }
       
-      return filteredBooks;
+      if (currentUser && config.assigneeRole) {
+          const roleMap: { [key: string]: string } = {
+            scanner: 'Scanning',
+            indexer: 'Indexing',
+            qc: 'QC Specialist'
+          };
+          if (currentUser.role === roleMap[config.assigneeRole]) {
+            items = (items as EnrichedBook[]).filter(book => (book as any)[`${config.assigneeRole}UserId`] === currentUser.id);
+          }
+      }
+    } else if (dataType === 'document' && dataStage) {
+      items = baseDocuments.filter(doc => doc.status === dataStage);
     }
-    if (dataType === 'document' && dataStage) {
-      return baseDocuments.filter(doc => doc.status === dataStage);
+
+    if (dataType === 'book' && config.assigneeRole) {
+      return (items as EnrichedBook[]).map(book => {
+        let assigneeName = '—';
+        const role = config.assigneeRole as keyof typeof book;
+        const userId = book[`${role}UserId` as keyof EnrichedBook] as string | undefined;
+
+        if (userId) {
+          const user = users.find(u => u.id === userId);
+          assigneeName = user?.name || 'Unknown';
+        } else {
+          assigneeName = 'Unassigned';
+        }
+        return { ...book, assigneeName };
+      });
     }
-    return [];
-  }, [books, documents, dataType, dataStatus, dataStage, currentUser, stage, selectedProjectId]);
+
+    return items;
+  }, [books, documents, dataType, dataStatus, dataStage, currentUser, stage, selectedProjectId, config.assigneeRole, users]);
 
   const handleColumnFilterChange = (columnId: string, value: string) => {
     setColumnFilters(prev => ({ ...prev, [columnId]: value }));
@@ -497,13 +516,13 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const isScanFolderMatch = scanState.book?.name === scanState.folderName;
 
   const tableColSpan = React.useMemo(() => {
-    if (dataType === 'book') return 6;
-    if (stage === 'final-quality-control' || config.actionButtonLabel) return 7;
-    return 6;
-  }, [dataType, stage, config.actionButtonLabel]);
+    let count = 6;
+    if (currentUser?.role === 'Admin' && config.assigneeRole) count++;
+    return count;
+  }, [dataType, stage, config.actionButtonLabel, currentUser?.role, config.assigneeRole]);
 
 
-  const renderBookRow = (item: EnrichedBook, index: number) => {
+  const renderBookRow = (item: any, index: number) => {
     const isCancelable = ['scanning-started', 'indexing-started', 'checking-started'].includes(stage);
     return (
         <TableRow key={item.id} data-state={selection.includes(item.id) && "selected"}>
@@ -521,6 +540,9 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         </TableCell>
         <TableCell>{item.projectName}</TableCell>
         <TableCell className="hidden md:table-cell">{item.clientName}</TableCell>
+        {currentUser?.role === 'Admin' && config.assigneeRole && (
+          <TableCell>{item.assigneeName}</TableCell>
+        )}
         <TableCell>
             <Badge variant={getBadgeVariant(item.status)}>{item.status}</Badge>
         </TableCell>
@@ -722,6 +744,9 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                   <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>Book Name {getSortIndicator('name')}</div></TableHead>
                   <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('projectName', e.shiftKey)}>Project {getSortIndicator('projectName')}</div></TableHead>
                   <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('clientName', e.shiftKey)}>Client {getSortIndicator('clientName')}</div></TableHead>
+                  {currentUser?.role === 'Admin' && config.assigneeRole && (
+                     <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('assigneeName', e.shiftKey)}>Assigned To {getSortIndicator('assigneeName')}</div></TableHead>
+                  )}
                   <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Status {getSortIndicator('status')}</div></TableHead>
                   <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -730,8 +755,11 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                 <TableHead><Input placeholder="Filter by name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/></TableHead>
                 <TableHead><Input placeholder="Filter by project..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/></TableHead>
                 <TableHead className="hidden md:table-cell"><Input placeholder="Filter by client..." value={columnFilters['clientName'] || ''} onChange={(e) => handleColumnFilterChange('clientName', e.target.value)} className="h-8"/></TableHead>
+                 {currentUser?.role === 'Admin' && config.assigneeRole && (
+                   <TableHead><Input placeholder="Filter by user..." value={columnFilters['assigneeName'] || ''} onChange={(e) => handleColumnFilterChange('assigneeName', e.target.value)} className="h-8"/></TableHead>
+                 )}
                 <TableHead><Input placeholder="Filter by status..." value={columnFilters['status'] || ''} onChange={(e) => handleColumnFilterChange('status', e.target.value)} className="h-8"/></TableHead>
-                <TableHead className="text-right"><Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Clear Filters</Button></TableHead>
+                <TableHead className="text-right"><Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Clear</Button></TableHead>
               </TableRow>
               </>
             ) : (
