@@ -29,9 +29,8 @@ export default function ValidatedHistoryClient() {
     const validationHistory = React.useMemo(() => {
         if (!currentUser || !currentUser.clientId) return [];
 
-        const clientBooks = books.filter(book => book.clientId === currentUser.clientId);
-
-        const relevantBooks = clientBooks.filter(book =>
+        // The `books` from context are already filtered for the current client user.
+        const relevantBooks = books.filter(book =>
             ['Complete', 'Finalized', 'Client Rejected'].includes(book.status)
         );
 
