@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from 'next/link';
@@ -16,16 +15,24 @@ export default function LoginPage() {
   const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
   const router = useRouter();
-  const { login } = useAppContext();
+  const { login, permissions } = useAppContext();
   const { toast } = useToast();
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    const success = login(username, password);
+    const user = login(username, password);
 
-    if (success) {
+    if (user) {
       toast({ title: "Login Successful", description: "Welcome back!" });
-      router.push('/dashboard');
+
+      const userPermissions = permissions[user.role] || [];
+      const canAccessDashboard = userPermissions.includes('/dashboard') || userPermissions.includes('*');
+
+      if (canAccessDashboard) {
+        router.push('/dashboard');
+      } else {
+        router.push('/profile');
+      }
     } else {
       toast({
         title: "Login Failed",

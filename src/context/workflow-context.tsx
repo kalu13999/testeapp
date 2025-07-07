@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from 'react';
@@ -33,7 +32,7 @@ export type EnrichedAuditLog = AuditLog & { user: string; };
 type AppContextType = {
   // Auth state
   currentUser: User | null;
-  login: (username: string, password: string) => boolean;
+  login: (username: string, password: string) => User | null;
   logout: () => void;
 
   // State (filtered by project or based on user)
@@ -145,14 +144,14 @@ export function AppProvider({
     }
   }, [initialUsers]);
 
-  const login = (username: string, password: string): boolean => {
+  const login = (username: string, password: string): User | null => {
     const user = initialUsers.find(u => u.username === username && u.password === password);
     if (user) {
       setCurrentUser(user);
       localStorage.setItem('flowvault_userid', user.id);
-      return true;
+      return user;
     }
-    return false;
+    return null;
   };
 
   const logout = () => {
