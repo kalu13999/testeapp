@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react";
@@ -12,7 +13,16 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { File as FileIcon } from "lucide-react";
+import { Download } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Pagination,
   PaginationContent,
@@ -33,18 +43,21 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { useAppContext } from "@/context/workflow-context";
+import { useAppContext, EnrichedBook } from "@/context/workflow-context";
+import { useToast } from "@/hooks/use-toast";
 
 const ITEMS_PER_PAGE = 10;
 
 export default function DocumentsClient() {
   const { books } = useAppContext();
+  const { toast } = useToast();
   const [filters, setFilters] = React.useState({
     query: '',
     project: 'all',
     client: 'all'
   });
   const [currentPage, setCurrentPage] = React.useState(1);
+  const [selection, setSelection] = React.useState<string[]>([]);
 
   const clientNames = [...new Set(books.map(b => b.clientName))].sort();
   const projectNames = [...new Set(books.map(b => b.projectName))].sort();
@@ -65,12 +78,69 @@ export default function DocumentsClient() {
       return queryMatch && projectMatch && clientMatch;
     });
   }, [books, filters]);
+
+  const selectedBooks = React.useMemo(() => {
+    return filteredBooks.filter(book => selection.includes(book.id));
+  }, [filteredBooks, selection]);
+
+  React.useEffect(() => {
+    // Clear selection when filters change to avoid confusion
+    setSelection([]);
+  }, [filters]);
   
   const totalPages = Math.ceil(filteredBooks.length / ITEMS_PER_PAGE);
   const paginatedBooks = filteredBooks.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
+
+  const downloadFile = (content: string, fileName: string, mimeType: string) => {
+    const blob = new Blob([content], { type: mimeType });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", fileName);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  const exportJSON = (data: EnrichedBook[]) => {
+    if (data.length === 0) return;
+    const jsonString = JSON.stringify(data, null, 2);
+    downloadFile(jsonString, 'books_export.json', 'application/json');
+    toast({ title: "Export Successful", description: `${data.length} books exported as JSON.` });
+  }
+
+  const exportCSV = (data: EnrichedBook[]) => {
+    if (data.length === 0) return;
+    const headers = ['id', 'name', 'status', 'priority', 'projectName', 'clientName', 'expectedDocuments', 'documentCount', 'progress', 'author', 'isbn', 'publicationYear', 'info'];
+    const csvContent = [
+        headers.join(','),
+        ...data.map(book => 
+            headers.map(header => {
+                let value = book[header as keyof EnrichedBook] ?? '';
+                if (typeof value === 'string' && value.includes(',')) {
+                    return `"${value.replace(/"/g, '""')}"`;
+                }
+                return value;
+            }).join(',')
+        )
+    ].join('\n');
+    downloadFile(csvContent, 'books_export.csv', 'text/csv;charset=utf-8;');
+    toast({ title: "Export Successful", description: `${data.length} books exported as CSV.` });
+  }
+
+  const copyToClipboard = (data: EnrichedBook[]) => {
+    if (data.length === 0) return;
+    const jsonString = JSON.stringify(data, null, 2);
+    navigator.clipboard.writeText(jsonString).then(() => {
+        toast({ title: "Copied to Clipboard", description: `${data.length} book(s) copied as JSON.` });
+    }, () => {
+        toast({ title: "Copy Failed", description: "Could not copy to clipboard.", variant: "destructive" });
+    });
+  }
 
   const PaginationNav = () => {
     if (totalPages <= 1) return null;
@@ -151,12 +221,39 @@ export default function DocumentsClient() {
           <p className="text-muted-foreground">Manage and track all books in the workflow.</p>
         </div>
         <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" className="h-9 gap-1">
-                <FileIcon className="h-3.5 w-3.5" />
-                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                    Export
-                </span>
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" className="h-9 gap-1">
+                    <Download className="h-3.5 w-3.5" />
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                        Export
+                    </span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Export Selected</DropdownMenuLabel>
+                  <DropdownMenuItem onSelect={() => exportJSON(selectedBooks)} disabled={selection.length === 0}>
+                      Export as JSON
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportCSV(selectedBooks)} disabled={selection.length === 0}>
+                      Export as CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => copyToClipboard(selectedBooks)} disabled={selection.length === 0}>
+                      Copy as JSON
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Export All ({filteredBooks.length})</DropdownMenuLabel>
+                  <DropdownMenuItem onSelect={() => exportJSON(filteredBooks)} disabled={filteredBooks.length === 0}>
+                      Export as JSON
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportCSV(filteredBooks)} disabled={filteredBooks.length === 0}>
+                      Export as CSV
+                  </DropdownMenuItem>
+                   <DropdownMenuItem onSelect={() => copyToClipboard(filteredBooks)} disabled={filteredBooks.length === 0}>
+                      Copy as JSON
+                  </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
         </div>
       </div>
       <Card>
@@ -192,6 +289,15 @@ export default function DocumentsClient() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[40px]">
+                  <Checkbox
+                    onCheckedChange={(checked) => {
+                      setSelection(checked ? paginatedBooks.map(b => b.id) : [])
+                    }}
+                    checked={paginatedBooks.length > 0 && paginatedBooks.every(b => selection.includes(b.id))}
+                    aria-label="Select all on this page"
+                  />
+                </TableHead>
                 <TableHead>Book Name</TableHead>
                 <TableHead>Project</TableHead>
                 <TableHead>Client</TableHead>
@@ -203,7 +309,20 @@ export default function DocumentsClient() {
             </TableHeader>
             <TableBody>
               {paginatedBooks.length > 0 ? paginatedBooks.map((book) => (
-                <TableRow key={book.id}>
+                <TableRow key={book.id} data-state={selection.includes(book.id) && "selected"}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selection.includes(book.id)}
+                      onCheckedChange={(checked) => {
+                        setSelection(
+                          checked
+                            ? [...selection, book.id]
+                            : selection.filter((id) => id !== book.id)
+                        )
+                      }}
+                      aria-label={`Select book ${book.name}`}
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">
                     <Link href={`/books/${book.id}`} className="hover:underline">
                       {book.name}
@@ -222,7 +341,7 @@ export default function DocumentsClient() {
                 </TableRow>
               )) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
+                  <TableCell colSpan={8} className="h-24 text-center">
                     No books found matching your filters.
                   </TableCell>
                 </TableRow>
@@ -232,7 +351,7 @@ export default function DocumentsClient() {
         </CardContent>
         <CardFooter className="flex items-center justify-between">
           <div className="text-xs text-muted-foreground">
-            Showing <strong>{paginatedBooks.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-{(currentPage - 1) * ITEMS_PER_PAGE + paginatedBooks.length}</strong> of <strong>{filteredBooks.length}</strong> books
+            {selection.length > 0 ? `${selection.length} of ${filteredBooks.length} book(s) selected.` : `Showing ${paginatedBooks.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedBooks.length} of ${filteredBooks.length} books`}
           </div>
            <PaginationNav />
         </CardFooter>
