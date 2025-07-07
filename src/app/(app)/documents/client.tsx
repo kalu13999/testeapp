@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,42 +55,124 @@ export default function DocumentsClient() {
   const [filters, setFilters] = React.useState({
     query: '',
     project: 'all',
-    client: 'all'
+    client: 'all',
+    status: 'all',
+    priority: 'all',
   });
   const [currentPage, setCurrentPage] = React.useState(1);
   const [selection, setSelection] = React.useState<string[]>([]);
+  const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
+    { id: 'name', desc: false }
+  ]);
 
   const clientNames = [...new Set(books.map(b => b.clientName))].sort();
   const projectNames = [...new Set(books.map(b => b.projectName))].sort();
+  const statuses = [...new Set(books.map(b => b.status))].sort();
+  const priorities = [...new Set(books.map(b => b.priority || 'Medium'))].sort((a,b) => {
+    const order = { 'High': 0, 'Medium': 1, 'Low': 2 };
+    return order[a] - order[b];
+  });
 
   const handleFilterChange = (filterName: keyof typeof filters, value: string) => {
     setFilters(prev => ({ ...prev, [filterName]: value }));
     setCurrentPage(1); 
   };
 
-  const filteredBooks = React.useMemo(() => {
-    return books.filter(book => {
+  const handleSort = (columnId: string, isShift: boolean) => {
+    setSorting(currentSorting => {
+        const existingSortIndex = currentSorting.findIndex(s => s.id === columnId);
+
+        if (isShift) {
+            let newSorting = [...currentSorting];
+            if (existingSortIndex > -1) {
+                if (newSorting[existingSortIndex].desc) {
+                    newSorting.splice(existingSortIndex, 1);
+                } else {
+                    newSorting[existingSortIndex].desc = true;
+                }
+            } else {
+                newSorting.push({ id: columnId, desc: false });
+            }
+            return newSorting;
+        } else {
+            if (currentSorting.length === 1 && currentSorting[0].id === columnId) {
+                if (currentSorting[0].desc) {
+                    return [];
+                }
+                return [{ id: columnId, desc: true }];
+            }
+            return [{ id: columnId, desc: false }];
+        }
+    });
+  };
+  
+  const getSortIndicator = (columnId: string) => {
+    const sortIndex = sorting.findIndex(s => s.id === columnId);
+    if (sortIndex === -1) return <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-0 group-hover:opacity-50" />;
+    
+    const sort = sorting[sortIndex];
+    const icon = sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />;
+    
+    return (
+        <div className="flex items-center gap-1">
+            {icon}
+            {sorting.length > 1 && (
+                <span className="text-xs font-bold text-muted-foreground">{sortIndex + 1}</span>
+            )}
+        </div>
+    );
+  }
+
+  const sortedAndFilteredBooks = React.useMemo(() => {
+    let filtered = books.filter(book => {
       const queryMatch = filters.query.trim() === '' || 
         book.name.toLowerCase().includes(filters.query.toLowerCase());
       
       const projectMatch = filters.project === 'all' || book.projectName === filters.project;
       const clientMatch = filters.client === 'all' || book.clientName === filters.client;
+      const statusMatch = filters.status === 'all' || book.status === filters.status;
+      const priorityMatch = filters.priority === 'all' || (book.priority || 'Medium') === filters.priority;
       
-      return queryMatch && projectMatch && clientMatch;
+      return queryMatch && projectMatch && clientMatch && statusMatch && priorityMatch;
     });
-  }, [books, filters]);
+
+    if (sorting.length > 0) {
+        filtered.sort((a, b) => {
+            for (const s of sorting) {
+                const key = s.id as keyof EnrichedBook;
+                const valA = a[key];
+                const valB = b[key];
+
+                let result = 0;
+                if (valA === null || valA === undefined) result = -1;
+                else if (valB === null || valB === undefined) result = 1;
+                else if (typeof valA === 'number' && typeof valB === 'number') {
+                    result = valA - valB;
+                } else {
+                    result = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' });
+                }
+
+                if (result !== 0) {
+                    return s.desc ? -result : result;
+                }
+            }
+            return 0;
+        });
+    }
+
+    return filtered;
+  }, [books, filters, sorting]);
 
   const selectedBooks = React.useMemo(() => {
-    return filteredBooks.filter(book => selection.includes(book.id));
-  }, [filteredBooks, selection]);
+    return sortedAndFilteredBooks.filter(book => selection.includes(book.id));
+  }, [sortedAndFilteredBooks, selection]);
 
   React.useEffect(() => {
-    // Clear selection when filters change to avoid confusion
     setSelection([]);
-  }, [filters]);
+  }, [filters, sorting]);
   
-  const totalPages = Math.ceil(filteredBooks.length / ITEMS_PER_PAGE);
-  const paginatedBooks = filteredBooks.slice(
+  const totalPages = Math.ceil(sortedAndFilteredBooks.length / ITEMS_PER_PAGE);
+  const paginatedBooks = sortedAndFilteredBooks.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
@@ -282,22 +364,22 @@ export default function DocumentsClient() {
                       Copy as CSV
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuLabel>Export All ({filteredBooks.length})</DropdownMenuLabel>
-                  <DropdownMenuItem onSelect={() => exportXLSX(filteredBooks)} disabled={filteredBooks.length === 0}>
+                  <DropdownMenuLabel>Export All ({sortedAndFilteredBooks.length})</DropdownMenuLabel>
+                  <DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>
                       Export as XLSX
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => exportJSON(filteredBooks)} disabled={filteredBooks.length === 0}>
+                  <DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>
                       Export as JSON
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => exportCSV(filteredBooks)} disabled={filteredBooks.length === 0}>
+                  <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>
                       Export as CSV
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuLabel>Copy All ({filteredBooks.length})</DropdownMenuLabel>
-                   <DropdownMenuItem onSelect={() => copyToClipboardJSON(filteredBooks)} disabled={filteredBooks.length === 0}>
+                  <DropdownMenuLabel>Copy All ({sortedAndFilteredBooks.length})</DropdownMenuLabel>
+                   <DropdownMenuItem onSelect={() => copyToClipboardJSON(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>
                       Copy as JSON
                    </DropdownMenuItem>
-                   <DropdownMenuItem onSelect={() => copyToClipboardCSV(filteredBooks)} disabled={filteredBooks.length === 0}>
+                   <DropdownMenuItem onSelect={() => copyToClipboardCSV(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>
                       Copy as CSV
                    </DropdownMenuItem>
               </DropdownMenuContent>
@@ -331,6 +413,24 @@ export default function DocumentsClient() {
                     {clientNames.map(client => <SelectItem key={client} value={client}>{client}</SelectItem>)}
                 </SelectContent>
             </Select>
+            <Select value={filters.status} onValueChange={(value) => handleFilterChange('status', value)}>
+                <SelectTrigger className="w-auto min-w-[180px]">
+                    <SelectValue placeholder="Filter by Status" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    {statuses.map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}
+                </SelectContent>
+            </Select>
+             <Select value={filters.priority} onValueChange={(value) => handleFilterChange('priority', value)}>
+                <SelectTrigger className="w-auto min-w-[180px]">
+                    <SelectValue placeholder="Filter by Priority" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Priorities</SelectItem>
+                    {priorities.map(priority => <SelectItem key={priority} value={priority}>{priority}</SelectItem>)}
+                </SelectContent>
+            </Select>
           </div>
         </CardHeader>
         <CardContent>
@@ -346,13 +446,37 @@ export default function DocumentsClient() {
                     aria-label="Select all on this page"
                   />
                 </TableHead>
-                <TableHead>Book Name</TableHead>
-                <TableHead>Project</TableHead>
-                <TableHead>Client</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Priority</TableHead>
+                <TableHead>
+                    <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>
+                        Book Name {getSortIndicator('name')}
+                    </div>
+                </TableHead>
+                <TableHead>
+                    <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('projectName', e.shiftKey)}>
+                        Project {getSortIndicator('projectName')}
+                    </div>
+                </TableHead>
+                <TableHead>
+                    <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('clientName', e.shiftKey)}>
+                        Client {getSortIndicator('clientName')}
+                    </div>
+                </TableHead>
+                <TableHead>
+                    <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>
+                        Status {getSortIndicator('status')}
+                    </div>
+                </TableHead>
+                <TableHead>
+                    <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('priority', e.shiftKey)}>
+                        Priority {getSortIndicator('priority')}
+                    </div>
+                </TableHead>
                 <TableHead className="w-[150px]">Progress</TableHead>
-                <TableHead className="text-center w-[120px]">Pages</TableHead>
+                <TableHead className="text-center w-[120px]">
+                     <div className="flex items-center gap-2 cursor-pointer select-none group justify-center" onClick={(e) => handleSort('documentCount', e.shiftKey)}>
+                        Pages {getSortIndicator('documentCount')}
+                    </div>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -399,7 +523,7 @@ export default function DocumentsClient() {
         </CardContent>
         <CardFooter className="flex items-center justify-between">
           <div className="text-xs text-muted-foreground">
-            {selection.length > 0 ? `${selection.length} of ${filteredBooks.length} book(s) selected.` : `Showing ${paginatedBooks.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedBooks.length} of ${filteredBooks.length} books`}
+            {selection.length > 0 ? `${selection.length} of ${sortedAndFilteredBooks.length} book(s) selected.` : `Showing ${paginatedBooks.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedBooks.length} of ${sortedAndFilteredBooks.length} books`}
           </div>
            <PaginationNav />
         </CardFooter>

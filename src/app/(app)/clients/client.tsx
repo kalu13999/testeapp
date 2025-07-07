@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { MoreHorizontal, PlusCircle, Trash2, Edit, Info } from "lucide-react"
+import { MoreHorizontal, PlusCircle, Trash2, Edit, Info, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react"
 
 import {
   AlertDialog,
@@ -60,16 +60,91 @@ export default function ClientsClient() {
   
   const [query, setQuery] = React.useState("");
   const [currentPage, setCurrentPage] = React.useState(1);
+  const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
+    { id: 'name', desc: false }
+  ]);
 
-  const filteredClients = React.useMemo(() => {
-    return clients.filter(client =>
+  const handleSort = (columnId: string, isShift: boolean) => {
+    setSorting(currentSorting => {
+        const existingSortIndex = currentSorting.findIndex(s => s.id === columnId);
+
+        if (isShift) {
+            let newSorting = [...currentSorting];
+            if (existingSortIndex > -1) {
+                if (newSorting[existingSortIndex].desc) {
+                    newSorting.splice(existingSortIndex, 1);
+                } else {
+                    newSorting[existingSortIndex].desc = true;
+                }
+            } else {
+                newSorting.push({ id: columnId, desc: false });
+            }
+            return newSorting;
+        } else {
+            if (currentSorting.length === 1 && currentSorting[0].id === columnId) {
+                if (currentSorting[0].desc) {
+                    return [];
+                }
+                return [{ id: columnId, desc: true }];
+            }
+            return [{ id: columnId, desc: false }];
+        }
+    });
+  };
+
+  const getSortIndicator = (columnId: string) => {
+    const sortIndex = sorting.findIndex(s => s.id === columnId);
+    if (sortIndex === -1) return <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-0 group-hover:opacity-50" />;
+    
+    const sort = sorting[sortIndex];
+    const icon = sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />;
+    
+    return (
+        <div className="flex items-center gap-1">
+            {icon}
+            {sorting.length > 1 && (
+                <span className="text-xs font-bold text-muted-foreground">{sortIndex + 1}</span>
+            )}
+        </div>
+    );
+  }
+
+  const sortedAndFilteredClients = React.useMemo(() => {
+    let filtered = clients.filter(client =>
       client.name.toLowerCase().includes(query.toLowerCase()) ||
       client.contactEmail.toLowerCase().includes(query.toLowerCase())
     );
-  }, [clients, query]);
 
-  const totalPages = Math.ceil(filteredClients.length / ITEMS_PER_PAGE);
-  const paginatedClients = filteredClients.slice(
+     if (sorting.length > 0) {
+        filtered.sort((a, b) => {
+            for (const s of sorting) {
+                const key = s.id as keyof Client;
+                const valA = a[key];
+                const valB = b[key];
+
+                let result = 0;
+                if (valA === null || valA === undefined) result = -1;
+                else if (valB === null || valB === undefined) result = 1;
+                else if (typeof valA === 'number' && typeof valB === 'number') {
+                    result = valA - valB;
+                } else {
+                    result = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' });
+                }
+
+                if (result !== 0) {
+                    return s.desc ? -result : result;
+                }
+            }
+            return 0;
+        });
+    }
+
+    return filtered;
+
+  }, [clients, query, sorting]);
+
+  const totalPages = Math.ceil(sortedAndFilteredClients.length / ITEMS_PER_PAGE);
+  const paginatedClients = sortedAndFilteredClients.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
@@ -157,10 +232,26 @@ export default function ClientsClient() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Client Name</TableHead>
-                <TableHead>Contact Email</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Client Since</TableHead>
+                <TableHead>
+                    <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>
+                        Client Name {getSortIndicator('name')}
+                    </div>
+                </TableHead>
+                <TableHead>
+                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('contactEmail', e.shiftKey)}>
+                        Contact Email {getSortIndicator('contactEmail')}
+                    </div>
+                </TableHead>
+                <TableHead>
+                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('contactPhone', e.shiftKey)}>
+                        Phone {getSortIndicator('contactPhone')}
+                    </div>
+                </TableHead>
+                <TableHead>
+                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('since', e.shiftKey)}>
+                        Client Since {getSortIndicator('since')}
+                    </div>
+                </TableHead>
                 <TableHead>
                   <span className="sr-only">Actions</span>
                 </TableHead>
@@ -209,7 +300,7 @@ export default function ClientsClient() {
         </CardContent>
         <CardFooter className="flex items-center justify-between">
             <div className="text-xs text-muted-foreground">
-              Showing <strong>{paginatedClients.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-{(currentPage - 1) * ITEMS_PER_PAGE + paginatedClients.length}</strong> of <strong>{filteredClients.length}</strong> clients
+              Showing <strong>{paginatedClients.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-{(currentPage - 1) * ITEMS_PER_PAGE + paginatedClients.length}</strong> of <strong>{sortedAndFilteredClients.length}</strong> clients
             </div>
             <PaginationNav />
         </CardFooter>

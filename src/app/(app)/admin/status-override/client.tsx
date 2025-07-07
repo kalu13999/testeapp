@@ -19,7 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Sliders } from "lucide-react"
+import { Sliders, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -44,26 +44,110 @@ interface StatusOverrideClientProps {
 }
 
 export default function StatusOverrideClient({ allStatuses }: StatusOverrideClientProps) {
-  const { books, handleAdminStatusOverride } = useAppContext();
+  const { books, handleAdminStatusOverride, projects } = useAppContext();
   const [dialogState, setDialogState] = React.useState<{ open: boolean; book?: EnrichedBook }>({ open: false });
   const [newStatus, setNewStatus] = React.useState('');
   const [reason, setReason] = React.useState('');
 
-  const [query, setQuery] = React.useState("");
+  const [filters, setFilters] = React.useState({ query: '', project: 'all', status: 'all' });
   const [currentPage, setCurrentPage] = React.useState(1);
+  const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
+    { id: 'name', desc: false }
+  ]);
+  
+  const projectNames = [...new Set(projects.map(p => p.name))].sort();
+  const statusNames = allStatuses.map(s => s.name).sort();
 
-  const filteredBooks = React.useMemo(() => {
-    // Note: We use the `books` from context which is already project-filtered
-    // For a true global admin view, you might want a separate `allBooks` prop
-    return books.filter(book =>
-      book.name.toLowerCase().includes(query.toLowerCase()) ||
-      book.projectName.toLowerCase().includes(query.toLowerCase()) ||
-      book.clientName.toLowerCase().includes(query.toLowerCase())
+  const handleFilterChange = (filterName: keyof typeof filters, value: string) => {
+    setFilters(prev => ({ ...prev, [filterName]: value }));
+    setCurrentPage(1); 
+  };
+  
+  const handleSort = (columnId: string, isShift: boolean) => {
+    setSorting(currentSorting => {
+        const existingSortIndex = currentSorting.findIndex(s => s.id === columnId);
+
+        if (isShift) {
+            let newSorting = [...currentSorting];
+            if (existingSortIndex > -1) {
+                if (newSorting[existingSortIndex].desc) {
+                    newSorting.splice(existingSortIndex, 1);
+                } else {
+                    newSorting[existingSortIndex].desc = true;
+                }
+            } else {
+                newSorting.push({ id: columnId, desc: false });
+            }
+            return newSorting;
+        } else {
+            if (currentSorting.length === 1 && currentSorting[0].id === columnId) {
+                if (currentSorting[0].desc) {
+                    return [];
+                }
+                return [{ id: columnId, desc: true }];
+            }
+            return [{ id: columnId, desc: false }];
+        }
+    });
+  };
+  
+  const getSortIndicator = (columnId: string) => {
+    const sortIndex = sorting.findIndex(s => s.id === columnId);
+    if (sortIndex === -1) return <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-0 group-hover:opacity-50" />;
+    
+    const sort = sorting[sortIndex];
+    const icon = sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />;
+    
+    return (
+        <div className="flex items-center gap-1">
+            {icon}
+            {sorting.length > 1 && (
+                <span className="text-xs font-bold text-muted-foreground">{sortIndex + 1}</span>
+            )}
+        </div>
     );
-  }, [books, query]);
+  }
 
-  const totalPages = Math.ceil(filteredBooks.length / ITEMS_PER_PAGE);
-  const paginatedBooks = filteredBooks.slice(
+  const sortedAndFilteredBooks = React.useMemo(() => {
+    let filtered = books.filter(book => {
+        const queryMatch = filters.query.trim() === '' ||
+            book.name.toLowerCase().includes(filters.query.toLowerCase()) ||
+            book.projectName.toLowerCase().includes(filters.query.toLowerCase()) ||
+            book.clientName.toLowerCase().includes(filters.query.toLowerCase());
+        const projectMatch = filters.project === 'all' || book.projectName === filters.project;
+        const statusMatch = filters.status === 'all' || book.status === filters.status;
+        return queryMatch && projectMatch && statusMatch;
+    });
+
+    if (sorting.length > 0) {
+        filtered.sort((a, b) => {
+            for (const s of sorting) {
+                const key = s.id as keyof EnrichedBook;
+                const valA = a[key];
+                const valB = b[key];
+
+                let result = 0;
+                if (valA === null || valA === undefined) result = -1;
+                else if (valB === null || valB === undefined) result = 1;
+                else if (typeof valA === 'number' && typeof valB === 'number') {
+                    result = valA - valB;
+                } else {
+                    result = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' });
+                }
+
+                if (result !== 0) {
+                    return s.desc ? -result : result;
+                }
+            }
+            return 0;
+        });
+    }
+
+    return filtered;
+  }, [books, filters, sorting]);
+
+  const totalPages = Math.ceil(sortedAndFilteredBooks.length / ITEMS_PER_PAGE);
+  const paginatedBooks = sortedAndFilteredBooks.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
@@ -127,25 +211,52 @@ export default function StatusOverrideClient({ allStatuses }: StatusOverrideClie
       </div>
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Input 
                 placeholder="Search by book, project, or client..." 
                 className="max-w-sm"
-                value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
+                value={filters.query}
+                onChange={(e) => handleFilterChange('query', e.target.value)}
             />
+            <Select value={filters.project} onValueChange={(value) => handleFilterChange('project', value)}>
+                <SelectTrigger className="w-auto min-w-[180px]">
+                    <SelectValue placeholder="Filter by Project" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Projects</SelectItem>
+                    {projectNames.map(project => <SelectItem key={project} value={project}>{project}</SelectItem>)}
+                </SelectContent>
+            </Select>
+            <Select value={filters.status} onValueChange={(value) => handleFilterChange('status', value)}>
+                <SelectTrigger className="w-auto min-w-[180px]">
+                    <SelectValue placeholder="Filter by Status" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    {statusNames.map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}
+                </SelectContent>
+            </Select>
           </div>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Book Name</TableHead>
-                <TableHead>Project</TableHead>
-                <TableHead>Current Status</TableHead>
+                <TableHead>
+                    <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>
+                        Book Name {getSortIndicator('name')}
+                    </div>
+                </TableHead>
+                <TableHead>
+                    <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('projectName', e.shiftKey)}>
+                        Project {getSortIndicator('projectName')}
+                    </div>
+                </TableHead>
+                <TableHead>
+                    <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>
+                        Current Status {getSortIndicator('status')}
+                    </div>
+                </TableHead>
                 <TableHead className="w-[150px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -178,7 +289,7 @@ export default function StatusOverrideClient({ allStatuses }: StatusOverrideClie
         </CardContent>
         <CardFooter className="flex items-center justify-between">
             <div className="text-xs text-muted-foreground">
-              Showing <strong>{paginatedBooks.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-{(currentPage - 1) * ITEMS_PER_PAGE + paginatedBooks.length}</strong> of <strong>{filteredBooks.length}</strong> books
+              Showing <strong>{paginatedBooks.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-{(currentPage - 1) * ITEMS_PER_PAGE + paginatedBooks.length}</strong> of <strong>{sortedAndFilteredBooks.length}</strong> books
             </div>
             <PaginationNav />
         </CardFooter>

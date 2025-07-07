@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, PlusCircle, Trash2, Edit, Info } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Trash2, Edit, Info, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
 import { type Client, type EnrichedProject, type Project } from "@/lib/data";
 import {
   DropdownMenu,
@@ -74,6 +74,9 @@ export default function ProjectsClient() {
   
   const [filters, setFilters] = React.useState({ query: '', client: 'all', status: 'all' });
   const [currentPage, setCurrentPage] = React.useState(1);
+  const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
+    { id: 'name', desc: false }
+  ]);
 
   const clientNames = [...new Set(clients.map(c => c.name))].sort();
   const statuses = [...new Set(projects.map(p => p.status))].sort();
@@ -82,9 +85,54 @@ export default function ProjectsClient() {
     setFilters(prev => ({ ...prev, [filterName]: value }));
     setCurrentPage(1); 
   };
+  
+  const handleSort = (columnId: string, isShift: boolean) => {
+    setSorting(currentSorting => {
+        const existingSortIndex = currentSorting.findIndex(s => s.id === columnId);
 
-  const filteredProjects = React.useMemo(() => {
-    return projects.filter(project => {
+        if (isShift) {
+            let newSorting = [...currentSorting];
+            if (existingSortIndex > -1) {
+                if (newSorting[existingSortIndex].desc) {
+                    newSorting.splice(existingSortIndex, 1);
+                } else {
+                    newSorting[existingSortIndex].desc = true;
+                }
+            } else {
+                newSorting.push({ id: columnId, desc: false });
+            }
+            return newSorting;
+        } else {
+            if (currentSorting.length === 1 && currentSorting[0].id === columnId) {
+                if (currentSorting[0].desc) {
+                    return [];
+                }
+                return [{ id: columnId, desc: true }];
+            }
+            return [{ id: columnId, desc: false }];
+        }
+    });
+  };
+
+  const getSortIndicator = (columnId: string) => {
+    const sortIndex = sorting.findIndex(s => s.id === columnId);
+    if (sortIndex === -1) return <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-0 group-hover:opacity-50" />;
+    
+    const sort = sorting[sortIndex];
+    const icon = sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />;
+    
+    return (
+        <div className="flex items-center gap-1">
+            {icon}
+            {sorting.length > 1 && (
+                <span className="text-xs font-bold text-muted-foreground">{sortIndex + 1}</span>
+            )}
+        </div>
+    );
+  }
+
+  const sortedAndFilteredProjects = React.useMemo(() => {
+    let filtered = projects.filter(project => {
         const queryMatch = filters.query.trim() === '' || 
             project.name.toLowerCase().includes(filters.query.toLowerCase());
         
@@ -93,10 +141,37 @@ export default function ProjectsClient() {
         
         return queryMatch && clientMatch && statusMatch;
     });
-  }, [projects, filters]);
 
-  const totalPages = Math.ceil(filteredProjects.length / ITEMS_PER_PAGE);
-  const paginatedProjects = filteredProjects.slice(
+    if (sorting.length > 0) {
+        filtered.sort((a, b) => {
+            for (const s of sorting) {
+                const key = s.id as keyof EnrichedProject;
+                const valA = a[key];
+                const valB = b[key];
+
+                let result = 0;
+                if (valA === null || valA === undefined) result = -1;
+                else if (valB === null || valB === undefined) result = 1;
+                else if (typeof valA === 'number' && typeof valB === 'number') {
+                    result = valA - valB;
+                } else {
+                    result = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' });
+                }
+
+                if (result !== 0) {
+                    return s.desc ? -result : result;
+                }
+            }
+            return 0;
+        });
+    }
+
+    return filtered;
+
+  }, [projects, filters, sorting]);
+
+  const totalPages = Math.ceil(sortedAndFilteredProjects.length / ITEMS_PER_PAGE);
+  const paginatedProjects = sortedAndFilteredProjects.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
@@ -104,7 +179,6 @@ export default function ProjectsClient() {
   const PaginationNav = () => {
     if (totalPages <= 1) return null;
     const pageNumbers: number[] = [];
-    // ... logic to build pageNumbers array with ellipses
     const maxPagesToShow = 5;
 
     if (totalPages <= maxPagesToShow) {
@@ -202,10 +276,26 @@ export default function ProjectsClient() {
               <Table>
                   <TableHeader>
                   <TableRow>
-                      <TableHead>Project Name</TableHead>
-                      <TableHead>Client</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>End Date</TableHead>
+                      <TableHead>
+                        <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>
+                            Project Name {getSortIndicator('name')}
+                        </div>
+                      </TableHead>
+                      <TableHead>
+                         <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('clientName', e.shiftKey)}>
+                            Client {getSortIndicator('clientName')}
+                        </div>
+                      </TableHead>
+                      <TableHead>
+                         <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>
+                            Status {getSortIndicator('status')}
+                        </div>
+                      </TableHead>
+                      <TableHead>
+                         <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('endDate', e.shiftKey)}>
+                            End Date {getSortIndicator('endDate')}
+                        </div>
+                      </TableHead>
                       <TableHead className="w-[200px]">Progress</TableHead>
                       <TableHead className="w-[50px]"><span className="sr-only">Actions</span></TableHead>
                   </TableRow>
@@ -264,7 +354,7 @@ export default function ProjectsClient() {
               </CardContent>
               <CardFooter className="flex items-center justify-between">
                 <div className="text-xs text-muted-foreground">
-                  Showing <strong>{paginatedProjects.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-{(currentPage - 1) * ITEMS_PER_PAGE + paginatedProjects.length}</strong> of <strong>{filteredProjects.length}</strong> projects
+                  Showing <strong>{paginatedProjects.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-{(currentPage - 1) * ITEMS_PER_PAGE + paginatedProjects.length}</strong> of <strong>{sortedAndFilteredProjects.length}</strong> projects
                 </div>
                 <PaginationNav />
               </CardFooter>

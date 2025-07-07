@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { MoreHorizontal, PlusCircle, Trash2, Edit, Info } from "lucide-react"
+import { MoreHorizontal, PlusCircle, Trash2, Edit, Info, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react"
 
 import {
   AlertDialog,
@@ -62,30 +62,106 @@ export default function UsersClient() {
   const { users, roles, clients, addUser, updateUser, deleteUser, allProjects } = useAppContext();
   const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | 'details' | null; data?: User }>({ open: false, type: null })
   
-  const [filters, setFilters] = React.useState({ query: '', role: 'all' });
+  const [filters, setFilters] = React.useState({ query: '', role: 'all', department: 'all' });
   const [currentPage, setCurrentPage] = React.useState(1);
+  const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
+    { id: 'name', desc: false }
+  ]);
 
   const availableRoles = roles.filter(r => r !== 'System').sort();
+  const departments = [...new Set(users.map(u => u.department).filter(Boolean) as string[])].sort();
 
   const handleFilterChange = (filterName: keyof typeof filters, value: string) => {
     setFilters(prev => ({ ...prev, [filterName]: value }));
     setCurrentPage(1); 
   };
+
+  const handleSort = (columnId: string, isShift: boolean) => {
+    setSorting(currentSorting => {
+        const existingSortIndex = currentSorting.findIndex(s => s.id === columnId);
+
+        if (isShift) {
+            let newSorting = [...currentSorting];
+            if (existingSortIndex > -1) {
+                if (newSorting[existingSortIndex].desc) {
+                    newSorting.splice(existingSortIndex, 1);
+                } else {
+                    newSorting[existingSortIndex].desc = true;
+                }
+            } else {
+                newSorting.push({ id: columnId, desc: false });
+            }
+            return newSorting;
+        } else {
+            if (currentSorting.length === 1 && currentSorting[0].id === columnId) {
+                if (currentSorting[0].desc) {
+                    return [];
+                }
+                return [{ id: columnId, desc: true }];
+            }
+            return [{ id: columnId, desc: false }];
+        }
+    });
+  };
+
+  const getSortIndicator = (columnId: string) => {
+    const sortIndex = sorting.findIndex(s => s.id === columnId);
+    if (sortIndex === -1) return <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-0 group-hover:opacity-50" />;
+    
+    const sort = sorting[sortIndex];
+    const icon = sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />;
+    
+    return (
+        <div className="flex items-center gap-1">
+            {icon}
+            {sorting.length > 1 && (
+                <span className="text-xs font-bold text-muted-foreground">{sortIndex + 1}</span>
+            )}
+        </div>
+    );
+  }
   
-  const filteredUsers = React.useMemo(() => {
-    return users.filter(user => {
+  const sortedAndFilteredUsers = React.useMemo(() => {
+    let filtered = users.filter(user => {
         const queryMatch = filters.query.trim() === '' || 
             user.name.toLowerCase().includes(filters.query.toLowerCase()) ||
             (user.email && user.email.toLowerCase().includes(filters.query.toLowerCase()));
         
         const roleMatch = filters.role === 'all' || user.role === filters.role;
+        const departmentMatch = filters.department === 'all' || user.department === filters.department;
         
-        return queryMatch && roleMatch;
+        return queryMatch && roleMatch && departmentMatch;
     });
-  }, [users, filters]);
 
-  const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
-  const paginatedUsers = filteredUsers.slice(
+    if (sorting.length > 0) {
+        filtered.sort((a, b) => {
+            for (const s of sorting) {
+                const key = s.id as keyof User;
+                const valA = a[key];
+                const valB = b[key];
+
+                let result = 0;
+                if (valA === null || valA === undefined) result = -1;
+                else if (valB === null || valB === undefined) result = 1;
+                else if (typeof valA === 'number' && typeof valB === 'number') {
+                    result = valA - valB;
+                } else {
+                    result = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' });
+                }
+
+                if (result !== 0) {
+                    return s.desc ? -result : result;
+                }
+            }
+            return 0;
+        });
+    }
+    return filtered;
+
+  }, [users, filters, sorting]);
+
+  const totalPages = Math.ceil(sortedAndFilteredUsers.length / ITEMS_PER_PAGE);
+  const paginatedUsers = sortedAndFilteredUsers.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
@@ -178,16 +254,41 @@ export default function UsersClient() {
                     {availableRoles.map(role => <SelectItem key={role} value={role}>{role}</SelectItem>)}
                 </SelectContent>
             </Select>
+            <Select value={filters.department} onValueChange={(value) => handleFilterChange('department', value)}>
+                <SelectTrigger className="w-auto min-w-[180px]">
+                    <SelectValue placeholder="Filter by Department" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {departments.map(dept => <SelectItem key={dept} value={dept}>{dept}</SelectItem>)}
+                </SelectContent>
+            </Select>
           </div>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Department</TableHead>
+                <TableHead>
+                    <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>
+                        Name {getSortIndicator('name')}
+                    </div>
+                </TableHead>
+                <TableHead>
+                    <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('email', e.shiftKey)}>
+                        Email {getSortIndicator('email')}
+                    </div>
+                </TableHead>
+                <TableHead>
+                    <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('role', e.shiftKey)}>
+                        Role {getSortIndicator('role')}
+                    </div>
+                </TableHead>
+                <TableHead>
+                    <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('department', e.shiftKey)}>
+                        Department {getSortIndicator('department')}
+                    </div>
+                </TableHead>
                 <TableHead>
                   <span className="sr-only">Actions</span>
                 </TableHead>
@@ -248,7 +349,7 @@ export default function UsersClient() {
         </CardContent>
          <CardFooter className="flex items-center justify-between">
             <div className="text-xs text-muted-foreground">
-              Showing <strong>{paginatedUsers.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-{(currentPage - 1) * ITEMS_PER_PAGE + paginatedUsers.length}</strong> of <strong>{filteredUsers.length}</strong> users
+              Showing <strong>{paginatedUsers.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-{(currentPage - 1) * ITEMS_PER_PAGE + paginatedUsers.length}</strong> of <strong>{sortedAndFilteredUsers.length}</strong> users
             </div>
             <PaginationNav />
         </CardFooter>
