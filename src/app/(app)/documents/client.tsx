@@ -3,6 +3,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import * as XLSX from 'xlsx';
 import {
   Table,
   TableBody,
@@ -132,11 +133,42 @@ export default function DocumentsClient() {
     toast({ title: "Export Successful", description: `${data.length} books exported as CSV.` });
   }
 
-  const copyToClipboard = (data: EnrichedBook[]) => {
+  const exportXLSX = (data: EnrichedBook[]) => {
+    if (data.length === 0) return;
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Books");
+    XLSX.writeFile(workbook, "books_export.xlsx");
+    toast({ title: "Export Successful", description: `${data.length} books exported as XLSX.` });
+  }
+
+  const copyToClipboardJSON = (data: EnrichedBook[]) => {
     if (data.length === 0) return;
     const jsonString = JSON.stringify(data, null, 2);
     navigator.clipboard.writeText(jsonString).then(() => {
         toast({ title: "Copied to Clipboard", description: `${data.length} book(s) copied as JSON.` });
+    }, () => {
+        toast({ title: "Copy Failed", description: "Could not copy to clipboard.", variant: "destructive" });
+    });
+  }
+
+  const copyToClipboardCSV = (data: EnrichedBook[]) => {
+    if (data.length === 0) return;
+    const headers = ['id', 'name', 'status', 'priority', 'projectName', 'clientName', 'expectedDocuments', 'documentCount', 'progress', 'author', 'isbn', 'publicationYear', 'info'];
+    const csvContent = [
+        headers.join(','),
+        ...data.map(book => 
+            headers.map(header => {
+                let value = book[header as keyof EnrichedBook] ?? '';
+                if (typeof value === 'string' && value.includes(',')) {
+                    return `"${value.replace(/"/g, '""')}"`;
+                }
+                return value;
+            }).join(',')
+        )
+    ].join('\n');
+    navigator.clipboard.writeText(csvContent).then(() => {
+        toast({ title: "Copied to Clipboard", description: `${data.length} book(s) copied as CSV.` });
     }, () => {
         toast({ title: "Copy Failed", description: "Could not copy to clipboard.", variant: "destructive" });
     });
@@ -231,27 +263,43 @@ export default function DocumentsClient() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Export Selected</DropdownMenuLabel>
+                  <DropdownMenuLabel>Export Selected ({selection.length})</DropdownMenuLabel>
+                  <DropdownMenuItem onSelect={() => exportXLSX(selectedBooks)} disabled={selection.length === 0}>
+                      Export as XLSX
+                  </DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => exportJSON(selectedBooks)} disabled={selection.length === 0}>
                       Export as JSON
                   </DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => exportCSV(selectedBooks)} disabled={selection.length === 0}>
                       Export as CSV
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => copyToClipboard(selectedBooks)} disabled={selection.length === 0}>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Copy Selected ({selection.length})</DropdownMenuLabel>
+                  <DropdownMenuItem onSelect={() => copyToClipboardJSON(selectedBooks)} disabled={selection.length === 0}>
                       Copy as JSON
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => copyToClipboardCSV(selectedBooks)} disabled={selection.length === 0}>
+                      Copy as CSV
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuLabel>Export All ({filteredBooks.length})</DropdownMenuLabel>
+                  <DropdownMenuItem onSelect={() => exportXLSX(filteredBooks)} disabled={filteredBooks.length === 0}>
+                      Export as XLSX
+                  </DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => exportJSON(filteredBooks)} disabled={filteredBooks.length === 0}>
                       Export as JSON
                   </DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => exportCSV(filteredBooks)} disabled={filteredBooks.length === 0}>
                       Export as CSV
                   </DropdownMenuItem>
-                   <DropdownMenuItem onSelect={() => copyToClipboard(filteredBooks)} disabled={filteredBooks.length === 0}>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Copy All ({filteredBooks.length})</DropdownMenuLabel>
+                   <DropdownMenuItem onSelect={() => copyToClipboardJSON(filteredBooks)} disabled={filteredBooks.length === 0}>
                       Copy as JSON
-                  </DropdownMenuItem>
+                   </DropdownMenuItem>
+                   <DropdownMenuItem onSelect={() => copyToClipboardCSV(filteredBooks)} disabled={filteredBooks.length === 0}>
+                      Copy as CSV
+                   </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
         </div>
