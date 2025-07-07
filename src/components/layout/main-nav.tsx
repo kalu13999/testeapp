@@ -46,7 +46,7 @@ const allMenuItems = [
   {
     id: "account",
     title: "Account",
-    roles: [...INTERNAL_ROLES],
+    roles: [...INTERNAL_ROLES, 'Client'],
     items: [
       { href: "/profile", label: "My Profile", icon: User },
     ],
@@ -96,7 +96,7 @@ const allMenuItems = [
   {
     id: "client",
     title: "Client Portal",
-    roles: ['Client'],
+    roles: ['Client', 'Admin'],
     items: [
       { href: "/dashboard", label: "Client Dashboard", icon: Home },
       { href: "/shipments", label: "Prepare Shipment", icon: Send },
@@ -195,5 +195,3 @@ export function MainNav() {
     </nav>
   );
 }
-
-    
