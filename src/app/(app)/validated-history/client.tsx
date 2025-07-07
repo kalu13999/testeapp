@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react";
@@ -95,6 +94,11 @@ export default function ValidatedHistoryClient() {
             </div>
         );
     }
+    
+    const handleClearFilters = () => {
+        setColumnFilters({});
+        setCurrentPage(1);
+    };
 
     const validationHistory: ValidatedBook[] = React.useMemo(() => {
         if (!currentUser) return [];
@@ -280,66 +284,68 @@ export default function ValidatedHistoryClient() {
                 </div>
             </CardHeader>
             <CardContent>
-                {paginatedHistory.length > 0 ? (
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="w-[40px]">
-                                    <Checkbox
-                                        onCheckedChange={(checked) => setSelection(checked ? paginatedHistory.map(h => h.id) : [])}
-                                        checked={paginatedHistory.length > 0 && paginatedHistory.every(h => selection.includes(h.id))}
-                                        aria-label="Select all on this page"
-                                    />
-                                </TableHead>
-                                <TableHead>
-                                    <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>
-                                        Batch Name {getSortIndicator('name')}
-                                    </div>
-                                </TableHead>
-                                {currentUser?.role === 'Admin' && <TableHead>
-                                    <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('clientName', e.shiftKey)}>
-                                        Client {getSortIndicator('clientName')}
-                                    </div>
-                                </TableHead>}
-                                <TableHead>
-                                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('projectName', e.shiftKey)}>
-                                        Project {getSortIndicator('projectName')}
-                                    </div>
-                                </TableHead>
-                                <TableHead>
-                                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('validationStatus', e.shiftKey)}>
-                                        Outcome {getSortIndicator('validationStatus')}
-                                    </div>
-                                </TableHead>
-                                <TableHead>
-                                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('validationDate', e.shiftKey)}>
-                                        Date {getSortIndicator('validationDate')}
-                                    </div>
-                                </TableHead>
-                                <TableHead>Details</TableHead>
-                            </TableRow>
-                             <TableRow>
-                                <TableHead/>
-                                <TableHead>
-                                    <Input placeholder="Filter name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/>
-                                </TableHead>
-                                {currentUser?.role === 'Admin' && <TableHead>
-                                    <Input placeholder="Filter client..." value={columnFilters['clientName'] || ''} onChange={(e) => handleColumnFilterChange('clientName', e.target.value)} className="h-8"/>
-                                </TableHead>}
-                                <TableHead>
-                                    <Input placeholder="Filter project..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/>
-                                </TableHead>
-                                <TableHead>
-                                    <Input placeholder="Filter outcome..." value={columnFilters['validationStatus'] || ''} onChange={(e) => handleColumnFilterChange('validationStatus', e.target.value)} className="h-8"/>
-                                </TableHead>
-                                <TableHead>
-                                    <Input placeholder="Filter date..." value={columnFilters['validationDate'] || ''} onChange={(e) => handleColumnFilterChange('validationDate', e.target.value)} className="h-8"/>
-                                </TableHead>
-                                <TableHead/>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {paginatedHistory.map(book => (
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="w-[40px]">
+                                <Checkbox
+                                    onCheckedChange={(checked) => setSelection(checked ? paginatedHistory.map(h => h.id) : [])}
+                                    checked={paginatedHistory.length > 0 && paginatedHistory.every(h => selection.includes(h.id))}
+                                    aria-label="Select all on this page"
+                                />
+                            </TableHead>
+                            <TableHead>
+                                <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>
+                                    Batch Name {getSortIndicator('name')}
+                                </div>
+                            </TableHead>
+                            {currentUser?.role === 'Admin' && <TableHead>
+                                <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('clientName', e.shiftKey)}>
+                                    Client {getSortIndicator('clientName')}
+                                </div>
+                            </TableHead>}
+                            <TableHead>
+                                 <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('projectName', e.shiftKey)}>
+                                    Project {getSortIndicator('projectName')}
+                                </div>
+                            </TableHead>
+                            <TableHead>
+                                 <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('validationStatus', e.shiftKey)}>
+                                    Outcome {getSortIndicator('validationStatus')}
+                                </div>
+                            </TableHead>
+                            <TableHead>
+                                 <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('validationDate', e.shiftKey)}>
+                                    Date {getSortIndicator('validationDate')}
+                                </div>
+                            </TableHead>
+                            <TableHead>Details</TableHead>
+                        </TableRow>
+                         <TableRow>
+                            <TableHead/>
+                            <TableHead>
+                                <Input placeholder="Filter name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/>
+                            </TableHead>
+                            {currentUser?.role === 'Admin' && <TableHead>
+                                <Input placeholder="Filter client..." value={columnFilters['clientName'] || ''} onChange={(e) => handleColumnFilterChange('clientName', e.target.value)} className="h-8"/>
+                            </TableHead>}
+                            <TableHead>
+                                <Input placeholder="Filter project..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/>
+                            </TableHead>
+                            <TableHead>
+                                <Input placeholder="Filter outcome..." value={columnFilters['validationStatus'] || ''} onChange={(e) => handleColumnFilterChange('validationStatus', e.target.value)} className="h-8"/>
+                            </TableHead>
+                            <TableHead>
+                                <Input placeholder="Filter date..." value={columnFilters['validationDate'] || ''} onChange={(e) => handleColumnFilterChange('validationDate', e.target.value)} className="h-8"/>
+                            </TableHead>
+                            <TableHead className="text-right">
+                                <Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Clear Filters</Button>
+                            </TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {paginatedHistory.length > 0 ? (
+                            paginatedHistory.map(book => (
                                 <TableRow key={book.id} data-state={selection.includes(book.id) && "selected"}>
                                     <TableCell>
                                         <Checkbox
@@ -388,16 +394,16 @@ export default function ValidatedHistoryClient() {
                                         ) : '—'}
                                     </TableCell>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                ) : (
-                    <div className="text-center py-20 text-muted-foreground flex flex-col items-center gap-4">
-                        <History className="h-16 w-16" />
-                        <h3 className="text-xl font-semibold">No History Found</h3>
-                        <p>No validated or rejected batches found matching your criteria.</p>
-                    </div>
-                )}
+                            ))
+                        ) : (
+                           <TableRow>
+                            <TableCell colSpan={currentUser?.role === 'Admin' ? 7 : 6} className="h-24 text-center">
+                                No validated history found matching your filters.
+                            </TableCell>
+                           </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
             </CardContent>
             <CardFooter className="flex items-center justify-between">
                 <div className="text-xs text-muted-foreground">

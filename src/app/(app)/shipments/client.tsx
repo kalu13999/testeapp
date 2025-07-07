@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -96,6 +95,10 @@ export default function ShipmentsClient() {
         </div>
     );
   }
+
+  const handleClearFilters = () => {
+    setColumnFilters({});
+  };
   
   const sortedAndFilteredBooks = React.useMemo(() => {
     let filtered = books
@@ -234,7 +237,6 @@ export default function ShipmentsClient() {
           </div>
         </CardHeader>
         <CardContent>
-          {sortedAndFilteredBooks.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -278,37 +280,45 @@ export default function ShipmentsClient() {
                          <Input placeholder="Filter pages..." value={columnFilters['expectedDocuments'] || ''} onChange={(e) => handleColumnFilterChange('expectedDocuments', e.target.value)} className="h-8"/>
                     </TableHead>
                     <TableHead>
+                      <div className="flex items-center gap-2">
                         <Input placeholder="Filter priority..." value={columnFilters['priority'] || ''} onChange={(e) => handleColumnFilterChange('priority', e.target.value)} className="h-8"/>
+                        <Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Clear</Button>
+                      </div>
                     </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedAndFilteredBooks.map((book, index) => (
-                    <TableRow key={book.id} data-state={selection.includes(book.id) && "selected"}>
-                    <TableCell>
-                        <Checkbox
-                            checked={selection.includes(book.id)}
-                            onCheckedChange={(checked) => setSelection(
-                                checked ? [...selection, book.id] : selection.filter((id) => id !== book.id)
-                            )}
-                            aria-label={`Select row ${index + 1}`}
-                        />
+                {sortedAndFilteredBooks.length > 0 ? (
+                  sortedAndFilteredBooks.map((book, index) => (
+                      <TableRow key={book.id} data-state={selection.includes(book.id) && "selected"}>
+                      <TableCell>
+                          <Checkbox
+                              checked={selection.includes(book.id)}
+                              onCheckedChange={(checked) => setSelection(
+                                  checked ? [...selection, book.id] : selection.filter((id) => id !== book.id)
+                              )}
+                              aria-label={`Select row ${index + 1}`}
+                          />
+                      </TableCell>
+                      <TableCell className="font-medium">{book.name}</TableCell>
+                      <TableCell>{book.projectName}</TableCell>
+                      <TableCell className="text-center">{book.expectedDocuments}</TableCell>
+                      <TableCell>{book.priority || "Medium"}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center">
+                      <div className="flex flex-col items-center gap-4">
+                        <PackageSearch className="h-16 w-16 text-muted-foreground" />
+                        <h3 className="text-xl font-semibold">All Caught Up!</h3>
+                        <p>You have no pending books to ship.</p>
+                      </div>
                     </TableCell>
-                    <TableCell className="font-medium">{book.name}</TableCell>
-                    <TableCell>{book.projectName}</TableCell>
-                    <TableCell className="text-center">{book.expectedDocuments}</TableCell>
-                    <TableCell>{book.priority || "Medium"}</TableCell>
                   </TableRow>
-                ))}
+                )}
               </TableBody>
             </Table>
-          ) : (
-            <div className="text-center py-20 text-muted-foreground flex flex-col items-center gap-4">
-                <PackageSearch className="h-16 w-16" />
-                <h3 className="text-xl font-semibold">All Caught Up!</h3>
-                <p>You have no pending books to ship.</p>
-            </div>
-          )}
         </CardContent>
         <CardFooter>
           <div className="text-xs text-muted-foreground">

@@ -111,6 +111,11 @@ export default function StatusOverrideClient({ allStatuses }: StatusOverrideClie
     );
   }
 
+  const handleClearFilters = () => {
+    setColumnFilters({});
+    setCurrentPage(1);
+  };
+
   const sortedAndFilteredBooks = React.useMemo(() => {
     let filtered = books;
     Object.entries(columnFilters).forEach(([columnId, value]) => {
@@ -383,7 +388,9 @@ export default function StatusOverrideClient({ allStatuses }: StatusOverrideClie
                         className="h-8"
                     />
                 </TableHead>
-                <TableHead />
+                <TableHead className="text-right">
+                  <Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Clear Filters</Button>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -419,7 +426,7 @@ export default function StatusOverrideClient({ allStatuses }: StatusOverrideClie
               )) : (
                  <TableRow>
                   <TableCell colSpan={5} className="h-24 text-center">
-                    No books found matching your search.
+                    No books found matching your filters.
                   </TableCell>
                 </TableRow>
               )}

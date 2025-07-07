@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react";
@@ -195,6 +194,11 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     const icon = sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />;
     return <div className="flex items-center gap-1">{icon}{sorting.length > 1 && (<span className="text-xs font-bold text-muted-foreground">{sortIndex + 1}</span>)}</div>;
   }
+  
+  const handleClearFilters = () => {
+    setColumnFilters({});
+    setCurrentPage(1);
+  };
 
   const sortedAndFilteredItems = React.useMemo(() => {
     let filtered = allDisplayItems;
@@ -492,6 +496,13 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
   const isScanFolderMatch = scanState.book?.name === scanState.folderName;
 
+  const tableColSpan = React.useMemo(() => {
+    if (dataType === 'book') return 6;
+    if (stage === 'final-quality-control' || config.actionButtonLabel) return 7;
+    return 6;
+  }, [dataType, stage, config.actionButtonLabel]);
+
+
   const renderBookRow = (item: EnrichedBook, index: number) => {
     const isCancelable = ['scanning-started', 'indexing-started', 'checking-started'].includes(stage);
     return (
@@ -696,78 +707,80 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         </div>
       </CardHeader>
       <CardContent>
-        {displayItems.length > 0 ? (
-          <Table>
-            <TableHeader>
-              {dataType === 'book' ? (
-                <>
-                <TableRow>
-                    <TableHead className="w-[50px]">
-                        <Checkbox
-                            checked={displayItems.length > 0 && selection.length === displayItems.length}
-                            onCheckedChange={(checked) => setSelection(checked ? displayItems.map(item => item.id) : [])}
-                            aria-label="Select all"
-                        />
-                    </TableHead>
-                    <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>Book Name {getSortIndicator('name')}</div></TableHead>
-                    <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('projectName', e.shiftKey)}>Project {getSortIndicator('projectName')}</div></TableHead>
-                    <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('clientName', e.shiftKey)}>Client {getSortIndicator('clientName')}</div></TableHead>
-                    <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Status {getSortIndicator('status')}</div></TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-                <TableRow>
-                  <TableHead />
-                  <TableHead><Input placeholder="Filter by name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/></TableHead>
-                  <TableHead><Input placeholder="Filter by project..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/></TableHead>
-                  <TableHead className="hidden md:table-cell"><Input placeholder="Filter by client..." value={columnFilters['clientName'] || ''} onChange={(e) => handleColumnFilterChange('clientName', e.target.value)} className="h-8"/></TableHead>
-                  <TableHead><Input placeholder="Filter by status..." value={columnFilters['status'] || ''} onChange={(e) => handleColumnFilterChange('status', e.target.value)} className="h-8"/></TableHead>
-                  <TableHead />
-                </TableRow>
-                </>
-              ) : (
-                <>
-                 <TableRow>
-                    <TableHead className="w-[50px]">
-                       <Checkbox
-                            checked={displayItems.length > 0 && selection.length === displayItems.length}
-                            onCheckedChange={(checked) => setSelection(checked ? displayItems.map(item => item.id) : [])}
-                            aria-label="Select all"
-                        />
-                    </TableHead>
-                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>Document Name {getSortIndicator('name')}</div></TableHead>
-                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('client', e.shiftKey)}>Client {getSortIndicator('client')}</div></TableHead>
-                  <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('type', e.shiftKey)}>Type {getSortIndicator('type')}</div></TableHead>
+        <Table>
+          <TableHeader>
+            {dataType === 'book' ? (
+              <>
+              <TableRow>
+                  <TableHead className="w-[50px]">
+                      <Checkbox
+                          checked={displayItems.length > 0 && selection.length === displayItems.length}
+                          onCheckedChange={(checked) => setSelection(checked ? displayItems.map(item => item.id) : [])}
+                          aria-label="Select all"
+                      />
+                  </TableHead>
+                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>Book Name {getSortIndicator('name')}</div></TableHead>
+                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('projectName', e.shiftKey)}>Project {getSortIndicator('projectName')}</div></TableHead>
+                  <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('clientName', e.shiftKey)}>Client {getSortIndicator('clientName')}</div></TableHead>
                   <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Status {getSortIndicator('status')}</div></TableHead>
-                  <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('lastUpdated', e.shiftKey)}>Last Updated {getSortIndicator('lastUpdated')}</div></TableHead>
-                  {(actionButtonLabel || stage === 'final-quality-control') && (
-                    <TableHead>Actions</TableHead>
-                  )}
-                </TableRow>
-                <TableRow>
-                  <TableHead />
-                  <TableHead><Input placeholder="Filter name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/></TableHead>
-                  <TableHead><Input placeholder="Filter client..." value={columnFilters['client'] || ''} onChange={(e) => handleColumnFilterChange('client', e.target.value)} className="h-8"/></TableHead>
-                  <TableHead className="hidden md:table-cell"><Input placeholder="Filter type..." value={columnFilters['type'] || ''} onChange={(e) => handleColumnFilterChange('type', e.target.value)} className="h-8"/></TableHead>
-                  <TableHead><Input placeholder="Filter status..." value={columnFilters['status'] || ''} onChange={(e) => handleColumnFilterChange('status', e.target.value)} className="h-8"/></TableHead>
-                  <TableHead className="hidden md:table-cell"><Input placeholder="Filter date..." value={columnFilters['lastUpdated'] || ''} onChange={(e) => handleColumnFilterChange('lastUpdated', e.target.value)} className="h-8"/></TableHead>
-                  {(actionButtonLabel || stage === 'final-quality-control') && (<TableHead />)}
-                </TableRow>
-                </>
-              )}
-            </TableHeader>
-            <TableBody>
-              {displayItems.map((item, index) => (
+                  <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+              <TableRow>
+                <TableHead />
+                <TableHead><Input placeholder="Filter by name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filter by project..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/></TableHead>
+                <TableHead className="hidden md:table-cell"><Input placeholder="Filter by client..." value={columnFilters['clientName'] || ''} onChange={(e) => handleColumnFilterChange('clientName', e.target.value)} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filter by status..." value={columnFilters['status'] || ''} onChange={(e) => handleColumnFilterChange('status', e.target.value)} className="h-8"/></TableHead>
+                <TableHead className="text-right"><Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Clear Filters</Button></TableHead>
+              </TableRow>
+              </>
+            ) : (
+              <>
+               <TableRow>
+                  <TableHead className="w-[50px]">
+                     <Checkbox
+                          checked={displayItems.length > 0 && selection.length === displayItems.length}
+                          onCheckedChange={(checked) => setSelection(checked ? displayItems.map(item => item.id) : [])}
+                          aria-label="Select all"
+                      />
+                  </TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>Document Name {getSortIndicator('name')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('client', e.shiftKey)}>Client {getSortIndicator('client')}</div></TableHead>
+                <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('type', e.shiftKey)}>Type {getSortIndicator('type')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Status {getSortIndicator('status')}</div></TableHead>
+                <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('lastUpdated', e.shiftKey)}>Last Updated {getSortIndicator('lastUpdated')}</div></TableHead>
+                {(actionButtonLabel || stage === 'final-quality-control') && (
+                  <TableHead>Actions</TableHead>
+                )}
+              </TableRow>
+              <TableRow>
+                <TableHead />
+                <TableHead><Input placeholder="Filter name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filter client..." value={columnFilters['client'] || ''} onChange={(e) => handleColumnFilterChange('client', e.target.value)} className="h-8"/></TableHead>
+                <TableHead className="hidden md:table-cell"><Input placeholder="Filter type..." value={columnFilters['type'] || ''} onChange={(e) => handleColumnFilterChange('type', e.target.value)} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filter status..." value={columnFilters['status'] || ''} onChange={(e) => handleColumnFilterChange('status', e.target.value)} className="h-8"/></TableHead>
+                <TableHead className="hidden md:table-cell"><Input placeholder="Filter date..." value={columnFilters['lastUpdated'] || ''} onChange={(e) => handleColumnFilterChange('lastUpdated', e.target.value)} className="h-8"/></TableHead>
+                {(actionButtonLabel || stage === 'final-quality-control') && (<TableHead className="text-right"><Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Clear Filters</Button></TableHead>)}
+              </TableRow>
+              </>
+            )}
+          </TableHeader>
+          <TableBody>
+            {displayItems.length > 0 ? (
+              displayItems.map((item, index) => (
                 dataType === 'book'
                   ? renderBookRow(item as EnrichedBook, index)
                   : renderDocumentRow(item as AppDocument, index)
-              ))}
-            </TableBody>
-          </Table>
-        ) : (
-           <div className="text-center py-10 text-muted-foreground">
-              <p>{emptyStateText}</p>
-           </div>
-        )}
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={tableColSpan} className="h-24 text-center">
+                  {emptyStateText}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </CardContent>
       <CardFooter className="flex items-center justify-between">
         <div className="text-xs text-muted-foreground">
