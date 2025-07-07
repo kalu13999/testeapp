@@ -1,163 +1,227 @@
 
 [
   {
-    "id": "al_gen_0",
-    "bookId": "book_gen_0",
+    "id": "al_0",
+    "bookId": "book_0",
     "action": "Book Added",
     "userId": "u_admin",
-    "date": "2025-07-07T10:00:00Z",
-    "details": "Book 'Innovate-1-0001' was added to project."
+    "date": "2025-07-01T08:00:00Z",
+    "details": "Book 'Innovate-HR-Batch01' was added to project 'Innovate Corp HR Onboarding Batch A'."
   },
   {
-    "id": "al_gen_1",
-    "bookId": "book_gen_1",
+    "id": "al_1",
+    "bookId": "book_1",
     "action": "Book Added",
     "userId": "u_admin",
-    "date": "2025-07-07T11:00:00Z",
-    "details": "Book 'FutureTech-2-0002' was added to project."
+    "date": "2025-07-01T08:05:00Z",
+    "details": "Book 'Innovate-FIN-Q3-Reports' was added to project 'Innovate Corp Q4 Scanning'."
   },
   {
-    "id": "al_gen_3",
-    "bookId": "book_gen_3",
+    "id": "al_2",
+    "bookId": "book_3",
+    "action": "Book Added",
+    "userId": "u_admin",
+    "date": "2025-07-01T08:10:00Z",
+    "details": "Book 'FutureTech-RD-Alpha' was added to project 'Future Tech R&D Notebooks 2024'."
+  },
+  {
+    "id": "al_3",
+    "bookId": "book_5",
     "action": "Book Shipped",
     "userId": "u_client_2",
-    "date": "2025-07-06T09:00:00Z",
-    "details": "Client marked book 'FutureTech-12-0004' as shipped."
+    "date": "2025-07-02T10:00:00Z",
+    "details": "Client marked book 'FutureTech-OB-Hires-Jun' as shipped."
   },
   {
-    "id": "al_gen_5",
-    "bookId": "book_gen_5",
+    "id": "al_4",
+    "bookId": "book_6",
+    "action": "Book Shipped",
+    "userId": "u_client_1",
+    "date": "2025-07-02T11:00:00Z",
+    "details": "Client marked book 'Innovate-LEG-Contracts' as shipped."
+  },
+  {
+    "id": "al_5",
+    "bookId": "book_7",
     "action": "Reception Confirmed",
     "userId": "u_reception",
-    "date": "2025-07-05T09:00:00Z",
-    "details": "Assigned book 'FutureTech-22-0006' to scanner Sam Scanner."
+    "date": "2025-07-03T09:00:00Z",
+    "details": "Book 'FutureTech-RD-Beta' reception confirmed. Assigned to scanner Susan Scanner."
   },
   {
-    "id": "al_gen_6",
-    "bookId": "book_gen_6",
+    "id": "al_6",
+    "bookId": "book_8",
+    "action": "Reception Confirmed",
+    "userId": "u_reception",
+    "date": "2025-07-03T09:05:00Z",
+    "details": "Book 'Innovate-FIN-Q2-Archive' reception confirmed. Assigned to scanner Sam Scanner."
+  },
+  {
+    "id": "al_7",
+    "bookId": "book_9",
+    "action": "Reception Confirmed",
+    "userId": "u_reception",
+    "date": "2025-07-04T09:10:00Z",
+    "details": "Book 'FutureTech-PATENT-ABC' reception confirmed. Assigned to scanner Susan Scanner."
+  },
+  {
+    "id": "al_8",
+    "bookId": "book_10",
+    "action": "Reception Confirmed",
+    "userId": "u_reception",
+    "date": "2025-07-04T09:15:00Z",
+    "details": "Book 'Innovate-HR-Batch02' reception confirmed. Assigned to scanner Sam Scanner."
+  },
+  {
+    "id": "al_9",
+    "bookId": "book_11",
+    "action": "Scanning Started",
+    "userId": "u_scanner",
+    "date": "2025-07-06T10:00:00Z",
+    "details": "Scanning process initiated for book 'Innovate-FIN-Q3-Exp'."
+  },
+  {
+    "id": "al_10",
+    "bookId": "book_12",
     "action": "Scanning Started",
     "userId": "u_scanner_2",
-    "date": "2025-07-06T10:15:00Z",
-    "details": "Scanning process initiated for book 'Innovate-1-0007'."
+    "date": "2025-07-07T09:00:00Z",
+    "details": "Scanning process initiated for book 'FutureTech-OB-Hires-Jul'."
   },
   {
-    "id": "al_gen_7",
-    "bookId": "book_gen_7",
+    "id": "al_11",
+    "bookId": "book_13",
     "action": "Scanning Finished",
     "userId": "u_scanner",
-    "date": "2025-07-05T14:30:00Z",
-    "details": "133 pages created. Book moved to Storage."
+    "date": "2025-07-07T11:00:00Z",
+    "details": "85 pages created. Book moved to Storage."
   },
   {
-    "id": "al_gen_7_assign",
-    "bookId": "book_gen_7",
+    "id": "al_12",
+    "bookId": "book_13",
     "action": "Assigned to Indexer",
     "userId": "u_admin",
-    "date": "2025-07-05T15:00:00Z",
-    "details": "Book 'FutureTech-2-0008' assigned to Ida Indexer."
+    "date": "2025-07-07T11:05:00Z",
+    "details": "Book 'Innovate-PLAN-2025-Mrkt' assigned to Ida Indexer."
   },
   {
-    "id": "al_gen_8",
-    "bookId": "book_gen_8",
+    "id": "al_13",
+    "bookId": "book_14",
+    "action": "Scanning Finished",
+    "userId": "u_scanner_2",
+    "date": "2025-07-06T14:00:00Z",
+    "details": "220 pages created. Book moved to Storage."
+  },
+  {
+    "id": "al_14",
+    "bookId": "book_14",
+    "action": "Assigned to Indexer",
+    "userId": "u_admin",
+    "date": "2025-07-06T14:05:00Z",
+    "details": "Book 'FutureTech-RD-Gamma' assigned to Ian Indexer."
+  },
+  {
+    "id": "al_15",
+    "bookId": "book_15",
     "action": "Indexing Started",
-    "userId": "u_indexer_2",
-    "date": "2025-07-04T12:00:00Z",
-    "details": "Indexing started for book 'Innovate-11-0009'."
-  },
-  {
-    "id": "al_gen_9",
-    "bookId": "book_gen_9",
-    "action": "Assigned for QC",
     "userId": "u_indexer_1",
-    "date": "2025-07-04T09:00:00Z",
-    "details": "Book 'FutureTech-12-0010' assigned to Charlie QC."
+    "date": "2025-07-06T09:30:00Z",
+    "details": "Indexing started for book 'Innovate-FIN-Q3-Inv'."
   },
   {
-    "id": "al_gen_10",
-    "bookId": "book_gen_10",
+    "id": "al_16",
+    "bookId": "book_16",
+    "action": "Assigned for QC",
+    "userId": "u_indexer_2",
+    "date": "2025-07-05T10:00:00Z",
+    "details": "Book 'FutureTech-PATENT-DEF' assigned to Quentin Checker."
+  },
+  {
+    "id": "al_17",
+    "bookId": "book_17",
     "action": "Checking Started",
-    "userId": "u_qc_2",
-    "date": "2025-07-03T11:00:00Z",
-    "details": "Initial QC started for book 'Innovate-21-0011'."
-  },
-  {
-    "id": "al_gen_11",
-    "bookId": "book_gen_11",
-    "action": "Initial QC Complete",
     "userId": "u_qc",
-    "date": "2025-07-02T18:00:00Z",
-    "details": "Book 'FutureTech-22-0012' has passed initial checks."
+    "date": "2025-07-05T11:00:00Z",
+    "details": "Initial QC started for book 'Innovate-HR-Batch03'."
   },
   {
-    "id": "al_gen_12",
-    "bookId": "book_gen_12",
+    "id": "al_18",
+    "bookId": "book_18",
+    "action": "Initial QC Complete",
+    "userId": "u_qc_2",
+    "date": "2025-07-04T10:00:00Z",
+    "details": "Book 'FutureTech-OB-Hires-Aug' has passed initial checks."
+  },
+  {
+    "id": "al_19",
+    "bookId": "book_19",
     "action": "Processing Started",
     "userId": "u_system",
-    "date": "2025-07-03T09:30:00Z",
-    "details": "Automated processing started for book 'Innovate-1-0013'."
+    "date": "2025-07-03T09:00:00Z",
+    "details": "Automated processing started for book 'Innovate-FIN-Q1-Archive'."
   },
   {
-    "id": "al_gen_13",
-    "bookId": "book_gen_13",
+    "id": "al_20",
+    "bookId": "book_20",
     "action": "Processing Completed",
     "userId": "u_system",
-    "date": "2025-07-04T10:00:00Z",
-    "details": "Automated processing finished for book 'FutureTech-2-0014'."
+    "date": "2025-07-02T15:00:00Z",
+    "details": "Automated processing finished for book 'FutureTech-RD-Delta'."
   },
   {
-    "id": "al_gen_14",
-    "bookId": "book_gen_14",
+    "id": "al_21",
+    "bookId": "book_21",
     "action": "Workflow Step",
     "userId": "u_delivery",
-    "date": "2025-07-05T11:00:00Z",
-    "details": "Book 'Innovate-11-0015' moved from Processed to Final Quality Control."
+    "date": "2025-07-01T16:00:00Z",
+    "details": "Book 'Innovate-PLAN-2025-Sales' moved from Processed to Final Quality Control."
   },
   {
-    "id": "al_gen_15",
-    "bookId": "book_gen_15",
+    "id": "al_22",
+    "bookId": "book_22",
     "action": "Workflow Step",
     "userId": "u_delivery",
-    "date": "2025-07-06T12:00:00Z",
-    "details": "Book 'FutureTech-12-0016' moved from Final Quality Control to Delivery."
+    "date": "2025-07-02T18:00:00Z",
+    "details": "Book 'FutureTech-PATENT-GHI' moved from Final Quality Control to Delivery."
   },
   {
-    "id": "al_gen_16",
-    "bookId": "book_gen_16",
+    "id": "al_23",
+    "bookId": "book_23",
     "action": "Workflow Step",
     "userId": "u_delivery",
-    "date": "2025-07-07T13:00:00Z",
-    "details": "Book 'Innovate-21-0017' moved from Delivery to Pending Validation."
+    "date": "2025-07-03T19:00:00Z",
+    "details": "Book 'Innovate-HR-Batch04' moved from Delivery to Pending Validation."
   },
   {
-    "id": "al_gen_17",
-    "bookId": "book_gen_17",
+    "id": "al_24",
+    "bookId": "book_24",
     "action": "Client Rejection",
     "userId": "u_client_2",
-    "date": "2025-07-06T15:00:00Z",
-    "details": "Book 'FutureTech-22-0018' rejected. Reason: Scan quality on pages 45-50 is poor. Please rescan this section."
+    "date": "2025-07-04T20:00:00Z",
+    "details": "Book 'FutureTech-OB-Hires-Sep' rejected. Reason: Pages 12 and 34 are duplicates. Please remove one and re-submit."
   },
   {
-    "id": "al_gen_18",
-    "bookId": "book_gen_18",
+    "id": "al_25",
+    "bookId": "book_25",
     "action": "Marked as Corrected",
     "userId": "u_operator",
-    "date": "2025-07-05T16:00:00Z",
-    "details": "Book 'Innovate-1-0019' marked as corrected after client rejection."
+    "date": "2025-07-05T21:00:00Z",
+    "details": "Book 'Innovate-FIN-Q2-Exp' marked as corrected after client rejection."
   },
   {
-    "id": "al_gen_19",
-    "bookId": "book_gen_19",
+    "id": "al_26",
+    "bookId": "book_26",
     "action": "Client Approval",
     "userId": "u_client_2",
-    "date": "2025-07-04T17:00:00Z",
-    "details": "Book 'FutureTech-2-0020' approved."
+    "date": "2025-07-06T22:00:00Z",
+    "details": "Book 'FutureTech-RD-Epsilon' approved."
   },
   {
-    "id": "al_gen_20",
-    "bookId": "book_gen_20",
+    "id": "al_27",
+    "bookId": "book_27",
     "action": "Book Archived",
     "userId": "u_admin",
-    "date": "2025-07-03T18:00:00Z",
-    "details": "Book 'Innovate-11-0021' was finalized and archived."
+    "date": "2025-07-07T23:00:00Z",
+    "details": "Book 'Innovate-PLAN-2025-Ops' was finalized and archived."
   }
 ]

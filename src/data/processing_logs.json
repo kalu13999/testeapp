@@ -1,12 +1,12 @@
 
 [
   {
-    "id": "pl_gen_12",
-    "bookId": "book_gen_12",
+    "id": "pl_book_19",
+    "bookId": "book_19",
     "status": "In Progress",
-    "progress": 78,
-    "log": "[09:30:00 AM] Processing initiated for book Innovate-1-0013.\n[09:35:00 AM] OCR engine started.\n[09:45:00 AM] Processing page 98 of 125.",
-    "startTime": "2025-07-03T09:30:00Z",
-    "lastUpdate": "2025-07-03T09:45:00Z"
+    "progress": 45,
+    "log": "[09:00:00 AM] Processing initiated for book Innovate-FIN-Q1-Archive.\n[09:05:00 AM] OCR engine started.\n[09:30:00 AM] Processing page 225 of 500.",
+    "startTime": "2025-07-03T09:00:00Z",
+    "lastUpdate": "2025-07-03T09:30:00Z"
   }
 ]

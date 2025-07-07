@@ -1,190 +1,253 @@
 
 [
   {
-    "id": "book_gen_0",
-    "name": "Innovate-1-0001",
+    "id": "book_0",
+    "name": "Innovate-HR-Batch01",
     "status": "Pending",
-    "expectedDocuments": 177,
+    "expectedDocuments": 120,
+    "projectId": "proj_21",
+    "priority": "High",
+    "info": "Urgent new hire paperwork."
+  },
+  {
+    "id": "book_1",
+    "name": "Innovate-FIN-Q3-Reports",
+    "status": "Pending",
+    "expectedDocuments": 250,
     "projectId": "proj_1",
     "priority": "Medium",
-    "info": "Standard quarterly review documents."
+    "info": "Standard quarterly financial statements."
   },
   {
-    "id": "book_gen_1",
-    "name": "FutureTech-2-0002",
+    "id": "book_2",
+    "name": "Innovate-PLAN-2025-Strategy",
     "status": "Pending",
-    "expectedDocuments": 102,
-    "projectId": "proj_2",
-    "priority": "Low",
-    "info": "Archival of old project files."
-  },
-  {
-    "id": "book_gen_2",
-    "name": "Innovate-11-0003",
-    "status": "Pending",
-    "expectedDocuments": 88,
+    "expectedDocuments": 75,
     "projectId": "proj_11",
-    "priority": "High",
-    "info": "Urgent legal documents for review."
-  },
-  {
-    "id": "book_gen_3",
-    "name": "FutureTech-12-0004",
-    "status": "In Transit",
-    "expectedDocuments": 145,
-    "projectId": "proj_12",
-    "priority": "Medium"
-  },
-  {
-    "id": "book_gen_4",
-    "name": "Innovate-21-0005",
-    "status": "In Transit",
-    "expectedDocuments": 198,
-    "projectId": "proj_21",
     "priority": "High"
   },
   {
-    "id": "book_gen_5",
-    "name": "FutureTech-22-0006",
-    "status": "To Scan",
-    "expectedDocuments": 76,
+    "id": "book_3",
+    "name": "FutureTech-RD-Alpha",
+    "status": "Pending",
+    "expectedDocuments": 300,
     "projectId": "proj_22",
+    "priority": "Medium",
+    "info": "Lab notebooks for Project Alpha."
+  },
+  {
+    "id": "book_4",
+    "name": "FutureTech-PATENT-XYZ",
+    "status": "Pending",
+    "expectedDocuments": 50,
+    "projectId": "proj_12",
+    "priority": "High"
+  },
+  {
+    "id": "book_5",
+    "name": "FutureTech-OB-Hires-Jun",
+    "status": "In Transit",
+    "expectedDocuments": 150,
+    "projectId": "proj_2",
+    "priority": "Medium"
+  },
+  {
+    "id": "book_6",
+    "name": "Innovate-LEG-Contracts",
+    "status": "In Transit",
+    "expectedDocuments": 200,
+    "projectId": "proj_1",
+    "priority": "High"
+  },
+  {
+    "id": "book_7",
+    "name": "FutureTech-RD-Beta",
+    "status": "To Scan",
+    "expectedDocuments": 180,
+    "projectId": "proj_22",
+    "priority": "Low",
+    "scannerUserId": "u_scanner_2"
+  },
+  {
+    "id": "book_8",
+    "name": "Innovate-FIN-Q2-Archive",
+    "status": "To Scan",
+    "expectedDocuments": 400,
+    "projectId": "proj_1",
     "priority": "Low",
     "scannerUserId": "u_scanner"
   },
   {
-    "id": "book_gen_6",
-    "name": "Innovate-1-0007",
-    "status": "Scanning Started",
-    "expectedDocuments": 112,
-    "projectId": "proj_1",
-    "priority": "Medium",
-    "scannerUserId": "u_scanner_2",
-    "scanStartTime": "2025-07-06T10:15:00Z"
+    "id": "book_9",
+    "name": "FutureTech-PATENT-ABC",
+    "status": "To Scan",
+    "expectedDocuments": 65,
+    "projectId": "proj_12",
+    "priority": "High",
+    "scannerUserId": "u_scanner_2"
   },
   {
-    "id": "book_gen_7",
-    "name": "FutureTech-2-0008",
-    "status": "To Indexing",
-    "expectedDocuments": 133,
+    "id": "book_10",
+    "name": "Innovate-HR-Batch02",
+    "status": "To Scan",
+    "expectedDocuments": 130,
+    "projectId": "proj_21",
+    "priority": "Medium",
+    "scannerUserId": "u_scanner"
+  },
+  {
+    "id": "book_11",
+    "name": "Innovate-FIN-Q3-Exp",
+    "status": "Scanning Started",
+    "expectedDocuments": 90,
+    "projectId": "proj_1",
+    "priority": "Medium",
+    "scannerUserId": "u_scanner",
+    "scanStartTime": "2025-07-06T10:00:00Z"
+  },
+  {
+    "id": "book_12",
+    "name": "FutureTech-OB-Hires-Jul",
+    "status": "Scanning Started",
+    "expectedDocuments": 160,
     "projectId": "proj_2",
+    "priority": "Medium",
+    "scannerUserId": "u_scanner_2",
+    "scanStartTime": "2025-07-07T09:00:00Z"
+  },
+  {
+    "id": "book_13",
+    "name": "Innovate-PLAN-2025-Mrkt",
+    "status": "To Indexing",
+    "expectedDocuments": 85,
+    "projectId": "proj_11",
     "priority": "High",
-    "scanEndTime": "2025-07-05T14:30:00Z",
+    "scanEndTime": "2025-07-07T11:00:00Z",
     "indexerUserId": "u_indexer_1"
   },
   {
-    "id": "book_gen_8",
-    "name": "Innovate-11-0009",
-    "status": "Indexing Started",
-    "expectedDocuments": 95,
-    "projectId": "proj_11",
-    "priority": "Low",
-    "scanEndTime": "2025-07-04T11:00:00Z",
-    "indexerUserId": "u_indexer_2",
-    "indexingStartTime": "2025-07-04T12:00:00Z"
-  },
-  {
-    "id": "book_gen_9",
-    "name": "FutureTech-12-0010",
-    "status": "To Checking",
-    "expectedDocuments": 180,
-    "projectId": "proj_12",
-    "priority": "Medium",
-    "scanEndTime": "2025-07-03T16:00:00Z",
-    "indexingEndTime": "2025-07-04T09:00:00Z",
-    "qcUserId": "u_qc"
-  },
-  {
-    "id": "book_gen_10",
-    "name": "Innovate-21-0011",
-    "status": "Checking Started",
-    "expectedDocuments": 65,
-    "projectId": "proj_21",
-    "priority": "High",
-    "scanEndTime": "2025-07-02T13:45:00Z",
-    "indexingEndTime": "2025-07-03T10:00:00Z",
-    "qcUserId": "u_qc_2",
-    "qcStartTime": "2025-07-03T11:00:00Z"
-  },
-  {
-    "id": "book_gen_11",
-    "name": "FutureTech-22-0012",
-    "status": "Ready for Processing",
-    "expectedDocuments": 155,
+    "id": "book_14",
+    "name": "FutureTech-RD-Gamma",
+    "status": "To Indexing",
+    "expectedDocuments": 220,
     "projectId": "proj_22",
-    "priority": "Low"
+    "priority": "Low",
+    "scanEndTime": "2025-07-06T14:00:00Z",
+    "indexerUserId": "u_indexer_2"
   },
   {
-    "id": "book_gen_12",
-    "name": "Innovate-1-0013",
-    "status": "In Processing",
-    "expectedDocuments": 125,
+    "id": "book_15",
+    "name": "Innovate-FIN-Q3-Inv",
+    "status": "Indexing Started",
+    "expectedDocuments": 300,
     "projectId": "proj_1",
-    "priority": "Medium"
+    "priority": "Medium",
+    "scanEndTime": "2025-07-05T16:00:00Z",
+    "indexerUserId": "u_indexer_1",
+    "indexingStartTime": "2025-07-06T09:30:00Z"
   },
   {
-    "id": "book_gen_13",
-    "name": "FutureTech-2-0014",
-    "status": "Processed",
-    "expectedDocuments": 140,
-    "projectId": "proj_2",
-    "priority": "High"
-  },
-  {
-    "id": "book_gen_14",
-    "name": "Innovate-11-0015",
-    "status": "Final Quality Control",
-    "expectedDocuments": 80,
-    "projectId": "proj_11",
-    "priority": "Medium"
-  },
-  {
-    "id": "book_gen_15",
-    "name": "FutureTech-12-0016",
-    "status": "Delivery",
-    "expectedDocuments": 160,
+    "id": "book_16",
+    "name": "FutureTech-PATENT-DEF",
+    "status": "To Checking",
+    "expectedDocuments": 70,
     "projectId": "proj_12",
-    "priority": "Low"
+    "priority": "High",
+    "scanEndTime": "2025-07-04T10:00:00Z",
+    "indexingEndTime": "2025-07-05T10:00:00Z",
+    "qcUserId": "u_qc_2"
   },
   {
-    "id": "book_gen_16",
-    "name": "Innovate-21-0017",
-    "status": "Pending Validation",
+    "id": "book_17",
+    "name": "Innovate-HR-Batch03",
+    "status": "Checking Started",
     "expectedDocuments": 110,
     "projectId": "proj_21",
-    "priority": "High"
-  },
-  {
-    "id": "book_gen_17",
-    "name": "FutureTech-22-0018",
-    "status": "Client Rejected",
-    "expectedDocuments": 90,
-    "projectId": "proj_22",
     "priority": "Medium",
-    "rejectionReason": "Scan quality on pages 45-50 is poor. Please rescan this section."
+    "scanEndTime": "2025-07-03T12:00:00Z",
+    "indexingEndTime": "2025-07-04T14:00:00Z",
+    "qcUserId": "u_qc",
+    "qcStartTime": "2025-07-05T11:00:00Z"
   },
   {
-    "id": "book_gen_18",
-    "name": "Innovate-1-0019",
-    "status": "Corrected",
-    "expectedDocuments": 70,
-    "projectId": "proj_1",
-    "priority": "Low",
-    "rejectionReason": "Missing page 3."
-  },
-  {
-    "id": "book_gen_19",
-    "name": "FutureTech-2-0020",
-    "status": "Finalized",
-    "expectedDocuments": 210,
+    "id": "book_18",
+    "name": "FutureTech-OB-Hires-Aug",
+    "status": "Ready for Processing",
+    "expectedDocuments": 145,
     "projectId": "proj_2",
     "priority": "Medium"
   },
   {
-    "id": "book_gen_20",
-    "name": "Innovate-11-0021",
+    "id": "book_19",
+    "name": "Innovate-FIN-Q1-Archive",
+    "status": "In Processing",
+    "expectedDocuments": 500,
+    "projectId": "proj_1",
+    "priority": "Low"
+  },
+  {
+    "id": "book_20",
+    "name": "FutureTech-RD-Delta",
+    "status": "Processed",
+    "expectedDocuments": 250,
+    "projectId": "proj_22",
+    "priority": "Medium"
+  },
+  {
+    "id": "book_21",
+    "name": "Innovate-PLAN-2025-Sales",
+    "status": "Final Quality Control",
+    "expectedDocuments": 60,
+    "projectId": "proj_11",
+    "priority": "High"
+  },
+  {
+    "id": "book_22",
+    "name": "FutureTech-PATENT-GHI",
+    "status": "Delivery",
+    "expectedDocuments": 80,
+    "projectId": "proj_12",
+    "priority": "High"
+  },
+  {
+    "id": "book_23",
+    "name": "Innovate-HR-Batch04",
+    "status": "Pending Validation",
+    "expectedDocuments": 95,
+    "projectId": "proj_21",
+    "priority": "Medium"
+  },
+  {
+    "id": "book_24",
+    "name": "FutureTech-OB-Hires-Sep",
+    "status": "Client Rejected",
+    "expectedDocuments": 135,
+    "projectId": "proj_2",
+    "priority": "Medium",
+    "rejectionReason": "Pages 12 and 34 are duplicates. Please remove one and re-submit."
+  },
+  {
+    "id": "book_25",
+    "name": "Innovate-FIN-Q2-Exp",
+    "status": "Corrected",
+    "expectedDocuments": 150,
+    "projectId": "proj_1",
+    "priority": "Medium",
+    "rejectionReason": "Page 7 was upside down."
+  },
+  {
+    "id": "book_26",
+    "name": "FutureTech-RD-Epsilon",
+    "status": "Finalized",
+    "expectedDocuments": 320,
+    "projectId": "proj_22",
+    "priority": "Low"
+  },
+  {
+    "id": "book_27",
+    "name": "Innovate-PLAN-2025-Ops",
     "status": "Complete",
-    "expectedDocuments": 130,
+    "expectedDocuments": 100,
     "projectId": "proj_11",
     "priority": "High"
   }
