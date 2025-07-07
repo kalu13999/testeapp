@@ -31,6 +31,7 @@ import {
   ClipboardCheck,
   Package,
   GanttChartSquare,
+  Settings,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -108,7 +109,8 @@ const allMenuItems = [
     title: "Admin Tools",
     roles: ['Admin'],
     items: [
-      { href: "/admin/status-override", label: "Status Override", icon: Sliders }
+      { href: "/admin/status-override", label: "Status Override", icon: Sliders },
+      { href: "/settings", label: "Settings", icon: Settings },
     ]
   },
   {
@@ -193,3 +195,5 @@ export function MainNav() {
     </nav>
   );
 }
+
+    

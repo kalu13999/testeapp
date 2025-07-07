@@ -66,11 +66,15 @@ export function UserNav({ user }: UserNavProps) {
             <span>Billing</span>
             <DropdownMenuShortcut>⌘B</DropdownMenuShortcut>
           </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Settings className="mr-2 h-4 w-4" />
-            <span>Settings</span>
-            <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
-          </DropdownMenuItem>
+          {user.role === 'Admin' && (
+             <DropdownMenuItem asChild>
+                <Link href="/settings">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
+                     <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
+                </Link>
+            </DropdownMenuItem>
+          )}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout}>
@@ -82,3 +86,5 @@ export function UserNav({ user }: UserNavProps) {
     </DropdownMenu>
   );
 }
+
+    
