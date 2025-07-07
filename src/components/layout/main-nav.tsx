@@ -41,6 +41,13 @@ import { useAppContext } from "@/context/workflow-context";
 
 const allMenuItems = [
   {
+    id: "account",
+    title: "Account",
+    items: [
+      { href: "/profile", label: "My Profile", icon: User },
+    ],
+  },
+  {
     id: "dashboards",
     title: "Dashboards",
     items: [{ href: "/dashboard", label: "Overview", icon: SlidersHorizontal }],
