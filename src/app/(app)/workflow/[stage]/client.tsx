@@ -2,6 +2,7 @@
 "use client"
 
 import * as React from "react";
+import * as XLSX from 'xlsx';
 import {
   Table,
   TableBody,
@@ -22,7 +23,7 @@ import {
 } from "@/components/ui/card"
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send, FolderSync, Upload, XCircle, CheckCircle, FileWarning, PlayCircle, UserPlus, Info, MoreHorizontal } from "lucide-react";
+import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send, FolderSync, Upload, XCircle, CheckCircle, FileWarning, PlayCircle, UserPlus, Info, MoreHorizontal, Download, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppContext } from "@/context/workflow-context";
 import { EnrichedBook, AppDocument, User } from "@/context/workflow-context";
@@ -35,7 +36,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
+const ITEMS_PER_PAGE = 10;
 
 const iconMap: { [key: string]: LucideIcon } = {
     Check,
@@ -117,20 +120,24 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const [bulkAssignState, setBulkAssignState] = React.useState<{ open: boolean; role: AssignmentRole | null }>({ open: false, role: null });
   const [selectedUserId, setSelectedUserId] = React.useState<string>("");
   const [detailsState, setDetailsState] = React.useState<{ open: boolean; book?: EnrichedBook }>({ open: false });
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [filters, setFilters] = React.useState({ query: '', priority: 'all' });
+  const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
+    { id: 'name', desc: false }
+  ]);
+  const priorities = ['High', 'Medium', 'Low'];
 
   
-  const displayItems = React.useMemo(() => {
+  const allDisplayItems = React.useMemo(() => {
     let baseBooks = books;
     let baseDocuments = documents;
 
-    // Apply the global project filter if it's selected
     if (selectedProjectId) {
       baseBooks = books.filter(b => b.projectId === selectedProjectId);
       baseDocuments = documents.filter(d => d.projectId === selectedProjectId);
     }
 
     if (dataType === 'book' && dataStatus) {
-      // Special case for 'Ready for Processing' which is a document status, but we show books.
       if (stage === 'ready-for-processing') {
         const booksWithReadyDocs = new Set(
           baseDocuments.filter(doc => doc.status === 'Ready for Processing').map(doc => doc.bookId)
@@ -140,7 +147,6 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
       let filteredBooks = baseBooks.filter(book => book.status === dataStatus);
 
-      // Filter for assignment stages based on user role
       if (stage === 'to-scan' && currentUser?.role === 'Scanning') {
         filteredBooks = filteredBooks.filter(book => book.scannerUserId === currentUser.id);
       }
@@ -159,14 +165,150 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     return [];
   }, [books, documents, dataType, dataStatus, dataStage, currentUser, stage, selectedProjectId]);
 
+  const handleFilterChange = (filterName: keyof typeof filters, value: string) => {
+    setFilters(prev => ({ ...prev, [filterName]: value }));
+    setCurrentPage(1); 
+  };
+  
+  const handleSort = (columnId: string, isShift: boolean) => {
+    setSorting(currentSorting => {
+        const existingSortIndex = currentSorting.findIndex(s => s.id === columnId);
+        if (isShift) {
+            let newSorting = [...currentSorting];
+            if (existingSortIndex > -1) {
+                if (newSorting[existingSortIndex].desc) { newSorting.splice(existingSortIndex, 1); } 
+                else { newSorting[existingSortIndex].desc = true; }
+            } else { newSorting.push({ id: columnId, desc: false }); }
+            return newSorting;
+        } else {
+            if (currentSorting.length === 1 && currentSorting[0].id === columnId) {
+                if (currentSorting[0].desc) { return []; }
+                return [{ id: columnId, desc: true }];
+            }
+            return [{ id: columnId, desc: false }];
+        }
+    });
+  };
+
+  const getSortIndicator = (columnId: string) => {
+    const sortIndex = sorting.findIndex(s => s.id === columnId);
+    if (sortIndex === -1) return <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-0 group-hover:opacity-50" />;
+    const sort = sorting[sortIndex];
+    const icon = sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />;
+    return <div className="flex items-center gap-1">{icon}{sorting.length > 1 && (<span className="text-xs font-bold text-muted-foreground">{sortIndex + 1}</span>)}</div>;
+  }
+
+  const sortedAndFilteredItems = React.useMemo(() => {
+    let filtered = allDisplayItems.filter((item: EnrichedBook | AppDocument) => {
+        const queryMatch = filters.query.trim() === '' || 
+            item.name.toLowerCase().includes(filters.query.toLowerCase());
+        
+        let priorityMatch = true;
+        if (dataType === 'book' && filters.priority !== 'all') {
+            priorityMatch = ((item as EnrichedBook).priority || 'Medium') === filters.priority;
+        }
+        
+        return queryMatch && priorityMatch;
+    });
+
+    if (sorting.length > 0) {
+        filtered.sort((a, b) => {
+            for (const s of sorting) {
+                const key = s.id as keyof (EnrichedBook | AppDocument);
+                const valA = a[key as keyof typeof a];
+                const valB = b[key as keyof typeof b];
+                let result = 0;
+                if (valA === null || valA === undefined) result = -1;
+                else if (valB === null || valB === undefined) result = 1;
+                else if (typeof valA === 'number' && typeof valB === 'number') { result = valA - valB; }
+                else { result = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' }); }
+                if (result !== 0) return s.desc ? -result : result;
+            }
+            return 0;
+        });
+    }
+
+    return filtered;
+  }, [allDisplayItems, filters, sorting, dataType]);
+
+  const totalPages = Math.ceil(sortedAndFilteredItems.length / ITEMS_PER_PAGE);
+  const displayItems = sortedAndFilteredItems.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+  const selectedItems = React.useMemo(() => {
+    return sortedAndFilteredItems.filter(item => selection.includes(item.id));
+  }, [sortedAndFilteredItems, selection]);
+
   React.useEffect(() => {
     setSelection([]);
-  }, [stage]);
+    setCurrentPage(1);
+  }, [stage, filters, sorting, selectedProjectId]);
   
   const openConfirmationDialog = ({ title, description, onConfirm}: Omit<typeof confirmationState, 'open'>) => {
     setConfirmationState({ open: true, title, description, onConfirm });
   }
-  
+
+  // --- EXPORT LOGIC ---
+  const downloadFile = (content: string, fileName: string, mimeType: string) => {
+    const blob = new Blob([content], { type: mimeType });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", fileName);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  const exportJSON = (data: (EnrichedBook | AppDocument)[]) => {
+    if (data.length === 0) return;
+    const jsonString = JSON.stringify(data, null, 2);
+    downloadFile(jsonString, `${stage}_export.json`, 'application/json');
+    toast({ title: "Export Successful", description: `${data.length} items exported as JSON.` });
+  }
+
+  const exportCSV = (data: (EnrichedBook | AppDocument)[]) => {
+    if (data.length === 0) return;
+    const headers = Object.keys(data[0]);
+    const csvContent = [
+        headers.join(','),
+        ...data.map(item => 
+            headers.map(header => {
+                let value = item[header as keyof typeof item] as any ?? '';
+                if(Array.isArray(value)) value = value.join(';');
+                if (typeof value === 'object' && value !== null) value = JSON.stringify(value);
+                if (typeof value === 'string' && value.includes(',')) {
+                    return `"${value.replace(/"/g, '""')}"`;
+                }
+                return value;
+            }).join(',')
+        )
+    ].join('\n');
+    downloadFile(csvContent, `${stage}_export.csv`, 'text/csv;charset=utf-8;');
+    toast({ title: "Export Successful", description: `${data.length} items exported as CSV.` });
+  }
+
+  const exportXLSX = (data: (EnrichedBook | AppDocument)[]) => {
+    if (data.length === 0) return;
+    const dataToExport = data.map(item => {
+        const newItem = {...item};
+        Object.keys(newItem).forEach(key => {
+            const value = newItem[key as keyof typeof newItem];
+            if(Array.isArray(value)) {
+                (newItem as any)[key] = value.join(';');
+            }
+        });
+        return newItem;
+    });
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, title);
+    XLSX.writeFile(workbook, `${stage}_export.xlsx`);
+    toast({ title: "Export Successful", description: `${data.length} items exported as XLSX.` });
+  }
+
   const handleQCAction = (item: any, newStatus: string) => {
     let actionText = '';
     let nextStageStatus = '';
@@ -224,7 +366,6 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     setScanState({ open: false, book: null, folderName: null, fileCount: null });
   }
 
-  // --- Assignment Dialog Logic ---
   const assignmentConfig: { [key in AssignmentRole]: { roleName: string, title: string, description: string } } = {
     scanner: { roleName: 'Scanning', title: "Assign Scanner", description: "Select a scanner operator to process this book." },
     indexer: { roleName: 'Indexing', title: "Assign Indexer", description: "Select an indexer to process this book." },
@@ -279,7 +420,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     }
 
     selection.forEach(bookId => {
-      const book = displayItems.find(b => b.id === bookId) as EnrichedBook;
+      const book = allDisplayItems.find(b => b.id === bookId) as EnrichedBook;
       if (book) {
         if (role === 'scanner') {
           handleBookAction(book.id, book.status, { scannerUserId: selectedUserId });
@@ -332,9 +473,8 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
             break;
         default:
             selection.forEach(id => {
-              const item = displayItems.find(d => d.id === id) as EnrichedBook;
+              const item = allDisplayItems.find(d => d.id === id) as EnrichedBook;
               if (item) {
-                // This covers all other bulk actions that don't need a dialog
                 handleSingleItemAction(item);
               }
             });
@@ -345,7 +485,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
   const handleBulkCancel = () => {
     selection.forEach(id => {
-        const item = displayItems.find(d => d.id === id) as EnrichedBook;
+        const item = allDisplayItems.find(d => d.id === id) as EnrichedBook;
         if (item) {
             handleCancelTask(item.id, item.status);
         }
@@ -467,6 +607,35 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     </TableRow>
   )
 
+  const PaginationNav = () => {
+    if (totalPages <= 1) return null;
+    const pageNumbers: number[] = [];
+    const maxPagesToShow = 5;
+
+    if (totalPages <= maxPagesToShow) {
+        for (let i = 1; i <= totalPages; i++) { pageNumbers.push(i); }
+    } else {
+        pageNumbers.push(1);
+        if (currentPage > 3) { pageNumbers.push(-1); }
+        let start = Math.max(2, currentPage - 1);
+        let end = Math.min(totalPages - 1, currentPage + 1);
+        if (currentPage <= 2) { end = 3; }
+        if (currentPage >= totalPages - 1) { start = totalPages - 2; }
+        for (let i = start; i <= end; i++) { pageNumbers.push(i); }
+        if (currentPage < totalPages - 2) { pageNumbers.push(-1); }
+        pageNumbers.push(totalPages);
+    }
+    
+    return (
+      <Pagination>
+        <PaginationContent>
+          <PaginationItem><PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }} className={currentPage === 1 ? "pointer-events-none opacity-50" : undefined}/></PaginationItem>
+          {pageNumbers.map((num, i) => num === -1 ? <PaginationItem key={`ellipsis-${i}`}><PaginationEllipsis /></PaginationItem> : <PaginationItem key={num}><PaginationLink href="#" isActive={currentPage === num} onClick={(e) => { e.preventDefault(); setCurrentPage(num); }}>{num}</PaginationLink></PaginationItem>)}
+          <PaginationItem><PaginationNext href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }} className={currentPage === totalPages ? "pointer-events-none opacity-50" : undefined}/></PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    );
+  }
 
   return (
     <>
@@ -477,34 +646,74 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                 <CardTitle className="font-headline">{title}</CardTitle>
                 <CardDescription>{description}</CardDescription>
             </div>
-            {selection.length > 0 && (
-                <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">{selection.length} of {displayItems.length} selected</span>
-                    {['scanning-started', 'indexing-started', 'checking-started'].includes(stage) && (
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => openConfirmationDialog({
-                                title: `Cancel ${selection.length} selected tasks?`,
-                                description: "This will revert all selected books to their previous step.",
-                                onConfirm: () => handleBulkCancel()
-                            })}
-                        >
-                            <Undo2 className="mr-2 h-4 w-4" />
-                            Cancel Selected
+            <div className="flex items-center gap-2">
+                {selection.length > 0 && (
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">{selection.length} of {sortedAndFilteredItems.length} selected</span>
+                        {['scanning-started', 'indexing-started', 'checking-started'].includes(stage) && (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openConfirmationDialog({
+                                    title: `Cancel ${selection.length} selected tasks?`,
+                                    description: "This will revert all selected books to their previous step.",
+                                    onConfirm: () => handleBulkCancel()
+                                })}
+                            >
+                                <Undo2 className="mr-2 h-4 w-4" />
+                                Cancel Selected
+                            </Button>
+                        )}
+                        {actionButtonLabel && (
+                        <Button size="sm" onClick={() => openConfirmationDialog({
+                            title: `Are you sure?`,
+                            description: `This will perform the action "${actionButtonLabel}" on ${selection.length} selected items.`,
+                            onConfirm: handleBulkAction
+                        })}>
+                            {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
+                            {actionButtonLabel} Selected
                         </Button>
-                    )}
-                    {actionButtonLabel && (
-                      <Button size="sm" onClick={() => openConfirmationDialog({
-                          title: `Are you sure?`,
-                          description: `This will perform the action "${actionButtonLabel}" on ${selection.length} selected items.`,
-                          onConfirm: handleBulkAction
-                      })}>
-                          {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
-                          {actionButtonLabel} Selected
-                      </Button>
-                    )}
-                </div>
+                        )}
+                    </div>
+                )}
+                 <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button size="sm" variant="outline" className="h-9 gap-1">
+                            <Download className="h-3.5 w-3.5" />
+                            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Export</span>
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Export Selected ({selection.length})</DropdownMenuLabel>
+                        <DropdownMenuItem onSelect={() => exportXLSX(selectedItems)} disabled={selection.length === 0}>Export as XLSX</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportJSON(selectedItems)} disabled={selection.length === 0}>Export as JSON</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportCSV(selectedItems)} disabled={selection.length === 0}>Export as CSV</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuLabel>Export All ({sortedAndFilteredItems.length})</DropdownMenuLabel>
+                        <DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredItems)} disabled={sortedAndFilteredItems.length === 0}>Export as XLSX</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredItems)} disabled={sortedAndFilteredItems.length === 0}>Export as JSON</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredItems)} disabled={sortedAndFilteredItems.length === 0}>Export as CSV</DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+        </div>
+        <div className="flex items-center gap-2 pt-4">
+            <Input 
+                placeholder="Search by name..." 
+                className="max-w-xs"
+                value={filters.query}
+                onChange={(e) => handleFilterChange('query', e.target.value)}
+            />
+            {dataType === 'book' && (
+                <Select value={filters.priority} onValueChange={(value) => handleFilterChange('priority', value)}>
+                    <SelectTrigger className="w-auto min-w-[180px]">
+                        <SelectValue placeholder="Filter by Priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Priorities</SelectItem>
+                        {priorities.map(priority => <SelectItem key={priority} value={priority}>{priority}</SelectItem>)}
+                    </SelectContent>
+                </Select>
             )}
         </div>
       </CardHeader>
@@ -521,10 +730,10 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                             aria-label="Select all"
                         />
                     </TableHead>
-                    <TableHead>Book Name</TableHead>
-                    <TableHead>Project</TableHead>
-                    <TableHead className="hidden md:table-cell">Client</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>Book Name {getSortIndicator('name')}</div></TableHead>
+                    <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('projectName', e.shiftKey)}>Project {getSortIndicator('projectName')}</div></TableHead>
+                    <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('clientName', e.shiftKey)}>Client {getSortIndicator('clientName')}</div></TableHead>
+                    <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Status {getSortIndicator('status')}</div></TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               ) : (
@@ -536,11 +745,11 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                             aria-label="Select all"
                         />
                     </TableHead>
-                  <TableHead>Document Name</TableHead>
-                  <TableHead>Client</TableHead>
-                  <TableHead className="hidden md:table-cell">Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="hidden md:table-cell">Last Updated</TableHead>
+                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>Document Name {getSortIndicator('name')}</div></TableHead>
+                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('client', e.shiftKey)}>Client {getSortIndicator('client')}</div></TableHead>
+                  <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('type', e.shiftKey)}>Type {getSortIndicator('type')}</div></TableHead>
+                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Status {getSortIndicator('status')}</div></TableHead>
+                  <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('lastUpdated', e.shiftKey)}>Last Updated {getSortIndicator('lastUpdated')}</div></TableHead>
                   {(actionButtonLabel || stage === 'final-quality-control') && (
                     <TableHead>Actions</TableHead>
                   )}
@@ -561,10 +770,11 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
            </div>
         )}
       </CardContent>
-      <CardFooter>
+      <CardFooter className="flex items-center justify-between">
         <div className="text-xs text-muted-foreground">
-          Showing <strong>{displayItems.length}</strong> items
+            {selection.length > 0 ? `${selection.length} of ${sortedAndFilteredItems.length} item(s) selected.` : `Showing ${displayItems.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + displayItems.length} of ${sortedAndFilteredItems.length} items`}
         </div>
+        <PaginationNav />
       </CardFooter>
     </Card>
 
@@ -636,7 +846,6 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
       </DialogContent>
     </Dialog>
 
-    {/* Single Assignment Dialog */}
     {assignState.role && assignState.book && (
       <Dialog open={assignState.open} onOpenChange={closeAssignmentDialog}>
         <DialogContent>
@@ -666,7 +875,6 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
       </Dialog>
     )}
     
-    {/* Bulk Assignment Dialog */}
     {bulkAssignState.role && (
       <Dialog open={bulkAssignState.open} onOpenChange={closeBulkAssignmentDialog}>
         <DialogContent>
@@ -680,8 +888,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                 <SelectValue placeholder={`Select a ${bulkAssignState.role}...`} />
               </SelectTrigger>
               <SelectContent>
-                 {/* Note: Bulk assignment will only show users who can be assigned to the FIRST selected book's project. A more robust solution might show users common to ALL selected projects. */}
-                 {getAssignableUsers(bulkAssignState.role, (displayItems.find(item => item.id === selection[0]) as EnrichedBook)?.projectId).map(user => (
+                 {getAssignableUsers(bulkAssignState.role, (allDisplayItems.find(item => item.id === selection[0]) as EnrichedBook)?.projectId).map(user => (
                   <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
                 ))}
               </SelectContent>

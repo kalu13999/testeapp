@@ -2,7 +2,8 @@
 "use client"
 
 import * as React from "react"
-import { MoreHorizontal, PlusCircle, Trash2, Edit, Info, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react"
+import * as XLSX from 'xlsx';
+import { MoreHorizontal, PlusCircle, Trash2, Edit, Info, ArrowUp, ArrowDown, ChevronsUpDown, Download } from "lucide-react"
 
 import {
   AlertDialog,
@@ -55,15 +56,20 @@ import { useAppContext } from "@/context/workflow-context"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
+import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
+
 
 const ITEMS_PER_PAGE = 10;
 
 export default function UsersClient() {
   const { users, roles, clients, addUser, updateUser, deleteUser, allProjects } = useAppContext();
   const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | 'details' | null; data?: User }>({ open: false, type: null })
+  const { toast } = useToast();
   
   const [filters, setFilters] = React.useState({ query: '', role: 'all', department: 'all' });
   const [currentPage, setCurrentPage] = React.useState(1);
+  const [selection, setSelection] = React.useState<string[]>([]);
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
     { id: 'name', desc: false }
   ]);
@@ -159,12 +165,69 @@ export default function UsersClient() {
     return filtered;
 
   }, [users, filters, sorting]);
+  
+  const selectedUsers = React.useMemo(() => {
+    return sortedAndFilteredUsers.filter(user => selection.includes(user.id));
+  }, [sortedAndFilteredUsers, selection]);
+
+  React.useEffect(() => {
+    setSelection([]);
+  }, [filters, sorting]);
+
 
   const totalPages = Math.ceil(sortedAndFilteredUsers.length / ITEMS_PER_PAGE);
   const paginatedUsers = sortedAndFilteredUsers.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
+
+  const downloadFile = (content: string, fileName: string, mimeType: string) => {
+    const blob = new Blob([content], { type: mimeType });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", fileName);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  const exportJSON = (data: User[]) => {
+    if (data.length === 0) return;
+    const jsonString = JSON.stringify(data.map(({ password, ...rest }) => rest), null, 2);
+    downloadFile(jsonString, 'users_export.json', 'application/json');
+    toast({ title: "Export Successful", description: `${data.length} users exported as JSON.` });
+  }
+
+  const exportCSV = (data: User[]) => {
+    if (data.length === 0) return;
+    const headers: (keyof User)[] = ['id', 'name', 'email', 'role', 'phone', 'jobTitle', 'department', 'lastLogin'];
+    const csvContent = [
+        headers.join(','),
+        ...data.map(user => 
+            headers.map(header => {
+                let value = user[header] ?? '';
+                if (typeof value === 'string' && value.includes(',')) {
+                    return `"${value.replace(/"/g, '""')}"`;
+                }
+                return value;
+            }).join(',')
+        )
+    ].join('\n');
+    downloadFile(csvContent, 'users_export.csv', 'text/csv;charset=utf-8;');
+    toast({ title: "Export Successful", description: `${data.length} users exported as CSV.` });
+  }
+
+  const exportXLSX = (data: User[]) => {
+    if (data.length === 0) return;
+    const worksheet = XLSX.utils.json_to_sheet(data.map(({ password, ...rest }) => rest));
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Users");
+    XLSX.writeFile(workbook, "users_export.xlsx");
+    toast({ title: "Export Successful", description: `${data.length} users exported as XLSX.` });
+  }
+
 
   const PaginationNav = () => {
     if (totalPages <= 1) return null;
@@ -231,10 +294,31 @@ export default function UsersClient() {
           <h1 className="font-headline text-3xl font-bold tracking-tight">User Management</h1>
           <p className="text-muted-foreground">Manage users and their permissions.</p>
         </div>
-        <Button onClick={() => openDialog('new')}>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          New User
-        </Button>
+        <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" className="h-9 gap-1">
+                    <Download className="h-3.5 w-3.5" />
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Export</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Export Selected ({selection.length})</DropdownMenuLabel>
+                  <DropdownMenuItem onSelect={() => exportXLSX(selectedUsers)} disabled={selection.length === 0}>Export as XLSX</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportJSON(selectedUsers)} disabled={selection.length === 0}>Export as JSON</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportCSV(selectedUsers)} disabled={selection.length === 0}>Export as CSV</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Export All ({sortedAndFilteredUsers.length})</DropdownMenuLabel>
+                  <DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredUsers)} disabled={sortedAndFilteredUsers.length === 0}>Export as XLSX</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredUsers)} disabled={sortedAndFilteredUsers.length === 0}>Export as JSON</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredUsers)} disabled={sortedAndFilteredUsers.length === 0}>Export as CSV</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button onClick={() => openDialog('new')}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                New User
+            </Button>
+        </div>
       </div>
       <Card>
         <CardHeader>
@@ -269,6 +353,13 @@ export default function UsersClient() {
           <Table>
             <TableHeader>
               <TableRow>
+                 <TableHead className="w-[40px]">
+                    <Checkbox
+                        onCheckedChange={(checked) => setSelection(checked ? paginatedUsers.map(u => u.id) : [])}
+                        checked={paginatedUsers.length > 0 && paginatedUsers.every(u => selection.includes(u.id))}
+                        aria-label="Select all on this page"
+                    />
+                </TableHead>
                 <TableHead>
                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>
                         Name {getSortIndicator('name')}
@@ -296,7 +387,20 @@ export default function UsersClient() {
             </TableHeader>
             <TableBody>
               {paginatedUsers.length > 0 ? paginatedUsers.map((user) => (
-                <TableRow key={user.id}>
+                <TableRow key={user.id} data-state={selection.includes(user.id) && "selected"}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selection.includes(user.id)}
+                      onCheckedChange={(checked) => {
+                        setSelection(
+                          checked
+                            ? [...selection, user.id]
+                            : selection.filter((id) => id !== user.id)
+                        )
+                      }}
+                      aria-label={`Select user ${user.name}`}
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-3">
                       <Avatar className="h-9 w-9">
@@ -339,7 +443,7 @@ export default function UsersClient() {
                 </TableRow>
               )) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
+                  <TableCell colSpan={6} className="h-24 text-center">
                     No users found matching your filters.
                   </TableCell>
                 </TableRow>
@@ -349,7 +453,7 @@ export default function UsersClient() {
         </CardContent>
          <CardFooter className="flex items-center justify-between">
             <div className="text-xs text-muted-foreground">
-              Showing <strong>{paginatedUsers.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-{(currentPage - 1) * ITEMS_PER_PAGE + paginatedUsers.length}</strong> of <strong>{sortedAndFilteredUsers.length}</strong> users
+               {selection.length > 0 ? `${selection.length} of ${sortedAndFilteredUsers.length} user(s) selected.` : `Showing ${paginatedUsers.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedUsers.length} of ${sortedAndFilteredUsers.length} users`}
             </div>
             <PaginationNav />
         </CardFooter>

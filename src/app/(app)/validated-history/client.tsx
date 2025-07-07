@@ -2,6 +2,7 @@
 "use client"
 
 import * as React from "react";
+import * as XLSX from 'xlsx';
 import Link from "next/link";
 import {
   Table,
@@ -22,18 +23,27 @@ import {
 } from "@/components/ui/card"
 import { useAppContext } from "@/context/workflow-context";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Info, CheckCircle2, XCircle, History, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
+import { Info, CheckCircle2, XCircle, History, ArrowUp, ArrowDown, ChevronsUpDown, Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { EnrichedBook } from "@/lib/data";
 
 const ITEMS_PER_PAGE = 15;
 
+type ValidatedBook = EnrichedBook & { validationDate: string, validationStatus: 'Approved' | 'Rejected' };
+
 export default function ValidatedHistoryClient() {
     const { books, auditLogs, currentUser, projects } = useAppContext();
+    const { toast } = useToast();
 
     const [filters, setFilters] = React.useState({ query: '', project: 'all', outcome: 'all' });
     const [currentPage, setCurrentPage] = React.useState(1);
+    const [selection, setSelection] = React.useState<string[]>([]);
     const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
         { id: 'validationDate', desc: true }
     ]);
@@ -90,14 +100,14 @@ export default function ValidatedHistoryClient() {
         );
     }
 
-    const validationHistory = React.useMemo(() => {
+    const validationHistory: ValidatedBook[] = React.useMemo(() => {
         if (!currentUser) return [];
 
         let relevantBooks;
         if (currentUser.role === 'Admin') {
             relevantBooks = books.filter(book => ['Complete', 'Finalized', 'Client Rejected'].includes(book.status));
         } else {
-            relevantBooks = books.filter(book => ['Complete', 'Finalized', 'Client Rejected'].includes(book.status));
+            relevantBooks = books.filter(book => book.clientId === currentUser.clientId && ['Complete', 'Finalized', 'Client Rejected'].includes(book.status));
         }
 
         return relevantBooks.map(book => {
@@ -147,12 +157,69 @@ export default function ValidatedHistoryClient() {
         }
         return filtered;
     }, [validationHistory, filters, sorting, currentUser?.role]);
+    
+    const selectedHistory = React.useMemo(() => {
+        return sortedAndFilteredHistory.filter(item => selection.includes(item.id));
+    }, [sortedAndFilteredHistory, selection]);
+
+    React.useEffect(() => {
+        setSelection([]);
+    }, [filters, sorting]);
+
 
     const totalPages = Math.ceil(sortedAndFilteredHistory.length / ITEMS_PER_PAGE);
     const paginatedHistory = sortedAndFilteredHistory.slice(
         (currentPage - 1) * ITEMS_PER_PAGE,
         currentPage * ITEMS_PER_PAGE
     );
+    
+    const downloadFile = (content: string, fileName: string, mimeType: string) => {
+        const blob = new Blob([content], { type: mimeType });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", fileName);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    const exportJSON = (data: ValidatedBook[]) => {
+        if (data.length === 0) return;
+        const jsonString = JSON.stringify(data, null, 2);
+        downloadFile(jsonString, 'history_export.json', 'application/json');
+        toast({ title: "Export Successful", description: `${data.length} items exported as JSON.` });
+    }
+
+    const exportCSV = (data: ValidatedBook[]) => {
+        if (data.length === 0) return;
+        const headers = ['id', 'name', 'clientName', 'projectName', 'validationStatus', 'validationDate', 'rejectionReason'];
+        const csvContent = [
+            headers.join(','),
+            ...data.map(item => 
+                headers.map(header => {
+                    let value = item[header as keyof ValidatedBook] ?? '';
+                    if (typeof value === 'string' && value.includes(',')) {
+                        return `"${value.replace(/"/g, '""')}"`;
+                    }
+                    return value;
+                }).join(',')
+            )
+        ].join('\n');
+        downloadFile(csvContent, 'history_export.csv', 'text/csv;charset=utf-8;');
+        toast({ title: "Export Successful", description: `${data.length} items exported as CSV.` });
+    }
+
+    const exportXLSX = (data: ValidatedBook[]) => {
+        if (data.length === 0) return;
+        const worksheet = XLSX.utils.json_to_sheet(data);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Validated History");
+        XLSX.writeFile(workbook, "history_export.xlsx");
+        toast({ title: "Export Successful", description: `${data.length} items exported as XLSX.` });
+    }
+
 
     const PaginationNav = () => {
         if (totalPages <= 1) return null;
@@ -187,8 +254,31 @@ export default function ValidatedHistoryClient() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle className="font-headline">Validated History</CardTitle>
-                <CardDescription>History of all approved and rejected document batches.</CardDescription>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <CardTitle className="font-headline">Validated History</CardTitle>
+                        <CardDescription>History of all approved and rejected document batches.</CardDescription>
+                    </div>
+                     <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button size="sm" variant="outline" className="h-9 gap-1">
+                                <Download className="h-3.5 w-3.5" />
+                                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Export</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Export Selected ({selection.length})</DropdownMenuLabel>
+                            <DropdownMenuItem onSelect={() => exportXLSX(selectedHistory)} disabled={selection.length === 0}>Export as XLSX</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => exportJSON(selectedHistory)} disabled={selection.length === 0}>Export as JSON</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => exportCSV(selectedHistory)} disabled={selection.length === 0}>Export as CSV</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel>Export All ({sortedAndFilteredHistory.length})</DropdownMenuLabel>
+                            <DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredHistory)} disabled={sortedAndFilteredHistory.length === 0}>Export as XLSX</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredHistory)} disabled={sortedAndFilteredHistory.length === 0}>Export as JSON</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredHistory)} disabled={sortedAndFilteredHistory.length === 0}>Export as CSV</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
                 
                 <div className="flex items-center gap-2 pt-2 flex-wrap">
                     <Input
@@ -226,6 +316,13 @@ export default function ValidatedHistoryClient() {
                     <Table>
                         <TableHeader>
                             <TableRow>
+                                <TableHead className="w-[40px]">
+                                    <Checkbox
+                                        onCheckedChange={(checked) => setSelection(checked ? paginatedHistory.map(h => h.id) : [])}
+                                        checked={paginatedHistory.length > 0 && paginatedHistory.every(h => selection.includes(h.id))}
+                                        aria-label="Select all on this page"
+                                    />
+                                </TableHead>
                                 <TableHead>
                                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>
                                         Batch Name {getSortIndicator('name')}
@@ -256,7 +353,20 @@ export default function ValidatedHistoryClient() {
                         </TableHeader>
                         <TableBody>
                             {paginatedHistory.map(book => (
-                                <TableRow key={book.id}>
+                                <TableRow key={book.id} data-state={selection.includes(book.id) && "selected"}>
+                                    <TableCell>
+                                        <Checkbox
+                                        checked={selection.includes(book.id)}
+                                        onCheckedChange={(checked) => {
+                                            setSelection(
+                                            checked
+                                                ? [...selection, book.id]
+                                                : selection.filter((id) => id !== book.id)
+                                            )
+                                        }}
+                                        aria-label={`Select item ${book.name}`}
+                                        />
+                                    </TableCell>
                                     <TableCell className="font-medium">
                                         <Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link>
                                     </TableCell>
@@ -304,7 +414,7 @@ export default function ValidatedHistoryClient() {
             </CardContent>
             <CardFooter className="flex items-center justify-between">
                 <div className="text-xs text-muted-foreground">
-                    Showing <strong>{paginatedHistory.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-{(currentPage - 1) * ITEMS_PER_PAGE + paginatedHistory.length}</strong> of <strong>{sortedAndFilteredHistory.length}</strong> validated batches
+                   {selection.length > 0 ? `${selection.length} of ${sortedAndFilteredHistory.length} item(s) selected.` : `Showing ${paginatedHistory.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedHistory.length} of ${sortedAndFilteredHistory.length} validated batches`}
                 </div>
                 {totalPages > 1 && <PaginationNav />}
             </CardFooter>

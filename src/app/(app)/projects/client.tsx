@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import * as React from "react"
+import * as XLSX from 'xlsx';
 
 import {
   Table,
@@ -23,7 +24,7 @@ import {
 } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, PlusCircle, Trash2, Edit, Info, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Trash2, Edit, Info, ArrowUp, ArrowDown, ChevronsUpDown, Download } from "lucide-react";
 import { type Client, type EnrichedProject, type Project } from "@/lib/data";
 import {
   DropdownMenu,
@@ -56,6 +57,8 @@ import { useAppContext } from "@/context/workflow-context";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -71,9 +74,11 @@ const getStatusBadgeVariant = (status: string) => {
 export default function ProjectsClient() {
   const { projects, clients, addProject, updateProject, deleteProject } = useAppContext();
   const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | 'details' | null; data?: EnrichedProject }>({ open: false, type: null })
+  const { toast } = useToast();
   
   const [filters, setFilters] = React.useState({ query: '', client: 'all', status: 'all' });
   const [currentPage, setCurrentPage] = React.useState(1);
+  const [selection, setSelection] = React.useState<string[]>([]);
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
     { id: 'name', desc: false }
   ]);
@@ -170,11 +175,67 @@ export default function ProjectsClient() {
 
   }, [projects, filters, sorting]);
 
+  const selectedProjects = React.useMemo(() => {
+    return sortedAndFilteredProjects.filter(project => selection.includes(project.id));
+  }, [sortedAndFilteredProjects, selection]);
+
+  React.useEffect(() => {
+    setSelection([]);
+  }, [filters, sorting]);
+
   const totalPages = Math.ceil(sortedAndFilteredProjects.length / ITEMS_PER_PAGE);
   const paginatedProjects = sortedAndFilteredProjects.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
+
+  const downloadFile = (content: string, fileName: string, mimeType: string) => {
+    const blob = new Blob([content], { type: mimeType });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", fileName);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  const exportJSON = (data: EnrichedProject[]) => {
+    if (data.length === 0) return;
+    const jsonString = JSON.stringify(data, null, 2);
+    downloadFile(jsonString, 'projects_export.json', 'application/json');
+    toast({ title: "Export Successful", description: `${data.length} projects exported as JSON.` });
+  }
+
+  const exportCSV = (data: EnrichedProject[]) => {
+    if (data.length === 0) return;
+    const headers = ['id', 'name', 'clientName', 'status', 'startDate', 'endDate', 'budget', 'progress', 'documentCount', 'totalExpected', 'description', 'info'];
+    const csvContent = [
+        headers.join(','),
+        ...data.map(project => 
+            headers.map(header => {
+                let value = project[header as keyof EnrichedProject] ?? '';
+                if (typeof value === 'string' && value.includes(',')) {
+                    return `"${value.replace(/"/g, '""')}"`;
+                }
+                return value;
+            }).join(',')
+        )
+    ].join('\n');
+    downloadFile(csvContent, 'projects_export.csv', 'text/csv;charset=utf-8;');
+    toast({ title: "Export Successful", description: `${data.length} projects exported as CSV.` });
+  }
+
+  const exportXLSX = (data: EnrichedProject[]) => {
+    if (data.length === 0) return;
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Projects");
+    XLSX.writeFile(workbook, "projects_export.xlsx");
+    toast({ title: "Export Successful", description: `${data.length} projects exported as XLSX.` });
+  }
+
 
   const PaginationNav = () => {
     if (totalPages <= 1) return null;
@@ -238,10 +299,31 @@ export default function ProjectsClient() {
                   <h1 className="font-headline text-3xl font-bold tracking-tight">Projects</h1>
                   <p className="text-muted-foreground">Manage and track all ongoing projects.</p>
               </div>
-              <Button onClick={() => openDialog('new')}>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  New Project
-              </Button>
+              <div className="flex items-center gap-2">
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button size="sm" variant="outline" className="h-9 gap-1">
+                            <Download className="h-3.5 w-3.5" />
+                            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Export</span>
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Export Selected ({selection.length})</DropdownMenuLabel>
+                        <DropdownMenuItem onSelect={() => exportXLSX(selectedProjects)} disabled={selection.length === 0}>Export as XLSX</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportJSON(selectedProjects)} disabled={selection.length === 0}>Export as JSON</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportCSV(selectedProjects)} disabled={selection.length === 0}>Export as CSV</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuLabel>Export All ({sortedAndFilteredProjects.length})</DropdownMenuLabel>
+                        <DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredProjects)} disabled={sortedAndFilteredProjects.length === 0}>Export as XLSX</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredProjects)} disabled={sortedAndFilteredProjects.length === 0}>Export as JSON</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredProjects)} disabled={sortedAndFilteredProjects.length === 0}>Export as CSV</DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+                <Button onClick={() => openDialog('new')}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    New Project
+                </Button>
+              </div>
           </div>
           <Card>
               <CardHeader>
@@ -276,6 +358,13 @@ export default function ProjectsClient() {
               <Table>
                   <TableHeader>
                   <TableRow>
+                      <TableHead className="w-[40px]">
+                        <Checkbox
+                            onCheckedChange={(checked) => setSelection(checked ? paginatedProjects.map(p => p.id) : [])}
+                            checked={paginatedProjects.length > 0 && paginatedProjects.every(p => selection.includes(p.id))}
+                            aria-label="Select all on this page"
+                        />
+                      </TableHead>
                       <TableHead>
                         <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>
                             Project Name {getSortIndicator('name')}
@@ -302,7 +391,20 @@ export default function ProjectsClient() {
                   </TableHeader>
                   <TableBody>
                   {paginatedProjects.length > 0 ? paginatedProjects.map((project) => (
-                      <TableRow key={project.id}>
+                      <TableRow key={project.id} data-state={selection.includes(project.id) && "selected"}>
+                          <TableCell>
+                            <Checkbox
+                                checked={selection.includes(project.id)}
+                                onCheckedChange={(checked) => {
+                                    setSelection(
+                                    checked
+                                        ? [...selection, project.id]
+                                        : selection.filter((id) => id !== project.id)
+                                    )
+                                }}
+                                aria-label={`Select project ${project.name}`}
+                                />
+                          </TableCell>
                           <TableCell className="font-medium">
                               <Link href={`/projects/${project.id}`} className="hover:underline">
                                   {project.name}
@@ -344,7 +446,7 @@ export default function ProjectsClient() {
                       </TableRow>
                   )) : (
                     <TableRow>
-                      <TableCell colSpan={6} className="h-24 text-center">
+                      <TableCell colSpan={7} className="h-24 text-center">
                         No projects found matching your filters.
                       </TableCell>
                     </TableRow>
@@ -354,7 +456,7 @@ export default function ProjectsClient() {
               </CardContent>
               <CardFooter className="flex items-center justify-between">
                 <div className="text-xs text-muted-foreground">
-                  Showing <strong>{paginatedProjects.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-{(currentPage - 1) * ITEMS_PER_PAGE + paginatedProjects.length}</strong> of <strong>{sortedAndFilteredProjects.length}</strong> projects
+                  {selection.length > 0 ? `${selection.length} of ${sortedAndFilteredProjects.length} project(s) selected.` : `Showing ${paginatedProjects.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedProjects.length} of ${sortedAndFilteredProjects.length} projects`}
                 </div>
                 <PaginationNav />
               </CardFooter>

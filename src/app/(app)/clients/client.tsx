@@ -1,8 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { MoreHorizontal, PlusCircle, Trash2, Edit, Info, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react"
-
+import * as XLSX from 'xlsx';
+import { MoreHorizontal, PlusCircle, Trash2, Edit, Info, ArrowUp, ArrowDown, ChevronsUpDown, Download } from "lucide-react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,15 +51,20 @@ import { ClientForm } from "./client-form"
 import { useAppContext } from "@/context/workflow-context"
 import { Input } from "@/components/ui/input"
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
+import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
+
 
 const ITEMS_PER_PAGE = 10;
 
 export default function ClientsClient() {
   const { clients, addClient, updateClient, deleteClient } = useAppContext();
   const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | 'details' | null; data?: Client }>({ open: false, type: null })
+  const { toast } = useToast();
   
   const [query, setQuery] = React.useState("");
   const [currentPage, setCurrentPage] = React.useState(1);
+  const [selection, setSelection] = React.useState<string[]>([]);
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
     { id: 'name', desc: false }
   ]);
@@ -142,12 +147,68 @@ export default function ClientsClient() {
     return filtered;
 
   }, [clients, query, sorting]);
+  
+  const selectedClients = React.useMemo(() => {
+    return sortedAndFilteredClients.filter(client => selection.includes(client.id));
+  }, [sortedAndFilteredClients, selection]);
+
+  React.useEffect(() => {
+    setSelection([]);
+  }, [query, sorting]);
+
 
   const totalPages = Math.ceil(sortedAndFilteredClients.length / ITEMS_PER_PAGE);
   const paginatedClients = sortedAndFilteredClients.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
+  
+  const downloadFile = (content: string, fileName: string, mimeType: string) => {
+    const blob = new Blob([content], { type: mimeType });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", fileName);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  const exportJSON = (data: Client[]) => {
+    if (data.length === 0) return;
+    const jsonString = JSON.stringify(data, null, 2);
+    downloadFile(jsonString, 'clients_export.json', 'application/json');
+    toast({ title: "Export Successful", description: `${data.length} clients exported as JSON.` });
+  }
+
+  const exportCSV = (data: Client[]) => {
+    if (data.length === 0) return;
+    const headers = Object.keys(data[0]);
+    const csvContent = [
+        headers.join(','),
+        ...data.map(client => 
+            headers.map(header => {
+                let value = client[header as keyof Client] ?? '';
+                if (typeof value === 'string' && value.includes(',')) {
+                    return `"${value.replace(/"/g, '""')}"`;
+                }
+                return value;
+            }).join(',')
+        )
+    ].join('\n');
+    downloadFile(csvContent, 'clients_export.csv', 'text/csv;charset=utf-8;');
+    toast({ title: "Export Successful", description: `${data.length} clients exported as CSV.` });
+  }
+
+  const exportXLSX = (data: Client[]) => {
+    if (data.length === 0) return;
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Clients");
+    XLSX.writeFile(workbook, "clients_export.xlsx");
+    toast({ title: "Export Successful", description: `${data.length} clients exported as XLSX.` });
+  }
 
   const PaginationNav = () => {
     if (totalPages <= 1) return null;
@@ -209,10 +270,31 @@ export default function ClientsClient() {
           <h1 className="font-headline text-3xl font-bold tracking-tight">Clients</h1>
           <p className="text-muted-foreground">Manage all company clients.</p>
         </div>
-        <Button onClick={() => openDialog('new')}>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          New Client
-        </Button>
+        <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" className="h-9 gap-1">
+                    <Download className="h-3.5 w-3.5" />
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Export</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Export Selected ({selection.length})</DropdownMenuLabel>
+                  <DropdownMenuItem onSelect={() => exportXLSX(selectedClients)} disabled={selection.length === 0}>Export as XLSX</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportJSON(selectedClients)} disabled={selection.length === 0}>Export as JSON</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportCSV(selectedClients)} disabled={selection.length === 0}>Export as CSV</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Export All ({sortedAndFilteredClients.length})</DropdownMenuLabel>
+                  <DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredClients)} disabled={sortedAndFilteredClients.length === 0}>Export as XLSX</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredClients)} disabled={sortedAndFilteredClients.length === 0}>Export as JSON</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredClients)} disabled={sortedAndFilteredClients.length === 0}>Export as CSV</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button onClick={() => openDialog('new')}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                New Client
+            </Button>
+        </div>
       </div>
       <Card>
         <CardHeader>
@@ -232,6 +314,13 @@ export default function ClientsClient() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[40px]">
+                    <Checkbox
+                        onCheckedChange={(checked) => setSelection(checked ? paginatedClients.map(c => c.id) : [])}
+                        checked={paginatedClients.length > 0 && paginatedClients.every(c => selection.includes(c.id))}
+                        aria-label="Select all on this page"
+                    />
+                </TableHead>
                 <TableHead>
                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>
                         Client Name {getSortIndicator('name')}
@@ -259,7 +348,20 @@ export default function ClientsClient() {
             </TableHeader>
             <TableBody>
               {paginatedClients.length > 0 ? paginatedClients.map((client) => (
-                <TableRow key={client.id}>
+                <TableRow key={client.id} data-state={selection.includes(client.id) && "selected"}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selection.includes(client.id)}
+                      onCheckedChange={(checked) => {
+                        setSelection(
+                          checked
+                            ? [...selection, client.id]
+                            : selection.filter((id) => id !== client.id)
+                        )
+                      }}
+                      aria-label={`Select client ${client.name}`}
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">{client.name}</TableCell>
                   <TableCell>{client.contactEmail}</TableCell>
                   <TableCell>{client.contactPhone}</TableCell>
@@ -290,7 +392,7 @@ export default function ClientsClient() {
                 </TableRow>
               )) : (
                  <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
+                  <TableCell colSpan={6} className="h-24 text-center">
                     No clients found matching your search.
                   </TableCell>
                 </TableRow>
@@ -300,7 +402,7 @@ export default function ClientsClient() {
         </CardContent>
         <CardFooter className="flex items-center justify-between">
             <div className="text-xs text-muted-foreground">
-              Showing <strong>{paginatedClients.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-{(currentPage - 1) * ITEMS_PER_PAGE + paginatedClients.length}</strong> of <strong>{sortedAndFilteredClients.length}</strong> clients
+               {selection.length > 0 ? `${selection.length} of ${sortedAndFilteredClients.length} client(s) selected.` : `Showing ${paginatedClients.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedClients.length} of ${sortedAndFilteredClients.length} clients`}
             </div>
             <PaginationNav />
         </CardFooter>

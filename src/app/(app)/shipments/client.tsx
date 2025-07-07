@@ -2,6 +2,7 @@
 "use client"
 
 import * as React from "react"
+import * as XLSX from 'xlsx';
 import {
   Table,
   TableBody,
@@ -19,7 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Send, PackageSearch, ChevronsUpDown, ArrowUp, ArrowDown } from "lucide-react"
+import { Send, PackageSearch, ChevronsUpDown, ArrowUp, ArrowDown, Download } from "lucide-react"
 import { useAppContext, EnrichedBook } from "@/context/workflow-context"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -33,13 +34,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
-
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ShipmentsClient() {
   const { books, handleMarkAsShipped } = useAppContext();
   const [selection, setSelection] = React.useState<string[]>([]);
   const [isConfirmOpen, setIsConfirmOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
+  const { toast } = useToast();
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
     { id: 'name', desc: false }
   ]);
@@ -123,12 +126,64 @@ export default function ShipmentsClient() {
 
   }, [books, query, sorting]);
 
+  const selectedBooks = React.useMemo(() => {
+    return sortedAndFilteredBooks.filter(book => selection.includes(book.id));
+  }, [sortedAndFilteredBooks, selection]);
+
   const handleConfirmShipment = () => {
     if (selection.length > 0) {
       handleMarkAsShipped(selection);
       setSelection([]);
     }
     setIsConfirmOpen(false);
+  }
+
+  const downloadFile = (content: string, fileName: string, mimeType: string) => {
+    const blob = new Blob([content], { type: mimeType });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", fileName);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  const exportJSON = (data: EnrichedBook[]) => {
+    if (data.length === 0) return;
+    const jsonString = JSON.stringify(data, null, 2);
+    downloadFile(jsonString, 'shipment_export.json', 'application/json');
+    toast({ title: "Export Successful", description: `${data.length} books exported as JSON.` });
+  }
+
+  const exportCSV = (data: EnrichedBook[]) => {
+    if (data.length === 0) return;
+    const headers = ['id', 'name', 'projectName', 'expectedDocuments', 'priority'];
+    const csvContent = [
+        headers.join(','),
+        ...data.map(book => 
+            headers.map(header => {
+                let value = book[header as keyof EnrichedBook] ?? '';
+                if (typeof value === 'string' && value.includes(',')) {
+                    return `"${value.replace(/"/g, '""')}"`;
+                }
+                return value;
+            }).join(',')
+        )
+    ].join('\n');
+    downloadFile(csvContent, 'shipment_export.csv', 'text/csv;charset=utf-8;');
+    toast({ title: "Export Successful", description: `${data.length} books exported as CSV.` });
+  }
+
+  const exportXLSX = (data: EnrichedBook[]) => {
+    if (data.length === 0) return;
+    const exportableData = data.map(({ id, name, projectName, expectedDocuments, priority }) => ({ id, name, projectName, expectedDocuments, priority }));
+    const worksheet = XLSX.utils.json_to_sheet(exportableData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Shipment");
+    XLSX.writeFile(workbook, "shipment_export.xlsx");
+    toast({ title: "Export Successful", description: `${data.length} books exported as XLSX.` });
   }
 
   return (
@@ -140,13 +195,29 @@ export default function ShipmentsClient() {
                   <CardTitle className="font-headline">Prepare Shipment</CardTitle>
                   <CardDescription>Select the books you are sending to us and mark them as shipped.</CardDescription>
               </div>
-              <Button 
-                disabled={selection.length === 0}
-                onClick={() => setIsConfirmOpen(true)}
-              >
-                <Send className="mr-2 h-4 w-4" />
-                Mark {selection.length > 0 ? selection.length : ''} Book(s) as Shipped
-              </Button>
+              <div className="flex items-center gap-2">
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button size="sm" variant="outline" className="h-9 gap-1">
+                            <Download className="h-3.5 w-3.5" />
+                            <span>Export</span>
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Export Selected ({selection.length})</DropdownMenuLabel>
+                        <DropdownMenuItem onSelect={() => exportXLSX(selectedBooks)} disabled={selection.length === 0}>Export as XLSX</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportJSON(selectedBooks)} disabled={selection.length === 0}>Export as JSON</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportCSV(selectedBooks)} disabled={selection.length === 0}>Export as CSV</DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+                <Button 
+                    disabled={selection.length === 0}
+                    onClick={() => setIsConfirmOpen(true)}
+                >
+                    <Send className="mr-2 h-4 w-4" />
+                    Mark {selection.length > 0 ? selection.length : ''} Book(s) as Shipped
+                </Button>
+              </div>
           </div>
           <div className="pt-4">
               <Input
@@ -221,7 +292,7 @@ export default function ShipmentsClient() {
         </CardContent>
         <CardFooter>
           <div className="text-xs text-muted-foreground">
-            Showing <strong>{sortedAndFilteredBooks.length}</strong> pending books
+            {selection.length > 0 ? `${selection.length} book(s) selected.` : `Showing ${sortedAndFilteredBooks.length} pending books.`}
           </div>
         </CardFooter>
       </Card>
