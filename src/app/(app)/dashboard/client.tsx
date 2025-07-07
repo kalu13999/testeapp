@@ -251,97 +251,87 @@ function AdminDashboard() {
 
     return (
       <>
-        <Tabs defaultValue="overview">
-            <TabsList className="mb-4">
-                <TabsTrigger value="overview">System Overview</TabsTrigger>
-                <TabsTrigger value="client-view">Client View</TabsTrigger>
-            </TabsList>
-            <TabsContent value="overview">
-                <div className="flex flex-col gap-6">
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                        {kpiData.map((kpi) => (
-                            <Card key={kpi.title}>
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
-                                    <kpi.icon className="h-4 w-4 text-muted-foreground" />
-                                </CardHeader>
-                                <CardContent><div className="text-2xl font-bold">{kpi.value}</div><p className="text-xs text-muted-foreground">{kpi.description}</p></CardContent>
-                            </Card>
-                        ))}
-                    </div>
-                    <div className="grid gap-6">
-                        <Card>
-                            <CardHeader className="flex flex-row items-start justify-between">
-                                <div>
-                                    <CardTitle className="font-headline flex items-center gap-2"><BarChart2 className="h-5 w-5"/> Workflow Overview</CardTitle>
-                                    <CardDescription>Number of books currently in each workflow phase. Click a bar for details.</CardDescription>
-                                </div>
-                                <Tabs value={chartType} onValueChange={(value) => setChartType(value as any)} className="w-auto">
-                                    <TabsList><TabsTrigger value="bar">Bar</TabsTrigger><TabsTrigger value="line">Line</TabsTrigger><TabsTrigger value="area">Area</TabsTrigger></TabsList>
-                                </Tabs>
-                            </CardHeader>
-                            <CardContent>
-                                <ChartContainer config={workflowChartConfig} className="h-[300px] w-full cursor-pointer">
-                                    <ChartComponent data={chartData} onClick={handleWorkflowChartClick}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                        <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} angle={-40} textAnchor="end" height={80} interval={0} />
-                                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false}/>
-                                        <ChartTooltip cursor={{ fill: "hsl(var(--muted))" }} content={<ChartTooltipContent hideLabel />} />
-                                        {ChartElement}
-                                    </ChartComponent>
-                                </ChartContainer>
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="font-headline flex items-center gap-2"><TrendingUp className="h-5 w-5"/> Daily Throughput</CardTitle>
-                                <CardDescription>Count of books completing key stages over the last 7 days. Click the chart for details.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <ChartContainer config={dailyChartConfig} className="h-[250px] w-full cursor-pointer">
-                                    <LineChart data={dailyChartData} margin={{ left: 12, right: 12 }} onClick={handleDailyChartClick}>
-                                        <CartesianGrid vertical={false} />
-                                        <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} />
-                                        <YAxis allowDecimals={false} />
-                                        <ChartTooltip content={<ChartTooltipContent indicator="dot" />} />
-                                        <ChartLegend content={<ChartLegendContent />} />
-                                        {Object.keys(dailyChartConfig).map((key) => (<Line key={key} dataKey={key} type="monotone" stroke={`var(--color-${key})`} strokeWidth={2} dot={false} />))}
-                                    </LineChart>
-                                </ChartContainer>
-                            </CardContent>
-                        </Card>
-                        {!selectedProjectId && projectProgressData.length > 0 && (
-                            <Card>
-                                <CardHeader><CardTitle className="font-headline flex items-center gap-2"><ListTodo className="h-5 w-5" /> Project Health</CardTitle><CardDescription>Overview of all active and recently completed projects.</CardDescription></CardHeader>
-                                <CardContent>
-                                    <Table><TableHeader><TableRow><TableHead>Project Name</TableHead><TableHead>Client</TableHead><TableHead>Status</TableHead><TableHead className="w-[200px]">Progress</TableHead></TableRow></TableHeader>
-                                        <TableBody>
-                                            {projectProgressData.map(project => (<TableRow key={project.id}><TableCell className="font-medium"><Link href={`/projects/${project.id}`} className="hover:underline">{project.name}</Link></TableCell><TableCell>{project.client}</TableCell><TableCell><Badge variant={getStatusBadgeVariant(project.status)}>{project.status}</Badge></TableCell><TableCell><Progress value={project.progress} className="h-2"/></TableCell></TableRow>))}
-                                        </TableBody>
-                                    </Table>
-                                </CardContent>
-                            </Card>
-                        )}
-                        <Card>
-                            <CardHeader><CardTitle className="font-headline flex items-center gap-2"><Activity className="h-5 w-5" /> Recent Activity</CardTitle><CardDescription>Latest actions performed across the system.</CardDescription></CardHeader>
-                            <CardContent>
-                                <Table><TableHeader><TableRow><TableHead>Details</TableHead><TableHead>User</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
-                                    <TableBody>
-                                        {recentActivities.length > 0 ? recentActivities.map(activity => {
-                                            const targetLink = activity.documentId ? `/documents/${activity.documentId}` : (activity.bookId ? `/books/${activity.bookId}` : '#');
-                                            return (<TableRow key={activity.id}><TableCell><Link href={targetLink} className="font-medium truncate hover:underline">{activity.action}</Link><div className="text-xs text-muted-foreground truncate">{activity.details}</div></TableCell><TableCell>{activity.user}</TableCell><TableCell className="text-xs">{new Date(activity.date).toLocaleString()}</TableCell></TableRow>)
-                                        }) : (<TableRow><TableCell colSpan={3} className="h-24 text-center">No recent activity.</TableCell></TableRow>)}
-                                    </TableBody>
-                                </Table>
-                            </CardContent>
-                        </Card>
-                    </div>
-                </div>
-            </TabsContent>
-            <TabsContent value="client-view">
-                <ClientDashboard />
-            </TabsContent>
-        </Tabs>
+        <div className="flex flex-col gap-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                {kpiData.map((kpi) => (
+                    <Card key={kpi.title}>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
+                            <kpi.icon className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent><div className="text-2xl font-bold">{kpi.value}</div><p className="text-xs text-muted-foreground">{kpi.description}</p></CardContent>
+                    </Card>
+                ))}
+            </div>
+            <div className="grid gap-6">
+                <Card>
+                    <CardHeader className="flex flex-row items-start justify-between">
+                        <div>
+                            <CardTitle className="font-headline flex items-center gap-2"><BarChart2 className="h-5 w-5"/> Workflow Overview</CardTitle>
+                            <CardDescription>Number of books currently in each workflow phase. Click a bar for details.</CardDescription>
+                        </div>
+                        <Tabs value={chartType} onValueChange={(value) => setChartType(value as any)} className="w-auto">
+                            <TabsList><TabsTrigger value="bar">Bar</TabsTrigger><TabsTrigger value="line">Line</TabsTrigger><TabsTrigger value="area">Area</TabsTrigger></TabsList>
+                        </Tabs>
+                    </CardHeader>
+                    <CardContent>
+                        <ChartContainer config={workflowChartConfig} className="h-[300px] w-full cursor-pointer">
+                            <ChartComponent data={chartData} onClick={handleWorkflowChartClick}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} angle={-40} textAnchor="end" height={80} interval={0} />
+                                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false}/>
+                                <ChartTooltip cursor={{ fill: "hsl(var(--muted))" }} content={<ChartTooltipContent hideLabel />} />
+                                {ChartElement}
+                            </ChartComponent>
+                        </ChartContainer>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="font-headline flex items-center gap-2"><TrendingUp className="h-5 w-5"/> Daily Throughput</CardTitle>
+                        <CardDescription>Count of books completing key stages over the last 7 days. Click the chart for details.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ChartContainer config={dailyChartConfig} className="h-[250px] w-full cursor-pointer">
+                            <LineChart data={dailyChartData} margin={{ left: 12, right: 12 }} onClick={handleDailyChartClick}>
+                                <CartesianGrid vertical={false} />
+                                <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} />
+                                <YAxis allowDecimals={false} />
+                                <ChartTooltip content={<ChartTooltipContent indicator="dot" />} />
+                                <ChartLegend content={<ChartLegendContent />} />
+                                {Object.keys(dailyChartConfig).map((key) => (<Line key={key} dataKey={key} type="monotone" stroke={`var(--color-${key})`} strokeWidth={2} dot={false} />))}
+                            </LineChart>
+                        </ChartContainer>
+                    </CardContent>
+                </Card>
+                {!selectedProjectId && projectProgressData.length > 0 && (
+                    <Card>
+                        <CardHeader><CardTitle className="font-headline flex items-center gap-2"><ListTodo className="h-5 w-5" /> Project Health</CardTitle><CardDescription>Overview of all active and recently completed projects.</CardDescription></CardHeader>
+                        <CardContent>
+                            <Table><TableHeader><TableRow><TableHead>Project Name</TableHead><TableHead>Client</TableHead><TableHead>Status</TableHead><TableHead className="w-[200px]">Progress</TableHead></TableRow></TableHeader>
+                                <TableBody>
+                                    {projectProgressData.map(project => (<TableRow key={project.id}><TableCell className="font-medium"><Link href={`/projects/${project.id}`} className="hover:underline">{project.name}</Link></TableCell><TableCell>{project.client}</TableCell><TableCell><Badge variant={getStatusBadgeVariant(project.status)}>{project.status}</Badge></TableCell><TableCell><Progress value={project.progress} className="h-2"/></TableCell></TableRow>))}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                )}
+                <Card>
+                    <CardHeader><CardTitle className="font-headline flex items-center gap-2"><Activity className="h-5 w-5" /> Recent Activity</CardTitle><CardDescription>Latest actions performed across the system.</CardDescription></CardHeader>
+                    <CardContent>
+                        <Table><TableHeader><TableRow><TableHead>Details</TableHead><TableHead>User</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
+                            <TableBody>
+                                {recentActivities.length > 0 ? recentActivities.map(activity => {
+                                    const targetLink = activity.documentId ? `/documents/${activity.documentId}` : (activity.bookId ? `/books/${activity.bookId}` : '#');
+                                    return (<TableRow key={activity.id}><TableCell><Link href={targetLink} className="font-medium truncate hover:underline">{activity.action}</Link><div className="text-xs text-muted-foreground truncate">{activity.details}</div></TableCell><TableCell>{activity.user}</TableCell><TableCell className="text-xs">{new Date(activity.date).toLocaleString()}</TableCell></TableRow>)
+                                }) : (<TableRow><TableCell colSpan={3} className="h-24 text-center">No recent activity.</TableCell></TableRow>)}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+
         <Dialog open={detailState.open} onOpenChange={handleCloseDetailDialog}>
             <DialogContent className="max-w-3xl">
                 <DialogHeader>
@@ -507,5 +497,3 @@ export default function DashboardClient() {
         </div>
     )
 }
-
-    
