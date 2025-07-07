@@ -148,7 +148,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         items = baseBooks.filter(book => book.status === dataStatus);
       }
       
-      if (currentUser && config.assigneeRole) {
+      if (currentUser && config.assigneeRole && currentUser.role !== 'Admin') {
           const roleMap: { [key: string]: string } = {
             scanner: 'Scanning',
             indexer: 'Indexing',
