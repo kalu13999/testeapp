@@ -121,12 +121,10 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const [selectedUserId, setSelectedUserId] = React.useState<string>("");
   const [detailsState, setDetailsState] = React.useState<{ open: boolean; book?: EnrichedBook }>({ open: false });
   const [currentPage, setCurrentPage] = React.useState(1);
-  const [filters, setFilters] = React.useState({ query: '', priority: 'all' });
+  const [columnFilters, setColumnFilters] = React.useState<{ [key: string]: string }>({});
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
     { id: 'name', desc: false }
   ]);
-  const priorities = ['High', 'Medium', 'Low'];
-
   
   const allDisplayItems = React.useMemo(() => {
     let baseBooks = books;
@@ -165,9 +163,9 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     return [];
   }, [books, documents, dataType, dataStatus, dataStage, currentUser, stage, selectedProjectId]);
 
-  const handleFilterChange = (filterName: keyof typeof filters, value: string) => {
-    setFilters(prev => ({ ...prev, [filterName]: value }));
-    setCurrentPage(1); 
+  const handleColumnFilterChange = (columnId: string, value: string) => {
+    setColumnFilters(prev => ({ ...prev, [columnId]: value }));
+    setCurrentPage(1);
   };
   
   const handleSort = (columnId: string, isShift: boolean) => {
@@ -197,34 +195,17 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     const icon = sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />;
     return <div className="flex items-center gap-1">{icon}{sorting.length > 1 && (<span className="text-xs font-bold text-muted-foreground">{sortIndex + 1}</span>)}</div>;
   }
-  
-  const globalSearch = (item: object, query: string) => {
-    if (!query) return true;
-    const lowerCaseQuery = query.toLowerCase();
-
-    for (const key in item) {
-        if (Object.prototype.hasOwnProperty.call(item, key)) {
-            const value = item[key as keyof typeof item];
-            if (typeof value === 'string' || typeof value === 'number') {
-                if (String(value).toLowerCase().includes(lowerCaseQuery)) {
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
-  };
 
   const sortedAndFilteredItems = React.useMemo(() => {
-    let filtered = allDisplayItems.filter((item: EnrichedBook | AppDocument) => {
-        const queryMatch = globalSearch(item, filters.query);
-        
-        let priorityMatch = true;
-        if (dataType === 'book' && filters.priority !== 'all') {
-            priorityMatch = ((item as EnrichedBook).priority || 'Medium') === filters.priority;
-        }
-        
-        return queryMatch && priorityMatch;
+    let filtered = allDisplayItems;
+
+    Object.entries(columnFilters).forEach(([columnId, value]) => {
+      if (value) {
+        filtered = filtered.filter(item => {
+          const itemValue = item[columnId as keyof typeof item] as any;
+          return String(itemValue).toLowerCase().includes(value.toLowerCase());
+        });
+      }
     });
 
     if (sorting.length > 0) {
@@ -245,7 +226,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     }
 
     return filtered;
-  }, [allDisplayItems, filters, sorting, dataType]);
+  }, [allDisplayItems, columnFilters, sorting]);
 
   const totalPages = Math.ceil(sortedAndFilteredItems.length / ITEMS_PER_PAGE);
   const displayItems = sortedAndFilteredItems.slice(
@@ -259,7 +240,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   React.useEffect(() => {
     setSelection([]);
     setCurrentPage(1);
-  }, [stage, filters, sorting, selectedProjectId]);
+  }, [stage, columnFilters, sorting, selectedProjectId]);
   
   const openConfirmationDialog = ({ title, description, onConfirm}: Omit<typeof confirmationState, 'open'>) => {
     setConfirmationState({ open: true, title, description, onConfirm });
@@ -713,31 +694,13 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                 </DropdownMenu>
             </div>
         </div>
-        <div className="flex items-center gap-2 pt-4">
-            <Input 
-                placeholder="Search all columns..." 
-                className="max-w-xs"
-                value={filters.query}
-                onChange={(e) => handleFilterChange('query', e.target.value)}
-            />
-            {dataType === 'book' && (
-                <Select value={filters.priority} onValueChange={(value) => handleFilterChange('priority', value)}>
-                    <SelectTrigger className="w-auto min-w-[180px]">
-                        <SelectValue placeholder="Filter by Priority" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Priorities</SelectItem>
-                        {priorities.map(priority => <SelectItem key={priority} value={priority}>{priority}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-            )}
-        </div>
       </CardHeader>
       <CardContent>
         {displayItems.length > 0 ? (
           <Table>
             <TableHeader>
               {dataType === 'book' ? (
+                <>
                 <TableRow>
                     <TableHead className="w-[50px]">
                         <Checkbox
@@ -752,7 +715,17 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                     <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Status {getSortIndicator('status')}</div></TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
+                <TableRow>
+                  <TableHead />
+                  <TableHead><Input placeholder="Filter by name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/></TableHead>
+                  <TableHead><Input placeholder="Filter by project..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/></TableHead>
+                  <TableHead className="hidden md:table-cell"><Input placeholder="Filter by client..." value={columnFilters['clientName'] || ''} onChange={(e) => handleColumnFilterChange('clientName', e.target.value)} className="h-8"/></TableHead>
+                  <TableHead><Input placeholder="Filter by status..." value={columnFilters['status'] || ''} onChange={(e) => handleColumnFilterChange('status', e.target.value)} className="h-8"/></TableHead>
+                  <TableHead />
+                </TableRow>
+                </>
               ) : (
+                <>
                  <TableRow>
                     <TableHead className="w-[50px]">
                        <Checkbox
@@ -770,6 +743,16 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                     <TableHead>Actions</TableHead>
                   )}
                 </TableRow>
+                <TableRow>
+                  <TableHead />
+                  <TableHead><Input placeholder="Filter name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/></TableHead>
+                  <TableHead><Input placeholder="Filter client..." value={columnFilters['client'] || ''} onChange={(e) => handleColumnFilterChange('client', e.target.value)} className="h-8"/></TableHead>
+                  <TableHead className="hidden md:table-cell"><Input placeholder="Filter type..." value={columnFilters['type'] || ''} onChange={(e) => handleColumnFilterChange('type', e.target.value)} className="h-8"/></TableHead>
+                  <TableHead><Input placeholder="Filter status..." value={columnFilters['status'] || ''} onChange={(e) => handleColumnFilterChange('status', e.target.value)} className="h-8"/></TableHead>
+                  <TableHead className="hidden md:table-cell"><Input placeholder="Filter date..." value={columnFilters['lastUpdated'] || ''} onChange={(e) => handleColumnFilterChange('lastUpdated', e.target.value)} className="h-8"/></TableHead>
+                  {(actionButtonLabel || stage === 'final-quality-control') && (<TableHead />)}
+                </TableRow>
+                </>
               )}
             </TableHeader>
             <TableBody>
