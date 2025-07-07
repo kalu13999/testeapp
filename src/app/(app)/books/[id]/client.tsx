@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/card"
 import type { EnrichedBook, AppDocument, EnrichedAuditLog } from "@/context/workflow-context";
 import { useAppContext } from "@/context/workflow-context";
-import { Info, BookOpen, History, InfoIcon } from "lucide-react";
+import { Info, BookOpen, History, InfoIcon, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
@@ -31,13 +31,62 @@ const DetailItem = ({ label, value }: { label: string; value: React.ReactNode })
 
 export default function BookDetailClient({ bookId }: BookDetailClientProps) {
   const { books, documents, users, auditLogs } = useAppContext();
+  const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
+    { id: 'date', desc: true }
+  ]);
 
   const book = books.find(b => b.id === bookId);
   const pages = documents.filter(d => d.bookId === bookId);
   const scanner = users.find(u => u.id === book?.scannerUserId);
-  const bookAuditLogs = auditLogs.filter(log => log.bookId === bookId)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+  const bookAuditLogs = React.useMemo(() => {
+    let logs = auditLogs.filter(log => log.bookId === bookId);
+    
+    if (sorting.length > 0) {
+      logs.sort((a, b) => {
+        for (const s of sorting) {
+          const key = s.id as keyof EnrichedAuditLog;
+          const valA = a[key];
+          const valB = b[key];
+          let result = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' });
+          if (result !== 0) return s.desc ? -result : result;
+        }
+        return 0;
+      });
+    }
+    return logs;
+  }, [auditLogs, bookId, sorting]);
+  
+  const handleSort = (columnId: string, isShift: boolean) => {
+    setSorting(currentSorting => {
+        const existingSortIndex = currentSorting.findIndex(s => s.id === columnId);
+
+        if (isShift) {
+            let newSorting = [...currentSorting];
+            if (existingSortIndex > -1) {
+                if (newSorting[existingSortIndex].desc) { newSorting.splice(existingSortIndex, 1); } 
+                else { newSorting[existingSortIndex].desc = true; }
+            } else {
+                newSorting.push({ id: columnId, desc: false });
+            }
+            return newSorting;
+        } else {
+            if (currentSorting.length === 1 && currentSorting[0].id === columnId) {
+                if (currentSorting[0].desc) { return []; }
+                return [{ id: columnId, desc: true }];
+            }
+            return [{ id: columnId, desc: false }];
+        }
+    });
+  };
+
+  const getSortIndicator = (columnId: string) => {
+    const sortIndex = sorting.findIndex(s => s.id === columnId);
+    if (sortIndex === -1) return <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-0 group-hover:opacity-50" />;
+    const sort = sorting[sortIndex];
+    const icon = sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />;
+    return <div className="flex items-center gap-1">{icon}{sorting.length > 1 && (<span className="text-xs font-bold text-muted-foreground">{sortIndex + 1}</span>)}</div>;
+  }
 
   if (!book) {
     return (

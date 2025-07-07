@@ -14,11 +14,11 @@ import {
 } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Book, CheckCircle, Clock, Package, Edit, DollarSign, Calendar, Info } from "lucide-react";
+import { Book, CheckCircle, Clock, Package, Edit, DollarSign, Calendar, Info, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
 import { ProjectForm } from "../project-form";
 import Link from "next/link";
 import { useAppContext } from "@/context/workflow-context";
-import { Project } from "@/lib/data";
+import { EnrichedBook, Project } from "@/lib/data";
 
 interface ProjectDetailClientProps {
   projectId: string;
@@ -38,6 +38,9 @@ const getStatusIcon = (status: string) => {
 export default function ProjectDetailClient({ projectId }: ProjectDetailClientProps) {
   const { projects, clients, updateProject } = useAppContext();
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
+    { id: 'name', desc: false }
+  ]);
   
   const project = projects.find(p => p.id === projectId);
 
@@ -45,6 +48,59 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
     updateProject(projectId, values);
     setIsEditDialogOpen(false);
   }
+
+  const handleSort = (columnId: string, isShift: boolean) => {
+    setSorting(currentSorting => {
+        const existingSortIndex = currentSorting.findIndex(s => s.id === columnId);
+        if (isShift) {
+            let newSorting = [...currentSorting];
+            if (existingSortIndex > -1) {
+                if (newSorting[existingSortIndex].desc) { newSorting.splice(existingSortIndex, 1); } 
+                else { newSorting[existingSortIndex].desc = true; }
+            } else {
+                newSorting.push({ id: columnId, desc: false });
+            }
+            return newSorting;
+        } else {
+            if (currentSorting.length === 1 && currentSorting[0].id === columnId) {
+                if (currentSorting[0].desc) { return []; }
+                return [{ id: columnId, desc: true }];
+            }
+            return [{ id: columnId, desc: false }];
+        }
+    });
+  };
+
+  const getSortIndicator = (columnId: string) => {
+    const sortIndex = sorting.findIndex(s => s.id === columnId);
+    if (sortIndex === -1) return <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-0 group-hover:opacity-50" />;
+    const sort = sorting[sortIndex];
+    const icon = sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />;
+    return <div className="flex items-center gap-1">{icon}{sorting.length > 1 && (<span className="text-xs font-bold text-muted-foreground">{sortIndex + 1}</span>)}</div>;
+  }
+
+  const sortedBooks = React.useMemo(() => {
+    if (!project) return [];
+    let projectBooks = [...project.books];
+    if (sorting.length > 0) {
+        projectBooks.sort((a, b) => {
+            for (const s of sorting) {
+                const key = s.id as keyof EnrichedBook;
+                const valA = a[key] ?? '';
+                const valB = b[key] ?? '';
+                let result = 0;
+                if (typeof valA === 'number' && typeof valB === 'number') {
+                    result = valA - valB;
+                } else {
+                    result = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' });
+                }
+                if (result !== 0) return s.desc ? -result : result;
+            }
+            return 0;
+        });
+    }
+    return projectBooks;
+  }, [project, sorting]);
 
   if (!project) {
       return (
@@ -128,14 +184,14 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                   <Table>
                       <TableHeader>
                           <TableRow>
-                              <TableHead>Book Name</TableHead>
-                              <TableHead className="w-[150px]">Status</TableHead>
-                              <TableHead className="w-[150px] text-center">Documents</TableHead>
-                              <TableHead className="w-[200px]">Progress</TableHead>
+                              <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>Book Name {getSortIndicator('name')}</div></TableHead>
+                              <TableHead className="w-[150px]"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Status {getSortIndicator('status')}</div></TableHead>
+                              <TableHead className="w-[150px] text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('documentCount', e.shiftKey)}>Documents {getSortIndicator('documentCount')}</div></TableHead>
+                              <TableHead className="w-[200px]"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('progress', e.shiftKey)}>Progress {getSortIndicator('progress')}</div></TableHead>
                           </TableRow>
                       </TableHeader>
                       <TableBody>
-                          {project.books.map(book => (
+                          {sortedBooks.map(book => (
                               <TableRow key={book.id}>
                                   <TableCell className="font-medium">
                                       <Link href={`/books/${book.id}`} className="hover:underline">

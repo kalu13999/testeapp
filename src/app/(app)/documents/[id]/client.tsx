@@ -9,10 +9,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { useAppContext } from '@/context/workflow-context';
-import { ShieldAlert, AlertTriangle, InfoIcon, CircleX, History, MessageSquareQuote } from "lucide-react";
+import { ShieldAlert, AlertTriangle, InfoIcon, CircleX, History, MessageSquareQuote, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
 import type { AppDocument, EnrichedAuditLog } from '@/context/workflow-context';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 
 const flagConfig = {
     error: { icon: ShieldAlert, color: "text-destructive", label: "Error" },
@@ -22,6 +23,9 @@ const flagConfig = {
 
 export default function DocumentDetailClient({ docId }: { docId: string }) {
     const { documents, auditLogs, updateDocumentFlag } = useAppContext();
+    const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
+        { id: 'date', desc: true }
+    ]);
     
     const document = documents.find(doc => doc.id === docId);
 
@@ -31,9 +35,52 @@ export default function DocumentDetailClient({ docId }: { docId: string }) {
         comment: string;
     }>({ open: false, flag: null, comment: '' });
     
-    const documentAuditLogs = auditLogs
-      .filter(log => log.documentId === docId)
-      .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const documentAuditLogs = React.useMemo(() => {
+        let logs = auditLogs.filter(log => log.documentId === docId);
+        if (sorting.length > 0) {
+            logs.sort((a, b) => {
+                for (const s of sorting) {
+                    const key = s.id as keyof EnrichedAuditLog;
+                    const valA = a[key];
+                    const valB = b[key];
+                    let result = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' });
+                    if (result !== 0) return s.desc ? -result : result;
+                }
+                return 0;
+            });
+        }
+        return logs;
+    }, [auditLogs, docId, sorting]);
+
+    const handleSort = (columnId: string, isShift: boolean) => {
+        setSorting(currentSorting => {
+            const existingSortIndex = currentSorting.findIndex(s => s.id === columnId);
+            if (isShift) {
+                let newSorting = [...currentSorting];
+                if (existingSortIndex > -1) {
+                    if (newSorting[existingSortIndex].desc) { newSorting.splice(existingSortIndex, 1); } 
+                    else { newSorting[existingSortIndex].desc = true; }
+                } else {
+                    newSorting.push({ id: columnId, desc: false });
+                }
+                return newSorting;
+            } else {
+                if (currentSorting.length === 1 && currentSorting[0].id === columnId) {
+                    if (currentSorting[0].desc) { return []; }
+                    return [{ id: columnId, desc: true }];
+                }
+                return [{ id: columnId, desc: false }];
+            }
+        });
+    };
+
+    const getSortIndicator = (columnId: string) => {
+        const sortIndex = sorting.findIndex(s => s.id === columnId);
+        if (sortIndex === -1) return <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-0 group-hover:opacity-50" />;
+        const sort = sorting[sortIndex];
+        const icon = sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />;
+        return <div className="flex items-center gap-1">{icon}{sorting.length > 1 && (<span className="text-xs font-bold text-muted-foreground">{sortIndex + 1}</span>)}</div>;
+    }
 
 
     if (!document) {
@@ -108,25 +155,30 @@ export default function DocumentDetailClient({ docId }: { docId: string }) {
                             <CardDescription>Complete history of document lifecycle events.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-4">
-                            {documentAuditLogs.length > 0 ? documentAuditLogs.map((log, index) => (
-                                <div key={log.id} className="flex items-start gap-4 relative">
-                                    {index < documentAuditLogs.length - 1 && <div className="absolute left-4 top-8 w-px h-full bg-border" />}
-                                    <div className="flex-shrink-0 z-10">
-                                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center ring-4 ring-background">
-                                            <InfoIcon className="h-4 w-4 text-primary"/>
-                                        </div>
-                                    </div>
-                                    <div className="flex-1 -mt-1">
-                                        <p className="font-medium">{log.action} by <span className="text-primary">{log.user}</span></p>
-                                        <p className="text-sm text-muted-foreground">{log.details}</p>
-                                        <time className="text-xs text-muted-foreground">{new Date(log.date).toLocaleString()}</time>
-                                    </div>
-                                </div>
-                            )) : (
-                                    <p className="text-sm text-muted-foreground">No audit trail available for this document.</p>
+                            {documentAuditLogs.length > 0 ? (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('action', e.shiftKey)}>Action {getSortIndicator('action')}</div></TableHead>
+                                            <TableHead>Details</TableHead>
+                                            <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('user', e.shiftKey)}>User {getSortIndicator('user')}</div></TableHead>
+                                            <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('date', e.shiftKey)}>Date {getSortIndicator('date')}</div></TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {documentAuditLogs.map(log => (
+                                            <TableRow key={log.id}>
+                                                <TableCell className="font-medium">{log.action}</TableCell>
+                                                <TableCell className="text-muted-foreground">{log.details}</TableCell>
+                                                <TableCell>{log.user}</TableCell>
+                                                <TableCell>{new Date(log.date).toLocaleString()}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            ) : (
+                                <p className="text-sm text-muted-foreground text-center py-4">No audit trail available for this document.</p>
                             )}
-                            </div>
                         </CardContent>
                     </Card>
                 </div>
