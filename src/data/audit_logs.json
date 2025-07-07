@@ -1,395 +1,155 @@
 
 [
   {
-    "id": "al_101",
-    "bookId": "book_101",
+    "id": "al_200",
+    "bookId": "book_200",
     "action": "Book Added",
     "userId": "u_admin",
-    "date": "2024-07-20T17:15:35.341Z",
-    "details": "Book \"Batch A1 - Q4\" was added to project."
+    "date": "2025-07-01T09:00:00Z",
+    "details": "Book 'Innovate-A-001' was added to project."
   },
   {
-    "id": "al_102",
-    "bookId": "book_101",
+    "id": "al_201",
+    "bookId": "book_201",
     "action": "Book Shipped",
     "userId": "u_client_1",
-    "date": "2024-07-21T17:15:35.341Z",
-    "details": "Client marked book as shipped."
+    "date": "2025-07-01T10:00:00Z",
+    "details": "Client marked book 'Innovate-A-002' as shipped."
   },
   {
-    "id": "al_103",
-    "bookId": "book_101",
+    "id": "al_202",
+    "bookId": "book_202",
     "action": "Reception Confirmed",
     "userId": "u_reception",
-    "date": "2024-07-22T17:15:35.341Z",
-    "details": "Assigned to scanner Susan Scanner."
+    "date": "2025-07-02T09:00:00Z",
+    "details": "Assigned book 'Innovate-A-003' to scanner Sam Scanner."
   },
   {
-    "id": "al_104",
-    "bookId": "book_101",
+    "id": "al_203",
+    "bookId": "book_203",
     "action": "Scanning Started",
     "userId": "u_scanner_2",
-    "date": "2024-07-23T17:15:35.341Z",
-    "details": "Scanning process initiated for book."
+    "date": "2025-07-02T10:00:00Z",
+    "details": "Scanning process initiated for book 'Innovate-B-001'."
   },
   {
-    "id": "al_105",
-    "bookId": "book_101",
+    "id": "al_204",
+    "bookId": "book_204",
     "action": "Scanning Finished",
     "userId": "u_scanner_2",
-    "date": "2024-07-24T17:15:35.341Z",
-    "details": "26 pages created. Book moved to Storage."
+    "date": "2025-07-03T11:00:00Z",
+    "details": "95 pages created for 'Innovate-B-002'. Book moved to Storage."
   },
   {
-    "id": "al_106",
-    "bookId": "book_101",
+    "id": "al_205",
+    "bookId": "book_204",
     "action": "Assigned to Indexer",
     "userId": "u_admin",
-    "date": "2024-07-25T17:15:35.341Z",
-    "details": "Book \"Batch A1 - Q4\" assigned to Ida Indexer."
+    "date": "2025-07-03T11:30:00Z",
+    "details": "Book 'Innovate-B-002' assigned to Ida Indexer."
   },
   {
-    "id": "al_107",
-    "bookId": "book_101",
-    "action": "Indexing Started",
-    "userId": "u_indexer_1",
-    "date": "2024-07-26T17:15:35.341Z",
-    "details": "Indexing started."
-  },
-  {
-    "id": "al_108",
-    "bookId": "book_101",
-    "action": "Assigned for QC",
-    "userId": "u_indexer_1",
-    "date": "2024-07-27T17:15:35.341Z",
-    "details": "Book \"Batch A1 - Q4\" assigned to Charlie QC."
-  },
-  {
-    "id": "al_109",
-    "bookId": "book_102",
-    "action": "Book Added",
-    "userId": "u_admin",
-    "date": "2024-07-20T17:15:35.341Z",
-    "details": "Book \"Batch A2 - Planning\" was added to project."
-  },
-  {
-    "id": "al_110",
-    "bookId": "book_102",
-    "action": "Book Shipped",
-    "userId": "u_client_1",
-    "date": "2024-07-21T17:15:35.341Z",
-    "details": "Client marked book as shipped."
-  },
-  {
-    "id": "al_111",
-    "bookId": "book_102",
-    "action": "Reception Confirmed",
-    "userId": "u_reception",
-    "date": "2024-07-22T17:15:35.341Z",
-    "details": "Assigned to scanner Sam Scanner."
-  },
-  {
-    "id": "al_112",
-    "bookId": "book_102",
-    "action": "Scanning Started",
-    "userId": "u_scanner",
-    "date": "2024-07-23T17:15:35.341Z",
-    "details": "Scanning process initiated for book."
-  },
-  {
-    "id": "al_113",
-    "bookId": "book_102",
-    "action": "Scanning Finished",
-    "userId": "u_scanner",
-    "date": "2024-07-24T17:15:35.341Z",
-    "details": "41 pages created. Book moved to Storage."
-  },
-  {
-    "id": "al_114",
-    "bookId": "book_102",
-    "action": "Assigned to Indexer",
-    "userId": "u_admin",
-    "date": "2024-07-25T17:15:35.341Z",
-    "details": "Book \"Batch A2 - Planning\" assigned to Ian Indexer."
-  },
-  {
-    "id": "al_115",
-    "bookId": "book_102",
+    "id": "al_206",
+    "bookId": "book_205",
     "action": "Indexing Started",
     "userId": "u_indexer_2",
-    "date": "2024-07-26T17:15:35.341Z",
-    "details": "Indexing started."
+    "date": "2025-07-04T09:00:00Z",
+    "details": "Indexing started for book 'FutureTech-X-001'."
   },
   {
-    "id": "al_116",
-    "bookId": "book_102",
+    "id": "al_207",
+    "bookId": "book_206",
     "action": "Assigned for QC",
     "userId": "u_indexer_2",
-    "date": "2024-07-27T17:15:35.341Z",
-    "details": "Book \"Batch A2 - Planning\" assigned to Quentin Checker."
+    "date": "2025-07-05T16:00:00Z",
+    "details": "Book 'FutureTech-X-002' assigned to Charlie QC."
   },
   {
-    "id": "al_117",
-    "bookId": "book_103",
-    "action": "Book Added",
+    "id": "al_208",
+    "bookId": "book_207",
+    "action": "Checking Started",
+    "userId": "u_qc_2",
+    "date": "2025-07-06T11:00:00Z",
+    "details": "Initial QC started for book 'FutureTech-Y-001'."
+  },
+  {
+    "id": "al_209",
+    "bookId": "book_208",
+    "action": "Initial QC Complete",
+    "userId": "u_qc",
+    "date": "2025-07-06T15:00:00Z",
+    "details": "Book 'Innovate-C-001' has passed initial checks."
+  },
+  {
+    "id": "al_210",
+    "bookId": "book_209",
+    "action": "Processing Started",
+    "userId": "u_system",
+    "date": "2025-07-07T10:00:00Z",
+    "details": "Automated processing started for book 'FutureTech-Y-002'."
+  },
+  {
+    "id": "al_211",
+    "bookId": "book_210",
+    "action": "Processing Completed",
+    "userId": "u_system",
+    "date": "2025-07-07T11:00:00Z",
+    "details": "Automated processing finished for book 'Innovate-D-001'."
+  },
+  {
+    "id": "al_212",
+    "bookId": "book_211",
+    "action": "Workflow Step",
     "userId": "u_admin",
-    "date": "2024-07-20T17:15:35.341Z",
-    "details": "Book \"Batch A3 - HR\" was added to project."
+    "date": "2025-07-07T12:00:00Z",
+    "details": "Book 'FutureTech-Z-001' moved from Processed to Final Quality Control."
   },
   {
-    "id": "al_118",
-    "bookId": "book_103",
-    "action": "Book Shipped",
-    "userId": "u_client_1",
-    "date": "2024-07-21T17:15:35.341Z",
-    "details": "Client marked book as shipped."
+    "id": "al_213",
+    "bookId": "book_212",
+    "action": "Workflow Step",
+    "userId": "u_delivery",
+    "date": "2025-07-07T13:00:00Z",
+    "details": "Book 'Innovate-D-002' moved from Final Quality Control to Delivery."
   },
   {
-    "id": "al_119",
-    "bookId": "book_103",
-    "action": "Reception Confirmed",
-    "userId": "u_reception",
-    "date": "2024-07-22T17:15:35.341Z",
-    "details": "Assigned to scanner Susan Scanner."
+    "id": "al_214",
+    "bookId": "book_213",
+    "action": "Workflow Step",
+    "userId": "u_delivery",
+    "date": "2025-07-07T14:00:00Z",
+    "details": "Book 'FutureTech-Z-002' moved from Delivery to Pending Validation."
   },
   {
-    "id": "al_120",
-    "bookId": "book_103",
-    "action": "Scanning Started",
-    "userId": "u_scanner_2",
-    "date": "2024-07-23T17:15:35.341Z",
-    "details": "Scanning process initiated for book."
-  },
-  {
-    "id": "al_121",
-    "bookId": "book_103",
-    "action": "Scanning Finished",
-    "userId": "u_scanner_2",
-    "date": "2024-07-24T17:15:35.341Z",
-    "details": "32 pages created. Book moved to Storage."
-  },
-  {
-    "id": "al_122",
-    "bookId": "book_103",
-    "action": "Assigned to Indexer",
-    "userId": "u_admin",
-    "date": "2024-07-25T17:15:35.341Z",
-    "details": "Book \"Batch A3 - HR\" assigned to Ida Indexer."
-  },
-  {
-    "id": "al_123",
-    "bookId": "book_103",
-    "action": "Indexing Started",
-    "userId": "u_indexer_1",
-    "date": "2024-07-26T17:15:35.341Z",
-    "details": "Indexing started."
-  },
-  {
-    "id": "al_124",
-    "bookId": "book_103",
-    "action": "Assigned for QC",
-    "userId": "u_indexer_1",
-    "date": "2024-07-27T17:15:35.341Z",
-    "details": "Book \"Batch A3 - HR\" assigned to Charlie QC."
-  },
-  {
-    "id": "al_125",
-    "bookId": "book_104",
-    "action": "Book Added",
-    "userId": "u_admin",
-    "date": "2024-07-20T17:15:35.341Z",
-    "details": "Book \"Batch A4 - Onboarding\" was added to project."
-  },
-  {
-    "id": "al_126",
-    "bookId": "book_104",
-    "action": "Book Shipped",
-    "userId": "u_client_2",
-    "date": "2024-07-21T17:15:35.341Z",
-    "details": "Client marked book as shipped."
-  },
-  {
-    "id": "al_127",
-    "bookId": "book_104",
-    "action": "Reception Confirmed",
-    "userId": "u_reception",
-    "date": "2024-07-22T17:15:35.341Z",
-    "details": "Assigned to scanner Sam Scanner."
-  },
-  {
-    "id": "al_128",
-    "bookId": "book_104",
-    "action": "Scanning Started",
-    "userId": "u_scanner",
-    "date": "2024-07-23T17:15:35.341Z",
-    "details": "Scanning process initiated for book."
-  },
-  {
-    "id": "al_129",
-    "bookId": "book_104",
-    "action": "Scanning Finished",
-    "userId": "u_scanner",
-    "date": "2024-07-24T17:15:35.341Z",
-    "details": "35 pages created. Book moved to Storage."
-  },
-  {
-    "id": "al_130",
-    "bookId": "book_104",
-    "action": "Assigned to Indexer",
-    "userId": "u_admin",
-    "date": "2024-07-25T17:15:35.341Z",
-    "details": "Book \"Batch A4 - Onboarding\" assigned to Ian Indexer."
-  },
-  {
-    "id": "al_131",
-    "bookId": "book_104",
-    "action": "Indexing Started",
-    "userId": "u_indexer_2",
-    "date": "2024-07-26T17:15:35.341Z",
-    "details": "Indexing started."
-  },
-  {
-    "id": "al_132",
-    "bookId": "book_104",
-    "action": "Assigned for QC",
-    "userId": "u_indexer_2",
-    "date": "2024-07-27T17:15:35.341Z",
-    "details": "Book \"Batch A4 - Onboarding\" assigned to Quentin Checker."
-  },
-  {
-    "id": "al_133",
-    "bookId": "book_105",
-    "action": "Book Added",
-    "userId": "u_admin",
-    "date": "2024-07-20T17:15:35.341Z",
-    "details": "Book \"Batch A5 - Patent\" was added to project."
-  },
-  {
-    "id": "al_134",
-    "bookId": "book_105",
-    "action": "Book Shipped",
-    "userId": "u_client_2",
-    "date": "2024-07-21T17:15:35.341Z",
-    "details": "Client marked book as shipped."
-  },
-  {
-    "id": "al_135",
-    "bookId": "book_105",
-    "action": "Reception Confirmed",
-    "userId": "u_reception",
-    "date": "2024-07-22T17:15:35.341Z",
-    "details": "Assigned to scanner Susan Scanner."
-  },
-  {
-    "id": "al_136",
-    "bookId": "book_105",
-    "action": "Scanning Started",
-    "userId": "u_scanner_2",
-    "date": "2024-07-23T17:15:35.341Z",
-    "details": "Scanning process initiated for book."
-  },
-  {
-    "id": "al_137",
-    "bookId": "book_105",
-    "action": "Scanning Finished",
-    "userId": "u_scanner_2",
-    "date": "2024-07-24T17:15:35.341Z",
-    "details": "22 pages created. Book moved to Storage."
-  },
-  {
-    "id": "al_138",
-    "bookId": "book_105",
-    "action": "Assigned to Indexer",
-    "userId": "u_admin",
-    "date": "2024-07-25T17:15:35.341Z",
-    "details": "Book \"Batch A5 - Patent\" assigned to Ida Indexer."
-  },
-  {
-    "id": "al_139",
-    "bookId": "book_105",
-    "action": "Indexing Started",
-    "userId": "u_indexer_1",
-    "date": "2024-07-26T17:15:35.341Z",
-    "details": "Indexing started."
-  },
-  {
-    "id": "al_140",
-    "bookId": "book_105",
-    "action": "Assigned for QC",
-    "userId": "u_indexer_1",
-    "date": "2024-07-27T17:15:35.341Z",
-    "details": "Book \"Batch A5 - Patent\" assigned to Charlie QC."
-  },
-  {
-    "id": "al_141",
-    "bookId": "book_106",
-    "action": "Book Added",
-    "userId": "u_admin",
-    "date": "2024-07-20T17:15:35.341Z",
-    "details": "Book \"Batch A6 - R&D\" was added to project."
-  },
-  {
-    "id": "al_142",
-    "bookId": "book_106",
-    "action": "Book Shipped",
-    "userId": "u_client_2",
-    "date": "2024-07-21T17:15:35.341Z",
-    "details": "Client marked book as shipped."
-  },
-  {
-    "id": "al_143",
-    "bookId": "book_106",
-    "action": "Reception Confirmed",
-    "userId": "u_reception",
-    "date": "2024-07-22T17:15:35.341Z",
-    "details": "Assigned to scanner Sam Scanner."
-  },
-  {
-    "id": "al_144",
-    "bookId": "book_106",
-    "action": "Scanning Started",
-    "userId": "u_scanner",
-    "date": "2024-07-23T17:15:35.341Z",
-    "details": "Scanning process initiated for book."
-  },
-  {
-    "id": "al_145",
-    "bookId": "book_106",
-    "action": "Scanning Finished",
-    "userId": "u_scanner",
-    "date": "2024-07-24T17:15:35.341Z",
-    "details": "41 pages created. Book moved to Storage."
-  },
-  {
-    "id": "al_146",
-    "bookId": "book_106",
-    "action": "Assigned to Indexer",
-    "userId": "u_admin",
-    "date": "2024-07-25T17:15:35.341Z",
-    "details": "Book \"Batch A6 - R&D\" assigned to Ian Indexer."
-  },
-  {
-    "id": "al_147",
-    "bookId": "book_106",
-    "action": "Indexing Started",
-    "userId": "u_indexer_2",
-    "date": "2024-07-26T17:15:35.341Z",
-    "details": "Indexing started."
-  },
-  {
-    "id": "al_148",
-    "bookId": "book_106",
-    "action": "Assigned for QC",
-    "userId": "u_indexer_2",
-    "date": "2024-07-27T17:15:35.341Z",
-    "details": "Book \"Batch A6 - R&D\" assigned to Quentin Checker."
-  },
-  {
-    "id": "al_451",
-    "bookId": "book_902",
+    "id": "al_215",
+    "bookId": "book_214",
     "action": "Client Rejection",
-    "userId": "u_client_2",
-    "date": "2024-07-25T17:15:35.341Z",
-    "details": "Page 4 is blank"
+    "userId": "u_client_1",
+    "date": "2025-07-07T15:00:00Z",
+    "details": "Book 'Innovate-E-001' rejected. Reason: Pages 12 and 23 are out of order. Please correct."
+  },
+  {
+    "id": "al_216",
+    "bookId": "book_215",
+    "action": "Marked as Corrected",
+    "userId": "u_operator",
+    "date": "2025-07-07T16:00:00Z",
+    "details": "Book 'FutureTech-Z-003' marked as corrected after client rejection."
+  },
+  {
+    "id": "al_217",
+    "bookId": "book_216",
+    "action": "Client Approval",
+    "userId": "u_client_1",
+    "date": "2025-07-07T17:00:00Z",
+    "details": "Book 'Innovate-E-002' approved."
+  },
+  {
+    "id": "al_218",
+    "bookId": "book_217",
+    "action": "Book Archived",
+    "userId": "u_admin",
+    "date": "2025-07-07T18:00:00Z",
+    "details": "Book 'FutureTech-A-001' was finalized and archived."
   }
 ]

@@ -1,12 +1,12 @@
 
 [
   {
-    "id": "pl_901",
-    "bookId": "book_901",
+    "id": "pl_209",
+    "bookId": "book_209",
     "status": "In Progress",
-    "progress": 75,
-    "log": "[5:15:35 PM] Processing initiated.\n[5:15:35 PM] OCR at page 15/20.",
-    "startTime": "2024-07-26T17:15:35.341Z",
-    "lastUpdate": "2024-07-27T17:15:35.341Z"
+    "progress": 62,
+    "log": "[10:00:00 AM] Processing initiated for book FutureTech-Y-002.\n[10:05:00 AM] OCR engine started.\n[10:15:00 AM] Processing page 93 of 150.",
+    "startTime": "2025-07-07T10:00:00Z",
+    "lastUpdate": "2025-07-07T10:15:00Z"
   }
 ]
