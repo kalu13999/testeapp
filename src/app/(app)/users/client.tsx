@@ -54,7 +54,6 @@ import { UserForm } from "./user-form"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAppContext } from "@/context/workflow-context"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
@@ -67,7 +66,7 @@ export default function UsersClient() {
   const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | 'details' | null; data?: User }>({ open: false, type: null })
   const { toast } = useToast();
   
-  const [filters, setFilters] = React.useState({ query: '', role: 'all', department: 'all' });
+  const [columnFilters, setColumnFilters] = React.useState<{ [key: string]: string }>({});
   const [currentPage, setCurrentPage] = React.useState(1);
   const [selection, setSelection] = React.useState<string[]>([]);
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
@@ -75,11 +74,10 @@ export default function UsersClient() {
   ]);
 
   const availableRoles = roles.filter(r => r !== 'System').sort();
-  const departments = [...new Set(users.map(u => u.department).filter(Boolean) as string[])].sort();
 
-  const handleFilterChange = (filterName: keyof typeof filters, value: string) => {
-    setFilters(prev => ({ ...prev, [filterName]: value }));
-    setCurrentPage(1); 
+  const handleColumnFilterChange = (columnId: string, value: string) => {
+    setColumnFilters(prev => ({ ...prev, [columnId]: value }));
+    setCurrentPage(1);
   };
 
   const handleSort = (columnId: string, isShift: boolean) => {
@@ -127,31 +125,17 @@ export default function UsersClient() {
     );
   }
 
-  const globalSearch = (item: object, query: string) => {
-    if (!query) return true;
-    const lowerCaseQuery = query.toLowerCase();
-
-    for (const key in item) {
-        if (Object.prototype.hasOwnProperty.call(item, key)) {
-            const value = item[key as keyof typeof item];
-            if (typeof value === 'string' || typeof value === 'number') {
-                if (String(value).toLowerCase().includes(lowerCaseQuery)) {
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
-  };
-  
   const sortedAndFilteredUsers = React.useMemo(() => {
-    let filtered = users.filter(user => {
-        const queryMatch = globalSearch(user, filters.query);
-        const roleMatch = filters.role === 'all' || user.role === filters.role;
-        const departmentMatch = filters.department === 'all' || user.department === filters.department;
-        
-        return queryMatch && roleMatch && departmentMatch;
+    let filtered = users;
+    Object.entries(columnFilters).forEach(([columnId, value]) => {
+      if (value) {
+        filtered = filtered.filter(user => {
+          const userValue = user[columnId as keyof User];
+          return String(userValue).toLowerCase().includes(value.toLowerCase());
+        });
+      }
     });
+
 
     if (sorting.length > 0) {
         filtered.sort((a, b) => {
@@ -178,7 +162,7 @@ export default function UsersClient() {
     }
     return filtered;
 
-  }, [users, filters, sorting]);
+  }, [users, columnFilters, sorting]);
   
   const selectedUsers = React.useMemo(() => {
     return sortedAndFilteredUsers.filter(user => selection.includes(user.id));
@@ -186,7 +170,7 @@ export default function UsersClient() {
 
   React.useEffect(() => {
     setSelection([]);
-  }, [filters, sorting]);
+  }, [columnFilters, sorting]);
 
 
   const totalPages = Math.ceil(sortedAndFilteredUsers.length / ITEMS_PER_PAGE);
@@ -335,35 +319,7 @@ export default function UsersClient() {
         </div>
       </div>
       <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Input 
-                placeholder="Search all columns..." 
-                className="max-w-xs"
-                value={filters.query}
-                onChange={(e) => handleFilterChange('query', e.target.value)}
-            />
-            <Select value={filters.role} onValueChange={(value) => handleFilterChange('role', value)}>
-                <SelectTrigger className="w-auto min-w-[180px]">
-                    <SelectValue placeholder="Filter by Role" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">All Roles</SelectItem>
-                    {availableRoles.map(role => <SelectItem key={role} value={role}>{role}</SelectItem>)}
-                </SelectContent>
-            </Select>
-            <Select value={filters.department} onValueChange={(value) => handleFilterChange('department', value)}>
-                <SelectTrigger className="w-auto min-w-[180px]">
-                    <SelectValue placeholder="Filter by Department" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">All Departments</SelectItem>
-                    {departments.map(dept => <SelectItem key={dept} value={dept}>{dept}</SelectItem>)}
-                </SelectContent>
-            </Select>
-          </div>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <Table>
             <TableHeader>
               <TableRow>
@@ -397,6 +353,42 @@ export default function UsersClient() {
                 <TableHead>
                   <span className="sr-only">Actions</span>
                 </TableHead>
+              </TableRow>
+              <TableRow>
+                <TableHead/>
+                <TableHead>
+                    <Input
+                        placeholder="Filter by name..."
+                        value={columnFilters['name'] || ''}
+                        onChange={(e) => handleColumnFilterChange('name', e.target.value)}
+                        className="h-8"
+                    />
+                </TableHead>
+                <TableHead>
+                    <Input
+                        placeholder="Filter by email..."
+                        value={columnFilters['email'] || ''}
+                        onChange={(e) => handleColumnFilterChange('email', e.target.value)}
+                        className="h-8"
+                    />
+                </TableHead>
+                <TableHead>
+                    <Input
+                        placeholder="Filter by role..."
+                        value={columnFilters['role'] || ''}
+                        onChange={(e) => handleColumnFilterChange('role', e.target.value)}
+                        className="h-8"
+                    />
+                </TableHead>
+                <TableHead>
+                    <Input
+                        placeholder="Filter by department..."
+                        value={columnFilters['department'] || ''}
+                        onChange={(e) => handleColumnFilterChange('department', e.target.value)}
+                        className="h-8"
+                    />
+                </TableHead>
+                <TableHead/>
               </TableRow>
             </TableHeader>
             <TableBody>

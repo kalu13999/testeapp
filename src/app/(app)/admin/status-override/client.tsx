@@ -48,25 +48,22 @@ interface StatusOverrideClientProps {
 }
 
 export default function StatusOverrideClient({ allStatuses }: StatusOverrideClientProps) {
-  const { books, handleAdminStatusOverride, projects } = useAppContext();
+  const { books, handleAdminStatusOverride } = useAppContext();
   const [dialogState, setDialogState] = React.useState<{ open: boolean; book?: EnrichedBook }>({ open: false });
   const [newStatus, setNewStatus] = React.useState('');
   const [reason, setReason] = React.useState('');
   const { toast } = useToast();
 
-  const [filters, setFilters] = React.useState({ query: '', project: 'all', status: 'all' });
+  const [columnFilters, setColumnFilters] = React.useState<{ [key: string]: string }>({});
   const [currentPage, setCurrentPage] = React.useState(1);
   const [selection, setSelection] = React.useState<string[]>([]);
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
     { id: 'name', desc: false }
   ]);
   
-  const projectNames = [...new Set(projects.map(p => p.name))].sort();
-  const statusNames = allStatuses.map(s => s.name).sort();
-
-  const handleFilterChange = (filterName: keyof typeof filters, value: string) => {
-    setFilters(prev => ({ ...prev, [filterName]: value }));
-    setCurrentPage(1); 
+  const handleColumnFilterChange = (columnId: string, value: string) => {
+    setColumnFilters(prev => ({ ...prev, [columnId]: value }));
+    setCurrentPage(1);
   };
   
   const handleSort = (columnId: string, isShift: boolean) => {
@@ -113,30 +110,16 @@ export default function StatusOverrideClient({ allStatuses }: StatusOverrideClie
         </div>
     );
   }
-  
-  const globalSearch = (item: object, query: string) => {
-    if (!query) return true;
-    const lowerCaseQuery = query.toLowerCase();
-
-    for (const key in item) {
-        if (Object.prototype.hasOwnProperty.call(item, key)) {
-            const value = item[key as keyof typeof item];
-            if (typeof value === 'string' || typeof value === 'number') {
-                if (String(value).toLowerCase().includes(lowerCaseQuery)) {
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
-  };
 
   const sortedAndFilteredBooks = React.useMemo(() => {
-    let filtered = books.filter(book => {
-        const queryMatch = globalSearch(book, filters.query);
-        const projectMatch = filters.project === 'all' || book.projectName === filters.project;
-        const statusMatch = filters.status === 'all' || book.status === filters.status;
-        return queryMatch && projectMatch && statusMatch;
+    let filtered = books;
+    Object.entries(columnFilters).forEach(([columnId, value]) => {
+      if (value) {
+        filtered = filtered.filter(book => {
+          const bookValue = book[columnId as keyof EnrichedBook];
+          return String(bookValue).toLowerCase().includes(value.toLowerCase());
+        });
+      }
     });
 
     if (sorting.length > 0) {
@@ -164,7 +147,7 @@ export default function StatusOverrideClient({ allStatuses }: StatusOverrideClie
     }
 
     return filtered;
-  }, [books, filters, sorting]);
+  }, [books, columnFilters, sorting]);
 
   const selectedBooks = React.useMemo(() => {
     return sortedAndFilteredBooks.filter(book => selection.includes(book.id));
@@ -172,7 +155,7 @@ export default function StatusOverrideClient({ allStatuses }: StatusOverrideClie
 
   React.useEffect(() => {
     setSelection([]);
-  }, [filters, sorting]);
+  }, [columnFilters, sorting]);
 
   const totalPages = Math.ceil(sortedAndFilteredBooks.length / ITEMS_PER_PAGE);
   const paginatedBooks = sortedAndFilteredBooks.slice(
@@ -344,35 +327,7 @@ export default function StatusOverrideClient({ allStatuses }: StatusOverrideClie
         </DropdownMenu>
       </div>
       <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Input 
-                placeholder="Search all columns..." 
-                className="max-w-sm"
-                value={filters.query}
-                onChange={(e) => handleFilterChange('query', e.target.value)}
-            />
-            <Select value={filters.project} onValueChange={(value) => handleFilterChange('project', value)}>
-                <SelectTrigger className="w-auto min-w-[180px]">
-                    <SelectValue placeholder="Filter by Project" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">All Projects</SelectItem>
-                    {projectNames.map(project => <SelectItem key={project} value={project}>{project}</SelectItem>)}
-                </SelectContent>
-            </Select>
-            <Select value={filters.status} onValueChange={(value) => handleFilterChange('status', value)}>
-                <SelectTrigger className="w-auto min-w-[180px]">
-                    <SelectValue placeholder="Filter by Status" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    {statusNames.map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}
-                </SelectContent>
-            </Select>
-          </div>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <Table>
             <TableHeader>
               <TableRow>
@@ -401,6 +356,34 @@ export default function StatusOverrideClient({ allStatuses }: StatusOverrideClie
                     </div>
                 </TableHead>
                 <TableHead className="w-[150px] text-right">Actions</TableHead>
+              </TableRow>
+              <TableRow>
+                <TableHead />
+                <TableHead>
+                    <Input
+                        placeholder="Filter by name..."
+                        value={columnFilters['name'] || ''}
+                        onChange={(e) => handleColumnFilterChange('name', e.target.value)}
+                        className="h-8"
+                    />
+                </TableHead>
+                <TableHead>
+                    <Input
+                        placeholder="Filter by project..."
+                        value={columnFilters['projectName'] || ''}
+                        onChange={(e) => handleColumnFilterChange('projectName', e.target.value)}
+                        className="h-8"
+                    />
+                </TableHead>
+                 <TableHead>
+                    <Input
+                        placeholder="Filter by status..."
+                        value={columnFilters['status'] || ''}
+                        onChange={(e) => handleColumnFilterChange('status', e.target.value)}
+                        className="h-8"
+                    />
+                </TableHead>
+                <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>

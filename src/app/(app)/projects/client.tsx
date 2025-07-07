@@ -55,7 +55,6 @@ import {
 import { ProjectForm } from "./project-form";
 import { useAppContext } from "@/context/workflow-context";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
@@ -76,19 +75,16 @@ export default function ProjectsClient() {
   const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | 'details' | null; data?: EnrichedProject }>({ open: false, type: null })
   const { toast } = useToast();
   
-  const [filters, setFilters] = React.useState({ query: '', client: 'all', status: 'all' });
+  const [columnFilters, setColumnFilters] = React.useState<{ [key: string]: string }>({});
   const [currentPage, setCurrentPage] = React.useState(1);
   const [selection, setSelection] = React.useState<string[]>([]);
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
     { id: 'name', desc: false }
   ]);
 
-  const clientNames = [...new Set(clients.map(c => c.name))].sort();
-  const statuses = [...new Set(projects.map(p => p.status))].sort();
-
-  const handleFilterChange = (filterName: keyof typeof filters, value: string) => {
-    setFilters(prev => ({ ...prev, [filterName]: value }));
-    setCurrentPage(1); 
+  const handleColumnFilterChange = (columnId: string, value: string) => {
+    setColumnFilters(prev => ({ ...prev, [columnId]: value }));
+    setCurrentPage(1);
   };
   
   const handleSort = (columnId: string, isShift: boolean) => {
@@ -136,30 +132,16 @@ export default function ProjectsClient() {
     );
   }
 
-  const globalSearch = (item: object, query: string) => {
-    if (!query) return true;
-    const lowerCaseQuery = query.toLowerCase();
-
-    for (const key in item) {
-        if (Object.prototype.hasOwnProperty.call(item, key)) {
-            const value = item[key as keyof typeof item];
-            if (typeof value === 'string' || typeof value === 'number') {
-                if (String(value).toLowerCase().includes(lowerCaseQuery)) {
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
-  };
-
   const sortedAndFilteredProjects = React.useMemo(() => {
-    let filtered = projects.filter(project => {
-        const queryMatch = globalSearch(project, filters.query);
-        const clientMatch = filters.client === 'all' || project.clientName === filters.client;
-        const statusMatch = filters.status === 'all' || project.status === filters.status;
-        
-        return queryMatch && clientMatch && statusMatch;
+    let filtered = projects;
+
+    Object.entries(columnFilters).forEach(([columnId, value]) => {
+      if (value) {
+        filtered = filtered.filter(project => {
+          const projectValue = project[columnId as keyof EnrichedProject];
+          return String(projectValue).toLowerCase().includes(value.toLowerCase());
+        });
+      }
     });
 
     if (sorting.length > 0) {
@@ -188,7 +170,7 @@ export default function ProjectsClient() {
 
     return filtered;
 
-  }, [projects, filters, sorting]);
+  }, [projects, columnFilters, sorting]);
 
   const selectedProjects = React.useMemo(() => {
     return sortedAndFilteredProjects.filter(project => selection.includes(project.id));
@@ -196,7 +178,7 @@ export default function ProjectsClient() {
 
   React.useEffect(() => {
     setSelection([]);
-  }, [filters, sorting]);
+  }, [columnFilters, sorting]);
 
   const totalPages = Math.ceil(sortedAndFilteredProjects.length / ITEMS_PER_PAGE);
   const paginatedProjects = sortedAndFilteredProjects.slice(
@@ -341,35 +323,7 @@ export default function ProjectsClient() {
               </div>
           </div>
           <Card>
-              <CardHeader>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Input 
-                        placeholder="Search all columns..." 
-                        className="max-w-xs"
-                        value={filters.query}
-                        onChange={(e) => handleFilterChange('query', e.target.value)}
-                    />
-                    <Select value={filters.client} onValueChange={(value) => handleFilterChange('client', value)}>
-                        <SelectTrigger className="w-auto min-w-[180px]">
-                            <SelectValue placeholder="Filter by Client" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Clients</SelectItem>
-                            {clientNames.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    <Select value={filters.status} onValueChange={(value) => handleFilterChange('status', value)}>
-                        <SelectTrigger className="w-auto min-w-[180px]">
-                            <SelectValue placeholder="Filter by Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Statuses</SelectItem>
-                            {statuses.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                  </div>
-              </CardHeader>
-              <CardContent>
+              <CardContent className="pt-6">
               <Table>
                   <TableHeader>
                   <TableRow>
@@ -403,6 +357,43 @@ export default function ProjectsClient() {
                       <TableHead className="w-[200px]">Progress</TableHead>
                       <TableHead className="w-[50px]"><span className="sr-only">Actions</span></TableHead>
                   </TableRow>
+                   <TableRow>
+                        <TableHead/>
+                        <TableHead>
+                            <Input
+                                placeholder="Filter name..."
+                                value={columnFilters['name'] || ''}
+                                onChange={(e) => handleColumnFilterChange('name', e.target.value)}
+                                className="h-8"
+                            />
+                        </TableHead>
+                        <TableHead>
+                            <Input
+                                placeholder="Filter client..."
+                                value={columnFilters['clientName'] || ''}
+                                onChange={(e) => handleColumnFilterChange('clientName', e.target.value)}
+                                className="h-8"
+                            />
+                        </TableHead>
+                        <TableHead>
+                            <Input
+                                placeholder="Filter status..."
+                                value={columnFilters['status'] || ''}
+                                onChange={(e) => handleColumnFilterChange('status', e.target.value)}
+                                className="h-8"
+                            />
+                        </TableHead>
+                        <TableHead>
+                            <Input
+                                placeholder="Filter date..."
+                                value={columnFilters['endDate'] || ''}
+                                onChange={(e) => handleColumnFilterChange('endDate', e.target.value)}
+                                className="h-8"
+                            />
+                        </TableHead>
+                        <TableHead/>
+                        <TableHead/>
+                    </TableRow>
                   </TableHeader>
                   <TableBody>
                   {paginatedProjects.length > 0 ? paginatedProjects.map((project) => (

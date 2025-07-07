@@ -69,12 +69,17 @@ export default function BookManagementClient() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
-  const [query, setQuery] = React.useState("");
+  const [columnFilters, setColumnFilters] = React.useState<{ [key: string]: string }>({});
   const [currentPage, setCurrentPage] = React.useState(1);
   const [selection, setSelection] = React.useState<string[]>([]);
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
     { id: 'name', desc: false }
   ]);
+  
+  const handleColumnFilterChange = (columnId: string, value: string) => {
+    setColumnFilters(prev => ({ ...prev, [columnId]: value }));
+    setCurrentPage(1);
+  };
   
   const handleSort = (columnId: string, isShift: boolean) => {
     setSorting(currentSorting => {
@@ -121,25 +126,16 @@ export default function BookManagementClient() {
     );
   }
 
-  const globalSearch = (item: object, query: string) => {
-    if (!query) return true;
-    const lowerCaseQuery = query.toLowerCase();
-
-    for (const key in item) {
-        if (Object.prototype.hasOwnProperty.call(item, key)) {
-            const value = item[key as keyof typeof item];
-            if (typeof value === 'string' || typeof value === 'number') {
-                if (String(value).toLowerCase().includes(lowerCaseQuery)) {
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
-  };
-
   const sortedAndFilteredBooks = React.useMemo(() => {
-    let filtered = books.filter(book => globalSearch(book, query));
+    let filtered = books;
+    Object.entries(columnFilters).forEach(([columnId, value]) => {
+      if (value) {
+        filtered = filtered.filter(book => {
+          const bookValue = book[columnId as keyof EnrichedBook] ?? (columnId === 'priority' ? 'Medium' : '');
+          return String(bookValue).toLowerCase().includes(value.toLowerCase());
+        });
+      }
+    });
 
     if (sorting.length > 0) {
         filtered.sort((a, b) => {
@@ -167,7 +163,7 @@ export default function BookManagementClient() {
     }
 
     return filtered;
-  }, [books, query, sorting]);
+  }, [books, columnFilters, sorting]);
 
   const selectedBooks = React.useMemo(() => {
     return sortedAndFilteredBooks.filter(book => selection.includes(book.id));
@@ -175,7 +171,7 @@ export default function BookManagementClient() {
 
   React.useEffect(() => {
     setSelection([]);
-  }, [query, sorting]);
+  }, [columnFilters, sorting]);
 
   const totalPages = Math.ceil(sortedAndFilteredBooks.length / ITEMS_PER_PAGE);
   const paginatedBooks = sortedAndFilteredBooks.slice(
@@ -408,17 +404,6 @@ export default function BookManagementClient() {
                 </Button>
             </div>
           </div>
-          <div className="flex items-center gap-2 pt-4">
-             <Input 
-                placeholder="Search all columns..." 
-                className="max-w-sm"
-                value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-            />
-          </div>
         </CardHeader>
         <CardContent>
            <Table>
@@ -454,6 +439,42 @@ export default function BookManagementClient() {
                       </TableHead>
                       <TableHead><span className="sr-only">Actions</span></TableHead>
                   </TableRow>
+                   <TableRow>
+                        <TableHead />
+                        <TableHead>
+                            <Input
+                                placeholder="Filter by name..."
+                                value={columnFilters['name'] || ''}
+                                onChange={(e) => handleColumnFilterChange('name', e.target.value)}
+                                className="h-8"
+                            />
+                        </TableHead>
+                        <TableHead>
+                            <Input
+                                placeholder="Filter by status..."
+                                value={columnFilters['status'] || ''}
+                                onChange={(e) => handleColumnFilterChange('status', e.target.value)}
+                                className="h-8"
+                            />
+                        </TableHead>
+                        <TableHead>
+                            <Input
+                                placeholder="Filter by priority..."
+                                value={columnFilters['priority'] || ''}
+                                onChange={(e) => handleColumnFilterChange('priority', e.target.value)}
+                                className="h-8"
+                            />
+                        </TableHead>
+                        <TableHead>
+                            <Input
+                                placeholder="Filter by pages..."
+                                value={columnFilters['expectedDocuments'] || ''}
+                                onChange={(e) => handleColumnFilterChange('expectedDocuments', e.target.value)}
+                                className="h-8"
+                            />
+                        </TableHead>
+                        <TableHead />
+                    </TableRow>
               </TableHeader>
               <TableBody>
                 {selectedProjectId ? (

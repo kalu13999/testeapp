@@ -62,13 +62,18 @@ export default function ClientsClient() {
   const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | 'details' | null; data?: Client }>({ open: false, type: null })
   const { toast } = useToast();
   
-  const [query, setQuery] = React.useState("");
+  const [columnFilters, setColumnFilters] = React.useState<{ [key: string]: string }>({});
   const [currentPage, setCurrentPage] = React.useState(1);
   const [selection, setSelection] = React.useState<string[]>([]);
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
     { id: 'name', desc: false }
   ]);
 
+  const handleColumnFilterChange = (columnId: string, value: string) => {
+    setColumnFilters(prev => ({ ...prev, [columnId]: value }));
+    setCurrentPage(1);
+  };
+  
   const handleSort = (columnId: string, isShift: boolean) => {
     setSorting(currentSorting => {
         const existingSortIndex = currentSorting.findIndex(s => s.id === columnId);
@@ -114,25 +119,17 @@ export default function ClientsClient() {
     );
   }
 
-  const globalSearch = (item: object, query: string) => {
-    if (!query) return true;
-    const lowerCaseQuery = query.toLowerCase();
-
-    for (const key in item) {
-        if (Object.prototype.hasOwnProperty.call(item, key)) {
-            const value = item[key as keyof typeof item];
-            if (typeof value === 'string' || typeof value === 'number') {
-                if (String(value).toLowerCase().includes(lowerCaseQuery)) {
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
-  };
-
   const sortedAndFilteredClients = React.useMemo(() => {
-    let filtered = clients.filter(client => globalSearch(client, query));
+    let filtered = clients;
+
+    Object.entries(columnFilters).forEach(([columnId, value]) => {
+        if (value) {
+            filtered = filtered.filter(client => {
+                const clientValue = client[columnId as keyof Client];
+                return String(clientValue).toLowerCase().includes(value.toLowerCase());
+            });
+        }
+    });
 
      if (sorting.length > 0) {
         filtered.sort((a, b) => {
@@ -160,7 +157,7 @@ export default function ClientsClient() {
 
     return filtered;
 
-  }, [clients, query, sorting]);
+  }, [clients, columnFilters, sorting]);
   
   const selectedClients = React.useMemo(() => {
     return sortedAndFilteredClients.filter(client => selection.includes(client.id));
@@ -168,7 +165,7 @@ export default function ClientsClient() {
 
   React.useEffect(() => {
     setSelection([]);
-  }, [query, sorting]);
+  }, [columnFilters, sorting]);
 
 
   const totalPages = Math.ceil(sortedAndFilteredClients.length / ITEMS_PER_PAGE);
@@ -311,20 +308,7 @@ export default function ClientsClient() {
         </div>
       </div>
       <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Input 
-                placeholder="Search all columns..." 
-                className="max-w-xs"
-                value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-            />
-          </div>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <Table>
             <TableHeader>
               <TableRow>
@@ -359,6 +343,42 @@ export default function ClientsClient() {
                   <span className="sr-only">Actions</span>
                 </TableHead>
               </TableRow>
+              <TableRow>
+                    <TableHead/>
+                    <TableHead>
+                        <Input
+                            placeholder="Filter by name..."
+                            value={columnFilters['name'] || ''}
+                            onChange={(e) => handleColumnFilterChange('name', e.target.value)}
+                            className="h-8"
+                        />
+                    </TableHead>
+                    <TableHead>
+                        <Input
+                            placeholder="Filter by email..."
+                            value={columnFilters['contactEmail'] || ''}
+                            onChange={(e) => handleColumnFilterChange('contactEmail', e.target.value)}
+                            className="h-8"
+                        />
+                    </TableHead>
+                    <TableHead>
+                        <Input
+                            placeholder="Filter by phone..."
+                            value={columnFilters['contactPhone'] || ''}
+                            onChange={(e) => handleColumnFilterChange('contactPhone', e.target.value)}
+                            className="h-8"
+                        />
+                    </TableHead>
+                    <TableHead>
+                        <Input
+                            placeholder="Filter by date..."
+                            value={columnFilters['since'] || ''}
+                            onChange={(e) => handleColumnFilterChange('since', e.target.value)}
+                            className="h-8"
+                        />
+                    </TableHead>
+                    <TableHead/>
+                </TableRow>
             </TableHeader>
             <TableBody>
               {paginatedClients.length > 0 ? paginatedClients.map((client) => (

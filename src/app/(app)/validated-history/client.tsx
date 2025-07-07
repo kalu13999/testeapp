@@ -25,7 +25,6 @@ import { useAppContext } from "@/context/workflow-context";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Info, CheckCircle2, XCircle, History, ArrowUp, ArrowDown, ChevronsUpDown, Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
@@ -38,20 +37,18 @@ const ITEMS_PER_PAGE = 15;
 type ValidatedBook = EnrichedBook & { validationDate: string, validationStatus: 'Approved' | 'Rejected' };
 
 export default function ValidatedHistoryClient() {
-    const { books, auditLogs, currentUser, projects } = useAppContext();
+    const { books, auditLogs, currentUser } = useAppContext();
     const { toast } = useToast();
 
-    const [filters, setFilters] = React.useState({ query: '', project: 'all', outcome: 'all' });
+    const [columnFilters, setColumnFilters] = React.useState<{ [key: string]: string }>({});
     const [currentPage, setCurrentPage] = React.useState(1);
     const [selection, setSelection] = React.useState<string[]>([]);
     const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
         { id: 'validationDate', desc: true }
     ]);
 
-    const projectNames = [...new Set(projects.map(p => p.name))].sort();
-
-    const handleFilterChange = (filterName: keyof typeof filters, value: string) => {
-        setFilters(prev => ({ ...prev, [filterName]: value }));
+    const handleColumnFilterChange = (columnId: string, value: string) => {
+        setColumnFilters(prev => ({ ...prev, [columnId]: value }));
         setCurrentPage(1);
     };
 
@@ -121,29 +118,17 @@ export default function ValidatedHistoryClient() {
         });
     }, [books, auditLogs, currentUser]);
 
-    const globalSearch = (item: object, query: string) => {
-        if (!query) return true;
-        const lowerCaseQuery = query.toLowerCase();
-
-        for (const key in item) {
-            if (Object.prototype.hasOwnProperty.call(item, key)) {
-                const value = item[key as keyof typeof item];
-                if (typeof value === 'string' || typeof value === 'number') {
-                    if (String(value).toLowerCase().includes(lowerCaseQuery)) {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
-    };
 
     const sortedAndFilteredHistory = React.useMemo(() => {
-        let filtered = validationHistory.filter(item => {
-            const queryMatch = globalSearch(item, filters.query);
-            const projectMatch = filters.project === 'all' || item.projectName === filters.project;
-            const outcomeMatch = filters.outcome === 'all' || item.validationStatus === filters.outcome;
-            return queryMatch && projectMatch && outcomeMatch;
+        let filtered = validationHistory;
+        
+        Object.entries(columnFilters).forEach(([columnId, value]) => {
+            if (value) {
+                filtered = filtered.filter(item => {
+                    const itemValue = item[columnId as keyof ValidatedBook];
+                    return String(itemValue).toLowerCase().includes(value.toLowerCase());
+                });
+            }
         });
 
         if (sorting.length > 0) {
@@ -170,7 +155,7 @@ export default function ValidatedHistoryClient() {
             });
         }
         return filtered;
-    }, [validationHistory, filters, sorting]);
+    }, [validationHistory, columnFilters, sorting]);
     
     const selectedHistory = React.useMemo(() => {
         return sortedAndFilteredHistory.filter(item => selection.includes(item.id));
@@ -178,7 +163,7 @@ export default function ValidatedHistoryClient() {
 
     React.useEffect(() => {
         setSelection([]);
-    }, [filters, sorting]);
+    }, [columnFilters, sorting]);
 
 
     const totalPages = Math.ceil(sortedAndFilteredHistory.length / ITEMS_PER_PAGE);
@@ -293,37 +278,6 @@ export default function ValidatedHistoryClient() {
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
-                
-                <div className="flex items-center gap-2 pt-2 flex-wrap">
-                    <Input
-                        placeholder="Search all columns..."
-                        className="max-w-xs"
-                        value={filters.query}
-                        onChange={(e) => handleFilterChange('query', e.target.value)}
-                    />
-                    {currentUser?.role === 'Admin' && (
-                        <Select value={filters.project} onValueChange={(value) => handleFilterChange('project', value)}>
-                            <SelectTrigger className="w-auto min-w-[180px]">
-                                <SelectValue placeholder="Filter by Project" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Projects</SelectItem>
-                                {projectNames.map(project => <SelectItem key={project} value={project}>{project}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    )}
-                     <Select value={filters.outcome} onValueChange={(value) => handleFilterChange('outcome', value)}>
-                        <SelectTrigger className="w-auto min-w-[180px]">
-                            <SelectValue placeholder="Filter by Outcome" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Outcomes</SelectItem>
-                            <SelectItem value="Approved">Approved</SelectItem>
-                            <SelectItem value="Rejected">Rejected</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-                
             </CardHeader>
             <CardContent>
                 {paginatedHistory.length > 0 ? (
@@ -363,6 +317,25 @@ export default function ValidatedHistoryClient() {
                                     </div>
                                 </TableHead>
                                 <TableHead>Details</TableHead>
+                            </TableRow>
+                             <TableRow>
+                                <TableHead/>
+                                <TableHead>
+                                    <Input placeholder="Filter name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/>
+                                </TableHead>
+                                {currentUser?.role === 'Admin' && <TableHead>
+                                    <Input placeholder="Filter client..." value={columnFilters['clientName'] || ''} onChange={(e) => handleColumnFilterChange('clientName', e.target.value)} className="h-8"/>
+                                </TableHead>}
+                                <TableHead>
+                                    <Input placeholder="Filter project..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/>
+                                </TableHead>
+                                <TableHead>
+                                    <Input placeholder="Filter outcome..." value={columnFilters['validationStatus'] || ''} onChange={(e) => handleColumnFilterChange('validationStatus', e.target.value)} className="h-8"/>
+                                </TableHead>
+                                <TableHead>
+                                    <Input placeholder="Filter date..." value={columnFilters['validationDate'] || ''} onChange={(e) => handleColumnFilterChange('validationDate', e.target.value)} className="h-8"/>
+                                </TableHead>
+                                <TableHead/>
                             </TableRow>
                         </TableHeader>
                         <TableBody>

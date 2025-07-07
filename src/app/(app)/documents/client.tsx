@@ -42,7 +42,6 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { useAppContext, EnrichedBook } from "@/context/workflow-context";
 import { useToast } from "@/hooks/use-toast";
@@ -52,32 +51,18 @@ const ITEMS_PER_PAGE = 10;
 export default function DocumentsClient() {
   const { books } = useAppContext();
   const { toast } = useToast();
-  const [filters, setFilters] = React.useState({
-    query: '',
-    project: 'all',
-    client: 'all',
-    status: 'all',
-    priority: 'all',
-  });
+  const [columnFilters, setColumnFilters] = React.useState<{ [key: string]: string }>({});
   const [currentPage, setCurrentPage] = React.useState(1);
   const [selection, setSelection] = React.useState<string[]>([]);
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
     { id: 'name', desc: false }
   ]);
-
-  const clientNames = [...new Set(books.map(b => b.clientName))].sort();
-  const projectNames = [...new Set(books.map(b => b.projectName))].sort();
-  const statuses = [...new Set(books.map(b => b.status))].sort();
-  const priorities = [...new Set(books.map(b => b.priority || 'Medium'))].sort((a,b) => {
-    const order = { 'High': 0, 'Medium': 1, 'Low': 2 };
-    return order[a] - order[b];
-  });
-
-  const handleFilterChange = (filterName: keyof typeof filters, value: string) => {
-    setFilters(prev => ({ ...prev, [filterName]: value }));
-    setCurrentPage(1); 
+  
+  const handleColumnFilterChange = (columnId: string, value: string) => {
+    setColumnFilters(prev => ({ ...prev, [columnId]: value }));
+    setCurrentPage(1);
   };
-
+  
   const handleSort = (columnId: string, isShift: boolean) => {
     setSorting(currentSorting => {
         const existingSortIndex = currentSorting.findIndex(s => s.id === columnId);
@@ -122,46 +107,31 @@ export default function DocumentsClient() {
         </div>
     );
   }
-
-  const globalSearch = (item: object, query: string) => {
-    if (!query) return true;
-    const lowerCaseQuery = query.toLowerCase();
-
-    for (const key in item) {
-        if (Object.prototype.hasOwnProperty.call(item, key)) {
-            const value = item[key as keyof typeof item];
-            if (typeof value === 'string' || typeof value === 'number') {
-                if (String(value).toLowerCase().includes(lowerCaseQuery)) {
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
-  };
-
+  
   const sortedAndFilteredBooks = React.useMemo(() => {
-    let filtered = books.filter(book => {
-      const queryMatch = globalSearch(book, filters.query);
-      const projectMatch = filters.project === 'all' || book.projectName === filters.project;
-      const clientMatch = filters.client === 'all' || book.clientName === filters.client;
-      const statusMatch = filters.status === 'all' || book.status === filters.status;
-      const priorityMatch = filters.priority === 'all' || (book.priority || 'Medium') === filters.priority;
-      
-      return queryMatch && projectMatch && clientMatch && statusMatch && priorityMatch;
+    let filtered = books;
+
+    Object.entries(columnFilters).forEach(([columnId, value]) => {
+      if (value) {
+        filtered = filtered.filter(book => {
+          const bookValue = book[columnId as keyof EnrichedBook] ?? (columnId === 'priority' ? 'Medium' : '');
+          return String(bookValue).toLowerCase().includes(value.toLowerCase());
+        });
+      }
     });
 
     if (sorting.length > 0) {
         filtered.sort((a, b) => {
             for (const s of sorting) {
                 const key = s.id as keyof EnrichedBook;
-                const valA = a[key];
-                const valB = b[key];
+                const valA = a[key] ?? (key === 'priority' ? 'Medium' : '');
+                const valB = b[key] ?? (key === 'priority' ? 'Medium' : '');
 
                 let result = 0;
-                if (valA === null || valA === undefined) result = -1;
-                else if (valB === null || valB === undefined) result = 1;
-                else if (typeof valA === 'number' && typeof valB === 'number') {
+                if (key === 'priority') {
+                    const order = { 'High': 0, 'Medium': 1, 'Low': 2 };
+                    result = order[valA as 'High' | 'Medium' | 'Low'] - order[valB as 'High' | 'Medium' | 'Low'];
+                } else if (typeof valA === 'number' && typeof valB === 'number') {
                     result = valA - valB;
                 } else {
                     result = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' });
@@ -176,7 +146,7 @@ export default function DocumentsClient() {
     }
 
     return filtered;
-  }, [books, filters, sorting]);
+  }, [books, columnFilters, sorting]);
 
   const selectedBooks = React.useMemo(() => {
     return sortedAndFilteredBooks.filter(book => selection.includes(book.id));
@@ -184,7 +154,7 @@ export default function DocumentsClient() {
 
   React.useEffect(() => {
     setSelection([]);
-  }, [filters, sorting]);
+  }, [columnFilters, sorting]);
   
   const totalPages = Math.ceil(sortedAndFilteredBooks.length / ITEMS_PER_PAGE);
   const paginatedBooks = sortedAndFilteredBooks.slice(
@@ -402,53 +372,7 @@ export default function DocumentsClient() {
         </div>
       </div>
       <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Input 
-                placeholder="Search all columns..." 
-                className="max-w-xs"
-                value={filters.query}
-                onChange={(e) => handleFilterChange('query', e.target.value)}
-            />
-            <Select value={filters.project} onValueChange={(value) => handleFilterChange('project', value)}>
-                <SelectTrigger className="w-auto min-w-[180px]">
-                    <SelectValue placeholder="Filter by Project" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">All Projects</SelectItem>
-                    {projectNames.map(project => <SelectItem key={project} value={project}>{project}</SelectItem>)}
-                </SelectContent>
-            </Select>
-            <Select value={filters.client} onValueChange={(value) => handleFilterChange('client', value)}>
-                <SelectTrigger className="w-auto min-w-[180px]">
-                    <SelectValue placeholder="Filter by Client" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">All Clients</SelectItem>
-                    {clientNames.map(client => <SelectItem key={client} value={client}>{client}</SelectItem>)}
-                </SelectContent>
-            </Select>
-            <Select value={filters.status} onValueChange={(value) => handleFilterChange('status', value)}>
-                <SelectTrigger className="w-auto min-w-[180px]">
-                    <SelectValue placeholder="Filter by Status" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    {statuses.map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}
-                </SelectContent>
-            </Select>
-             <Select value={filters.priority} onValueChange={(value) => handleFilterChange('priority', value)}>
-                <SelectTrigger className="w-auto min-w-[180px]">
-                    <SelectValue placeholder="Filter by Priority" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">All Priorities</SelectItem>
-                    {priorities.map(priority => <SelectItem key={priority} value={priority}>{priority}</SelectItem>)}
-                </SelectContent>
-            </Select>
-          </div>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <Table>
             <TableHeader>
               <TableRow>
@@ -492,6 +416,26 @@ export default function DocumentsClient() {
                         Pages {getSortIndicator('documentCount')}
                     </div>
                 </TableHead>
+              </TableRow>
+              <TableRow>
+                <TableHead/>
+                <TableHead>
+                    <Input placeholder="Filter Name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/>
+                </TableHead>
+                <TableHead>
+                    <Input placeholder="Filter Project..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/>
+                </TableHead>
+                <TableHead>
+                    <Input placeholder="Filter Client..." value={columnFilters['clientName'] || ''} onChange={(e) => handleColumnFilterChange('clientName', e.target.value)} className="h-8"/>
+                </TableHead>
+                <TableHead>
+                    <Input placeholder="Filter Status..." value={columnFilters['status'] || ''} onChange={(e) => handleColumnFilterChange('status', e.target.value)} className="h-8"/>
+                </TableHead>
+                <TableHead>
+                    <Input placeholder="Filter Priority..." value={columnFilters['priority'] || ''} onChange={(e) => handleColumnFilterChange('priority', e.target.value)} className="h-8"/>
+                </TableHead>
+                <TableHead/>
+                <TableHead/>
               </TableRow>
             </TableHeader>
             <TableBody>
