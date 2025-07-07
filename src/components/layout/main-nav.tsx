@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -29,6 +30,7 @@ import {
   PencilRuler,
   ClipboardCheck,
   Package,
+  GanttChartSquare,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -41,7 +43,7 @@ const allMenuItems = [
   {
     id: "dashboards",
     title: "Dashboards",
-    items: [{ href: "/dashboard", label: "Internal", icon: SlidersHorizontal }],
+    items: [{ href: "/dashboard", label: "Overview", icon: SlidersHorizontal }],
   },
   {
     id: "management",
@@ -51,6 +53,7 @@ const allMenuItems = [
       { href: "/clients", label: "Clients", icon: Users2 },
       { href: "/users", label: "Users", icon: User },
       { href: "/book-management", label: "Book Management", icon: BookUp },
+      { href: "/role-management", label: "Role Management", icon: GanttChartSquare },
     ],
   },
   {
@@ -80,7 +83,7 @@ const allMenuItems = [
     id: "client",
     title: "Client Portal",
     items: [
-      { href: "/client-dashboard", label: "Client Dashboard", icon: Home },
+      { href: "/dashboard", label: "Client Dashboard", icon: Home },
       { href: "/shipments", label: "Prepare Shipment", icon: Send },
       { href: "/pending-deliveries", label: "Pending Deliveries", icon: FileClock },
       { href: "/validated-history", label: "Validated History", icon: FileCheck },
@@ -108,6 +111,10 @@ export function MainNav() {
   const { currentUser, permissions } = useAppContext();
 
   const isActive = (href: string) => {
+    // Special case for dashboard to avoid it being active for all sub-pages
+    if (href === '/dashboard') {
+        return pathname === href;
+    }
     return pathname === href || (href !== '/' && pathname.startsWith(`${href}/`));
   };
   
@@ -123,7 +130,10 @@ export function MainNav() {
         if (item.href.startsWith("/workflow/to-scan") || item.href.startsWith("/workflow/scanning-started")) {
           return userPermissions.includes('/workflow/to-scan');
         }
-        return userPermissions.includes(item.href);
+        return userPermissions.some(p => {
+          const regex = new RegExp(`^${p.replace(/\[.*?\]/g, '[^/]+')}$`);
+          return regex.test(item.href);
+        });
     });
     if (filteredItems.length > 0) {
         return { ...menu, items: filteredItems };

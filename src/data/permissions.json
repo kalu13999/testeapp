@@ -45,7 +45,7 @@
     "/workflow/client-rejections"
   ],
   "Client": [
-    "/client-dashboard",
+    "/dashboard",
     "/shipments",
     "/pending-deliveries",
     "/validated-history",
