@@ -45,7 +45,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { subDays, format } from "date-fns"
 import { Input } from "@/components/ui/input"
 
-// --- ADMIN/OPERATOR DASHBOARD ---
+// --- ADMIN DASHBOARD ---
 
 const kpiIconMap: { [key: string]: React.ElementType } = {
     "Books in Workflow": BookCopy,
@@ -352,43 +352,115 @@ function AdminDashboard() {
     )
 }
 
-// --- SCANNER DASHBOARD ---
+// --- OPERATOR DASHBOARD ---
 
-function ScannerDashboard() {
-    const { books, auditLogs, currentUser } = useAppContext();
+function OperatorDashboard() {
+    const { books, documents, auditLogs, currentUser } = useAppContext();
 
-    const scannerData = useMemo(() => {
-        if (!currentUser) return { myQueue: [], scannedToday: 0 };
-        const myQueue = books.filter(b => b.scannerUserId === currentUser.id && (b.status === 'To Scan' || b.status === 'Scanning Started'));
+    const operatorData = useMemo(() => {
+        if (!currentUser) return { myQueue: [], completedToday: 0, queueTitle: 'My Queue', completedTitle: 'Tasks Completed Today' };
+
+        let myQueue: EnrichedBook[] = [];
+        let queueTitle = 'My Queue';
+        let completedTitle = 'Tasks Completed Today';
+        let completedAction = '';
+        let queueStatuses: string[] = [];
+
+        switch (currentUser.role) {
+            case 'Scanning':
+                myQueue = books.filter(b => b.scannerUserId === currentUser.id && ['To Scan', 'Scanning Started'].includes(b.status));
+                queueTitle = 'My Scanning Queue';
+                completedTitle = 'Books Scanned Today';
+                completedAction = 'Scanning Finished';
+                break;
+            case 'Indexing':
+                myQueue = books.filter(b => b.indexerUserId === currentUser.id && ['To Indexing', 'Indexing Started'].includes(b.status));
+                queueTitle = 'My Indexing Queue';
+                completedTitle = 'Books Indexed Today';
+                completedAction = 'Assigned for QC';
+                break;
+            case 'QC Specialist':
+                 myQueue = books.filter(b => b.qcUserId === currentUser.id && ['To Checking', 'Checking Started'].includes(b.status));
+                 queueTitle = 'My QC Queue';
+                 completedTitle = 'Books Checked Today';
+                 completedAction = 'Initial QC Complete';
+                 break;
+            case 'Reception':
+                myQueue = books.filter(b => b.status === 'In Transit');
+                queueTitle = 'Awaiting Reception';
+                completedTitle = 'Books Received Today';
+                completedAction = 'Reception Confirmed';
+                break;
+            case 'Delivery':
+                 const deliveryBookIds = new Set(documents.filter(d => d.status === 'Delivery').map(d => d.bookId));
+                 myQueue = books.filter(b => deliveryBookIds.has(b.id));
+                 queueTitle = 'Delivery Queue';
+                 completedTitle = 'Books Delivered Today';
+                 completedAction = 'Sent to Client';
+                 break;
+            case 'Processing':
+                 const processingBookIds = new Set(documents.filter(d => d.status === 'In Processing').map(d => d.bookId));
+                 myQueue = books.filter(b => processingBookIds.has(b.id));
+                 queueTitle = 'Processing Queue';
+                 completedTitle = 'Books Processed Today';
+                 completedAction = 'Processing Completed';
+                 break;
+            default: // Generic Operator
+                 myQueue = books.filter(b => !['Complete', 'Archived', 'Pending'].includes(b.status));
+                 break;
+        }
         
         const today = new Date().toISOString().slice(0, 10);
-        const scannedToday = auditLogs.filter(log => log.userId === currentUser.id && log.action === 'Scanning Finished' && log.date.startsWith(today)).length;
+        const completedToday = auditLogs.filter(log => 
+            log.userId === currentUser.id && 
+            log.action === completedAction && 
+            log.date.startsWith(today)
+        ).length;
         
-        return { myQueue, scannedToday };
-    }, [books, auditLogs, currentUser]);
+        return { myQueue, completedToday, queueTitle, completedTitle };
+    }, [books, documents, auditLogs, currentUser]);
+
+    const { myQueue, completedToday, queueTitle, completedTitle } = operatorData;
+    
+    const getLinkForStatus = (status: string): string => {
+        const statusMap: { [key: string]: string } = {
+            'To Scan': 'to-scan',
+            'Scanning Started': 'scanning-started',
+            'In Transit': 'reception',
+            'To Indexing': 'to-indexing',
+            'Indexing Started': 'indexing-started',
+            'To Checking': 'to-checking',
+            'Checking Started': 'checking-started',
+            'Delivery': 'delivery',
+            'In Processing': 'in-processing',
+        };
+        const key = Object.keys(statusMap).find(k => status.includes(k)) || status;
+        return `/workflow/${statusMap[key] || 'reception'}`;
+    }
+
 
     return (
         <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Books In My Queue</CardTitle><ScanLine className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{scannerData.myQueue.length}</div><p className="text-xs text-muted-foreground">Books assigned to you</p></CardContent></Card>
-                <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Books Scanned Today</CardTitle><CheckCircle2 className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{scannerData.scannedToday}</div><p className="text-xs text-muted-foreground">Completed today</p></CardContent></Card>
+                <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Items In My Queue</CardTitle><ListTodo className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{myQueue.length}</div><p className="text-xs text-muted-foreground">Items assigned or available to you</p></CardContent></Card>
+                <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">{completedTitle}</CardTitle><CheckCircle2 className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{completedToday}</div><p className="text-xs text-muted-foreground">Completed today</p></CardContent></Card>
             </div>
             <Card>
-                <CardHeader><CardTitle>My Scanning Queue</CardTitle><CardDescription>All books assigned to you for scanning. Click a book to view details.</CardDescription></CardHeader>
+                <CardHeader><CardTitle>{queueTitle}</CardTitle><CardDescription>All items assigned to you. Click an item to view details.</CardDescription></CardHeader>
                 <CardContent>
                     <Table>
                         <TableHeader><TableRow><TableHead>Book Name</TableHead><TableHead>Project</TableHead><TableHead>Status</TableHead><TableHead>Priority</TableHead><TableHead>Action</TableHead></TableRow></TableHeader>
                         <TableBody>
-                            {scannerData.myQueue.length > 0 ? scannerData.myQueue.map(book => (
+                            {myQueue.length > 0 ? myQueue.map(book => (
                                 <TableRow key={book.id}>
                                     <TableCell className="font-medium"><Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link></TableCell>
                                     <TableCell>{book.projectName}</TableCell>
-                                    <TableCell><Badge variant={book.status === 'Scanning Started' ? 'secondary' : 'outline'}>{book.status}</Badge></TableCell>
+                                    <TableCell><Badge variant={['Scanning Started', 'Indexing Started', 'Checking Started', 'In Processing'].includes(book.status) ? 'secondary' : 'outline'}>{book.status}</Badge></TableCell>
                                     <TableCell>{book.priority}</TableCell>
-                                    <TableCell><Button asChild variant="secondary" size="sm"><Link href={`/workflow/${book.status === 'To Scan' ? 'to-scan' : 'scanning-started'}`}>Go to Queue</Link></Button></TableCell>
+                                    <TableCell><Button asChild variant="secondary" size="sm"><Link href={getLinkForStatus(book.status)}>Go to Queue</Link></Button></TableCell>
                                 </TableRow>
                             )) : (
-                                <TableRow><TableCell colSpan={5} className="h-24 text-center">Your scanning queue is empty.</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={5} className="h-24 text-center">Your queue is empty.</TableCell></TableRow>
                             )}
                         </TableBody>
                     </Table>
@@ -472,17 +544,17 @@ export default function DashboardClient() {
     const renderDashboard = () => {
         switch(currentUser.role) {
             case 'Admin':
+                return <AdminDashboard />;
+            case 'Client':
+                return <ClientDashboard />;
             case 'Operator':
             case 'QC Specialist':
             case 'Reception':
+            case 'Scanning':
             case 'Indexing':
             case 'Processing':
             case 'Delivery':
-                return <AdminDashboard />;
-            case 'Scanning':
-                return <ScannerDashboard />;
-            case 'Client':
-                return <ClientDashboard />;
+                return <OperatorDashboard />;
             default:
                 return (
                     <Card>
@@ -496,9 +568,11 @@ export default function DashboardClient() {
     return (
         <div className="flex flex-col gap-6">
             <h1 className="font-headline text-3xl font-bold tracking-tight">
-                {selectedProjectId ? `${projects.find(p=>p.id === selectedProjectId)?.name} Dashboard` : (currentUser.role === 'Client' ? 'Client Dashboard' : 'Global Dashboard')}
+                {selectedProjectId ? `${projects.find(p=>p.id === selectedProjectId)?.name} Dashboard` : (currentUser.role === 'Client' ? 'Client Dashboard' : 'My Dashboard')}
             </h1>
             {renderDashboard()}
         </div>
     )
 }
+
+    
