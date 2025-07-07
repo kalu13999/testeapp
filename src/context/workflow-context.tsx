@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from 'react';
-import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions } from '@/lib/data';
+import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions, ProjectWorkflows } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 
 // Define the shape of the book data when importing
@@ -49,6 +49,7 @@ type AppContextType = {
   processingLogs: ProcessingLog[];
   roles: string[];
   permissions: Permissions;
+  projectWorkflows: ProjectWorkflows;
   
   // Global Project Filter
   allProjects: EnrichedProject[];
@@ -74,6 +75,7 @@ type AppContextType = {
   addProject: (projectData: Omit<Project, 'id'>) => void;
   updateProject: (projectId: string, projectData: Partial<Omit<Project, 'id'>>) => void;
   deleteProject: (projectId: string) => void;
+  updateProjectWorkflow: (projectId: string, workflow: string[]) => void;
 
   // Book Actions
   addBook: (projectId: string, bookData: Omit<RawBook, 'id' | 'projectId' | 'status'>) => void;
@@ -115,6 +117,7 @@ export function AppProvider({
   initialProcessingLogs,
   initialPermissions,
   initialRoles,
+  initialProjectWorkflows,
   children,
 }: {
   initialClients: Client[];
@@ -126,6 +129,7 @@ export function AppProvider({
   initialProcessingLogs: ProcessingLog[];
   initialPermissions: Permissions;
   initialRoles: string[];
+  initialProjectWorkflows: ProjectWorkflows;
   children: React.ReactNode;
 }) {
   const [currentUser, setCurrentUser] = React.useState<User | null>(null);
@@ -138,6 +142,7 @@ export function AppProvider({
   const [processingLogs, setProcessingLogs] = React.useState<ProcessingLog[]>(initialProcessingLogs);
   const [roles, setRoles] = React.useState<string[]>(initialRoles);
   const [permissions, setPermissions] = React.useState<Permissions>(initialPermissions);
+  const [projectWorkflows, setProjectWorkflows] = React.useState<ProjectWorkflows>(initialProjectWorkflows);
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
   const { toast } = useToast();
   
@@ -374,6 +379,12 @@ export function AppProvider({
     setUsers(prev => prev.map(u => u.role === roleName ? { ...u, role: '' } : u)); // Unassign users
     logAction('Role Deleted', `Role "${roleName}" was deleted.`, {});
     toast({ title: "Role Deleted", description: `Role "${roleName}" has been deleted.`, variant: "destructive" });
+  };
+
+  const updateProjectWorkflow = (projectId: string, workflow: string[]) => {
+    setProjectWorkflows(prev => ({ ...prev, [projectId]: workflow }));
+    logAction('Project Workflow Updated', `Workflow for project ID ${projectId} was updated.`, {});
+    toast({ title: "Project Workflow Updated" });
   };
 
 
@@ -783,6 +794,7 @@ export function AppProvider({
     processingLogs,
     roles,
     permissions,
+    projectWorkflows,
     allProjects: projectsForContext, // This should now be filtered for operators
     selectedProjectId,
     setSelectedProjectId,
@@ -790,6 +802,7 @@ export function AppProvider({
     addUser, updateUser, deleteUser,
     addRole, updateRole, deleteRole,
     addProject, updateProject, deleteProject,
+    updateProjectWorkflow,
     addBook, updateBook, deleteBook, importBooks,
     handleMarkAsShipped,
     handleBookAction, handleMoveBookToNextStage, handleClientAction,
