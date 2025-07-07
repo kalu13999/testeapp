@@ -4,7 +4,6 @@
     "*"
   ],
   "Operator": [
-    "/dashboard",
     "/projects",
     "/projects/[id]",
     "/clients",
@@ -35,7 +34,6 @@
     "/archive"
   ],
   "QC Specialist": [
-    "/dashboard",
     "/documents",
     "/documents/[id]",
     "/books/[id]",
@@ -52,14 +50,12 @@
     "/documents/[id]"
   ],
   "Reception": [
-    "/dashboard",
     "/workflow/pending-shipment",
     "/workflow/reception",
     "/books/[id]",
     "/documents/[id]"
   ],
   "Scanning": [
-    "/dashboard",
     "/workflow/pending-shipment",
     "/workflow/to-scan",
     "/workflow/scanning-started",
@@ -67,7 +63,6 @@
     "/documents/[id]"
   ],
   "Indexing": [
-    "/dashboard",
     "/workflow/pending-shipment",
     "/workflow/to-indexing",
     "/workflow/indexing-started",
@@ -75,7 +70,6 @@
     "/documents/[id]"
   ],
   "Processing": [
-    "/dashboard",
     "/workflow/pending-shipment",
     "/workflow/storage",
     "/workflow/ready-for-processing",
@@ -85,7 +79,6 @@
     "/documents/[id]"
   ],
   "Delivery": [
-    "/dashboard",
     "/workflow/pending-shipment",
     "/workflow/final-quality-control",
     "/workflow/delivery",
