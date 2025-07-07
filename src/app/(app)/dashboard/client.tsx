@@ -86,13 +86,13 @@ const getStatusBadgeVariant = (status: string) => {
 function AdminDashboard() {
     const { projects, books, documents, auditLogs, selectedProjectId } = useAppContext();
     const [chartType, setChartType] = React.useState<'bar' | 'line' | 'area'>('bar');
-    const [detailState, setDetailState<{
+    const [detailState, setDetailState] = React.useState<{
       open: boolean;
       title: string;
       items: (EnrichedBook | EnrichedAuditLog)[];
       type: 'books' | 'activities' | null;
     }>({ open: false, title: '', items: [], type: null });
-    const [detailFilter, setDetailFilter('');
+    const [detailFilter, setDetailFilter] = React.useState('');
 
     const dashboardData = useMemo(() => {
         const relevantProjects = selectedProjectId ? projects.filter(p => p.id === selectedProjectId) : projects;
