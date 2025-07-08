@@ -68,10 +68,19 @@ const allMenuItems = [
     items: [
       { href: "/projects", label: "Projects", icon: Briefcase },
       { href: "/clients", label: "Clients", icon: Users },
-      { href: "/role-management", label: "Role Management", icon: GanttChartSquare },
-      { href: "/users", label: "Users", icon: User },
       { href: "/book-management", label: "Book Management", icon: BookUp },
     ],
+  },
+  {
+    id: "admin",
+    title: "Admin Tools",
+    items: [
+      { href: "/role-management", label: "Role Management", icon: GanttChartSquare },
+      { href: "/users", label: "Users", icon: User },
+      { href: "/admin/status-override", label: "Status Override", icon: Sliders },
+      { href: "/admin/default-projects", label: "Default Projects", icon: Star },
+      { href: "/settings", label: "Settings", icon: Settings },
+    ]
   },
   {
     id: "workflow",
@@ -107,15 +116,6 @@ const allMenuItems = [
       { href: "/validated-history", label: "Validated History", icon: FileCheck },
       { href: "/reasons", label: "Rejection Reasons", icon: Tags },
     ],
-  },
-  {
-    id: "admin",
-    title: "Admin Tools",
-    items: [
-      { href: "/admin/status-override", label: "Status Override", icon: Sliders },
-      { href: "/admin/default-projects", label: "Default Projects", icon: Star },
-      { href: "/settings", label: "Settings", icon: Settings },
-    ]
   },
   {
     id: "finalization",
@@ -252,5 +252,3 @@ export function MainNav() {
     </nav>
   );
 }
-
-    
