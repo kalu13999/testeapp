@@ -57,12 +57,15 @@ import { Input } from "@/components/ui/input"
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 
 const ITEMS_PER_PAGE = 10;
 
 export default function UsersClient() {
-  const { users, roles, clients, addUser, updateUser, deleteUser, allProjects } = useAppContext();
+  const { users, roles, clients, addUser, updateUser, deleteUser, allProjects, toggleUserStatus } = useAppContext();
   const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | 'details' | null; data?: User }>({ open: false, type: null })
   const { toast } = useToast();
   
@@ -200,7 +203,7 @@ export default function UsersClient() {
 
   const exportCSV = (data: User[]) => {
     if (data.length === 0) return;
-    const headers: (keyof User)[] = ['id', 'name', 'email', 'role', 'phone', 'jobTitle', 'department', 'lastLogin'];
+    const headers: (keyof User)[] = ['id', 'name', 'email', 'role', 'phone', 'jobTitle', 'department', 'lastLogin', 'status'];
     const csvContent = [
         headers.join(','),
         ...data.map(user => 
@@ -351,6 +354,11 @@ export default function UsersClient() {
                     </div>
                 </TableHead>
                 <TableHead>
+                    <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>
+                        Status {getSortIndicator('status')}
+                    </div>
+                </TableHead>
+                <TableHead>
                   <span className="sr-only">Actions</span>
                 </TableHead>
               </TableRow>
@@ -388,6 +396,14 @@ export default function UsersClient() {
                         className="h-8"
                     />
                 </TableHead>
+                <TableHead>
+                    <Input
+                        placeholder="Filter by status..."
+                        value={columnFilters['status'] || ''}
+                        onChange={(e) => handleColumnFilterChange('status', e.target.value)}
+                        className="h-8"
+                    />
+                </TableHead>
                 <TableHead/>
               </TableRow>
             </TableHeader>
@@ -422,6 +438,20 @@ export default function UsersClient() {
                   </TableCell>
                   <TableCell>{user.department || '—'}</TableCell>
                   <TableCell>
+                    <div className="flex items-center gap-2">
+                        <Switch
+                            id={`status-switch-${user.id}`}
+                            checked={user.status === 'active'}
+                            onCheckedChange={() => toggleUserStatus(user.id)}
+                            disabled={user.role === 'System'}
+                            aria-label={`Toggle status for ${user.name}`}
+                        />
+                        <Label htmlFor={`status-switch-${user.id}`} className={cn("capitalize", user.status === 'disabled' && "text-muted-foreground")}>
+                            {user.status}
+                        </Label>
+                    </div>
+                  </TableCell>
+                  <TableCell>
                     {user.role !== 'System' && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -449,7 +479,7 @@ export default function UsersClient() {
                 </TableRow>
               )) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
+                  <TableCell colSpan={7} className="h-24 text-center">
                     No users found matching your filters.
                   </TableCell>
                 </TableRow>

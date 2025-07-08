@@ -66,6 +66,7 @@ type AppContextType = {
   addUser: (userData: Omit<User, 'id' | 'avatar' | 'lastLogin'>) => void;
   updateUser: (userId: string, userData: Partial<Omit<User, 'id' | 'avatar' | 'lastLogin'>>) => void;
   deleteUser: (userId: string) => void;
+  toggleUserStatus: (userId: string) => void;
   
   // Role Actions
   addRole: (roleName: string, permissions: string[]) => void;
@@ -170,8 +171,16 @@ export function AppProvider({
   }, [initialUsers]);
 
   const login = (username: string, password: string): User | null => {
-    const user = initialUsers.find(u => u.username === username && u.password === password);
+    const user = users.find(u => u.username === username && u.password === password);
     if (user) {
+      if (user.status === 'disabled') {
+        toast({
+          title: "Login Failed",
+          description: "Your account is disabled. Please contact an administrator.",
+          variant: "destructive"
+        });
+        return null;
+      }
       setCurrentUser(user);
       localStorage.setItem('flowvault_userid', user.id);
       return user;
@@ -276,7 +285,7 @@ export function AppProvider({
   };
   
   const addUser = (userData: Omit<User, 'id' | 'avatar' | 'lastLogin'>) => {
-    const newUser: User = { id: `u_${Date.now()}`, avatar: 'https://placehold.co/100x100.png', ...userData };
+    const newUser: User = { id: `u_${Date.now()}`, avatar: 'https://placehold.co/100x100.png', status: 'active', ...userData };
     setUsers(prev => [...prev, newUser]);
     logAction('User Created', `New user "${newUser.name}" added with role ${newUser.role}.`, {});
     toast({ title: "User Added", description: `User "${newUser.name}" has been created.` });
@@ -286,6 +295,20 @@ export function AppProvider({
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...userData } : u));
     logAction('User Updated', `Details for user "${userData.name}" updated.`, {});
     toast({ title: "User Updated", description: "User details have been saved." });
+  };
+  
+  const toggleUserStatus = (userId: string) => {
+    const user = users.find(u => u.id === userId);
+    if (!user || user.role === 'System') return; // Cannot disable system user
+
+    const newStatus = user.status === 'active' ? 'disabled' : 'active';
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: newStatus } : u));
+    logAction(
+      'User Status Changed', 
+      `User "${user.name}" was ${newStatus === 'active' ? 'enabled' : 'disabled'}.`, 
+      {}
+    );
+    toast({ title: `User ${newStatus === 'active' ? 'Enabled' : 'Disabled'}` });
   };
 
   const deleteUser = (userId: string) => {
@@ -445,20 +468,20 @@ export function AppProvider({
     toast({ title: "Tags Updated", description: "The rejection tags for the page have been updated." });
   };
   
-  const clearPageRejectionTags = (pageId: string) => {
+  const clearPageRejectionTags = (pageId: string, tagsToKeep: string[] = []) => {
     const page = documents.find(d => d.id === pageId);
     if (!page) return;
 
     setDocuments(prevDocs => 
-      prevDocs.map(doc => doc.id === pageId ? { ...doc, tags: [] } : doc)
+      prevDocs.map(doc => doc.id === pageId ? { ...doc, tags: tagsToKeep } : doc)
     );
 
     logAction(
-        'Rejection Tags Cleared', 
-        `All rejection tags cleared for page "${page.name}".`, 
+        'Rejection Tags Modified', 
+        `Tags updated for page "${page.name}". Kept: ${tagsToKeep.join(', ')}.`, 
         { documentId: pageId, bookId: page.bookId }
     );
-    toast({ title: "Tags Cleared", description: "Rejection tags have been removed from the page." });
+    toast({ title: "Tags Updated" });
   }
 
   // --- WORKFLOW ACTIONS ---
@@ -873,7 +896,7 @@ export function AppProvider({
     selectedProjectId,
     setSelectedProjectId,
     addClient, updateClient, deleteClient,
-    addUser, updateUser, deleteUser,
+    addUser, updateUser, deleteUser, toggleUserStatus,
     addRole, updateRole, deleteRole,
     addProject, updateProject, deleteProject,
     updateProjectWorkflow,
