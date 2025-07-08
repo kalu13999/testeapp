@@ -4,7 +4,7 @@
 import * as React from 'react';
 import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions, ProjectWorkflows, RejectionTag } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
-import { WORKFLOW_SEQUENCE } from '@/lib/workflow-config';
+import { WORKFLOW_SEQUENCE, STAGE_CONFIG } from '@/lib/workflow-config';
 
 // Define the shape of the book data when importing
 export interface BookImport {
@@ -101,7 +101,7 @@ type AppContextType = {
   getNextEnabledStage: (currentStage: string, workflow: string[]) => string | null;
   handleMarkAsShipped: (bookIds: string[]) => void;
   handleBookAction: (bookId: string, currentStatus: string, payload?: { actualPageCount?: number }) => void;
-  handleMoveBookToNextStage: (bookId: string, currentStage: string) => void;
+  handleMoveBookToNextStage: (bookId: string, currentStatus: string) => void;
   handleAssignUser: (bookId: string, userId: string, role: 'scanner' | 'indexer' | 'qc') => void;
   handleStartTask: (bookId: string, role: 'scanner' | 'indexing' | 'qc') => void;
   handleCancelTask: (bookId: string, currentStatus: string) => void;
@@ -121,6 +121,17 @@ type AppContextType = {
 const AppContext = React.createContext<AppContextType | undefined>(undefined);
 
 const OPERATOR_ROLES = ["Operator", "QC Specialist", "Reception", "Scanning", "Indexing", "Processing", "Delivery", "Correction Specialist", "Multi-Operator"];
+
+const findStageKeyFromStatus = (statusName: string): string | undefined => {
+    for (const stageKey in STAGE_CONFIG) {
+        const config = STAGE_CONFIG[stageKey as keyof typeof STAGE_CONFIG];
+        if (config.dataStatus === statusName || config.dataStage === statusName) {
+            return stageKey;
+        }
+    }
+    return undefined;
+};
+
 
 export function AppProvider({
   initialClients,
@@ -271,36 +282,31 @@ export function AppProvider({
   // Effect to manage the selected project ID automatically
   React.useEffect(() => {
     if (!currentUser) {
-      if (selectedProjectId !== null) {
-        setSelectedProjectId(null);
-      }
-      return;
+        if (selectedProjectId !== null) {
+            setSelectedProjectId(null);
+        }
+        return;
     }
-    
-    // A selection is valid if it's an accessible project ID,
-    // OR if it's null (for "All Projects") and the user is an Admin or Client.
+
     const isSelectionValid = (
-      (selectedProjectId && accessibleProjectsForUser.some(p => p.id === selectedProjectId)) ||
-      (selectedProjectId === null && ['Admin', 'Client'].includes(currentUser.role))
+        (selectedProjectId && accessibleProjectsForUser.some(p => p.id === selectedProjectId)) ||
+        (selectedProjectId === null && ['Admin', 'Client'].includes(currentUser.role))
     );
-      
+
     if (isSelectionValid) {
-      return;
+        return;
     }
-    
-    // Fallback logic to set a default project if the current selection is invalid.
+
     let newDefaultProjectId: string | null = null;
-    
     if (currentUser.defaultProjectId && accessibleProjectsForUser.some(p => p.id === currentUser.defaultProjectId)) {
-      newDefaultProjectId = currentUser.defaultProjectId;
-    } 
-    else if (accessibleProjectsForUser.length > 0) {
-      newDefaultProjectId = accessibleProjectsForUser[0].id;
+        newDefaultProjectId = currentUser.defaultProjectId;
+    } else if (accessibleProjectsForUser.length > 0) {
+        newDefaultProjectId = accessibleProjectsForUser[0].id;
     }
-    
+
     setSelectedProjectId(newDefaultProjectId);
-    
-  }, [currentUser, accessibleProjectsForUser, selectedProjectId]);
+
+}, [currentUser, accessibleProjectsForUser, selectedProjectId]);
 
 
   // --- CRUD ACTIONS ---
@@ -553,8 +559,8 @@ export function AppProvider({
   }
 
   // --- WORKFLOW ACTIONS ---
-  const getNextEnabledStage = (currentStage: string, workflow: string[]): string | null => {
-    const currentIndex = WORKFLOW_SEQUENCE.indexOf(currentStage);
+  const getNextEnabledStage = (currentStageKey: string, workflow: string[]): string | null => {
+    const currentIndex = WORKFLOW_SEQUENCE.indexOf(currentStageKey);
     if (currentIndex === -1) return null;
 
     for (let i = currentIndex + 1; i < WORKFLOW_SEQUENCE.length; i++) {
@@ -600,13 +606,9 @@ export function AppProvider({
     if (!book) return;
 
     if(currentStatus === 'In Transit') {
-        const project = rawProjects.find(p => p.id === book.projectId);
-        if (!project) return;
-        const workflow = projectWorkflows[project.id] || [];
-        const nextStage = getNextEnabledStage('confirm-reception', workflow) || 'Received'; // Fallback
-        
-        updateBookStatus(bookId, nextStage);
-        moveBookDocuments(bookId, nextStage);
+        const newStatus = 'Received';
+        updateBookStatus(bookId, newStatus);
+        moveBookDocuments(bookId, newStatus);
         logAction('Reception Confirmed', `Book "${book?.name}" has been marked as received.`, { bookId });
         toast({ title: "Reception Confirmed" });
         return;
@@ -645,30 +647,46 @@ export function AppProvider({
       });
       const workflow = projectWorkflows[project.id] || [];
       const nextStage = getNextEnabledStage('scanning-started', workflow) || 'Storage'; // Fallback
-      updateBookStatus(bookId, nextStage, () => ({ scanEndTime: new Date().toISOString() }));
-      moveBookDocuments(bookId, nextStage);
-      logAction('Scanning Finished', `${pagesToCreate} pages created. Book moved to ${nextStage}.`, { bookId });
+      const newStatus = STAGE_CONFIG[nextStage]?.dataStatus || STAGE_CONFIG[nextStage]?.dataStage || 'Storage';
+      updateBookStatus(bookId, newStatus, () => ({ scanEndTime: new Date().toISOString() }));
+      moveBookDocuments(bookId, newStatus);
+      logAction('Scanning Finished', `${pagesToCreate} pages created. Book moved to ${newStatus}.`, { bookId });
       toast({ title: "Scanning Complete", description: `${pagesToCreate} pages created.` });
       return;
     }
   };
   
 
-  const handleMoveBookToNextStage = (bookId: string, currentStage: string) => {
+  const handleMoveBookToNextStage = (bookId: string, currentStatusName: string) => {
     const book = rawBooks.find(b => b.id === bookId);
     if (!book || !book.projectId) return;
+
     const workflow = projectWorkflows[book.projectId] || [];
+    const currentStageKey = findStageKeyFromStatus(currentStatusName);
     
-    const nextStage = getNextEnabledStage(currentStage, workflow);
-    if (!nextStage) {
+    if (!currentStageKey) {
+        toast({title: "Workflow Error", description: `Cannot find workflow stage for status "${currentStatusName}".`, variant: "destructive"});
+        return;
+    }
+    
+    const nextStageKey = getNextEnabledStage(currentStageKey, workflow);
+    if (!nextStageKey) {
       toast({title: "Workflow Complete", description: "This is the final step for this project."});
       return;
     }
     
-    moveBookDocuments(bookId, nextStage);
-    updateBookStatus(bookId, nextStage);
-    logAction('Workflow Step', `Book "${book.name}" moved from ${currentStage} to ${nextStage}.`, { bookId });
-    toast({ title: "Workflow Action", description: `Book moved to ${nextStage}.` });
+    const nextStageConfig = STAGE_CONFIG[nextStageKey];
+    const newStatusName = nextStageConfig.dataStatus || nextStageConfig.dataStage;
+    
+    if (!newStatusName) {
+        toast({title: "Workflow Error", description: `Next stage "${nextStageKey}" has no configured status.`, variant: "destructive"});
+        return;
+    }
+
+    moveBookDocuments(bookId, newStatusName);
+    updateBookStatus(bookId, newStatusName);
+    logAction('Workflow Step', `Book "${book.name}" moved from ${currentStatusName} to ${newStatusName}.`, { bookId });
+    toast({ title: "Workflow Action", description: `Book moved to ${newStatusName}.` });
   };
 
   const handleAssignUser = (bookId: string, userId: string, role: 'scanner' | 'indexer' | 'qc') => {
@@ -677,25 +695,32 @@ export function AppProvider({
     if (!user || !book || !book.projectId) return;
     
     const workflow = projectWorkflows[book.projectId] || [];
-
+    
+    let nextStatusKey: string | null = null;
+    let newStatusName: string = '';
+    
     if (role === 'scanner') {
-        const nextStatus = getNextEnabledStage('assign-scanner', workflow) || 'To Scan';
-        updateBookStatus(bookId, nextStatus, () => ({ scannerUserId: userId }));
-        moveBookDocuments(bookId, nextStatus);
+        nextStatusKey = getNextEnabledStage('assign-scanner', workflow);
+        newStatusName = STAGE_CONFIG[nextStatusKey || 'to-scan']?.dataStatus || 'To Scan';
+        updateBookStatus(bookId, newStatusName, () => ({ scannerUserId: userId }));
         logAction('Assigned to Scanner', `Book "${book.name}" assigned to ${user.name}.`, { bookId });
         toast({ title: "Book Assigned", description: `Assigned to ${user.name} for scanning.` });
     } else if (role === 'indexer') {
-        const nextStatus = getNextEnabledStage('storage', workflow) || 'To Indexing';
-        updateBookStatus(bookId, nextStatus, () => ({ indexerUserId: userId }));
-        moveBookDocuments(bookId, nextStatus);
+        nextStatusKey = getNextEnabledStage('storage', workflow);
+        newStatusName = STAGE_CONFIG[nextStatusKey || 'to-indexing']?.dataStatus || 'To Indexing';
+        updateBookStatus(bookId, newStatusName, () => ({ indexerUserId: userId }));
         logAction('Assigned to Indexer', `Book "${book.name}" assigned to ${user.name}.`, { bookId });
         toast({ title: "Book Assigned", description: `Assigned to ${user.name} for indexing.` });
     } else if (role === 'qc') {
-        const nextStatus = getNextEnabledStage('indexing-started', workflow) || 'To Checking';
-        updateBookStatus(bookId, nextStatus, () => ({ qcUserId: userId, indexingStartTime: undefined, indexingEndTime: new Date().toISOString() }));
-        moveBookDocuments(bookId, nextStatus);
+        nextStatusKey = getNextEnabledStage('indexing-started', workflow);
+        newStatusName = STAGE_CONFIG[nextStatusKey || 'to-checking']?.dataStatus || 'To Checking';
+        updateBookStatus(bookId, newStatusName, () => ({ qcUserId: userId, indexingStartTime: undefined, indexingEndTime: new Date().toISOString() }));
         logAction('Assigned for QC', `Book "${book.name}" assigned to ${user.name}.`, { bookId });
         toast({ title: "Book Assigned", description: `Assigned to ${user.name} for checking.` });
+    }
+    
+    if (newStatusName) {
+      moveBookDocuments(bookId, newStatusName);
     }
   };
 
@@ -704,25 +729,32 @@ export function AppProvider({
     if (!book || !book.projectId) return;
 
     const workflow = projectWorkflows[book.projectId] || [];
-
+    
+    let nextStatusKey: string | null = null;
+    let newStatusName: string = '';
+    let logMsg = '';
+    
     if (role === 'scanner') {
-        const nextStatus = getNextEnabledStage('to-scan', workflow) || 'Scanning Started';
-        updateBookStatus(bookId, nextStatus, () => ({ scanStartTime: new Date().toISOString() }));
-        moveBookDocuments(bookId, nextStatus);
-        logAction('Scanning Started', `Scanning process initiated for book.`, { bookId });
-        toast({ title: "Scanning Started" });
+        nextStatusKey = getNextEnabledStage('to-scan', workflow);
+        newStatusName = STAGE_CONFIG[nextStatusKey || 'scanning-started']?.dataStatus || 'Scanning Started';
+        updateBookStatus(bookId, newStatusName, () => ({ scanStartTime: new Date().toISOString() }));
+        logMsg = 'Scanning Started';
     } else if (role === 'indexing') {
-        const nextStatus = getNextEnabledStage('to-indexing', workflow) || 'Indexing Started';
-        updateBookStatus(bookId, nextStatus, () => ({ indexingStartTime: new Date().toISOString() }));
-        moveBookDocuments(bookId, nextStatus);
-        logAction('Indexing Started', `Indexing started for book "${book.name}".`, { bookId });
-        toast({ title: "Indexing Started" });
+        nextStatusKey = getNextEnabledStage('to-indexing', workflow);
+        newStatusName = STAGE_CONFIG[nextStatusKey || 'indexing-started']?.dataStatus || 'Indexing Started';
+        updateBookStatus(bookId, newStatusName, () => ({ indexingStartTime: new Date().toISOString() }));
+        logMsg = 'Indexing Started';
     } else if (role === 'qc') {
-        const nextStatus = getNextEnabledStage('to-checking', workflow) || 'Checking Started';
-        updateBookStatus(bookId, nextStatus, () => ({ qcStartTime: new Date().toISOString() }));
-        moveBookDocuments(bookId, nextStatus);
-        logAction('Checking Started', `Initial QC started for book "${book.name}".`, { bookId });
-        toast({ title: "Checking Started" });
+        nextStatusKey = getNextEnabledStage('to-checking', workflow);
+        newStatusName = STAGE_CONFIG[nextStatusKey || 'checking-started']?.dataStatus || 'Checking Started';
+        updateBookStatus(bookId, newStatusName, () => ({ qcStartTime: new Date().toISOString() }));
+        logMsg = 'Checking Started';
+    }
+    
+    if (newStatusName) {
+      moveBookDocuments(bookId, newStatusName);
+      logAction(logMsg, `${logMsg} process initiated for book.`, { bookId });
+      toast({ title: logMsg });
     }
   };
 
@@ -774,10 +806,11 @@ export function AppProvider({
     const book = rawBooks.find(b => b.id === bookId);
     if (!book || !book.projectId) return;
     const workflow = projectWorkflows[book.projectId] || [];
-    const nextStage = getNextEnabledStage('ready-for-processing', workflow) || 'In Processing';
+    const nextStage = getNextEnabledStage('ready-for-processing', workflow) || 'in-processing';
+    const newStatus = STAGE_CONFIG[nextStage]?.dataStatus || STAGE_CONFIG[nextStage]?.dataStage || 'In Processing';
 
-    moveBookDocuments(bookId, nextStage);
-    updateBookStatus(bookId, nextStage);
+    moveBookDocuments(bookId, newStatus);
+    updateBookStatus(bookId, newStatus);
     setProcessingLogs(prev => {
         const otherLogs = prev.filter(log => log.bookId !== bookId);
         const newLog: ProcessingLog = {
@@ -795,10 +828,11 @@ export function AppProvider({
     const book = rawBooks.find(b => b.id === bookId);
     if (!book || !book.projectId) return;
     const workflow = projectWorkflows[book.projectId] || [];
-    const nextStage = getNextEnabledStage('in-processing', workflow) || 'Processed';
+    const nextStage = getNextEnabledStage('in-processing', workflow) || 'processed';
+    const newStatus = STAGE_CONFIG[nextStage]?.dataStatus || STAGE_CONFIG[nextStage]?.dataStage || 'Processed';
 
-    moveBookDocuments(bookId, nextStage);
-    updateBookStatus(bookId, nextStage);
+    moveBookDocuments(bookId, newStatus);
+    updateBookStatus(bookId, newStatus);
     setProcessingLogs(prev => prev.map(log => 
         log.bookId === bookId 
             ? { ...log, status: 'Complete', progress: 100, log: `${log.log}\n[${new Date().toLocaleTimeString()}] Processing complete.` } 
@@ -814,8 +848,10 @@ export function AppProvider({
     const workflow = projectWorkflows[book.projectId] || [];
     const isApproval = action === 'approve';
 
-    const nextStage = getNextEnabledStage('pending-deliveries', workflow) || 'Finalized';
-    const newStatus = isApproval ? nextStage : 'Client Rejected';
+    const nextStageKey = getNextEnabledStage('pending-deliveries', workflow) || 'finalized';
+    const nextStatus = STAGE_CONFIG[nextStageKey]?.dataStatus || STAGE_CONFIG[nextStageKey]?.dataStage || 'Finalized';
+
+    const newStatus = isApproval ? nextStatus : 'Client Rejected';
     
     moveBookDocuments(bookId, newStatus);
     
@@ -834,11 +870,12 @@ export function AppProvider({
     const book = rawBooks.find(b => b.id === bookId);
     if (!book || !book.projectId) return;
     const workflow = projectWorkflows[book.projectId] || [];
-    const nextStage = getNextEnabledStage('finalized', workflow) || 'Archived';
+    const nextStageKey = getNextEnabledStage('finalized', workflow) || 'archive';
+    const newStatus = STAGE_CONFIG[nextStageKey]?.dataStatus || STAGE_CONFIG[nextStageKey]?.dataStage || 'Archived';
     
-    moveBookDocuments(bookId, nextStage);
-    updateBookStatus(bookId, nextStage);
-    logAction('Book Archived', `Book "${book?.name}" was finalized and moved to ${nextStage}.`, { bookId });
+    moveBookDocuments(bookId, newStatus);
+    updateBookStatus(bookId, newStatus);
+    logAction('Book Archived', `Book "${book?.name}" was finalized and moved to ${newStatus}.`, { bookId });
     toast({ title: "Book Archived" });
   };
   
@@ -846,10 +883,11 @@ export function AppProvider({
     const book = rawBooks.find(b => b.id === bookId);
     if (!book || !book.projectId) return;
     const workflow = projectWorkflows[book.projectId] || [];
-    const nextStage = getNextEnabledStage('client-rejections', workflow) || 'Corrected';
+    const nextStageKey = getNextEnabledStage('client-rejections', workflow) || 'corrected';
+    const newStatus = STAGE_CONFIG[nextStageKey]?.dataStatus || STAGE_CONFIG[nextStageKey]?.dataStage || 'Corrected';
 
-    moveBookDocuments(bookId, nextStage);
-    updateBookStatus(bookId, nextStage);
+    moveBookDocuments(bookId, newStatus);
+    updateBookStatus(bookId, newStatus);
     logAction('Marked as Corrected', `Book "${book.name}" marked as corrected after client rejection.`, { bookId });
     toast({ title: "Book Corrected" });
   };
@@ -949,17 +987,18 @@ export function AppProvider({
 
   // --- Contextual Data Filtering ---
   const projectsForContext = React.useMemo(() => {
-    if (currentUser?.role === 'Admin' && selectedProjectId === null) {
-      return allEnrichedProjects;
-    }
-    if (currentUser?.role === 'Client' && selectedProjectId === null) {
+    if (!currentUser) return [];
+    if (currentUser.role === 'Admin' || currentUser.role === 'Client') {
+      if(selectedProjectId) {
+         return accessibleProjectsForUser.filter(p => p.id === selectedProjectId);
+      }
       return accessibleProjectsForUser;
     }
     if (selectedProjectId) {
       return accessibleProjectsForUser.filter(p => p.id === selectedProjectId);
     }
     return accessibleProjectsForUser;
-  }, [accessibleProjectsForUser, selectedProjectId, currentUser, allEnrichedProjects]);
+  }, [accessibleProjectsForUser, selectedProjectId, currentUser]);
   
   const booksForContext = React.useMemo(() => {
     return projectsForContext.flatMap(p => p.books);
