@@ -36,7 +36,6 @@
   ],
   "Multi-Operator": [
     "/profile",
-    "/documents",
     "/documents/[id]",
     "/books/[id]",
     "/workflow/to-scan",
@@ -44,8 +43,7 @@
     "/workflow/to-indexing",
     "/workflow/indexing-started",
     "/workflow/to-checking",
-    "/workflow/checking-started",
-    "/workflow/final-quality-control"
+    "/workflow/checking-started"
   ],
   "QC Specialist": [
     "/profile",

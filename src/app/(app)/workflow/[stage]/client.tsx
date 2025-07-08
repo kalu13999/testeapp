@@ -105,7 +105,7 @@ const DetailItem = ({ label, value }: { label: string; value: React.ReactNode })
 export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const { 
     books, documents, handleBookAction, handleMoveBookToNextStage, 
-    updateDocumentStatus, currentUser, users,
+    updateDocumentStatus, currentUser, users, permissions,
     handleStartTask, handleAssignUser, handleStartProcessing, handleCancelTask,
     selectedProjectId
   } = useAppContext();
@@ -149,13 +149,14 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
       }
       
       if (currentUser && config.assigneeRole && currentUser.role !== 'Admin') {
-          const roleMap: { [key: string]: string } = {
-            scanner: 'Scanning',
-            indexer: 'Indexing',
-            qc: 'QC Specialist'
-          };
-          if (currentUser.role === roleMap[config.assigneeRole]) {
+          const requiredPermission = assignmentConfig[config.assigneeRole].permission;
+          const userPermissions = permissions[currentUser.role] || [];
+          const canAccessStage = userPermissions.includes('*') || userPermissions.includes(requiredPermission);
+          
+          if (canAccessStage) {
             items = (items as EnrichedBook[]).filter(book => (book as any)[`${config.assigneeRole}UserId`] === currentUser.id);
+          } else {
+            items = [];
           }
       }
     } else if (dataType === 'document' && dataStage) {
@@ -179,7 +180,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     }
 
     return items;
-  }, [books, documents, dataType, dataStatus, dataStage, currentUser, stage, selectedProjectId, config.assigneeRole, users]);
+  }, [books, documents, dataType, dataStatus, dataStage, currentUser, stage, selectedProjectId, config.assigneeRole, users, permissions]);
 
   const handleColumnFilterChange = (columnId: string, value: string) => {
     setColumnFilters(prev => ({ ...prev, [columnId]: value }));
@@ -386,18 +387,20 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     setScanState({ open: false, book: null, folderName: null, fileCount: null });
   }
 
-  const assignmentConfig: { [key in AssignmentRole]: { roleName: string, title: string, description: string } } = {
-    scanner: { roleName: 'Scanning', title: "Assign Scanner", description: "Select a scanner operator to process this book." },
-    indexer: { roleName: 'Indexing', title: "Assign Indexer", description: "Select an indexer to process this book." },
-    qc: { roleName: 'QC Specialist', title: "Assign for QC", description: "Select a QC specialist to review this book." }
+  const assignmentConfig: { [key in AssignmentRole]: { title: string, description: string, permission: string } } = {
+    scanner: { title: "Assign Scanner", description: "Select a scanner operator to process this book.", permission: '/workflow/to-scan' },
+    indexer: { title: "Assign Indexer", description: "Select an indexer to process this book.", permission: '/workflow/to-indexing' },
+    qc: { title: "Assign for QC", description: "Select a QC specialist to review this book.", permission: '/workflow/to-checking' }
   };
   
   const getAssignableUsers = (role: AssignmentRole, projectId: string) => {
-      const targetRole = assignmentConfig[role].roleName;
-      return users.filter(user => 
-        (user.role === targetRole || user.role === 'Multi-Operator') &&
-        (user.projectIds?.includes(projectId))
-      );
+      const requiredPermission = assignmentConfig[role].permission;
+      return users.filter(user => {
+        const userPermissions = permissions[user.role] || [];
+        const hasPermission = userPermissions.includes('*') || userPermissions.includes(requiredPermission);
+        const hasProjectAccess = user.projectIds?.includes(projectId);
+        return hasPermission && hasProjectAccess;
+      });
   }
 
   const openAssignmentDialog = (book: EnrichedBook, role: AssignmentRole) => {

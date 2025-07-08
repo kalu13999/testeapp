@@ -88,6 +88,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     handleResubmit,
     updateDocumentFlag,
     users,
+    permissions,
     handleAssignUser,
     selectedProjectId,
     rejectionTags,
@@ -222,12 +223,19 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     }
   };
   
+  const assignmentConfig: { [key in 'indexer' | 'qc']: { permission: string } } = {
+    indexer: { permission: '/workflow/to-indexing' },
+    qc: { permission: '/workflow/to-checking' }
+  };
+
   const getAssignableUsers = (role: 'indexer' | 'qc', projectId: string) => {
-      const targetRole = role === 'indexer' ? 'Indexing' : 'QC Specialist';
-      return users.filter(user => 
-        (user.role === targetRole || user.role === 'Multi-Operator') &&
-        (user.projectIds?.includes(projectId))
-      );
+    const requiredPermission = assignmentConfig[role].permission;
+    return users.filter(user => {
+      const userPermissions = permissions[user.role] || [];
+      const hasPermission = userPermissions.includes('*') || userPermissions.includes(requiredPermission);
+      const hasProjectAccess = user.projectIds?.includes(projectId);
+      return hasPermission && hasProjectAccess;
+    });
   }
 
   const handleMainAction = (book: EnrichedBook) => {

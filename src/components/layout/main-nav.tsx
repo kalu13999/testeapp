@@ -41,7 +41,7 @@ import { Button } from "@/components/ui/button";
 import { User } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 
-const INTERNAL_ROLES = ['Admin', 'Operator', 'QC Specialist', 'Reception', 'Scanning', 'Indexing', 'Processing', 'Delivery', 'Correction Specialist'];
+const INTERNAL_ROLES = ['Admin', 'Operator', 'QC Specialist', 'Reception', 'Scanning', 'Indexing', 'Processing', 'Delivery', 'Correction Specialist', 'Multi-Operator'];
 
 const allMenuItems = [
   {
@@ -154,10 +154,7 @@ export function MainNav() {
           }
 
           if (isAdmin) return true;
-          // A special check for scanning roles to see both pages
-          if (item.href.startsWith("/workflow/to-scan") || item.href.startsWith("/workflow/scanning-started")) {
-            return userPermissions.includes('/workflow/to-scan');
-          }
+          
           return userPermissions.some(p => {
             const regex = new RegExp(`^${p.replace(/\[.*?\]/g, '[^/]+')}$`);
             return regex.test(item.href);
