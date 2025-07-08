@@ -270,35 +270,49 @@ export function AppProvider({
 
   // Effect to manage the selected project ID automatically
   React.useEffect(() => {
-    // This context is built from projects the user has access to.
-    const projectsForCurrentUser = accessibleProjectsForUser;
-
-    if (currentUser && projectsForCurrentUser.length > 0) {
-      const userProjectIds = new Set(projectsForCurrentUser.map(p => p.id));
-      const isCurrentSelectionValid = selectedProjectId && userProjectIds.has(selectedProjectId);
-
-      // If current selection is valid, do nothing.
-      if (isCurrentSelectionValid) return;
-
-      // If selection is invalid or not set, determine a new one.
-      let newSelectedProjectId: string | null = null;
-      
-      // Try to use the user's default project ID if it's in their accessible list.
-      if (currentUser.defaultProjectId && userProjectIds.has(currentUser.defaultProjectId)) {
-        newSelectedProjectId = currentUser.defaultProjectId;
-      } else {
-        // Fallback to the first project in their list.
-        newSelectedProjectId = projectsForCurrentUser[0].id;
-      }
-      setSelectedProjectId(newSelectedProjectId);
-
-    } else if (!currentUser || projectsForCurrentUser.length === 0) {
-      // If user logs out or has no projects, clear the selection.
+    // If no user is logged in, clear the project selection.
+    if (!currentUser) {
       if (selectedProjectId !== null) {
-          setSelectedProjectId(null);
+        setSelectedProjectId(null);
       }
+      return;
     }
-  }, [currentUser, accessibleProjectsForUser, selectedProjectId]); // Re-run when user or projects change.
+    
+    // At this point, we know we have a user.
+    
+    // Check if the current selection is valid for this user.
+    // A valid selection is either:
+    // a) A project ID that exists in their list of accessible projects.
+    // b) `null`, but only if the user is an Admin (representing "All Projects").
+    const isSelectionValid =
+      (selectedProjectId && accessibleProjectsForUser.some(p => p.id === selectedProjectId)) ||
+      (selectedProjectId === null && currentUser.role === 'Admin');
+      
+    // If the user's current selection is already valid, we don't need to do anything.
+    // This is the crucial step that respects the Admin's choice of "All Projects".
+    if (isSelectionValid) {
+      return;
+    }
+    
+    // If we've reached this point, the selection is invalid. This happens on first
+    // login or if their permissions change. We must set a sensible default.
+    let newDefaultProjectId: string | null = null;
+    
+    // 1. Try to set the user's defined default project.
+    if (currentUser.defaultProjectId && accessibleProjectsForUser.some(p => p.id === currentUser.defaultProjectId)) {
+      newDefaultProjectId = currentUser.defaultProjectId;
+    } 
+    // 2. If no default is set or is invalid, fall back to the first project in their list.
+    else if (accessibleProjectsForUser.length > 0) {
+      newDefaultProjectId = accessibleProjectsForUser[0].id;
+    }
+    // 3. If a non-admin has no projects, or an admin has no projects in the system,
+    // the default will remain `null`, which is correct.
+    
+    // Set the calculated default project.
+    setSelectedProjectId(newDefaultProjectId);
+    
+  }, [currentUser, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId]);
 
 
   // --- CRUD ACTIONS ---
@@ -715,14 +729,15 @@ export function AppProvider({
     if (!book) return;
 
     const updates: { [key: string]: { bookStatus: string, docStatus: string, logMsg: string, clearTime: 'scan' | 'index' | 'qc' } } = {
-      'Scanning': { bookStatus: 'To Scan', docStatus: 'To Scan', logMsg: 'Scanning', clearTime: 'scan' },
-      'Indexing': { bookStatus: 'To Indexing', docStatus: 'To Indexing', logMsg: 'Indexing', clearTime: 'index' },
-      'Checking': { bookStatus: 'To Checking', docStatus: 'To Checking', logMsg: 'Checking', clearTime: 'qc' },
+      'Scanning Started': { bookStatus: 'To Scan', docStatus: 'To Scan', logMsg: 'Scanning', clearTime: 'scan' },
+      'Indexing Started': { bookStatus: 'To Indexing', docStatus: 'To Indexing', logMsg: 'Indexing', clearTime: 'index' },
+      'Checking Started': { bookStatus: 'To Checking', docStatus: 'To Checking', logMsg: 'Checking', clearTime: 'qc' },
     };
 
-    const update = updates[currentStatus];
-    if (!update) return;
-
+    const updateKey = Object.keys(updates).find(key => currentStatus.startsWith(key));
+    if (!updateKey) return;
+    const update = updates[updateKey];
+    
     setRawBooks(prev => prev.map(b => {
       if (b.id !== bookId) return b;
       const newBook: RawBook = { ...b, status: update.bookStatus };
@@ -810,6 +825,7 @@ export function AppProvider({
   
   const handleMarkAsCorrected = (bookId: string) => {
     const book = rawBooks.find(b => b.id === bookId);
+    if (!book) return;
     moveBookDocuments(bookId, 'Corrected');
     updateBookStatus(bookId, 'Corrected');
     logAction('Marked as Corrected', `Book "${book.name}" marked as corrected after client rejection.`, { bookId });
@@ -818,6 +834,7 @@ export function AppProvider({
 
   const handleResubmit = (bookId: string, targetStage: string) => {
     const book = rawBooks.find(b => b.id === bookId);
+    if (!book) return;
     moveBookDocuments(bookId, targetStage);
     updateBookStatus(bookId, targetStage);
     logAction('Book Resubmitted', `Book "${book?.name}" resubmitted to ${targetStage}.`, { bookId });
@@ -889,6 +906,7 @@ export function AppProvider({
 
   const updateDocumentFlag = (docId: string, flag: AppDocument['flag'], comment?: string) => {
     const doc = documents.find(d => d.id === docId);
+    if (!doc) return;
     setDocuments(prevDocs =>
       prevDocs.map(d =>
         d.id === docId ? { ...d, flag, flagComment: flag ? comment : undefined } : d
@@ -909,11 +927,14 @@ export function AppProvider({
 
   // --- Contextual Data Filtering ---
   const projectsForContext = React.useMemo(() => {
+    if (selectedProjectId === null && currentUser?.role === 'Admin') {
+        return allEnrichedProjects;
+    }
     if (selectedProjectId) {
       return accessibleProjectsForUser.filter(p => p.id === selectedProjectId);
     }
     return accessibleProjectsForUser;
-  }, [accessibleProjectsForUser, selectedProjectId]);
+  }, [accessibleProjectsForUser, selectedProjectId, currentUser, allEnrichedProjects]);
   
   const booksForContext = React.useMemo(() => {
     return projectsForContext.flatMap(p => p.books);
