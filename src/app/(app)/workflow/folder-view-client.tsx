@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FolderSync, FileText, FileJson, Play, ThumbsUp, ThumbsDown, Send, Archive, Undo2, AlertTriangle, ShieldAlert, MoreHorizontal, Info, UserPlus, BookOpen, Check } from "lucide-react";
+import { FolderSync, FileText, FileJson, Play, ThumbsUp, ThumbsDown, Send, Archive, Undo2, AlertTriangle, ShieldAlert, MoreHorizontal, Info, UserPlus, BookOpen, Check, Tag } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { useToast } from "@/hooks/use-toast";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -22,11 +22,13 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { AppDocument, EnrichedBook, User } from "@/context/workflow-context";
+import { AppDocument, EnrichedBook, User, RejectionTag } from "@/context/workflow-context";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 type IconMap = {
   [key: string]: React.ElementType;
@@ -87,7 +89,10 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     updateDocumentFlag,
     users,
     handleAssignUser,
-    selectedProjectId
+    selectedProjectId,
+    rejectionTags,
+    currentUser,
+    tagPageForRejection,
   } = useAppContext();
   const { toast } = useToast();
   const ActionIcon = config.actionButtonIcon ? iconMap[config.actionButtonIcon] : FolderSync;
@@ -113,6 +118,13 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     role: 'indexer' | 'qc' | null;
     selectedUserId: string;
   }>({ open: false, bookId: null, bookName: null, projectId: null, role: null, selectedUserId: '' });
+  
+  const [taggingState, setTaggingState] = React.useState<{
+    open: boolean;
+    docId: string | null;
+    docName: string | null;
+    selectedTags: string[];
+  }>({ open: false, docId: null, docName: null, selectedTags: [] });
 
   const stageDocuments = React.useMemo(() => {
     let baseDocs = documents.filter(doc => doc.status === config.dataStage);
@@ -226,6 +238,26 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     }
   }
 
+  const openTaggingDialog = (doc: AppDocument) => {
+    setTaggingState({
+      open: true,
+      docId: doc.id,
+      docName: doc.name,
+      selectedTags: doc.tags,
+    });
+  };
+  
+  const closeTaggingDialog = () => {
+    setTaggingState({ open: false, docId: null, docName: null, selectedTags: [] });
+  };
+  
+  const handleTaggingSubmit = () => {
+    if (taggingState.docId) {
+      tagPageForRejection(taggingState.docId, taggingState.selectedTags);
+    }
+    closeTaggingDialog();
+  };
+
 
   const renderActions = (bookGroup: GroupedDocuments[string]) => {
     const { book, hasError } = bookGroup;
@@ -320,6 +352,11 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
         return actionButton;
     }
   }
+  
+  const clientRejectionTags = React.useMemo(() => {
+    if (!currentUser?.clientId) return [];
+    return rejectionTags.filter(tag => tag.clientId === currentUser.clientId);
+  }, [rejectionTags, currentUser]);
 
   return (
     <>
@@ -384,7 +421,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
                             {pages.map(page => (
                                 <div key={page.id} className="relative group">
-                                  <Link href={`/documents/${page.id}`}>
+                                  <Link href={`/documents/${page.id}`} className="block">
                                       <Card className="overflow-hidden hover:shadow-lg transition-shadow relative">
                                           <CardContent className="p-0">
                                               <Image
@@ -419,7 +456,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                                               {page.tags && page.tags.length > 0 && (
                                                   <div className="flex flex-wrap gap-1">
                                                       {page.tags.map(tag => (
-                                                          <Badge key={tag} variant="secondary" className="text-xs">
+                                                          <Badge key={tag} variant={stage === 'pending-deliveries' ? 'outline' : 'destructive'} className="text-xs">
                                                               {tag}
                                                           </Badge>
                                                       ))}
@@ -428,7 +465,12 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                                           </CardFooter>
                                       </Card>
                                   </Link>
-                                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    {stage === 'pending-deliveries' && (
+                                        <Button variant="secondary" size="icon" className="h-7 w-7" onClick={() => openTaggingDialog(page)}>
+                                            <Tag className="h-4 w-4" />
+                                        </Button>
+                                    )}
                                       <DropdownMenu>
                                           <DropdownMenuTrigger asChild>
                                               <Button variant="secondary" size="icon" className="h-7 w-7">
@@ -573,6 +615,48 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    
+    <Dialog open={taggingState.open} onOpenChange={closeTaggingDialog}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Tag "{taggingState.docName}"</DialogTitle>
+                <DialogDescription>
+                    Select one or more rejection reasons for this page.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+                <ScrollArea className="h-64">
+                    <div className="space-y-2 pr-6">
+                        {clientRejectionTags.map(tag => (
+                            <div key={tag.id} className="flex items-center space-x-2">
+                                <Checkbox
+                                    id={`tag-${tag.id}`}
+                                    checked={taggingState.selectedTags.includes(tag.label)}
+                                    onCheckedChange={(checked) => {
+                                        setTaggingState(prev => ({
+                                            ...prev,
+                                            selectedTags: checked
+                                                ? [...prev.selectedTags, tag.label]
+                                                : prev.selectedTags.filter(t => t !== tag.label)
+                                        }));
+                                    }}
+                                />
+                                <Label htmlFor={`tag-${tag.id}`} className="flex flex-col gap-1 w-full">
+                                    <span className="font-medium">{tag.label}</span>
+                                    <span className="text-xs text-muted-foreground">{tag.description}</span>
+                                </Label>
+                            </div>
+                        ))}
+                    </div>
+                </ScrollArea>
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={closeTaggingDialog}>Cancel</Button>
+                <Button onClick={handleTaggingSubmit}>Save Tags</Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+
     </>
   )
 }

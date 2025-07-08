@@ -14,6 +14,13 @@ export interface Client {
     info?: string;
 }
 
+export interface RejectionTag {
+    id: string;
+    clientId: string;
+    label: string;
+    description: string;
+}
+
 export interface DocumentStatus {
     id: string;
     name: string;
@@ -162,6 +169,7 @@ export const getProcessingLogs = () => readJsonFile<ProcessingLog[]>('processing
 export const getPermissions = () => readJsonFile<Permissions>('permissions.json');
 export const getRoles = () => readJsonFile<string[]>('roles.json');
 export const getProjectWorkflows = () => readJsonFile<ProjectWorkflows>('project_workflows.json');
+export const getRejectionTags = () => readJsonFile<RejectionTag[]>('rejection_tags.json');
 
 
 export async function getUserById(id: string): Promise<User | undefined> {

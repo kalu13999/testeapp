@@ -50,7 +50,8 @@
     "/pending-deliveries",
     "/validated-history",
     "/documents/[id]",
-    "/books/[id]"
+    "/books/[id]",
+    "/reasons"
   ],
   "Reception": [
     "/profile",

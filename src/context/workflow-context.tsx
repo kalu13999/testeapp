@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from 'react';
-import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions, ProjectWorkflows } from '@/lib/data';
+import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions, ProjectWorkflows, RejectionTag } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 
 // Define the shape of the book data when importing
@@ -50,6 +50,7 @@ type AppContextType = {
   roles: string[];
   permissions: Permissions;
   projectWorkflows: ProjectWorkflows;
+  rejectionTags: RejectionTag[];
   
   // Global Project Filter
   allProjects: EnrichedProject[];
@@ -82,6 +83,14 @@ type AppContextType = {
   updateBook: (bookId: string, bookData: Partial<Omit<RawBook, 'id' | 'projectId' | 'status'>>) => void;
   deleteBook: (bookId: string) => void;
   importBooks: (projectId: string, newBooks: BookImport[]) => void;
+  
+  // Rejection Tag Actions
+  addRejectionTag: (tagData: Omit<RejectionTag, 'id' | 'clientId'>) => void;
+  updateRejectionTag: (tagId: string, tagData: Partial<Omit<RejectionTag, 'id' | 'clientId'>>) => void;
+  deleteRejectionTag: (tagId: string) => void;
+  tagPageForRejection: (pageId: string, tags: string[]) => void;
+  clearPageRejectionTags: (pageId: string) => void;
+
 
   // Workflow Actions
   handleMarkAsShipped: (bookIds: string[]) => void;
@@ -105,7 +114,7 @@ type AppContextType = {
 
 const AppContext = React.createContext<AppContextType | undefined>(undefined);
 
-const OPERATOR_ROLES = ["Operator", "QC Specialist", "Reception", "Scanning", "Indexing", "Processing", "Delivery"];
+const OPERATOR_ROLES = ["Operator", "QC Specialist", "Reception", "Scanning", "Indexing", "Processing", "Delivery", "Correction Specialist"];
 
 export function AppProvider({
   initialClients,
@@ -118,6 +127,7 @@ export function AppProvider({
   initialPermissions,
   initialRoles,
   initialProjectWorkflows,
+  initialRejectionTags,
   children,
 }: {
   initialClients: Client[];
@@ -130,6 +140,7 @@ export function AppProvider({
   initialPermissions: Permissions;
   initialRoles: string[];
   initialProjectWorkflows: ProjectWorkflows;
+  initialRejectionTags: RejectionTag[];
   children: React.ReactNode;
 }) {
   const [currentUser, setCurrentUser] = React.useState<User | null>(null);
@@ -143,6 +154,7 @@ export function AppProvider({
   const [roles, setRoles] = React.useState<string[]>(initialRoles);
   const [permissions, setPermissions] = React.useState<Permissions>(initialPermissions);
   const [projectWorkflows, setProjectWorkflows] = React.useState<ProjectWorkflows>(initialProjectWorkflows);
+  const [rejectionTags, setRejectionTags] = React.useState<RejectionTag[]>(initialRejectionTags);
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
   const { toast } = useToast();
   
@@ -254,6 +266,7 @@ export function AppProvider({
     setRawProjects(prev => prev.filter(p => p.clientId !== clientId));
     setRawBooks(prev => prev.filter(b => !associatedProjectIds.includes(b.projectId)));
     setDocuments(prev => prev.filter(d => d.clientId !== clientId));
+    setRejectionTags(prev => prev.filter(t => t.clientId !== clientId));
 
     if (associatedProjectIds.includes(selectedProjectId!)) {
         setSelectedProjectId(null);
@@ -387,6 +400,53 @@ export function AppProvider({
     toast({ title: "Project Workflow Updated" });
   };
 
+  // --- REJECTION TAG ACTIONS ---
+  const addRejectionTag = (tagData: Omit<RejectionTag, 'id' | 'clientId'>) => {
+    if (!currentUser || !currentUser.clientId) return;
+    const newTag: RejectionTag = { id: `rt_${Date.now()}`, clientId: currentUser.clientId, ...tagData };
+    setRejectionTags(prev => [...prev, newTag]);
+    logAction('Rejection Tag Created', `Client "${currentUser.name}" created tag: "${newTag.label}".`, {});
+    toast({ title: "Rejection Reason Added" });
+  };
+
+  const updateRejectionTag = (tagId: string, tagData: Partial<Omit<RejectionTag, 'id' | 'clientId'>>) => {
+    setRejectionTags(prev => prev.map(t => t.id === tagId ? { ...t, ...tagData } : t));
+    logAction('Rejection Tag Updated', `Tag "${tagData.label}" updated.`, {});
+    toast({ title: "Rejection Reason Updated" });
+  };
+
+  const deleteRejectionTag = (tagId: string) => {
+    const tag = rejectionTags.find(t => t.id === tagId);
+    setRejectionTags(prev => prev.filter(t => t.id !== tagId));
+    logAction('Rejection Tag Deleted', `Tag "${tag?.label}" deleted.`, {});
+    toast({ title: "Rejection Reason Deleted", variant: 'destructive' });
+  };
+
+  const tagPageForRejection = (pageId: string, tags: string[]) => {
+    setDocuments(prevDocs => 
+      prevDocs.map(doc => {
+        if (doc.id === pageId) {
+          // Combine new tags with existing, removing duplicates
+          const newTags = [...new Set([...doc.tags, ...tags])];
+          return { ...doc, tags: newTags };
+        }
+        return doc;
+      })
+    );
+    toast({ title: "Page Tagged", description: "The page has been tagged for rejection." });
+  };
+  
+  const clearPageRejectionTags = (pageId: string) => {
+    setDocuments(prevDocs => 
+      prevDocs.map(doc => {
+        if (doc.id === pageId) {
+          return { ...doc, tags: [] }; // Clears all tags
+        }
+        return doc;
+      })
+    );
+    toast({ title: "Tags Cleared", description: "Rejection tags have been removed from the page." });
+  }
 
   // --- WORKFLOW ACTIONS ---
 
@@ -795,6 +855,7 @@ export function AppProvider({
     roles,
     permissions,
     projectWorkflows,
+    rejectionTags,
     allProjects: projectsForContext, // This should now be filtered for operators
     selectedProjectId,
     setSelectedProjectId,
@@ -804,6 +865,8 @@ export function AppProvider({
     addProject, updateProject, deleteProject,
     updateProjectWorkflow,
     addBook, updateBook, deleteBook, importBooks,
+    addRejectionTag, updateRejectionTag, deleteRejectionTag,
+    tagPageForRejection, clearPageRejectionTags,
     handleMarkAsShipped,
     handleBookAction, handleMoveBookToNextStage, handleClientAction,
     handleFinalize, handleMarkAsCorrected, handleResubmit,

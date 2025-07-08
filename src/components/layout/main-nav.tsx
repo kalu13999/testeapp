@@ -32,6 +32,7 @@ import {
   Package,
   GanttChartSquare,
   Settings,
+  Tags,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -102,6 +103,7 @@ const allMenuItems = [
       { href: "/shipments", label: "Prepare Shipment", icon: Send },
       { href: "/pending-deliveries", label: "Pending Deliveries", icon: FileClock },
       { href: "/validated-history", label: "Validated History", icon: FileCheck },
+      { href: "/reasons", label: "Rejection Reasons", icon: Tags },
     ],
   },
   {

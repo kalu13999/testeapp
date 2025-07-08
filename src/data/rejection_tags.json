@@ -1,0 +1,11 @@
+
+[
+  { "id": "rt_1", "clientId": "cl_1", "label": "Blurry Scan", "description": "The image is out of focus or hard to read." },
+  { "id": "rt_2", "clientId": "cl_1", "label": "Incorrect Page Order", "description": "The page is not in the correct sequence." },
+  { "id": "rt_3", "clientId": "cl_1", "label": "Page Upside Down", "description": "The page was scanned upside down or rotated incorrectly." },
+  { "id": "rt_4", "clientId": "cl_1", "label": "Duplicate Page", "description": "This page appears to be a duplicate of another page." },
+  { "id": "rt_5", "clientId": "cl_2", "label": "Missing Signature", "description": "A required signature is not present on the document." },
+  { "id": "rt_6", "clientId": "cl_2", "label": "Incomplete Form", "description": "One or more required fields on the form are blank." },
+  { "id": "rt_7", "clientId": "cl_2", "label": "Wrong Document", "description": "This document does not belong in this batch." },
+  { "id": "rt_8", "clientId": "cl_2", "label": "Poor Quality", "description": "General low quality, stains, or other legibility issues." }
+]
