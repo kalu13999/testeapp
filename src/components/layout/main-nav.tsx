@@ -65,14 +65,14 @@ const allMenuItems = [
     items: [
       { href: "/projects", label: "Projects", icon: Briefcase },
       { href: "/clients", label: "Clients", icon: Users },
+      { href: "/users", label: "Users", icon: User },
+      { href: "/role-management", label: "Role Management", icon: GanttChartSquare },
     ],
   },
   {
     id: "admin",
     title: "Admin Tools",
     items: [
-      { href: "/role-management", label: "Role Management", icon: GanttChartSquare },
-      { href: "/users", label: "Users", icon: User },
       { href: "/admin/status-override", label: "Status Override", icon: Sliders },
     ]
   },
