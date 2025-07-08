@@ -40,7 +40,7 @@ import { Button } from "@/components/ui/button";
 import { User } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 
-const INTERNAL_ROLES = ['Admin', 'Operator', 'QC Specialist', 'Reception', 'Scanning', 'Indexing', 'Processing', 'Delivery'];
+const INTERNAL_ROLES = ['Admin', 'Operator', 'QC Specialist', 'Reception', 'Scanning', 'Indexing', 'Processing', 'Delivery', 'Correction Specialist'];
 
 const allMenuItems = [
   {

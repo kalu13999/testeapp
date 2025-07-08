@@ -135,16 +135,54 @@
     "flag": null
   },
   {
-    "id": "doc_book_24_0",
+    "id": "doc_book_24_11",
     "clientId": "cl_2",
     "statusId": "ds_13",
     "type": "Scanned Page",
     "lastUpdated": "2025-07-04T20:00:00Z",
     "tags": [],
-    "name": "FutureTech-OB-Hires-Sep - Page 1",
+    "name": "FutureTech-OB-Hires-Sep - Page 11",
     "projectId": "proj_2",
     "bookId": "book_24",
     "flag": null
+  },
+  {
+    "id": "doc_book_24_12",
+    "clientId": "cl_2",
+    "statusId": "ds_13",
+    "type": "Scanned Page",
+    "lastUpdated": "2025-07-04T20:00:00Z",
+    "tags": ["duplicate"],
+    "name": "FutureTech-OB-Hires-Sep - Page 12",
+    "projectId": "proj_2",
+    "bookId": "book_24",
+    "flag": "warning",
+    "flagComment": "Client marked as potential duplicate."
+  },
+  {
+    "id": "doc_book_24_33",
+    "clientId": "cl_2",
+    "statusId": "ds_13",
+    "type": "Scanned Page",
+    "lastUpdated": "2025-07-04T20:00:00Z",
+    "tags": [],
+    "name": "FutureTech-OB-Hires-Sep - Page 33",
+    "projectId": "proj_2",
+    "bookId": "book_24",
+    "flag": null
+  },
+  {
+    "id": "doc_book_24_34",
+    "clientId": "cl_2",
+    "statusId": "ds_13",
+    "type": "Scanned Page",
+    "lastUpdated": "2025-07-04T20:00:00Z",
+    "tags": ["duplicate"],
+    "name": "FutureTech-OB-Hires-Sep - Page 34",
+    "projectId": "proj_2",
+    "bookId": "book_24",
+    "flag": "warning",
+    "flagComment": "Client marked as potential duplicate."
   },
   {
     "id": "doc_book_25_0",

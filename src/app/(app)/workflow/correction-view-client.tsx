@@ -22,6 +22,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 
 interface CorrectionViewClientProps {
   stage: string;
@@ -201,8 +202,15 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
                                                 className="aspect-[4/5.5] object-cover w-full h-full"
                                             />
                                         </CardContent>
-                                         <CardFooter className="p-2">
-                                            <p className="text-xs font-medium truncate">{page.name}</p>
+                                         <CardFooter className="p-2 flex-col items-start gap-1">
+                                             <p className="text-xs font-medium truncate w-full">{page.name}</p>
+                                             <div className="flex flex-wrap gap-1">
+                                                 {page.tags.map(tag => (
+                                                     <Badge key={tag} variant="destructive" className="text-xs">
+                                                         {tag}
+                                                     </Badge>
+                                                 ))}
+                                             </div>
                                          </CardFooter>
                                     </Link>
                                     <div className="absolute top-1 right-1 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
