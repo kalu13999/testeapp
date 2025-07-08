@@ -58,6 +58,7 @@ export const WORKFLOW_PHASES = [
         emptyStateText: "No scanned documents are waiting in storage.",
         dataStage: 'Storage',
         viewType: 'folder',
+        assigneeRole: 'indexer',
       },
     }
   },
@@ -70,13 +71,14 @@ export const WORKFLOW_PHASES = [
     config: {
       'assign-scanner': {
         title: "Already Received",
-        description: "Books that have been received and are awaiting the next workflow step.",
-        actionButtonLabel: "Send to Scanning Queue",
-        actionButtonIcon: "Send",
-        emptyStateText: "No received books are awaiting processing.",
+        description: "Books that have been received. Assign them to a scanner to move them to the 'To Scan' queue.",
+        actionButtonLabel: "Assign Scanner",
+        actionButtonIcon: "UserPlus",
+        emptyStateText: "No received books are awaiting assignment.",
         dataType: 'book',
         dataStatus: 'Received',
         viewType: 'list',
+        assigneeRole: 'scanner',
       },
       'to-scan': {
         title: "To Scan Queue",
@@ -311,3 +313,5 @@ export const findStageKeyFromStatus = (statusName: string): string | undefined =
     }
     return undefined;
 };
+
+    

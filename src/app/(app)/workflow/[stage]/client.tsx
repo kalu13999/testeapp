@@ -416,54 +416,6 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     setSelection([]);
   };
 
-  const handleSingleItemAction = (item: EnrichedBook) => {
-      if (!item.projectId) return;
-      const workflow = projectWorkflows[item.projectId] || [];
-      const currentStageKey = findStageKeyFromStatus(item.status);
-
-      if (!currentStageKey) {
-        toast({title: "Workflow Error", description: `Cannot find stage for status: ${item.status}`, variant: "destructive" });
-        return;
-      }
-      
-      const nextStageKey = getNextEnabledStage(currentStageKey, workflow);
-      
-      if (!nextStageKey) {
-          toast({ title: "End of Workflow" });
-          return;
-      }
-
-      const nextStageConfig = STAGE_CONFIG[nextStageKey];
-
-      if (nextStageConfig?.assigneeRole) {
-          openAssignmentDialog(item, nextStageConfig.assigneeRole);
-      } else {
-          handleMoveBookToNextStage(item.id, item.status);
-      }
-  };
-
-  const handleBulkAction = () => {
-      switch (stage) {
-        case 'indexing-started':
-            openBulkAssignmentDialog('qc');
-            break;
-        default:
-            selection.forEach(id => {
-              const item = allDisplayItems.find(d => d.id === id) as EnrichedBook;
-              if (item) {
-                const currentStageKey = findStageKeyFromStatus(item.status);
-                if (currentStageKey === 'confirm-reception' || currentStageKey === 'assign-scanner' || currentStageKey === 'to-scan') {
-                    handleSingleItemAction(item);
-                } else {
-                    handleMoveBookToNextStage(item.id, item.status);
-                }
-              }
-            });
-            setSelection([]);
-            break;
-      }
-  };
-
   const handleBulkCancel = () => {
     selection.forEach(id => {
         const item = allDisplayItems.find(d => d.id === id) as EnrichedBook;
@@ -482,67 +434,66 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     return count;
   }, [dataType, stage, config.actionButtonLabel, currentUser?.role, config.assigneeRole]);
 
-
-  const getDynamicActionButtonLabel = React.useCallback((book: EnrichedBook) => {
-    if (stage === 'confirm-reception') {
-      return "Confirm Arrival";
-    }
-
-    if (!actionButtonLabel || !book.projectId) return actionButtonLabel;
-    
-    const workflow = projectWorkflows[book.projectId] || [];
-    const currentStageKey = findStageKeyFromStatus(book.status);
-    if (!currentStageKey) return actionButtonLabel;
-    
-    const nextStageKey = getNextEnabledStage(currentStageKey, workflow);
-    if (!nextStageKey) return "End of Workflow";
-    
-    const nextStageConfig = STAGE_CONFIG[nextStageKey];
-    if (nextStageConfig.assigneeRole) {
-        return `Assign for ${nextStageConfig.title}`;
-    }
-    return `Move to ${nextStageConfig.title}`;
-
-  }, [actionButtonLabel, projectWorkflows, getNextEnabledStage, stage]);
-
   const renderBookRow = (item: any, index: number) => {
     const isCancelable = ['Scanning Started', 'Indexing Started', 'Checking Started'].includes(item.status);
-    
-    const performAction = () => {
-        switch (stage) {
-            case 'assign-scanner':
-                handleMoveBookToNextStage(item.id, item.status);
-                break;
-            case 'to-scan':
-                handleStartTask(item.id, 'scanner');
-                break;
-            case 'scanning-started':
-                setScanState({ open: true, book: item, folderName: null, fileCount: null });
-                break;
-            case 'to-indexing':
-                handleStartTask(item.id, 'indexing');
-                break;
-            case 'to-checking':
-                handleStartTask(item.id, 'qc');
-                break;
-            case 'ready-for-processing':
-                handleStartProcessing(item.id);
-                break;
-            case 'indexing-started':
-            case 'checking-started':
-                handleSingleItemAction(item);
-                break;
-            default:
-                toast({ title: "Action not configured", description: `No action for stage: ${stage}`, variant: "destructive"});
-                break;
+    const stageConfig = STAGE_CONFIG[stage as keyof typeof STAGE_CONFIG];
+
+    const handleActionClick = (book: EnrichedBook) => {
+        // Special case for confirm-reception
+        if (stage === 'confirm-reception') {
+            const workflow = projectWorkflows[book.projectId] || [];
+            const isScanningEnabled = workflow.includes('assign-scanner');
+            if (isScanningEnabled) {
+                openConfirmationDialog({
+                    title: 'Confirm Arrival?',
+                    description: `This will confirm that "${book.name}" has arrived.`,
+                    onConfirm: () => handleConfirmReception(book.id)
+                });
+            } else {
+                setScanState({ open: true, book, folderName: null, fileCount: null });
+            }
+            return;
+        }
+
+        // Check if the primary action is to assign a user
+        if (stageConfig?.assigneeRole) {
+            openAssignmentDialog(book, stageConfig.assigneeRole);
+            return;
+        }
+
+        if (stage === 'indexing-started') {
+            openConfirmationDialog({
+                title: 'Complete Indexing?',
+                description: `This will mark indexing as complete for "${book.name}" and open the dialog to assign a QC specialist.`,
+                onConfirm: () => {
+                    openAssignmentDialog(book, 'qc');
+                }
+            });
+            return;
+        }
+        
+        // Other special cases that open dialogs
+        if (stage === 'scanning-started') {
+            setScanState({ open: true, book: book, folderName: null, fileCount: null });
+            return;
+        }
+        
+        // Default action: confirm and then perform the task
+        if (actionButtonLabel) {
+            openConfirmationDialog({
+                title: `Confirm: ${actionButtonLabel}?`,
+                description: `This will perform the action for "${book.name}".`,
+                onConfirm: () => {
+                    if (stage === 'to-scan') handleStartTask(book.id, 'scanner');
+                    else if (stage === 'to-indexing') handleStartTask(book.id, 'indexing');
+                    else if (stage === 'to-checking') handleStartTask(book.id, 'qc');
+                    else if (stage === 'ready-for-processing') handleStartProcessing(book.id);
+                    else handleMoveBookToNextStage(book.id, book.status);
+                }
+            });
         }
     };
     
-    const isConfirmReception = stage === 'confirm-reception';
-    const isScanningEnabled = isConfirmReception && item.projectId && projectWorkflows[item.projectId]?.includes('assign-scanner');
-    const dynamicLabel = getDynamicActionButtonLabel(item);
-
-
     return (
         <TableRow key={item.id} data-state={selection.includes(item.id) && "selected"}>
         <TableCell>
@@ -568,27 +519,9 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         <TableCell>
           <div className="flex items-center justify-end gap-2">
             {actionButtonLabel && (
-              <Button size="sm" onClick={() => {
-                if (isConfirmReception) {
-                    if (isScanningEnabled) {
-                        openConfirmationDialog({
-                            title: 'Confirm Arrival?',
-                            description: `This will confirm that "${item.name}" has arrived.`,
-                            onConfirm: () => handleConfirmReception(item.id)
-                        });
-                    } else {
-                        setScanState({ open: true, book: item, folderName: null, fileCount: null });
-                    }
-                } else {
-                    openConfirmationDialog({
-                        title: `Are you sure?`,
-                        description: `This will perform the action "${dynamicLabel}" on "${item.name}".`,
-                        onConfirm: performAction
-                    })
-                }
-              }}>
-                  {isConfirmReception ? <Check className="mr-2 h-4 w-4" /> : (ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />)}
-                  {dynamicLabel}
+              <Button size="sm" onClick={() => handleActionClick(item)}>
+                  {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
+                  {actionButtonLabel}
               </Button>
             )}
             <DropdownMenu>
@@ -723,7 +656,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                         <Button size="sm" onClick={() => openConfirmationDialog({
                             title: `Are you sure?`,
                             description: `This will perform the action "${actionButtonLabel}" on ${selection.length} selected items.`,
-                            onConfirm: handleBulkAction
+                            onConfirm: () => {}
                         })}>
                             {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
                             {actionButtonLabel} Selected
@@ -813,7 +746,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                 <TableHead className="hidden md:table-cell"><Input placeholder="Filter type..." value={columnFilters['type'] || ''} onChange={(e) => handleColumnFilterChange('type', e.target.value)} className="h-8"/></TableHead>
                 <TableHead><Input placeholder="Filter status..." value={columnFilters['status'] || ''} onChange={(e) => handleColumnFilterChange('status', e.target.value)} className="h-8"/></TableHead>
                 <TableHead className="hidden md:table-cell"><Input placeholder="Filter date..." value={columnFilters['lastUpdated'] || ''} onChange={(e) => handleColumnFilterChange('lastUpdated', e.target.value)} className="h-8"/></TableHead>
-                {(actionButtonLabel) && (<TableHead className="text-right"><Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Clear Filters</Button></TableHead>)}
+                {(actionButtonLabel) && (<TableHead className="text-right"><Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Clear</Button></TableHead>)}
               </TableRow>
               </>
             )}
@@ -1003,3 +936,5 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     </>
   )
 }
+
+    
