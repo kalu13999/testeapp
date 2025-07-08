@@ -589,7 +589,7 @@ export function AppProvider({
     const isScanningEnabled = workflow.includes('assign-scanner');
 
     if (isScanningEnabled) {
-        const newStatus = STAGE_CONFIG['assign-scanner'].dataStatus!;
+        const newStatus = STAGE_CONFIG['assign-scanner'].dataStatus!; // This is 'Received'
         updateBookStatus(bookId, newStatus);
         moveBookDocuments(bookId, newStatus);
         logAction('Reception Confirmed', `Book "${book.name}" has been marked as received.`, { bookId });
@@ -852,7 +852,32 @@ export function AppProvider({
     const book = rawBooks.find(b => b.id === bookId);
     if (!book) return;
 
-    updateBookStatus(bookId, newStatus);
+    const newStageKey = findStageKeyFromStatus(newStatus);
+    const newStageConfig = newStageKey ? STAGE_CONFIG[newStageKey] : null;
+
+    const updateFn = (book: RawBook): Partial<RawBook> => {
+      const updates: Partial<RawBook> = {};
+      // If the new stage is NOT a scanner stage, clear scanner info.
+      if (newStageConfig?.assigneeRole !== 'scanner') {
+        updates.scannerUserId = undefined;
+        updates.scanStartTime = undefined;
+        updates.scanEndTime = undefined;
+      }
+      // If the new stage is NOT an indexer stage, clear indexer info.
+      if (newStageConfig?.assigneeRole !== 'indexer') {
+        updates.indexerUserId = undefined;
+        updates.indexingStartTime = undefined;
+        updates.indexingEndTime = undefined;
+      }
+      // If the new stage is NOT a QC stage, clear QC info.
+      if (newStageConfig?.assigneeRole !== 'qc') {
+        updates.qcUserId = undefined;
+        updates.qcStartTime = undefined;
+      }
+      return updates;
+    };
+
+    updateBookStatus(bookId, newStatus, updateFn);
     moveBookDocuments(bookId, newStatus);
 
     logAction(

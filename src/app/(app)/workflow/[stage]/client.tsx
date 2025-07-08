@@ -144,18 +144,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
     // Further filter for personal queues if the user is not an Admin
     if (currentUser && config.assigneeRole && currentUser.role !== 'Admin' && dataType === 'book') {
-        // Special logic for the "Already Received" page (assign-scanner)
-        if (stage === 'assign-scanner') {
-            items = (items as EnrichedBook[]).filter(book => {
-                // Show if unassigned OR assigned to the current user
-                const isUnassigned = !book.scannerUserId;
-                const isAssignedToMe = book.scannerUserId === currentUser.id;
-                return isUnassigned || isAssignedToMe;
-            });
-        } else {
-            // This is the existing logic for other personal queues like "To Scan"
-            items = (items as EnrichedBook[]).filter(book => (book as any)[`${config.assigneeRole}UserId`] === currentUser.id);
-        }
+      items = (items as EnrichedBook[]).filter(book => (book as any)[`${config.assigneeRole}UserId`] === currentUser.id);
     }
 
     // Add assigneeName for Admin display

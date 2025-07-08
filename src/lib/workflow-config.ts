@@ -68,7 +68,6 @@ export const WORKFLOW_PHASES = [
         dataType: 'book',
         dataStatus: 'Received',
         viewType: 'list',
-        assigneeRole: 'scanner',
       },
       'to-scan': {
         title: "To Scan Queue",
