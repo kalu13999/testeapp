@@ -36,7 +36,13 @@ const completionActions = [
 ];
 
 export default function ProfileClient() {
-    const { currentUser, books, auditLogs, permissions } = useAppContext();
+    const { currentUser, books, auditLogs, permissions, users } = useAppContext();
+
+    const canViewAllData = React.useMemo(() => {
+        if (!currentUser) return false;
+        const userPermissions = permissions[currentUser.role] || [];
+        return userPermissions.includes('*') || userPermissions.includes('/workflow/view-all');
+    }, [currentUser, permissions]);
 
     const getAssignedDateString = (book: EnrichedBook): string => {
         let date: string | undefined;
@@ -66,41 +72,67 @@ export default function ProfileClient() {
 
 
     const userStats = React.useMemo(() => {
-        if (!currentUser) return { tasksInQueue: 0, tasksToday: 0, myQueue: [], myHistory: [] };
+        if (!currentUser) return { tasksInQueue: 0, tasksToday: 0, queue: [], history: [] };
 
-        const myQueue = books.filter(book => {
-            if (!currentUser) return false;
-            
-            const isScannerTask = book.scannerUserId === currentUser.id && 
-                ['To Scan', 'Scanning Started'].includes(book.status);
-                
-            const isIndexerTask = book.indexerUserId === currentUser.id && 
-                ['To Indexing', 'Indexing Started'].includes(book.status);
-                
-            const isQcTask = book.qcUserId === currentUser.id && 
-                ['To Checking', 'Checking Started'].includes(book.status);
-
-            return isScannerTask || isIndexerTask || isQcTask;
-        });
-
-        const myHistory = auditLogs
-            .filter(log => log.userId === currentUser.id)
-            .slice(0, 15);
-        
+        const assignableStatuses = ['To Scan', 'Scanning Started', 'To Indexing', 'Indexing Started', 'To Checking', 'Checking Started'];
         const today = new Date().toISOString().slice(0, 10);
-        const tasksToday = auditLogs.filter(log => 
-            log.userId === currentUser.id && 
-            log.date.startsWith(today) && 
-            completionActions.includes(log.action)
-        ).length;
 
-        return {
-            tasksInQueue: myQueue.length,
-            tasksToday,
-            myQueue,
-            myHistory,
+        if (canViewAllData) {
+            const allQueuedBooks = books.filter(book => assignableStatuses.includes(book.status));
+            const allHistory = auditLogs.slice(0, 15);
+            const allTasksToday = auditLogs.filter(log => 
+                log.date.startsWith(today) && 
+                completionActions.includes(log.action)
+            ).length;
+
+            const allQueuedBooksWithAssignee = allQueuedBooks.map(book => {
+                let assigneeId: string | undefined;
+                let assigneeName = 'Unassigned';
+                if (['To Scan', 'Scanning Started'].includes(book.status)) assigneeId = book.scannerUserId;
+                else if (['To Indexing', 'Indexing Started'].includes(book.status)) assigneeId = book.indexerUserId;
+                else if (['To Checking', 'Checking Started'].includes(book.status)) assigneeId = book.qcUserId;
+                
+                if (assigneeId) {
+                    assigneeName = users.find(u => u.id === assigneeId)?.name || 'Unknown';
+                }
+                return { ...book, assigneeName };
+            });
+
+            return {
+                tasksInQueue: allQueuedBooks.length,
+                tasksToday: allTasksToday,
+                queue: allQueuedBooksWithAssignee,
+                history: allHistory,
+            };
+        } else {
+            const myQueue = books.filter(book => {
+                if (!currentUser) return false;
+                
+                const isScannerTask = book.scannerUserId === currentUser.id && ['To Scan', 'Scanning Started'].includes(book.status);
+                const isIndexerTask = book.indexerUserId === currentUser.id && ['To Indexing', 'Indexing Started'].includes(book.status);
+                const isQcTask = book.qcUserId === currentUser.id && ['To Checking', 'Checking Started'].includes(book.status);
+
+                return isScannerTask || isIndexerTask || isQcTask;
+            });
+
+            const myHistory = auditLogs
+                .filter(log => log.userId === currentUser.id)
+                .slice(0, 15);
+            
+            const tasksToday = auditLogs.filter(log => 
+                log.userId === currentUser.id && 
+                log.date.startsWith(today) && 
+                completionActions.includes(log.action)
+            ).length;
+
+            return {
+                tasksInQueue: myQueue.length,
+                tasksToday,
+                queue: myQueue,
+                history: myHistory,
+            };
         }
-    }, [currentUser, books, auditLogs]);
+    }, [currentUser, books, auditLogs, permissions, canViewAllData, users]);
 
     if (!currentUser) {
         return (
@@ -145,22 +177,30 @@ export default function ProfileClient() {
                 <div className="md:col-span-2 grid grid-cols-2 gap-6">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Tasks in My Queue</CardTitle>
+                            <CardTitle className="text-sm font-medium">
+                                {canViewAllData ? 'Total Tasks in Queues' : 'Tasks in My Queue'}
+                            </CardTitle>
                             <Clock className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{userStats.tasksInQueue}</div>
-                            <p className="text-xs text-muted-foreground">Books currently assigned to you</p>
+                            <p className="text-xs text-muted-foreground">
+                                {canViewAllData ? 'Across all users' : 'Books currently assigned to you'}
+                            </p>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Tasks Completed Today</CardTitle>
+                            <CardTitle className="text-sm font-medium">
+                                {canViewAllData ? 'Total Tasks Completed Today' : 'Tasks Completed Today'}
+                            </CardTitle>
                             <BookCheck className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{userStats.tasksToday}</div>
-                            <p className="text-xs text-muted-foreground">Number of books processed today</p>
+                            <p className="text-xs text-muted-foreground">
+                                 {canViewAllData ? 'Across all users' : 'Number of books processed today'}
+                            </p>
                         </CardContent>
                     </Card>
                 </div>
@@ -169,8 +209,12 @@ export default function ProfileClient() {
             <div className="space-y-6">
                 <Card>
                     <CardHeader>
-                        <CardTitle className="font-headline flex items-center gap-2"><Files className="h-5 w-5"/> My Queue</CardTitle>
-                        <CardDescription>All books and tasks currently assigned to you for action.</CardDescription>
+                        <CardTitle className="font-headline flex items-center gap-2"><Files className="h-5 w-5"/>
+                            {canViewAllData ? 'System-wide Task Queue' : 'My Queue'}
+                        </CardTitle>
+                        <CardDescription>
+                            {canViewAllData ? 'All books currently assigned to any user for action.' : 'All books and tasks currently assigned to you for action.'}
+                        </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <Table>
@@ -180,10 +224,11 @@ export default function ProfileClient() {
                                     <TableHead>Project</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead>Assigned On</TableHead>
+                                    {canViewAllData && <TableHead>Assigned To</TableHead>}
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {userStats.myQueue.length > 0 ? userStats.myQueue.map(book => (
+                                {userStats.queue.length > 0 ? userStats.queue.map(book => (
                                     <TableRow key={book.id}>
                                         <TableCell className="font-medium">
                                             <Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link>
@@ -191,10 +236,13 @@ export default function ProfileClient() {
                                         <TableCell>{book.projectName}</TableCell>
                                         <TableCell><Badge variant="secondary">{book.status}</Badge></TableCell>
                                         <TableCell>{getAssignedDateString(book)}</TableCell>
+                                        {canViewAllData && <TableCell>{(book as any).assigneeName || 'Unassigned'}</TableCell>}
                                     </TableRow>
                                 )) : (
                                     <TableRow>
-                                        <TableCell colSpan={4} className="h-24 text-center">You have no tasks in your queue.</TableCell>
+                                        <TableCell colSpan={canViewAllData ? 5 : 4} className="h-24 text-center">
+                                            {canViewAllData ? 'There are no tasks in any queue.' : 'You have no tasks in your queue.'}
+                                        </TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
@@ -204,8 +252,12 @@ export default function ProfileClient() {
 
                 <Card>
                      <CardHeader>
-                        <CardTitle className="font-headline flex items-center gap-2"><History className="h-5 w-5"/> My Recent Activity</CardTitle>
-                        <CardDescription>Your last 15 actions recorded in the system.</CardDescription>
+                        <CardTitle className="font-headline flex items-center gap-2"><History className="h-5 w-5"/>
+                             {canViewAllData ? 'System Recent Activity' : 'My Recent Activity'}
+                        </CardTitle>
+                        <CardDescription>
+                             {canViewAllData ? 'The last 15 actions recorded in the system.' : 'Your last 15 actions recorded in the system.'}
+                        </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <Table>
@@ -213,19 +265,21 @@ export default function ProfileClient() {
                                 <TableRow>
                                     <TableHead>Action</TableHead>
                                     <TableHead>Details</TableHead>
+                                    {canViewAllData && <TableHead>User</TableHead>}
                                     <TableHead>Date</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {userStats.myHistory.length > 0 ? userStats.myHistory.map(log => (
+                                {userStats.history.length > 0 ? userStats.history.map(log => (
                                      <TableRow key={log.id}>
                                         <TableCell className="font-medium">{log.action}</TableCell>
                                         <TableCell className="text-muted-foreground">{log.details}</TableCell>
+                                        {canViewAllData && <TableCell>{log.user}</TableCell>}
                                         <TableCell>{new Date(log.date).toLocaleString()}</TableCell>
                                     </TableRow>
                                 )) : (
                                     <TableRow>
-                                        <TableCell colSpan={3} className="h-24 text-center">No recent activity found.</TableCell>
+                                        <TableCell colSpan={canViewAllData ? 4 : 3} className="h-24 text-center">No recent activity found.</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
