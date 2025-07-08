@@ -414,6 +414,7 @@ export default function DashboardClient() {
             case 'Delivery':
             case 'Correction Specialist':
             case 'Multi-Operator':
+            case 'Supervisor':
                 return <ProjectDashboard />;
             case 'Client':
                 return <ClientDashboard />;
@@ -438,3 +439,5 @@ export default function DashboardClient() {
         </div>
     )
 }
+
+    
