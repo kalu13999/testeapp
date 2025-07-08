@@ -44,6 +44,7 @@ import { usePathname } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { useAppContext } from "@/context/workflow-context";
+import { MANDATORY_STAGES } from "@/lib/workflow-config";
 
 const INTERNAL_ROLES = ['Admin', 'Operator', 'QC Specialist', 'Reception', 'Scanning', 'Indexing', 'Processing', 'Delivery', 'Correction Specialist', 'Multi-Operator'];
 
@@ -196,7 +197,7 @@ export function MainNav() {
       // 3. Project Workflow filter
       if (item.href.startsWith('/workflow/')) {
           const stage = item.href.split('/').pop() || '';
-           if (!projectWorkflow.includes(stage)) {
+          if (!MANDATORY_STAGES.includes(stage) && !projectWorkflow.includes(stage)) {
             return false;
           }
       }
@@ -254,5 +255,3 @@ export function MainNav() {
     </nav>
   );
 }
-
-    
