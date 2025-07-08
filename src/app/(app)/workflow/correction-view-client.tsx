@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X } from "lucide-react";
+import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -23,6 +23,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { AppDocument } from "@/context/workflow-context";
+
 
 interface CorrectionViewClientProps {
   stage: string;
@@ -50,13 +54,21 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
     addPageToBook,
     deletePageFromBook,
     selectedProjectId,
-    clearPageRejectionTags
+    rejectionTags,
+    currentUser,
+    tagPageForRejection,
   } = useAppContext();
   const { toast } = useToast();
   
   const [addPageState, setAddPageState] = React.useState({ open: false, bookId: '', bookName: '', maxPages: 0 });
   const [newPagePosition, setNewPagePosition] = React.useState<number | string>('');
   const [confirmationState, setConfirmationState] = React.useState({ open: false, title: '', description: '', onConfirm: () => {} });
+  const [taggingState, setTaggingState] = React.useState<{
+    open: boolean;
+    docId: string | null;
+    docName: string | null;
+    selectedTags: string[];
+  }>({ open: false, docId: null, docName: null, selectedTags: [] });
 
   const rejectedBooks = React.useMemo(() => {
     let baseBooks = books.filter(book => book.status === config.dataStage);
@@ -66,10 +78,14 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
     return baseBooks;
   }, [books, config.dataStage, selectedProjectId]);
 
+  const clientRejectionTags = React.useMemo(() => {
+    if (!currentUser?.clientId) return [];
+    return rejectionTags.filter(tag => tag.clientId === currentUser.clientId);
+  }, [rejectionTags, currentUser]);
+
   const getPagesForBook = (bookId: string) => {
     const getPageNum = (name: string): number => {
         const match = name.match(/ - Page (\d+)/);
-        // Put pages without a number (like newly added ones before a refresh) at the end
         return match ? parseInt(match[1], 10) : 9999; 
     }
 
@@ -107,6 +123,26 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
   const openConfirmationDialog = ({ title, description, onConfirm}: Omit<typeof confirmationState, 'open'>) => {
     setConfirmationState({ open: true, title, description, onConfirm });
   }
+
+  const openTaggingDialog = (doc: AppDocument) => {
+    setTaggingState({
+      open: true,
+      docId: doc.id,
+      docName: doc.name,
+      selectedTags: doc.tags,
+    });
+  };
+  
+  const closeTaggingDialog = () => {
+    setTaggingState({ open: false, docId: null, docName: null, selectedTags: [] });
+  };
+  
+  const handleTaggingSubmit = () => {
+    if (taggingState.docId) {
+      tagPageForRejection(taggingState.docId, taggingState.selectedTags);
+    }
+    closeTaggingDialog();
+  };
 
   return (
     <>
@@ -237,8 +273,8 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
                                         <Button variant="secondary" size="icon" className="h-7 w-7">
                                             <Replace className="h-4 w-4"/>
                                         </Button>
-                                         <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => clearPageRejectionTags(page.id)}>
-                                            <X className="h-4 w-4"/>
+                                         <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => openTaggingDialog(page)}>
+                                            <Tag className="h-4 w-4"/>
                                         </Button>
                                     </div>
                                 </Card>
@@ -310,6 +346,47 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      <Dialog open={taggingState.open} onOpenChange={closeTaggingDialog}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Manage Tags for "{taggingState.docName}"</DialogTitle>
+                <DialogDescription>
+                    Select or deselect rejection reasons for this page.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+                <ScrollArea className="h-64">
+                    <div className="space-y-2 pr-6">
+                        {clientRejectionTags.map(tag => (
+                            <div key={tag.id} className="flex items-center space-x-2">
+                                <Checkbox
+                                    id={`tag-${tag.id}`}
+                                    checked={taggingState.selectedTags.includes(tag.label)}
+                                    onCheckedChange={(checked) => {
+                                        setTaggingState(prev => ({
+                                            ...prev,
+                                            selectedTags: checked
+                                                ? [...prev.selectedTags, tag.label]
+                                                : prev.selectedTags.filter(t => t !== tag.label)
+                                        }));
+                                    }}
+                                />
+                                <Label htmlFor={`tag-${tag.id}`} className="flex flex-col gap-1 w-full">
+                                    <span className="font-medium">{tag.label}</span>
+                                    <span className="text-xs text-muted-foreground">{tag.description}</span>
+                                </Label>
+                            </div>
+                        ))}
+                    </div>
+                </ScrollArea>
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={closeTaggingDialog}>Cancel</Button>
+                <Button onClick={handleTaggingSubmit}>Save Tags</Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
     </>
   )
 }

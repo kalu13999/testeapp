@@ -423,27 +423,35 @@ export function AppProvider({
   };
 
   const tagPageForRejection = (pageId: string, tags: string[]) => {
+    const page = documents.find(d => d.id === pageId);
+    if (!page) return;
+    
     setDocuments(prevDocs => 
-      prevDocs.map(doc => {
-        if (doc.id === pageId) {
-          // The new `tags` array from the UI is the source of truth.
-          // No need to merge, just replace.
-          return { ...doc, tags: tags };
-        }
-        return doc;
-      })
+      prevDocs.map(doc => 
+        doc.id === pageId ? { ...doc, tags: tags } : doc
+      )
+    );
+    
+    logAction(
+      'Rejection Tags Updated',
+      `Tags for page "${page.name}" set to: ${tags.join(', ') || 'None'}.`,
+      { documentId: pageId, bookId: page.bookId }
     );
     toast({ title: "Tags Updated", description: "The rejection tags for the page have been updated." });
   };
   
   const clearPageRejectionTags = (pageId: string) => {
+    const page = documents.find(d => d.id === pageId);
+    if (!page) return;
+
     setDocuments(prevDocs => 
-      prevDocs.map(doc => {
-        if (doc.id === pageId) {
-          return { ...doc, tags: [] }; // Clears all tags
-        }
-        return doc;
-      })
+      prevDocs.map(doc => doc.id === pageId ? { ...doc, tags: [] } : doc)
+    );
+
+    logAction(
+        'Rejection Tags Cleared', 
+        `All rejection tags cleared for page "${page.name}".`, 
+        { documentId: pageId, bookId: page.bookId }
     );
     toast({ title: "Tags Cleared", description: "Rejection tags have been removed from the page." });
   }
