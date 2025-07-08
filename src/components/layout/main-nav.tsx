@@ -47,7 +47,6 @@ const allMenuItems = [
   {
     id: "account",
     title: "Account",
-    roles: [...INTERNAL_ROLES, 'Client'],
     items: [
       { href: "/profile", label: "My Profile", icon: User },
     ],
@@ -55,13 +54,11 @@ const allMenuItems = [
   {
     id: "dashboards",
     title: "Dashboards",
-    roles: ['Admin'],
-    items: [{ href: "/dashboard", label: "Overview", icon: SlidersHorizontal }],
+    items: [{ href: "/dashboard", label: "Overview", icon: SlidersHorizontal, roles: ['Admin'] }],
   },
   {
     id: "management",
     title: "Management",
-    roles: ['Admin'],
     items: [
       { href: "/projects", label: "Projects", icon: Briefcase },
       { href: "/clients", label: "Clients", icon: Users2 },
@@ -73,7 +70,6 @@ const allMenuItems = [
   {
     id: "workflow",
     title: "Workflow",
-    roles: [...INTERNAL_ROLES],
     items: [
       { href: "/documents", label: "All Books", icon: Files },
       { href: "/workflow/pending-shipment", label: "Pending Shipment", icon: FileClock },
@@ -97,7 +93,6 @@ const allMenuItems = [
   {
     id: "client",
     title: "Client Portal",
-    roles: ['Client', 'Admin'],
     items: [
       { href: "/dashboard", label: "Client Dashboard", icon: Home, roles: ['Client'] },
       { href: "/shipments", label: "Prepare Shipment", icon: Send },
@@ -109,7 +104,6 @@ const allMenuItems = [
   {
     id: "admin",
     title: "Admin Tools",
-    roles: ['Admin'],
     items: [
       { href: "/admin/status-override", label: "Status Override", icon: Sliders },
       { href: "/settings", label: "Settings", icon: Settings },
@@ -118,7 +112,6 @@ const allMenuItems = [
   {
     id: "finalization",
     title: "Finalization",
-    roles: [...INTERNAL_ROLES],
     items: [
       { href: "/finalized", label: "Finalized", icon: CheckCheck },
       { href: "/archive", label: "Archive", icon: Archive },
@@ -143,28 +136,39 @@ export function MainNav() {
   const userPermissions = permissions[currentUser.role] || [];
   const isAdmin = userPermissions.includes('*');
 
-  const menuItems = allMenuItems
-    .filter(menu => menu.roles.includes(currentUser.role))
-    .map(menu => {
-      const filteredItems = menu.items.filter(item => {
-          // If an item has specific roles defined, check against them first.
-          // This applies to all users, including admin.
-          if (item.roles && !item.roles.includes(currentUser.role)) {
-            return false;
-          }
-
-          if (isAdmin) return true;
-          
-          return userPermissions.some(p => {
-            const regex = new RegExp(`^${p.replace(/\[.*?\]/g, '[^/]+')}$`);
-            return regex.test(item.href);
-          });
-      });
-      if (filteredItems.length > 0) {
-          return { ...menu, items: filteredItems };
+  const menuItems = allMenuItems.map(menuSection => {
+    const visibleItems = menuSection.items.filter(item => {
+      // If the user is admin, show everything unless explicitly denied by item.roles.
+      if (isAdmin) {
+        if (item.roles && !item.roles.includes(currentUser.role)) {
+          return false;
+        }
+        return true;
       }
-      return null;
-    }).filter(Boolean);
+
+      // For non-admins, check permissions.
+      // First, check item-specific role restrictions (e.g. Client Dashboard).
+      if (item.roles && !item.roles.includes(currentUser.role)) {
+        return false;
+      }
+      
+      // Then, check if user has permission for the item's href.
+      const hasPermission = userPermissions.some(p => {
+        const regex = new RegExp(`^${p.replace(/\[.*?\]/g, '[^/]+')}$`);
+        return regex.test(item.href);
+      });
+
+      return hasPermission;
+    });
+
+    // If there are any visible items in this section, return the section with just those items.
+    if (visibleItems.length > 0) {
+      return { ...menuSection, items: visibleItems };
+    }
+    
+    // Otherwise, this section should not be rendered.
+    return null;
+  }).filter(Boolean);
 
 
   return (
