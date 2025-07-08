@@ -375,7 +375,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
   const handleConfirmScan = () => {
     if (scanState.book) {
-      handleBookAction(scanState.book.id, { actualPageCount: scanState.fileCount ?? 0 });
+      handleBookAction(scanState.book.id, scanState.book.status, { actualPageCount: scanState.fileCount ?? 0 });
       closeScanningDialog();
     }
   };
@@ -443,7 +443,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const handleSingleItemAction = (item: EnrichedBook) => {
       switch (stage) {
         case 'confirm-reception':
-            handleBookAction(item.id);
+            handleBookAction(item.id, item.status);
             break;
         case 'assign-scanner':
             openAssignmentDialog(item, 'scanner');
@@ -458,7 +458,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
             openAssignmentDialog(item, 'qc');
             break;
         case 'checking-started':
-            handleMoveBookToNextStage(item.id);
+            handleMoveBookToNextStage(item.id, item.status);
             break;
         case 'to-indexing':
             handleStartTask(item.id, 'indexing');
@@ -617,7 +617,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                  <Button size="sm" onClick={() => openConfirmationDialog({
                     title: `Are you sure?`,
                     description: `This will move the book for "${item.name}" to the next stage.`,
-                    onConfirm: () => handleMoveBookToNextStage(item.bookId!)
+                    onConfirm: () => handleMoveBookToNextStage(item.bookId!, item.status)
                 })}>
                     {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
                     {actionButtonLabel}
