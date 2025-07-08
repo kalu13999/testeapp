@@ -14,15 +14,16 @@ import { useToast } from '@/hooks/use-toast';
 // New component for the global filter to keep the layout cleaner
 const GlobalProjectFilter = () => {
   const { accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, currentUser } = useAppContext();
+  
+  const showAllProjectsOption = ['Admin', 'Client'].includes(currentUser?.role || '');
 
-  // If there are no projects to choose from, don't render.
+  // Render nothing if there are no projects to choose from.
   if (accessibleProjectsForUser.length === 0) {
     return null;
   }
-
-  // If there's only one project AND the user is not an Admin, display statically.
-  // Admins should always see the dropdown to select "All Projects" if applicable.
-  if (accessibleProjectsForUser.length === 1 && currentUser?.role !== 'Admin') {
+  
+  // If there's only one project AND the "All Projects" option isn't available, display statically.
+  if (accessibleProjectsForUser.length < 2 && !showAllProjectsOption) {
     return (
       <div className="flex items-center h-9 px-3 text-sm font-medium border rounded-md bg-muted text-muted-foreground">
         {accessibleProjectsForUser[0].name}
@@ -39,7 +40,7 @@ const GlobalProjectFilter = () => {
         <SelectValue placeholder="Select a project..." />
       </SelectTrigger>
       <SelectContent>
-        {currentUser?.role === 'Admin' && (
+        {showAllProjectsOption && (
           <SelectItem value="all-projects">All Projects</SelectItem>
         )}
         {accessibleProjectsForUser.map(project => (

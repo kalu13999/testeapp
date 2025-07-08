@@ -270,7 +270,6 @@ export function AppProvider({
 
   // Effect to manage the selected project ID automatically
   React.useEffect(() => {
-    // If no user is logged in, clear the project selection.
     if (!currentUser) {
       if (selectedProjectId !== null) {
         setSelectedProjectId(null);
@@ -278,41 +277,30 @@ export function AppProvider({
       return;
     }
     
-    // At this point, we know we have a user.
-    
-    // Check if the current selection is valid for this user.
-    // A valid selection is either:
-    // a) A project ID that exists in their list of accessible projects.
-    // b) `null`, but only if the user is an Admin (representing "All Projects").
-    const isSelectionValid =
+    // A selection is valid if it's an accessible project ID,
+    // OR if it's null (for "All Projects") and the user is an Admin or Client.
+    const isSelectionValid = (
       (selectedProjectId && accessibleProjectsForUser.some(p => p.id === selectedProjectId)) ||
-      (selectedProjectId === null && currentUser.role === 'Admin');
+      (selectedProjectId === null && ['Admin', 'Client'].includes(currentUser.role))
+    );
       
-    // If the user's current selection is already valid, we don't need to do anything.
-    // This is the crucial step that respects the Admin's choice of "All Projects".
     if (isSelectionValid) {
       return;
     }
     
-    // If we've reached this point, the selection is invalid. This happens on first
-    // login or if their permissions change. We must set a sensible default.
+    // Fallback logic to set a default project if the current selection is invalid.
     let newDefaultProjectId: string | null = null;
     
-    // 1. Try to set the user's defined default project.
     if (currentUser.defaultProjectId && accessibleProjectsForUser.some(p => p.id === currentUser.defaultProjectId)) {
       newDefaultProjectId = currentUser.defaultProjectId;
     } 
-    // 2. If no default is set or is invalid, fall back to the first project in their list.
     else if (accessibleProjectsForUser.length > 0) {
       newDefaultProjectId = accessibleProjectsForUser[0].id;
     }
-    // 3. If a non-admin has no projects, or an admin has no projects in the system,
-    // the default will remain `null`, which is correct.
     
-    // Set the calculated default project.
     setSelectedProjectId(newDefaultProjectId);
     
-  }, [currentUser, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId]);
+  }, [currentUser, accessibleProjectsForUser, selectedProjectId]);
 
 
   // --- CRUD ACTIONS ---
@@ -612,8 +600,13 @@ export function AppProvider({
     if (!book) return;
 
     if(currentStatus === 'In Transit') {
-        updateBookStatus(bookId, "Received");
-        moveBookDocuments(bookId, "Received");
+        const project = rawProjects.find(p => p.id === book.projectId);
+        if (!project) return;
+        const workflow = projectWorkflows[project.id] || [];
+        const nextStage = getNextEnabledStage('confirm-reception', workflow) || 'Received'; // Fallback
+        
+        updateBookStatus(bookId, nextStage);
+        moveBookDocuments(bookId, nextStage);
         logAction('Reception Confirmed', `Book "${book?.name}" has been marked as received.`, { bookId });
         toast({ title: "Reception Confirmed" });
         return;
@@ -650,9 +643,11 @@ export function AppProvider({
           const otherDocs = prevDocs.filter(d => d.bookId !== bookId);
           return [...otherDocs, ...newDocs];
       });
-      updateBookStatus(bookId, "Storage", () => ({ scanEndTime: new Date().toISOString() }));
-      moveBookDocuments(bookId, 'Storage');
-      logAction('Scanning Finished', `${pagesToCreate} pages created. Book moved to Storage.`, { bookId });
+      const workflow = projectWorkflows[project.id] || [];
+      const nextStage = getNextEnabledStage('scanning-started', workflow) || 'Storage'; // Fallback
+      updateBookStatus(bookId, nextStage, () => ({ scanEndTime: new Date().toISOString() }));
+      moveBookDocuments(bookId, nextStage);
+      logAction('Scanning Finished', `${pagesToCreate} pages created. Book moved to ${nextStage}.`, { bookId });
       toast({ title: "Scanning Complete", description: `${pagesToCreate} pages created.` });
       return;
     }
@@ -661,8 +656,8 @@ export function AppProvider({
 
   const handleMoveBookToNextStage = (bookId: string, currentStage: string) => {
     const book = rawBooks.find(b => b.id === bookId);
-    if (!book || !selectedProjectId) return;
-    const workflow = projectWorkflows[selectedProjectId] || [];
+    if (!book || !book.projectId) return;
+    const workflow = projectWorkflows[book.projectId] || [];
     
     const nextStage = getNextEnabledStage(currentStage, workflow);
     if (!nextStage) {
@@ -679,22 +674,24 @@ export function AppProvider({
   const handleAssignUser = (bookId: string, userId: string, role: 'scanner' | 'indexer' | 'qc') => {
     const user = users.find(u => u.id === userId);
     const book = rawBooks.find(b => b.id === bookId);
-    if (!user || !book) return;
+    if (!user || !book || !book.projectId) return;
+    
+    const workflow = projectWorkflows[book.projectId] || [];
 
     if (role === 'scanner') {
-        const nextStatus = 'To Scan';
+        const nextStatus = getNextEnabledStage('assign-scanner', workflow) || 'To Scan';
         updateBookStatus(bookId, nextStatus, () => ({ scannerUserId: userId }));
         moveBookDocuments(bookId, nextStatus);
         logAction('Assigned to Scanner', `Book "${book.name}" assigned to ${user.name}.`, { bookId });
         toast({ title: "Book Assigned", description: `Assigned to ${user.name} for scanning.` });
     } else if (role === 'indexer') {
-        const nextStatus = 'To Indexing';
+        const nextStatus = getNextEnabledStage('storage', workflow) || 'To Indexing';
         updateBookStatus(bookId, nextStatus, () => ({ indexerUserId: userId }));
         moveBookDocuments(bookId, nextStatus);
         logAction('Assigned to Indexer', `Book "${book.name}" assigned to ${user.name}.`, { bookId });
         toast({ title: "Book Assigned", description: `Assigned to ${user.name} for indexing.` });
     } else if (role === 'qc') {
-        const nextStatus = 'To Checking';
+        const nextStatus = getNextEnabledStage('indexing-started', workflow) || 'To Checking';
         updateBookStatus(bookId, nextStatus, () => ({ qcUserId: userId, indexingStartTime: undefined, indexingEndTime: new Date().toISOString() }));
         moveBookDocuments(bookId, nextStatus);
         logAction('Assigned for QC', `Book "${book.name}" assigned to ${user.name}.`, { bookId });
@@ -704,21 +701,26 @@ export function AppProvider({
 
   const handleStartTask = (bookId: string, role: 'scanner' | 'indexing' | 'qc') => {
     const book = rawBooks.find(b => b.id === bookId);
-    if (!book) return;
+    if (!book || !book.projectId) return;
+
+    const workflow = projectWorkflows[book.projectId] || [];
 
     if (role === 'scanner') {
-        updateBookStatus(bookId, 'Scanning Started', () => ({ scanStartTime: new Date().toISOString() }));
-        moveBookDocuments(bookId, 'Scanning Started');
+        const nextStatus = getNextEnabledStage('to-scan', workflow) || 'Scanning Started';
+        updateBookStatus(bookId, nextStatus, () => ({ scanStartTime: new Date().toISOString() }));
+        moveBookDocuments(bookId, nextStatus);
         logAction('Scanning Started', `Scanning process initiated for book.`, { bookId });
         toast({ title: "Scanning Started" });
     } else if (role === 'indexing') {
-        updateBookStatus(bookId, 'Indexing Started', () => ({ indexingStartTime: new Date().toISOString() }));
-        moveBookDocuments(bookId, 'Indexing Started');
+        const nextStatus = getNextEnabledStage('to-indexing', workflow) || 'Indexing Started';
+        updateBookStatus(bookId, nextStatus, () => ({ indexingStartTime: new Date().toISOString() }));
+        moveBookDocuments(bookId, nextStatus);
         logAction('Indexing Started', `Indexing started for book "${book.name}".`, { bookId });
         toast({ title: "Indexing Started" });
     } else if (role === 'qc') {
-        updateBookStatus(bookId, 'Checking Started', () => ({ qcStartTime: new Date().toISOString() }));
-        moveBookDocuments(bookId, 'Checking Started');
+        const nextStatus = getNextEnabledStage('to-checking', workflow) || 'Checking Started';
+        updateBookStatus(bookId, nextStatus, () => ({ qcStartTime: new Date().toISOString() }));
+        moveBookDocuments(bookId, nextStatus);
         logAction('Checking Started', `Initial QC started for book "${book.name}".`, { bookId });
         toast({ title: "Checking Started" });
     }
@@ -770,8 +772,12 @@ export function AppProvider({
 
   const handleStartProcessing = (bookId: string) => {
     const book = rawBooks.find(b => b.id === bookId);
-    moveBookDocuments(bookId, 'In Processing');
-    updateBookStatus(bookId, 'In Processing');
+    if (!book || !book.projectId) return;
+    const workflow = projectWorkflows[book.projectId] || [];
+    const nextStage = getNextEnabledStage('ready-for-processing', workflow) || 'In Processing';
+
+    moveBookDocuments(bookId, nextStage);
+    updateBookStatus(bookId, nextStage);
     setProcessingLogs(prev => {
         const otherLogs = prev.filter(log => log.bookId !== bookId);
         const newLog: ProcessingLog = {
@@ -787,8 +793,12 @@ export function AppProvider({
   
   const handleCompleteProcessing = (bookId: string) => {
     const book = rawBooks.find(b => b.id === bookId);
-    moveBookDocuments(bookId, 'Processed');
-    updateBookStatus(bookId, 'Processed');
+    if (!book || !book.projectId) return;
+    const workflow = projectWorkflows[book.projectId] || [];
+    const nextStage = getNextEnabledStage('in-processing', workflow) || 'Processed';
+
+    moveBookDocuments(bookId, nextStage);
+    updateBookStatus(bookId, nextStage);
     setProcessingLogs(prev => prev.map(log => 
         log.bookId === bookId 
             ? { ...log, status: 'Complete', progress: 100, log: `${log.log}\n[${new Date().toLocaleTimeString()}] Processing complete.` } 
@@ -799,9 +809,14 @@ export function AppProvider({
   };
 
   const handleClientAction = (bookId: string, action: 'approve' | 'reject', reason?: string) => {
-    const isApproval = action === 'approve';
-    const newStatus = isApproval ? 'Finalized' : 'Client Rejected';
     const book = enrichedBooks.find(b => b.id === bookId);
+    if (!book || !book.projectId) return;
+    const workflow = projectWorkflows[book.projectId] || [];
+    const isApproval = action === 'approve';
+
+    const nextStage = getNextEnabledStage('pending-deliveries', workflow) || 'Finalized';
+    const newStatus = isApproval ? nextStage : 'Client Rejected';
+    
     moveBookDocuments(bookId, newStatus);
     
     setRawBooks(prev => prev.map(b => b.id !== bookId ? b : { ...b, status: newStatus, rejectionReason: isApproval ? undefined : reason }));
@@ -817,17 +832,24 @@ export function AppProvider({
 
   const handleFinalize = (bookId: string) => {
     const book = rawBooks.find(b => b.id === bookId);
-    moveBookDocuments(bookId, 'Archived');
-    updateBookStatus(bookId, 'Archived');
-    logAction('Book Archived', `Book "${book?.name}" was finalized and archived.`, { bookId });
+    if (!book || !book.projectId) return;
+    const workflow = projectWorkflows[book.projectId] || [];
+    const nextStage = getNextEnabledStage('finalized', workflow) || 'Archived';
+    
+    moveBookDocuments(bookId, nextStage);
+    updateBookStatus(bookId, nextStage);
+    logAction('Book Archived', `Book "${book?.name}" was finalized and moved to ${nextStage}.`, { bookId });
     toast({ title: "Book Archived" });
   };
   
   const handleMarkAsCorrected = (bookId: string) => {
     const book = rawBooks.find(b => b.id === bookId);
-    if (!book) return;
-    moveBookDocuments(bookId, 'Corrected');
-    updateBookStatus(bookId, 'Corrected');
+    if (!book || !book.projectId) return;
+    const workflow = projectWorkflows[book.projectId] || [];
+    const nextStage = getNextEnabledStage('client-rejections', workflow) || 'Corrected';
+
+    moveBookDocuments(bookId, nextStage);
+    updateBookStatus(bookId, nextStage);
     logAction('Marked as Corrected', `Book "${book.name}" marked as corrected after client rejection.`, { bookId });
     toast({ title: "Book Corrected" });
   };
@@ -927,8 +949,11 @@ export function AppProvider({
 
   // --- Contextual Data Filtering ---
   const projectsForContext = React.useMemo(() => {
-    if (selectedProjectId === null && currentUser?.role === 'Admin') {
-        return allEnrichedProjects;
+    if (currentUser?.role === 'Admin' && selectedProjectId === null) {
+      return allEnrichedProjects;
+    }
+    if (currentUser?.role === 'Client' && selectedProjectId === null) {
+      return accessibleProjectsForUser;
     }
     if (selectedProjectId) {
       return accessibleProjectsForUser.filter(p => p.id === selectedProjectId);

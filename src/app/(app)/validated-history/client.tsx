@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react";
@@ -103,12 +104,7 @@ export default function ValidatedHistoryClient() {
     const validationHistory: ValidatedBook[] = React.useMemo(() => {
         if (!currentUser) return [];
 
-        let relevantBooks;
-        if (currentUser.role === 'Admin') {
-            relevantBooks = books.filter(book => ['Complete', 'Finalized', 'Client Rejected'].includes(book.status));
-        } else {
-            relevantBooks = books.filter(book => book.clientId === currentUser.clientId && ['Complete', 'Finalized', 'Client Rejected'].includes(book.status));
-        }
+        const relevantBooks = books.filter(book => ['Complete', 'Finalized', 'Client Rejected'].includes(book.status));
 
         return relevantBooks.map(book => {
             const validationLog = auditLogs.find(log =>
