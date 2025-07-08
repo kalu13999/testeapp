@@ -144,7 +144,18 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
     // Further filter for personal queues if the user is not an Admin
     if (currentUser && config.assigneeRole && currentUser.role !== 'Admin' && dataType === 'book') {
-        items = (items as EnrichedBook[]).filter(book => (book as any)[`${config.assigneeRole}UserId`] === currentUser.id);
+        // Special logic for the "Already Received" page (assign-scanner)
+        if (stage === 'assign-scanner') {
+            items = (items as EnrichedBook[]).filter(book => {
+                // Show if unassigned OR assigned to the current user
+                const isUnassigned = !book.scannerUserId;
+                const isAssignedToMe = book.scannerUserId === currentUser.id;
+                return isUnassigned || isAssignedToMe;
+            });
+        } else {
+            // This is the existing logic for other personal queues like "To Scan"
+            items = (items as EnrichedBook[]).filter(book => (book as any)[`${config.assigneeRole}UserId`] === currentUser.id);
+        }
     }
 
     // Add assigneeName for Admin display
@@ -423,25 +434,22 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   }, [dataType, stage, config.actionButtonLabel, currentUser?.role, config.assigneeRole]);
 
     const handleActionClick = (book: EnrichedBook) => {
-        // Special case: confirm-reception is unique
         if (stage === 'confirm-reception') {
-            handleConfirmReception(book.id);
+            const workflow = projectWorkflows[book.projectId!] || [];
+            const isScanningEnabled = workflow.includes('assign-scanner');
+            if (isScanningEnabled) {
+                handleConfirmReception(book.id);
+            } else {
+                setScanState({ open: true, book: book, folderName: null, fileCount: null });
+            }
             return;
         }
 
-        // Special case: 'assign-scanner' is a pure assignment step
         if (stage === 'assign-scanner') {
             openAssignmentDialog(book, 'scanner');
             return;
         }
-
-        // Special case: 'scanning-started' completion opens a file dialog
-        if (stage === 'scanning-started') {
-            setScanState({ open: true, book: book, folderName: null, fileCount: null });
-            return;
-        }
-
-        // Handle starting a task (To Scan, To Indexing, To Checking)
+        
         if (['to-scan', 'to-indexing', 'to-checking'].includes(stage)) {
             openConfirmationDialog({
                 title: `Confirm: ${actionButtonLabel}?`,
@@ -454,8 +462,12 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
             });
             return;
         }
+
+        if (stage === 'scanning-started') {
+            setScanState({ open: true, book: book, folderName: null, fileCount: null });
+            return;
+        }
         
-        // Handle completing a task that may lead to assignment (Indexing Started, Checking Started)
         if (['indexing-started', 'checking-started'].includes(stage)) {
             const onConfirm = () => {
                 if (!book.projectId) return;
@@ -486,7 +498,6 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
             return;
         }
         
-        // Handle stages that just move to the next step without special logic
         if (stage === 'ready-for-processing') {
              openConfirmationDialog({
                 title: `Confirm: Start Processing?`,
