@@ -42,6 +42,7 @@ export const ALL_PERMISSIONS: PermissionGroup[] = [
   {
     group: 'Internal Workflow Stages',
     permissions: [
+      { id: '/workflow/view-all', label: 'View All User Tasks' },
       { id: '/workflow/pending-shipment', label: 'Workflow: Pending Shipment' },
       { id: '/workflow/confirm-reception', label: 'Workflow: Confirm Reception' },
       { id: '/workflow/assign-scanner', label: 'Workflow: Assign Scanner' },

@@ -17,7 +17,7 @@
     "/documents/[id]",
     "/workflow/pending-shipment",
     "/workflow/confirm-reception",
-    "/workflow/already-received",
+    "/workflow/assign-scanner",
     "/workflow/to-scan",
     "/workflow/scanning-started",
     "/workflow/storage",
@@ -36,7 +36,8 @@
     "/archive",
     "/admin/default-projects",
     "/admin/overview",
-    "/dashboard"
+    "/dashboard",
+    "/workflow/view-all"
   ],
   "Multi-Operator": [
     "/profile",
@@ -72,7 +73,7 @@
     "/profile",
     "/workflow/pending-shipment",
     "/workflow/confirm-reception",
-    "/workflow/already-received",
+    "/workflow/assign-scanner",
     "/books/[id]",
     "/documents/[id]"
   ],
@@ -125,7 +126,7 @@
     "/documents/[id]",
     "/workflow/pending-shipment",
     "/workflow/confirm-reception",
-    "/workflow/already-received",
+    "/workflow/assign-scanner",
     "/workflow/storage",
     "/workflow/ready-for-processing",
     "/workflow/in-processing",
@@ -139,5 +140,3 @@
     "/admin/reassign-user"
   ]
 }
-
-    

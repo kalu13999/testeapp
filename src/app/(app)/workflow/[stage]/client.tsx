@@ -131,6 +131,9 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     { id: 'name', desc: false }
   ]);
   
+  const userPermissions = currentUser ? permissions[currentUser.role] || [] : [];
+  const canViewAll = userPermissions.includes('/workflow/view-all') || userPermissions.includes('*');
+
   const allDisplayItems = React.useMemo(() => {
     let items: (EnrichedBook | AppDocument)[];
     
@@ -145,16 +148,21 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
     const isSharedQueue = dataStatus === 'Received';
 
-    if (currentUser && config.assigneeRole && dataType === 'book') {
-        if(isSharedQueue && currentUser.role === 'Admin') {
-            // Admins see all in shared queue
-        } else if (isSharedQueue) {
-            items = (items as EnrichedBook[]).filter(book => book[(config.assigneeRole as AssignmentRole) + 'UserId'] === currentUser.id || !book[(config.assigneeRole as AssignmentRole) + 'UserId']);
+    // Filter by assignee if the user does NOT have permission to view all
+    if (currentUser && config.assigneeRole && dataType === 'book' && !canViewAll) {
+        if (isSharedQueue) {
+            // In shared queue, non-privileged users see their own books and unassigned books
+            items = (items as EnrichedBook[]).filter(book => {
+                const assigneeId = book[(config.assigneeRole as AssignmentRole) + 'UserId'];
+                return assigneeId === currentUser.id || !assigneeId;
+            });
         } else {
+            // In personal queues, they only see their own
             items = (items as EnrichedBook[]).filter(book => book[(config.assigneeRole as AssignmentRole) + 'UserId'] === currentUser.id);
         }
     }
 
+    // Add assigneeName for display purposes
     if (dataType === 'book' && config.assigneeRole) {
       return (items as EnrichedBook[]).map(book => {
         let assigneeName = '—';
@@ -172,7 +180,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     }
 
     return items;
-  }, [books, documents, dataType, dataStatus, dataStage, currentUser, stage, config.assigneeRole, users]);
+  }, [books, documents, dataType, dataStatus, dataStage, currentUser, permissions, config.assigneeRole, users, canViewAll]);
 
   const handleColumnFilterChange = (columnId: string, value: string) => {
     setColumnFilters(prev => ({ ...prev, [columnId]: value }));
@@ -432,9 +440,9 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
   const tableColSpan = React.useMemo(() => {
     let count = 6;
-    if (currentUser?.role === 'Admin' && config.assigneeRole) count++;
+    if (config.assigneeRole && canViewAll) count++;
     return count;
-  }, [dataType, stage, config.actionButtonLabel, currentUser?.role, config.assigneeRole]);
+  }, [dataType, stage, config.assigneeRole, canViewAll]);
     
   const handleActionClick = (book: EnrichedBook) => {
       if (stage === 'confirm-reception') {
@@ -442,6 +450,17 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
           return;
       }
       
+      if (stage === 'assign-scanner') {
+        const projectWorkflow = projectWorkflows[book.projectId] || [];
+        const isScanningEnabled = projectWorkflow.includes('to-scan');
+        if (isScanningEnabled) {
+          openAssignmentDialog(book, 'scanner');
+        } else {
+          setScanState({ open: true, book, folderName: null, fileCount: null });
+        }
+        return;
+      }
+
       if (['to-scan', 'to-indexing', 'to-checking'].includes(stage)) {
           openConfirmationDialog({
               title: `Confirm: ${actionButtonLabel}?`,
@@ -513,7 +532,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
             };
         }
 
-        if (stage === 'already-received') {
+        if (stage === 'assign-scanner') {
             const projectWorkflow = projectWorkflows[book.projectId!] || [];
             const isScanningEnabled = projectWorkflow.includes('to-scan');
             if (isScanningEnabled) {
@@ -564,7 +583,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         </TableCell>
         <TableCell>{item.projectName}</TableCell>
         <TableCell className="hidden md:table-cell">{item.clientName}</TableCell>
-        {currentUser?.role === 'Admin' && config.assigneeRole && (
+        {canViewAll && config.assigneeRole && (
           <TableCell>{item.assigneeName}</TableCell>
         )}
         <TableCell>
@@ -756,7 +775,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                   <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>Book Name {getSortIndicator('name')}</div></TableHead>
                   <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('projectName', e.shiftKey)}>Project {getSortIndicator('projectName')}</div></TableHead>
                   <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('clientName', e.shiftKey)}>Client {getSortIndicator('clientName')}</div></TableHead>
-                  {currentUser?.role === 'Admin' && config.assigneeRole && (
+                  {canViewAll && config.assigneeRole && (
                      <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('assigneeName', e.shiftKey)}>Assigned To {getSortIndicator('assigneeName')}</div></TableHead>
                   )}
                   <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Status {getSortIndicator('status')}</div></TableHead>
@@ -767,7 +786,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                 <TableHead><Input placeholder="Filter by name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/></TableHead>
                 <TableHead><Input placeholder="Filter by project..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/></TableHead>
                 <TableHead className="hidden md:table-cell"><Input placeholder="Filter by client..." value={columnFilters['clientName'] || ''} onChange={(e) => handleColumnFilterChange('clientName', e.target.value)} className="h-8"/></TableHead>
-                 {currentUser?.role === 'Admin' && config.assigneeRole && (
+                 {canViewAll && config.assigneeRole && (
                    <TableHead><Input placeholder="Filter by user..." value={columnFilters['assigneeName'] || ''} onChange={(e) => handleColumnFilterChange('assigneeName', e.target.value)} className="h-8"/></TableHead>
                  )}
                 <TableHead><Input placeholder="Filter by status..." value={columnFilters['status'] || ''} onChange={(e) => handleColumnFilterChange('status', e.target.value)} className="h-8"/></TableHead>
@@ -891,7 +910,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={closeScanningDialog}>Cancel</Button>
-          <Button onClick={stage === 'already-received' ? handleConfirmScanBypass : handleConfirmScan} disabled={!isScanFolderMatch}>
+          <Button onClick={stage === 'assign-scanner' ? handleConfirmScanBypass : handleConfirmScan} disabled={!isScanFolderMatch}>
             Confirm Scan
           </Button>
         </DialogFooter>
