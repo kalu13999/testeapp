@@ -29,20 +29,86 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { BookCopy, BarChart2, ListTodo, Package, Send, FileClock, ArrowDownToLine, CheckCheck } from "lucide-react"
+import { BookCopy, BarChart2, ListTodo, Package, Send, FileClock, ArrowDownToLine, CheckCheck, TrendingUp, Activity } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import { useMemo } from "react"
-import type { EnrichedBook, EnrichedProject } from "@/context/workflow-context"
+import type { EnrichedBook, EnrichedProject, EnrichedAuditLog } from "@/context/workflow-context"
 import Link from "next/link"
+import { subDays, format } from "date-fns"
+import { Input } from "@/components/ui/input"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 
 function ProjectDashboard() {
-    const { projects, selectedProjectId } = useAppContext();
+    const { projects, selectedProjectId, auditLogs } = useAppContext();
+    const [chartType, setChartType] = React.useState<'bar' | 'line' | 'area'>('bar');
+    const [detailState, setDetailState] = React.useState<{ open: boolean; title: string; items: (EnrichedBook | EnrichedAuditLog)[]; type: 'books' | 'activities' | null; }>({ open: false, title: '', items: [], type: null });
+    const [detailFilter, setDetailFilter] = React.useState('');
 
     const project = useMemo(() => {
         if (!selectedProjectId) return null;
         return projects.find(p => p.id === selectedProjectId);
     }, [projects, selectedProjectId]);
+    
+    const dashboardData = useMemo(() => {
+        if (!project) return { kpiData: [], workflowChartData: [], dailyChartData: [], recentActivities: [], booksByStage: {}, allRelevantAuditLogs: [] };
+        
+        const projectLogs = auditLogs.filter(log => log.bookId && project.books.some(b => b.id === log.bookId));
+        const books = project.books;
+        
+        const kpiData = [
+            { title: "Total Books", value: books.length.toLocaleString(), icon: BookCopy, description: "All books in this project" },
+            { title: "Pending Shipment", value: books.filter(b => b.status === 'Pending Shipment').length.toLocaleString(), icon: Package, description: "Books waiting to be sent" },
+            { title: "In Transit", value: books.filter(b => b.status === 'In Transit').length.toLocaleString(), icon: Send, description: "Books on their way to us" },
+            { title: "Finalized Books", value: books.filter(b => b.status === 'Finalized').length.toLocaleString(), icon: CheckCheck, description: "Approved and completed books" },
+        ];
+
+        const orderedStageNames = [
+          'In Transit', 'Received', 'To Scan', 'Scanning Started', 'Storage', 
+          'To Indexing', 'Indexing Started', 'To Checking', 'Checking Started', 
+          'Ready for Processing', 'In Processing', 'Processed', 'Final Quality Control', 
+          'Delivery', 'Pending Validation', 'Client Rejected', 'Corrected', 
+          'Finalized'
+        ];
+        
+        const booksByStage: { [key: string]: EnrichedBook[] } = {};
+        books.forEach(book => {
+            if (orderedStageNames.includes(book.status)) {
+                if (!booksByStage[book.status]) booksByStage[book.status] = [];
+                booksByStage[book.status].push(book);
+            }
+        });
+        const workflowChartData = orderedStageNames.map(name => ({ name, count: booksByStage[name]?.length || 0 }));
+        
+        const dailyActivity: { [date: string]: { [action: string]: number } } = {};
+        const sevenDaysAgo = subDays(new Date(), 6);
+        const actionsToTrack: { [key: string]: string } = { 'Scanning Finished': 'Scanned', 'Initial QC Complete': 'Checked', 'Processing Completed': 'Processed', 'Client Approval': 'Finalized' };
+        projectLogs.filter(log => new Date(log.date) >= sevenDaysAgo && Object.keys(actionsToTrack).includes(log.action)).forEach(log => {
+            const date = log.date.slice(0, 10);
+            const actionName = actionsToTrack[log.action as keyof typeof actionsToTrack];
+            if (!dailyActivity[date]) dailyActivity[date] = {};
+            if (!dailyActivity[date][actionName]) dailyActivity[date][actionName] = 0;
+            dailyActivity[date][actionName]++;
+        });
+        const dateRange = Array.from({ length: 7 }, (_, i) => format(subDays(new Date(), i), 'yyyy-MM-dd')).reverse();
+        const dailyChartData = dateRange.map(dateStr => ({
+            date: format(new Date(dateStr), 'MMM d'), fullDate: dateStr,
+            ...Object.fromEntries(Object.values(actionsToTrack).map(val => [val, (dailyActivity[dateStr] || {})[val] || 0]))
+        }));
+        
+        const recentActivities = projectLogs.slice(0, 5);
+
+        return { kpiData, workflowChartData, dailyChartData, recentActivities, booksByStage, allRelevantAuditLogs: projectLogs };
+    }, [project, auditLogs]);
+    
+    const { kpiData, workflowChartData, dailyChartData, recentActivities, booksByStage, allRelevantAuditLogs } = dashboardData;
 
     if (!project) {
         return (
@@ -55,83 +121,77 @@ function ProjectDashboard() {
         );
     }
     
-    const kpis = [
-        { title: "Total Books", value: project.books.length.toLocaleString(), icon: BookCopy },
-        { title: "Pending Shipment", value: project.books.filter(b => b.status === 'Pending Shipment').length.toLocaleString(), icon: Package },
-        { title: "In Transit", value: project.books.filter(b => b.status === 'In Transit').length.toLocaleString(), icon: Send },
-        { title: "Finalized", value: project.books.filter(b => b.status === 'Finalized').length.toLocaleString(), icon: CheckCheck },
-    ]
+    const workflowChartConfig = { count: { label: "Books", color: "hsl(var(--primary))" } } satisfies ChartConfig;
+    const ChartComponent = { bar: BarChart, line: LineChart, area: AreaChart }[chartType];
+    const ChartElement = {
+        bar: <Bar dataKey="count" fill="var(--color-count)" radius={[4, 4, 0, 0]} />,
+        line: <Line type="monotone" dataKey="count" stroke="var(--color-count)" strokeWidth={2} />,
+        area: <Area type="monotone" dataKey="count" stroke="var(--color-count)" fill="var(--color-count)" fillOpacity={0.3} />,
+    }[chartType];
+    const dailyChartConfig = { Scanned: { label: "Scanned", color: "hsl(var(--chart-3))" }, Checked: { label: "Checked", color: "hsl(var(--chart-4))" }, Processed: { label: "Processed", color: "hsl(var(--chart-5))" }, Finalized: { label: "Finalized", color: "hsl(100, 80%, 50%)" } } satisfies ChartConfig;
 
-    const chartData = project.books
-        .reduce((acc, book) => {
-            const status = book.status;
-            const existing = acc.find(item => item.name === status);
-            if (existing) {
-                existing.count++;
-            } else {
-                acc.push({ name: status, count: 1 });
-            }
-            return acc;
-        }, [] as { name: string, count: number }[])
-        .sort((a,b) => b.count - a.count);
-
-    const chartConfig = { count: { label: "Books", color: "hsl(var(--primary))" } } satisfies ChartConfig;
+    const handleCloseDetailDialog = () => setDetailState({ open: false, title: '', items: [], type: null });
+    const handleWorkflowChartClick = (data: any) => {
+        if (!data || !data.activePayload?.length) return;
+        const stageName = data.activePayload[0].payload.name as string;
+        setDetailState({ open: true, title: `Books in Stage: ${stageName}`, items: booksByStage[stageName] || [], type: 'books' });
+    };
+    const handleDailyChartClick = (data: any) => {
+        if (!data || !data.activePayload?.length) return;
+        const fullDate = data.activePayload[0].payload.fullDate as string;
+        setDetailState({ open: true, title: `Activity for ${format(new Date(fullDate), 'MMMM d, yyyy')}`, items: allRelevantAuditLogs.filter(log => log.date.startsWith(fullDate)), type: 'activities' });
+    };
+    const filteredDialogItems = React.useMemo(() => {
+        if (!detailState.open || !detailFilter) return detailState.items;
+        const query = detailFilter.toLowerCase();
+        if (detailState.type === 'books') return (detailState.items as EnrichedBook[]).filter(b => b.name.toLowerCase().includes(query));
+        if (detailState.type === 'activities') return (detailState.items as EnrichedAuditLog[]).filter(l => l.action.toLowerCase().includes(query) || l.details.toLowerCase().includes(query));
+        return detailState.items;
+    }, [detailState, detailFilter]);
 
     return (
-        <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {kpis.map((kpi) => (
-                    <Card key={kpi.title}>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
-                            <kpi.icon className="h-4 w-4 text-muted-foreground" />
+        <>
+            <div className="space-y-6">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    {kpiData.map((kpi) => (
+                        <Card key={kpi.title}><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">{kpi.title}</CardTitle><kpi.icon className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{kpi.value}</div><p className="text-xs text-muted-foreground">{kpi.description}</p></CardContent></Card>
+                    ))}
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                    <Card className="lg:col-span-3">
+                        <CardHeader className="flex flex-row items-start justify-between">
+                            <div>
+                                <CardTitle className="font-headline flex items-center gap-2"><BarChart2 className="h-5 w-5"/> Workflow State</CardTitle>
+                                <CardDescription>Number of books in each phase. Click for details.</CardDescription>
+                            </div>
+                            <Tabs value={chartType} onValueChange={(value) => setChartType(value as any)} className="w-auto"><TabsList><TabsTrigger value="bar">Bar</TabsTrigger><TabsTrigger value="line">Line</TabsTrigger><TabsTrigger value="area">Area</TabsTrigger></TabsList></Tabs>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{kpi.value}</div>
+                            <ChartContainer config={workflowChartConfig} className="h-[300px] w-full cursor-pointer">
+                                <ChartComponent data={workflowChartData} onClick={handleWorkflowChartClick}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} angle={-40} textAnchor="end" height={80} interval={0} /><YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false}/><ChartTooltip cursor={{ fill: "hsl(var(--muted))" }} content={<ChartTooltipContent hideLabel />} />{ChartElement}
+                                </ChartComponent>
+                            </ChartContainer>
                         </CardContent>
                     </Card>
-                ))}
+                    <Card className="lg:col-span-2">
+                        <CardHeader><CardTitle className="font-headline flex items-center gap-2"><TrendingUp className="h-5 w-5"/> Daily Throughput</CardTitle><CardDescription>Key stage completions over the last 7 days.</CardDescription></CardHeader>
+                        <CardContent>
+                            <ChartContainer config={dailyChartConfig} className="h-[300px] w-full cursor-pointer">
+                                <LineChart data={dailyChartData} margin={{ left: 12, right: 12 }} onClick={handleDailyChartClick}>
+                                    <CartesianGrid vertical={false} /><XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} /><YAxis allowDecimals={false} /><ChartTooltip content={<ChartTooltipContent indicator="dot" />} /><ChartLegend content={<ChartLegendContent />} />{Object.keys(dailyChartConfig).map((key) => (<Line key={key} dataKey={key} type="monotone" stroke={`var(--color-${key})`} strokeWidth={2} dot={false} />))}
+                                </LineChart>
+                            </ChartContainer>
+                        </CardContent>
+                    </Card>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <Card><CardHeader><CardTitle className="font-headline flex items-center gap-2"><ListTodo className="h-5 w-5" /> Book Progress</CardTitle><CardDescription>Detailed progress for each book in the project.</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Book Name</TableHead><TableHead>Status</TableHead><TableHead className="w-[150px]">Progress</TableHead></TableRow></TableHeader><TableBody>{project.books.slice(0, 10).map(book => (<TableRow key={book.id}><TableCell className="font-medium"><Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link></TableCell><TableCell><Badge variant="outline">{book.status}</Badge></TableCell><TableCell><Progress value={book.progress} className="h-2"/></TableCell></TableRow>))}</TableBody></Table></CardContent></Card>
+                    <Card><CardHeader><CardTitle className="font-headline flex items-center gap-2"><Activity className="h-5 w-5" /> Recent Activity</CardTitle><CardDescription>Latest actions performed in this project.</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Details</TableHead><TableHead>User</TableHead><TableHead>Date</TableHead></TableRow></TableHeader><TableBody>{recentActivities.length > 0 ? recentActivities.map(activity => (<TableRow key={activity.id}><TableCell><Link href={`/books/${activity.bookId}`} className="font-medium truncate hover:underline">{activity.action}</Link><div className="text-xs text-muted-foreground truncate">{activity.details}</div></TableCell><TableCell>{activity.user}</TableCell><TableCell className="text-xs">{new Date(activity.date).toLocaleString()}</TableCell></TableRow>)) : (<TableRow><TableCell colSpan={3} className="h-24 text-center">No recent activity for this project.</TableCell></TableRow>)}</TableBody></Table></CardContent></Card>
+                </div>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                 <Card>
-                    <CardHeader>
-                        <CardTitle className="font-headline flex items-center gap-2"><BarChart2 className="h-5 w-5"/> Books by Status</CardTitle>
-                        <CardDescription>Current status of all books within this project.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <ChartContainer config={chartConfig} className="h-[300px] w-full">
-                            <BarChart data={chartData} layout="vertical">
-                                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                                <YAxis dataKey="name" type="category" width={120} tickLine={false} axisLine={false} />
-                                <XAxis type="number" dataKey="count" allowDecimals={false} />
-                                <ChartTooltip cursor={{ fill: "hsl(var(--muted))" }} content={<ChartTooltipContent hideLabel />} />
-                                <Bar dataKey="count" fill="var(--color-count)" radius={[0, 4, 4, 0]} />
-                            </BarChart>
-                        </ChartContainer>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="font-headline flex items-center gap-2"><ListTodo className="h-5 w-5" /> Book Progress</CardTitle>
-                        <CardDescription>Detailed progress for each book in the project.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader><TableRow><TableHead>Book Name</TableHead><TableHead>Status</TableHead><TableHead className="w-[150px]">Progress</TableHead></TableRow></TableHeader>
-                            <TableBody>
-                                {project.books.slice(0, 10).map(book => (
-                                    <TableRow key={book.id}>
-                                        <TableCell className="font-medium"><Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link></TableCell>
-                                        <TableCell><Badge variant="outline">{book.status}</Badge></TableCell>
-                                        <TableCell><Progress value={book.progress} className="h-2"/></TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
-            </div>
-        </div>
+            <Dialog open={detailState.open} onOpenChange={handleCloseDetailDialog}><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>{detailState.title}</DialogTitle><DialogDescription>Showing {filteredDialogItems.length} of {detailState.items.length} total items.</DialogDescription></DialogHeader><div className="py-2"><Input placeholder={detailState.type === 'books' ? "Filter by book name..." : "Filter by action, details, or user..."} value={detailFilter} onChange={(e) => setDetailFilter(e.target.value)} /></div><div className="max-h-[60vh] overflow-y-auto pr-4">{filteredDialogItems.length > 0 ? (<>{detailState.type === 'books' && (<Table><TableHeader><TableRow><TableHead>Book Name</TableHead><TableHead>Project</TableHead><TableHead>Client</TableHead></TableRow></TableHeader><TableBody>{(filteredDialogItems as EnrichedBook[]).map(book => (<TableRow key={book.id}><TableCell className="font-medium"><Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link></TableCell><TableCell>{book.projectName}</TableCell><TableCell>{book.clientName}</TableCell></TableRow>))}</TableBody></Table>)}{detailState.type === 'activities' && (<Table><TableHeader><TableRow><TableHead>Action</TableHead><TableHead>Details</TableHead><TableHead>User</TableHead><TableHead>Time</TableHead></TableRow></TableHeader><TableBody>{(filteredDialogItems as EnrichedAuditLog[]).map(log => (<TableRow key={log.id}><TableCell className="font-medium">{log.action}</TableCell><TableCell>{log.details}</TableCell><TableCell>{log.user}</TableCell><TableCell>{new Date(log.date).toLocaleTimeString()}</TableCell></TableRow>))}</TableBody></Table>)}</>) : (<div className="text-center py-10 text-muted-foreground"><p>No items match your filter.</p></div>)}</div></DialogContent></Dialog>
+        </>
     )
 }
 

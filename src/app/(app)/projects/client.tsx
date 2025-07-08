@@ -71,7 +71,7 @@ const getStatusBadgeVariant = (status: string) => {
 }
 
 export default function ProjectsClient() {
-  const { projects, clients, addProject, updateProject, deleteProject } = useAppContext();
+  const { accessibleProjectsForUser: projects, clients, addProject, updateProject, deleteProject } = useAppContext();
   const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | 'details' | null; data?: EnrichedProject }>({ open: false, type: null })
   const { toast } = useToast();
   

@@ -278,34 +278,6 @@ export function AppProvider({
     return allEnrichedProjects;
   }, [allEnrichedProjects, currentUser]);
 
-
-  // Effect to manage the selected project ID automatically
-  React.useEffect(() => {
-    if (!currentUser) {
-        if (selectedProjectId !== null) {
-            setSelectedProjectId(null);
-        }
-        return;
-    }
-
-    const isSelectionValid = accessibleProjectsForUser.some(p => p.id === selectedProjectId);
-
-    if (isSelectionValid) {
-        return;
-    }
-
-    let newDefaultProjectId: string | null = null;
-    if (currentUser.defaultProjectId && accessibleProjectsForUser.some(p => p.id === currentUser.defaultProjectId)) {
-        newDefaultProjectId = currentUser.defaultProjectId;
-    } else if (accessibleProjectsForUser.length > 0) {
-        newDefaultProjectId = accessibleProjectsForUser[0].id;
-    }
-
-    setSelectedProjectId(newDefaultProjectId);
-
-}, [currentUser, accessibleProjectsForUser, selectedProjectId]);
-
-
   // --- CRUD ACTIONS ---
 
   const addClient = (clientData: Omit<Client, 'id'>) => {
@@ -1049,5 +1021,3 @@ export function useAppContext() {
   }
   return context;
 }
-
-    
