@@ -80,7 +80,7 @@ function ProjectDashboard() {
         if (detailState.type === 'books') return (detailState.items as EnrichedBook[]).filter(b => b.name.toLowerCase().includes(query));
         if (detailState.type === 'activities') return (detailState.items as EnrichedAuditLog[]).filter(l => l.action.toLowerCase().includes(query) || l.details.toLowerCase().includes(query));
         return detailState.items;
-    }, [detailState, detailFilter]);
+    }, [detailState.items, detailState.type, detailFilter, detailState.open]);
 
     const dashboardData = useMemo(() => {
         if (!project) return { kpiData: [], workflowChartData: [], dailyChartData: [], recentActivities: [], booksByStage: {}, allRelevantAuditLogs: [] };
@@ -193,86 +193,87 @@ function ProjectDashboard() {
     return (
         <>
             <div className="space-y-6">
-                <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
-                    {kpiData.map((kpi) => (
-                        <Card key={kpi.title} onClick={() => handleKpiClick(kpi.title, kpi.items as EnrichedBook[])} className="cursor-pointer transition-colors hover:bg-muted/50">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
-                                <kpi.icon className="h-4 w-4 text-muted-foreground" />
+                <div className="grid gap-6 lg:grid-cols-4">
+                     <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        {kpiData.map((kpi) => (
+                            <Card key={kpi.title} onClick={() => handleKpiClick(kpi.title, kpi.items as EnrichedBook[])} className="cursor-pointer transition-colors hover:bg-muted/50">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
+                                    <kpi.icon className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold">{kpi.value}</div>
+                                    <p className="text-xs text-muted-foreground">{kpi.description}</p>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                    <div className="lg:col-span-1">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Project Details</CardTitle>
+                                <CardDescription>At-a-glance information about this project.</CardDescription>
                             </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{kpi.value}</div>
-                                <p className="text-xs text-muted-foreground">{kpi.description}</p>
+                            <CardContent className="space-y-4">
+                                <DetailItem label="Client" value={<Link href={`/clients`} className="hover:underline">{project.clientName}</Link>} />
+                                <DetailItem label="Status" value={<Badge variant={getStatusBadgeVariant(project.status)}>{project.status}</Badge>} />
+                                <Separator/>
+                                <DetailItem label="Budget" value={`$${project.budget.toLocaleString()}`} />
+                                <DetailItem label="Timeline" value={`${project.startDate} to ${project.endDate}`} />
+                                <Separator/>
+                                <DetailItem label="Total Pages" value={`${project.documentCount.toLocaleString()} / ${project.totalExpected.toLocaleString()}`} />
+                                <Progress value={project.progress} />
+                                {project.info && (
+                                    <>
+                                    <Separator/>
+                                    <div className="pt-2">
+                                        <p className="text-sm text-muted-foreground">Additional Info</p>
+                                        <p className="text-sm font-medium whitespace-pre-wrap">{project.info}</p>
+                                    </div>
+                                    </>
+                                )}
                             </CardContent>
+                            <CardFooter>
+                                <Button asChild variant="outline" className="w-full"><Link href={`/projects/${project.id}`}>View Full Project Details & Configure Workflow</Link></Button>
+                            </CardFooter>
                         </Card>
-                    ))}
+                    </div>
                 </div>
 
-                 <Card>
-                    <CardHeader>
-                        <CardTitle>Project Details</CardTitle>
-                        <CardDescription>At-a-glance information about this project.</CardDescription>
+                <Card>
+                    <CardHeader className="flex flex-row items-start justify-between">
+                        <div>
+                            <CardTitle className="font-headline flex items-center gap-2"><BarChart2 className="h-5 w-5"/> Workflow State</CardTitle>
+                            <CardDescription>Number of books in each phase. Click for details.</CardDescription>
+                        </div>
+                        <Tabs value={chartType} onValueChange={(value) => setChartType(value as any)} className="w-auto"><TabsList><TabsTrigger value="bar">Bar</TabsTrigger><TabsTrigger value="line">Line</TabsTrigger><TabsTrigger value="area">Area</TabsTrigger></TabsList></Tabs>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        <DetailItem label="Client" value={<Link href={`/clients`} className="hover:underline">{project.clientName}</Link>} />
-                        <DetailItem label="Status" value={<Badge variant={getStatusBadgeVariant(project.status)}>{project.status}</Badge>} />
-                        <Separator/>
-                        <DetailItem label="Budget" value={`$${project.budget.toLocaleString()}`} />
-                        <DetailItem label="Timeline" value={`${project.startDate} to ${project.endDate}`} />
-                        <Separator/>
-                        <DetailItem label="Total Pages" value={`${project.documentCount.toLocaleString()} / ${project.totalExpected.toLocaleString()}`} />
-                        <Progress value={project.progress} />
-                        {project.info && (
-                            <>
-                            <Separator/>
-                            <div className="pt-2">
-                                <p className="text-sm text-muted-foreground">Additional Info</p>
-                                <p className="text-sm font-medium whitespace-pre-wrap">{project.info}</p>
-                            </div>
-                            </>
-                        )}
+                    <CardContent>
+                        <ChartContainer config={workflowChartConfig} className="h-[300px] w-full cursor-pointer">
+                            <ChartComponent data={workflowChartData} onClick={handleWorkflowChartClick}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} angle={-40} textAnchor="end" height={80} interval={0} /><YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false}/><ChartTooltip cursor={{ fill: "hsl(var(--muted))" }} content={<ChartTooltipContent hideLabel />} />{ChartElement}
+                            </ChartComponent>
+                        </ChartContainer>
                     </CardContent>
-                    <CardFooter>
-                        <Button asChild variant="outline" className="w-full"><Link href={`/projects/${project.id}`}>View Full Project Details & Configure Workflow</Link></Button>
-                    </CardFooter>
                 </Card>
-
-                <div className="grid md:grid-cols-2 gap-6">
-                    <Card>
-                        <CardHeader className="flex flex-row items-start justify-between">
-                            <div>
-                                <CardTitle className="font-headline flex items-center gap-2"><BarChart2 className="h-5 w-5"/> Workflow State</CardTitle>
-                                <CardDescription>Number of books in each phase. Click for details.</CardDescription>
-                            </div>
-                            <Tabs value={chartType} onValueChange={(value) => setChartType(value as any)} className="w-auto"><TabsList><TabsTrigger value="bar">Bar</TabsTrigger><TabsTrigger value="line">Line</TabsTrigger><TabsTrigger value="area">Area</TabsTrigger></TabsList></Tabs>
-                        </CardHeader>
-                        <CardContent>
-                            <ChartContainer config={workflowChartConfig} className="h-[300px] w-full cursor-pointer">
-                                <ChartComponent data={workflowChartData} onClick={handleWorkflowChartClick}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} angle={-40} textAnchor="end" height={80} interval={0} /><YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false}/><ChartTooltip cursor={{ fill: "hsl(var(--muted))" }} content={<ChartTooltipContent hideLabel />} />{ChartElement}
-                                </ChartComponent>
-                            </ChartContainer>
-                        </CardContent>
-                    </Card>
-                     <Card>
-                        <CardHeader>
-                           <CardTitle className="font-headline flex items-center gap-2"><TrendingUp className="h-5 w-5"/> Daily Throughput</CardTitle>
-                           <CardDescription>Count of books completing key stages over the last 7 days. Click for details.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                           <ChartContainer config={dailyChartConfig} className="h-[300px] w-full cursor-pointer">
-                               <LineChart data={dailyChartData} margin={{ left: 12, right: 12 }} onClick={handleDailyChartClick}>
-                                   <CartesianGrid vertical={false} />
-                                   <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} />
-                                   <YAxis allowDecimals={false} />
-                                   <ChartTooltip content={<ChartTooltipContent indicator="dot" />} />
-                                   <ChartLegend content={<ChartLegendContent />} />
-                                   {Object.keys(dailyChartConfig).map((key) => (<Line key={key} dataKey={key} type="monotone" stroke={`var(--color-${key})`} strokeWidth={2} dot={false} />))}
-                               </LineChart>
-                           </ChartContainer>
-                        </CardContent>
-                    </Card>
-                </div>
+                <Card>
+                    <CardHeader>
+                       <CardTitle className="font-headline flex items-center gap-2"><TrendingUp className="h-5 w-5"/> Daily Throughput</CardTitle>
+                       <CardDescription>Count of books completing key stages over the last 7 days. Click for details.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                       <ChartContainer config={dailyChartConfig} className="h-[300px] w-full cursor-pointer">
+                           <LineChart data={dailyChartData} margin={{ left: 12, right: 12 }} onClick={handleDailyChartClick}>
+                               <CartesianGrid vertical={false} />
+                               <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} />
+                               <YAxis allowDecimals={false} />
+                               <ChartTooltip content={<ChartTooltipContent indicator="dot" />} />
+                               <ChartLegend content={<ChartLegendContent />} />
+                               {Object.keys(dailyChartConfig).map((key) => (<Line key={key} dataKey={key} type="monotone" stroke={`var(--color-${key})`} strokeWidth={2} dot={false} />))}
+                           </LineChart>
+                       </ChartContainer>
+                    </CardContent>
+                </Card>
                 
                 <Card><CardHeader><CardTitle className="font-headline flex items-center gap-2"><ListTodo className="h-5 w-5" /> Book Progress</CardTitle><CardDescription>Detailed progress for each book in the project.</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Book Name</TableHead><TableHead>Status</TableHead><TableHead className="w-[150px]">Progress</TableHead></TableRow></TableHeader><TableBody>{project.books.length > 0 ? project.books.slice(0, 10).map(book => (<TableRow key={book.id}><TableCell className="font-medium"><Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link></TableCell><TableCell><Badge variant="outline">{book.status}</Badge></TableCell><TableCell><Progress value={book.progress} className="h-2"/></TableCell></TableRow>)) : <TableRow><TableCell colSpan={3} className="h-24 text-center">No books in this project.</TableCell></TableRow>}</TableBody></Table></CardContent></Card>
                 
