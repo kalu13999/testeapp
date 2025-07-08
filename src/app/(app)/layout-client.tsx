@@ -15,8 +15,17 @@ import { useToast } from '@/hooks/use-toast';
 const GlobalProjectFilter = () => {
   const { allProjects, selectedProjectId, setSelectedProjectId } = useAppContext();
 
-  // If no project is selected or available, don't render the filter.
-  if (!selectedProjectId || allProjects.length === 0) {
+  // If there's only one project, display its name statically for clarity.
+  if (allProjects.length === 1 && selectedProjectId) {
+    return (
+      <div className="flex items-center h-9 px-3 text-sm font-medium border rounded-md bg-muted text-muted-foreground">
+        {allProjects[0].name}
+      </div>
+    )
+  }
+  
+  // If no project is selected or there are no projects to choose from, don't render.
+  if (!selectedProjectId || allProjects.length <= 1) {
     return null;
   }
 
@@ -40,7 +49,7 @@ const GlobalProjectFilter = () => {
 }
 
 export const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
-  const { currentUser, permissions, allProjects } = useAppContext();
+  const { currentUser, permissions, allProjects, selectedProjectId } = useAppContext();
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
@@ -52,7 +61,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
       return;
     }
 
-    if (allProjects.length === 0 && currentUser.role !== 'Admin') {
+    if (allProjects.length === 0 && !['Admin', 'Client'].includes(currentUser.role)) {
        toast({
         title: 'No Projects Assigned',
         description: 'You are not assigned to any projects. Please contact an administrator.',
@@ -92,8 +101,8 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
     return null;
   }
   
-  const showProjectFilter = currentUser?.role === 'Admin' || (currentUser?.projectIds && currentUser.projectIds.length > 1);
-
+  // The filter is only needed if there are any projects to choose from.
+  const showProjectFilter = allProjects.length > 0;
 
   return (
     <>
