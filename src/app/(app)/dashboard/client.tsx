@@ -25,6 +25,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -67,6 +68,14 @@ function ProjectDashboard() {
     const [chartType, setChartType] = React.useState<'bar' | 'line' | 'area'>('bar');
     const [detailState, setDetailState] = React.useState<{ open: boolean; title: string; items: (EnrichedBook | EnrichedAuditLog)[]; type: 'books' | 'activities' | null; }>({ open: false, title: '', items: [], type: null });
     const [detailFilter, setDetailFilter] = React.useState('');
+
+    const filteredDialogItems = React.useMemo(() => {
+        if (!detailState.open || !detailFilter) return detailState.items;
+        const query = detailFilter.toLowerCase();
+        if (detailState.type === 'books') return (detailState.items as EnrichedBook[]).filter(b => b.name.toLowerCase().includes(query));
+        if (detailState.type === 'activities') return (detailState.items as EnrichedAuditLog[]).filter(l => l.action.toLowerCase().includes(query) || l.details.toLowerCase().includes(query));
+        return detailState.items;
+    }, [detailState, detailFilter]);
     
     const project = useMemo(() => {
         if (!selectedProjectId) return null;
@@ -125,14 +134,6 @@ function ProjectDashboard() {
 
         return { kpiData, workflowChartData, dailyChartData, recentActivities, booksByStage, allRelevantAuditLogs: projectLogs };
     }, [project, auditLogs, documents]);
-
-    const filteredDialogItems = React.useMemo(() => {
-        if (!detailState.open || !detailFilter) return detailState.items;
-        const query = detailFilter.toLowerCase();
-        if (detailState.type === 'books') return (detailState.items as EnrichedBook[]).filter(b => b.name.toLowerCase().includes(query));
-        if (detailState.type === 'activities') return (detailState.items as EnrichedAuditLog[]).filter(l => l.action.toLowerCase().includes(query) || l.details.toLowerCase().includes(query));
-        return detailState.items;
-    }, [detailState, detailFilter]);
 
     if (!project) {
         return (
