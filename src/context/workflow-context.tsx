@@ -56,6 +56,7 @@ type AppContextType = {
   
   // Global Project Filter
   allProjects: EnrichedProject[];
+  accessibleProjectsForUser: EnrichedProject[];
   selectedProjectId: string | null;
   setSelectedProjectId: (projectId: string | null) => void;
 
@@ -253,11 +254,24 @@ export function AppProvider({
       return allEnrichedProjects.flatMap(p => p.books);
   }, [allEnrichedProjects]);
 
+  const accessibleProjectsForUser = React.useMemo(() => {
+    if (!currentUser) return [];
+    if (currentUser.role === 'Client' && currentUser.clientId) {
+        return allEnrichedProjects.filter(p => p.clientId === currentUser.clientId);
+    }
+    if (OPERATOR_ROLES.includes(currentUser.role) && currentUser.projectIds?.length) {
+      const operatorProjectIds = new Set(currentUser.projectIds);
+      return allEnrichedProjects.filter(p => operatorProjectIds.has(p.id));
+    }
+    // Admin and other roles without specific project assignments see all
+    return allEnrichedProjects;
+  }, [allEnrichedProjects, currentUser]);
+
 
   // Effect to manage the selected project ID automatically
   React.useEffect(() => {
     // This context is built from projects the user has access to.
-    const projectsForCurrentUser = projectsForContext;
+    const projectsForCurrentUser = accessibleProjectsForUser;
 
     if (currentUser && projectsForCurrentUser.length > 0) {
       const userProjectIds = new Set(projectsForCurrentUser.map(p => p.id));
@@ -284,7 +298,7 @@ export function AppProvider({
           setSelectedProjectId(null);
       }
     }
-  }, [currentUser, allEnrichedProjects, selectedProjectId]); // Re-run when user or projects change.
+  }, [currentUser, accessibleProjectsForUser, selectedProjectId]); // Re-run when user or projects change.
 
 
   // --- CRUD ACTIONS ---
@@ -895,16 +909,11 @@ export function AppProvider({
 
   // --- Contextual Data Filtering ---
   const projectsForContext = React.useMemo(() => {
-    if (!currentUser) return [];
-    if (currentUser.role === 'Client' && currentUser.clientId) {
-        return allEnrichedProjects.filter(p => p.clientId === currentUser.clientId);
+    if (selectedProjectId) {
+      return accessibleProjectsForUser.filter(p => p.id === selectedProjectId);
     }
-    if (OPERATOR_ROLES.includes(currentUser.role) && currentUser.projectIds?.length) {
-      const operatorProjectIds = new Set(currentUser.projectIds);
-      return allEnrichedProjects.filter(p => operatorProjectIds.has(p.id));
-    }
-    return allEnrichedProjects;
-  }, [allEnrichedProjects, currentUser]);
+    return accessibleProjectsForUser;
+  }, [accessibleProjectsForUser, selectedProjectId]);
   
   const booksForContext = React.useMemo(() => {
     return projectsForContext.flatMap(p => p.books);
@@ -929,6 +938,7 @@ export function AppProvider({
     projectWorkflows,
     rejectionTags,
     allProjects: allEnrichedProjects, // Expose all projects for Admin user selection
+    accessibleProjectsForUser,
     selectedProjectId,
     setSelectedProjectId,
     addClient, updateClient, deleteClient,

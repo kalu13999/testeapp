@@ -13,32 +13,36 @@ import { useToast } from '@/hooks/use-toast';
 
 // New component for the global filter to keep the layout cleaner
 const GlobalProjectFilter = () => {
-  const { projects, selectedProjectId, setSelectedProjectId } = useAppContext();
+  const { accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, currentUser } = useAppContext();
 
-  // If there's only one project, display its name statically for clarity.
-  if (projects.length === 1 && selectedProjectId) {
+  // If there are no projects to choose from, don't render.
+  if (accessibleProjectsForUser.length === 0) {
+    return null;
+  }
+
+  // If there's only one project AND the user is not an Admin, display statically.
+  // Admins should always see the dropdown to select "All Projects" if applicable.
+  if (accessibleProjectsForUser.length === 1 && currentUser?.role !== 'Admin') {
     return (
       <div className="flex items-center h-9 px-3 text-sm font-medium border rounded-md bg-muted text-muted-foreground">
-        {projects[0].name}
+        {accessibleProjectsForUser[0].name}
       </div>
     )
   }
   
-  // If no project is selected or there are no projects to choose from, don't render.
-  if (!selectedProjectId || projects.length <= 1) {
-    return null;
-  }
-
   return (
     <Select
-      value={selectedProjectId}
-      onValueChange={(value) => setSelectedProjectId(value)}
+      value={selectedProjectId || 'all-projects'}
+      onValueChange={(value) => setSelectedProjectId(value === 'all-projects' ? null : value)}
     >
       <SelectTrigger className="w-full max-w-xs h-9">
         <SelectValue placeholder="Select a project..." />
       </SelectTrigger>
       <SelectContent>
-        {projects.map(project => (
+        {currentUser?.role === 'Admin' && (
+          <SelectItem value="all-projects">All Projects</SelectItem>
+        )}
+        {accessibleProjectsForUser.map(project => (
           <SelectItem key={project.id} value={project.id}>
             {project.name}
           </SelectItem>
@@ -49,7 +53,7 @@ const GlobalProjectFilter = () => {
 }
 
 export const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
-  const { currentUser, permissions, projects, selectedProjectId } = useAppContext();
+  const { currentUser, permissions, accessibleProjectsForUser } = useAppContext();
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
@@ -61,7 +65,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
       return;
     }
 
-    if (projects.length === 0 && !['Admin', 'Client'].includes(currentUser.role)) {
+    if (accessibleProjectsForUser.length === 0 && !['Admin', 'Client'].includes(currentUser.role)) {
        toast({
         title: 'No Projects Assigned',
         description: 'You are not assigned to any projects. Please contact an administrator.',
@@ -94,7 +98,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
         const firstAllowedPage = userPermissions.find(p => !p.includes('[')) || '/dashboard';
         router.push(firstAllowedPage);
     }
-  }, [currentUser, pathname, permissions, router, toast, projects]);
+  }, [currentUser, pathname, permissions, router, toast, accessibleProjectsForUser]);
 
   if (!currentUser) {
     // Render nothing or a loading spinner while redirecting
@@ -102,7 +106,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
   }
   
   // The filter is only needed if there are any projects to choose from.
-  const showProjectFilter = projects.length > 0;
+  const showProjectFilter = accessibleProjectsForUser.length > 0;
 
   return (
     <>

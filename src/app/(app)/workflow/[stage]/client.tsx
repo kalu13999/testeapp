@@ -37,6 +37,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { STAGE_CONFIG } from "@/lib/workflow-config";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -130,32 +131,26 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   ]);
   
   const allDisplayItems = React.useMemo(() => {
-    let baseBooks = books;
-    let baseDocuments = documents;
-
-    if (selectedProjectId) {
-      baseBooks = books.filter(b => b.projectId === selectedProjectId);
-      baseDocuments = documents.filter(d => d.projectId === selectedProjectId);
-    }
+    let items: (EnrichedBook | AppDocument)[];
     
-    let items: (EnrichedBook | AppDocument)[] = [];
-
     if (dataType === 'book' && dataStatus) {
-      items = baseBooks.filter(book => book.status === dataStatus);
-      
-      if (currentUser && config.assigneeRole && currentUser.role !== 'Admin') {
-          const requiredPermission = assignmentConfig[config.assigneeRole].permission;
-          const userPermissions = permissions[currentUser.role] || [];
-          const canAccessStage = userPermissions.includes('*') || userPermissions.includes(requiredPermission);
-          
-          if (canAccessStage) {
-            items = (items as EnrichedBook[]).filter(book => (book as any)[`${config.assigneeRole}UserId`] === currentUser.id);
-          } else {
-            items = [];
-          }
-      }
+      items = books.filter(book => book.status === dataStatus);
     } else if (dataType === 'document' && dataStage) {
-      items = baseDocuments.filter(doc => doc.status === dataStage);
+      items = documents.filter(doc => doc.status === dataStage);
+    } else {
+      items = [];
+    }
+
+    if (currentUser && config.assigneeRole && currentUser.role !== 'Admin' && dataStatus) {
+        const requiredPermission = STAGE_CONFIG[stage]?.viewType === 'list' ? assignmentConfig[config.assigneeRole].permission : `/workflow/${stage}`;
+        const userPermissions = permissions[currentUser.role] || [];
+        const canAccessStage = userPermissions.includes('*') || userPermissions.includes(requiredPermission);
+        
+        if (canAccessStage) {
+          items = (items as EnrichedBook[]).filter(book => (book as any)[`${config.assigneeRole}UserId`] === currentUser.id);
+        } else {
+          items = [];
+        }
     }
 
     if (dataType === 'book' && config.assigneeRole) {
@@ -175,7 +170,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     }
 
     return items;
-  }, [books, documents, dataType, dataStatus, dataStage, currentUser, stage, selectedProjectId, config.assigneeRole, users, permissions]);
+  }, [books, documents, dataType, dataStatus, dataStage, currentUser, stage, permissions, config.assigneeRole, users]);
 
   const handleColumnFilterChange = (columnId: string, value: string) => {
     setColumnFilters(prev => ({ ...prev, [columnId]: value }));
@@ -515,7 +510,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
 
   const renderBookRow = (item: any, index: number) => {
-    const isCancelable = ['Scanning Started', 'Indexing Started', 'Checking Started'].includes(stage);
+    const isCancelable = ['Scanning Started', 'Indexing Started', 'Checking Started'].includes(item.status);
     return (
         <TableRow key={item.id} data-state={selection.includes(item.id) && "selected"}>
         <TableCell>
