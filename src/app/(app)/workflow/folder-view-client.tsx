@@ -227,11 +227,11 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   }
 
   const handleMainAction = (book: EnrichedBook) => {
-    const { id: bookId, name: bookName, projectId } = book;
+    const { id: bookId, name: bookName, projectId, status } = book;
     if (stage === 'storage') {
       openAssignmentDialog(bookId, bookName, projectId, 'indexer');
     } else {
-      handleMoveBookToNextStage(bookId);
+      handleMoveBookToNextStage(bookId, status);
     }
   }
 
@@ -674,3 +674,5 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     </>
   )
 }
+
+    
