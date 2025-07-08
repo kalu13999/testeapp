@@ -69,8 +69,8 @@ export const WORKFLOW_PHASES = [
     stages: ["assign-scanner", "to-scan", "scanning-started"],
     config: {
       'assign-scanner': {
-        title: "Assign Scanner",
-        description: "Books that have been received. Move them to the shared scanning queue.",
+        title: "Already Received",
+        description: "Books that have been received and are awaiting the next workflow step.",
         actionButtonLabel: "Send to Scanning Queue",
         actionButtonIcon: "Send",
         emptyStateText: "No received books are awaiting processing.",

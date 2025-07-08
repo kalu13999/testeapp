@@ -89,7 +89,7 @@ const allMenuItems = [
       { href: "/documents", label: "All Books", icon: Files },
       { href: "/workflow/pending-shipment", label: "Pending Shipment", icon: FileClock },
       { href: "/workflow/confirm-reception", label: "Confirm Reception", icon: ArrowDownToLine },
-      { href: "/workflow/assign-scanner", label: "Assign Scanner", icon: UserPlus },
+      { href: "/workflow/assign-scanner", label: "Already Received", icon: CheckCheck },
       { href: "/workflow/to-scan", label: "To Scan", icon: ScanLine },
       { href: "/workflow/scanning-started", label: "Scanning Started", icon: PlayCircle },
       { href: "/workflow/storage", label: "Storage", icon: Warehouse },
