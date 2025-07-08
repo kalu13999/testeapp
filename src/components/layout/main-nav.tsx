@@ -108,6 +108,12 @@ const allMenuItems = [
     title: "Digitization",
     items: [
       { href: "/workflow/storage", label: "Storage", icon: Warehouse },
+    ]
+  },
+  {
+    id: "workflow-indexing",
+    title: "Indexing",
+    items: [
       { href: "/workflow/to-indexing", label: "To Indexing", icon: FileText },
       { href: "/workflow/indexing-started", label: "Indexing Started", icon: PencilRuler },
     ]
