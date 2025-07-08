@@ -239,7 +239,7 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
                             {pages.map(page => (
                                 <div key={page.id} className="relative group">
                                 <Link href={`/documents/${page.id}`}>
-                                    <Card className="overflow-hidden hover:shadow-lg transition-shadow relative">
+                                    <Card className="overflow-hidden hover:shadow-lg transition-shadow relative border-2 border-transparent group-hover:border-primary">
                                         <CardContent className="p-0">
                                             <Image
                                                 src={page.imageUrl || "https://placehold.co/400x550.png"}
@@ -252,32 +252,31 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
                                             {page.flag === 'error' && <div className="absolute inset-0 bg-destructive/20 border-2 border-destructive"></div>}
                                             {page.flag === 'warning' && <div className="absolute inset-0 bg-orange-500/20 border-2 border-orange-500"></div>}
                                         </CardContent>
-                                         <CardFooter className="p-2 flex-col items-start gap-1">
-                                            <div className="flex justify-between items-center w-full">
-                                                <p className="text-xs font-medium truncate pr-2">{page.name}</p>
-                                                {page.flag && (
-                                                    <TooltipProvider>
-                                                        <Tooltip>
-                                                            <TooltipTrigger>
-                                                                {page.flag === 'error' && <ShieldAlert className="h-3 w-3 text-destructive flex-shrink-0"/>}
-                                                                {page.flag === 'warning' && <AlertTriangle className="h-3 w-3 text-orange-500 flex-shrink-0"/>}
-                                                                {page.flag === 'info' && <Info className="h-3 w-3 text-primary flex-shrink-0"/>}
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>
-                                                                <p>{page.flagComment}</p>
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    </TooltipProvider>
-                                                )}
-                                            </div>
-                                             <div className="flex flex-wrap gap-1">
-                                                 {page.tags.map(tag => (
-                                                     <Badge key={tag} variant="destructive" className="text-xs">
-                                                         {tag}
-                                                     </Badge>
-                                                 ))}
-                                             </div>
-                                         </CardFooter>
+                                        <CardFooter className="p-2 flex-col items-start gap-1">
+                                            <p className="text-xs font-medium truncate">{page.name}</p>
+                                            
+                                            {page.flag && page.flagComment && (
+                                              <div 
+                                                className="flex items-start gap-1.5 text-xs w-full text-muted-foreground"
+                                                title={page.flagComment}
+                                              >
+                                                {page.flag === 'error' && <ShieldAlert className="h-3 w-3 mt-0.5 flex-shrink-0 text-destructive"/>}
+                                                {page.flag === 'warning' && <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0 text-orange-500"/>}
+                                                {page.flag === 'info' && <Info className="h-3 w-3 mt-0.5 flex-shrink-0 text-primary"/>}
+                                                <p className="truncate">{page.flagComment}</p>
+                                              </div>
+                                            )}
+
+                                            {page.tags && page.tags.length > 0 && (
+                                                <div className="flex flex-wrap gap-1 pt-1">
+                                                    {page.tags.map(tag => (
+                                                        <Badge key={tag} variant="destructive" className="text-xs">
+                                                            {tag}
+                                                        </Badge>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </CardFooter>
                                     </Card>
                                 </Link>
                                 <div className="absolute top-1 right-1 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
