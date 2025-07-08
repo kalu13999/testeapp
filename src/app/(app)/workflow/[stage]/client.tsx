@@ -339,11 +339,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
   const handleConfirmScan = () => {
     if (scanState.book) {
-      if (stage === 'scanning-started') {
-        handleBookAction(scanState.book.id, { actualPageCount: scanState.fileCount ?? 0 });
-      } else if (stage === 'confirm-reception') {
-        handleConfirmReception(scanState.book.id, { actualPageCount: scanState.fileCount ?? 0 });
-      }
+      handleBookAction(scanState.book.id, { actualPageCount: scanState.fileCount ?? 0 });
       closeScanningDialog();
     }
   };
@@ -426,41 +422,27 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     return count;
   }, [dataType, stage, config.actionButtonLabel, currentUser?.role, config.assigneeRole]);
 
-  const renderBookRow = (item: any, index: number) => {
-    const isCancelable = ['Scanning Started', 'Indexing Started', 'Checking Started'].includes(item.status);
-    const stageConfig = STAGE_CONFIG[stage as keyof typeof STAGE_CONFIG];
-
     const handleActionClick = (book: EnrichedBook) => {
-        // Special case for confirm-reception
+        // Special case: confirm-reception is unique
         if (stage === 'confirm-reception') {
-            const workflow = projectWorkflows[book.projectId] || [];
-            const isScanningEnabled = workflow.includes('assign-scanner');
-            if (isScanningEnabled) {
-                openConfirmationDialog({
-                    title: 'Confirm Arrival?',
-                    description: `This will confirm that "${book.name}" has arrived.`,
-                    onConfirm: () => handleConfirmReception(book.id)
-                });
-            } else {
-                setScanState({ open: true, book, folderName: null, fileCount: null });
-            }
+            handleConfirmReception(book.id);
             return;
         }
 
-        // Check if the primary action is to assign a user
-        if (stageConfig?.assigneeRole) {
-            openAssignmentDialog(book, stageConfig.assigneeRole);
+        // Special case: 'assign-scanner' is a pure assignment step
+        if (stage === 'assign-scanner') {
+            openAssignmentDialog(book, 'scanner');
             return;
         }
-        
-        // Other special cases that open dialogs
+
+        // Special case: 'scanning-started' completion opens a file dialog
         if (stage === 'scanning-started') {
             setScanState({ open: true, book: book, folderName: null, fileCount: null });
             return;
         }
-        
-        // Default action: confirm and then perform the task
-        if (actionButtonLabel) {
+
+        // Handle starting a task (To Scan, To Indexing, To Checking)
+        if (['to-scan', 'to-indexing', 'to-checking'].includes(stage)) {
             openConfirmationDialog({
                 title: `Confirm: ${actionButtonLabel}?`,
                 description: `This will perform the action for "${book.name}".`,
@@ -468,13 +450,56 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                     if (stage === 'to-scan') handleStartTask(book.id, 'scanner');
                     else if (stage === 'to-indexing') handleStartTask(book.id, 'indexing');
                     else if (stage === 'to-checking') handleStartTask(book.id, 'qc');
-                    else if (stage === 'ready-for-processing') handleStartProcessing(book.id);
-                    else handleMoveBookToNextStage(book.id, book.status);
                 }
             });
+            return;
+        }
+        
+        // Handle completing a task that may lead to assignment (Indexing Started, Checking Started)
+        if (['indexing-started', 'checking-started'].includes(stage)) {
+            const onConfirm = () => {
+                if (!book.projectId) return;
+                const workflow = projectWorkflows[book.projectId] || [];
+                const currentStageKey = findStageKeyFromStatus(book.status);
+                if (!currentStageKey) return;
+                
+                const nextStageKey = getNextEnabledStage(currentStageKey, workflow);
+                if (!nextStageKey) {
+                    toast({ title: "Workflow End", description: "This is the last configured step for this project." });
+                    handleMoveBookToNextStage(book.id, book.status);
+                    return;
+                }
+
+                const nextStageConfig = STAGE_CONFIG[nextStageKey];
+                if (nextStageConfig.assigneeRole) {
+                    openAssignmentDialog(book, nextStageConfig.assigneeRole);
+                } else {
+                    handleMoveBookToNextStage(book.id, book.status);
+                }
+            };
+
+            openConfirmationDialog({
+                title: `Confirm: Mark as Complete?`,
+                description: `This will complete the task for "${book.name}" and move it to the next step.`,
+                onConfirm: onConfirm
+            });
+            return;
+        }
+        
+        // Handle stages that just move to the next step without special logic
+        if (stage === 'ready-for-processing') {
+             openConfirmationDialog({
+                title: `Confirm: Start Processing?`,
+                description: `This will begin automated processing for "${book.name}".`,
+                onConfirm: () => handleStartProcessing(book.id)
+            });
+            return;
         }
     };
     
+  const renderBookRow = (item: any, index: number) => {
+    const isCancelable = ['Scanning Started', 'Indexing Started', 'Checking Started'].includes(item.status);
+
     return (
         <TableRow key={item.id} data-state={selection.includes(item.id) && "selected"}>
         <TableCell>
@@ -917,3 +942,5 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     </>
   )
 }
+
+    
