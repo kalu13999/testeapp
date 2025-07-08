@@ -34,7 +34,9 @@
     "/workflow/corrected",
     "/finalized",
     "/archive",
-    "/admin/default-projects"
+    "/admin/default-projects",
+    "/admin/overview",
+    "/dashboard"
   ],
   "Multi-Operator": [
     "/profile",
@@ -111,3 +113,5 @@
     "/documents/[id]"
   ]
 }
+
+    

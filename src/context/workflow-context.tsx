@@ -288,10 +288,7 @@ export function AppProvider({
         return;
     }
 
-    const isSelectionValid = (
-        (selectedProjectId && accessibleProjectsForUser.some(p => p.id === selectedProjectId)) ||
-        (selectedProjectId === null && ['Admin', 'Client'].includes(currentUser.role))
-    );
+    const isSelectionValid = accessibleProjectsForUser.some(p => p.id === selectedProjectId);
 
     if (isSelectionValid) {
         return;
@@ -987,27 +984,21 @@ export function AppProvider({
 
   // --- Contextual Data Filtering ---
   const projectsForContext = React.useMemo(() => {
-    if (!currentUser) return [];
-    if (currentUser.role === 'Admin' || currentUser.role === 'Client') {
-      if(selectedProjectId) {
-         return accessibleProjectsForUser.filter(p => p.id === selectedProjectId);
-      }
-      return accessibleProjectsForUser;
-    }
-    if (selectedProjectId) {
-      return accessibleProjectsForUser.filter(p => p.id === selectedProjectId);
-    }
-    return accessibleProjectsForUser;
-  }, [accessibleProjectsForUser, selectedProjectId, currentUser]);
+    if (!selectedProjectId) return [];
+    return allEnrichedProjects.filter(p => p.id === selectedProjectId);
+  }, [allEnrichedProjects, selectedProjectId]);
   
   const booksForContext = React.useMemo(() => {
-    return projectsForContext.flatMap(p => p.books);
-  }, [projectsForContext]);
+    if (!selectedProjectId) return [];
+    const project = allEnrichedProjects.find(p => p.id === selectedProjectId);
+    return project ? project.books : [];
+  }, [allEnrichedProjects, selectedProjectId]);
 
   const documentsForContext = React.useMemo(() => {
+    if (!selectedProjectId) return [];
     const booksForContextIds = new Set(booksForContext.map(b => b.id));
     return documents.filter(d => d.bookId && booksForContextIds.has(d.bookId));
-  }, [documents, booksForContext]);
+  }, [documents, booksForContext, selectedProjectId]);
 
 
   const value = { 
@@ -1058,3 +1049,5 @@ export function useAppContext() {
   }
   return context;
 }
+
+    

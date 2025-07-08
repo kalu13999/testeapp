@@ -36,6 +36,7 @@ import {
   Users,
   UserPlus,
   Star,
+  Globe,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -56,7 +57,10 @@ const allMenuItems = [
   {
     id: "dashboards",
     title: "Dashboards",
-    items: [{ href: "/dashboard", label: "Overview", icon: SlidersHorizontal, roles: ['Admin'] }],
+    items: [
+        { href: "/dashboard", label: "Project Dashboard", icon: SlidersHorizontal },
+        { href: "/admin/overview", label: "Global Overview", icon: Globe, roles: ['Admin'] },
+    ],
   },
   {
     id: "management",
@@ -97,7 +101,7 @@ const allMenuItems = [
     id: "client",
     title: "Client Portal",
     items: [
-      { href: "/dashboard", label: "Client Dashboard", icon: Home, roles: ['Client'] },
+      { href: "/dashboard", label: "Project Dashboard", icon: Home, roles: ['Client'] },
       { href: "/shipments", label: "Prepare Shipment", icon: Send },
       { href: "/pending-deliveries", label: "Pending Deliveries", icon: FileClock },
       { href: "/validated-history", label: "Validated History", icon: FileCheck },
@@ -135,7 +139,7 @@ export function MainNav() {
     return pathname === href || (href !== '/' && pathname.startsWith(`${href}/`));
   };
   
-  if (!currentUser || !selectedProjectId && currentUser.role !== 'Admin' && currentUser.role !== 'Client') {
+  if (!currentUser || !selectedProjectId) {
     return (
        <nav className="flex flex-col p-2">
          <ul className="space-y-4">
@@ -167,6 +171,12 @@ export function MainNav() {
   const projectWorkflow = (selectedProjectId && projectWorkflows[selectedProjectId]) || Object.values(projectWorkflows)[0] || [];
 
   const menuItems = allMenuItems.map(menuSection => {
+    // For clients, only show the Client Portal and Account sections
+    if (currentUser.role === 'Client' && !['client', 'account'].includes(menuSection.id)) {
+        return null;
+    }
+    
+    // For other users, filter based on permissions
     const visibleItems = menuSection.items.filter(item => {
       // 1. Role-based filter (for specific UIs like client/admin dashboard)
       if (item.roles && !item.roles.includes(currentUser.role)) {
@@ -188,6 +198,15 @@ export function MainNav() {
             return false;
           }
       }
+      
+      // Special case for client dashboard link
+      if (item.href === '/dashboard' && currentUser.role !== 'Client' && menuSection.id === 'client') {
+          return false;
+      }
+       if (item.href === '/admin/overview' && currentUser.role !== 'Admin') {
+          return false;
+       }
+
 
       return true;
     });
@@ -233,3 +252,5 @@ export function MainNav() {
     </nav>
   );
 }
+
+    

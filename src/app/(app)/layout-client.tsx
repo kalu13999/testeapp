@@ -15,34 +15,24 @@ import { useToast } from '@/hooks/use-toast';
 const GlobalProjectFilter = () => {
   const { accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, currentUser } = useAppContext();
   
-  const showAllProjectsOption = ['Admin', 'Client'].includes(currentUser?.role || '');
-
   // Render nothing if there are no projects to choose from.
-  if (accessibleProjectsForUser.length === 0) {
-    return null;
-  }
-  
-  // If there's only one project AND the "All Projects" option isn't available, display statically.
-  if (accessibleProjectsForUser.length < 2 && !showAllProjectsOption) {
+  if (accessibleProjectsForUser.length < 2) {
     return (
       <div className="flex items-center h-9 px-3 text-sm font-medium border rounded-md bg-muted text-muted-foreground">
-        {accessibleProjectsForUser[0].name}
+        {accessibleProjectsForUser[0]?.name || "No Project Assigned"}
       </div>
     )
   }
   
   return (
     <Select
-      value={selectedProjectId || 'all-projects'}
-      onValueChange={(value) => setSelectedProjectId(value === 'all-projects' ? null : value)}
+      value={selectedProjectId || ''}
+      onValueChange={(value) => setSelectedProjectId(value)}
     >
       <SelectTrigger className="w-full max-w-xs h-9">
         <SelectValue placeholder="Select a project..." />
       </SelectTrigger>
       <SelectContent>
-        {showAllProjectsOption && (
-          <SelectItem value="all-projects">All Projects</SelectItem>
-        )}
         {accessibleProjectsForUser.map(project => (
           <SelectItem key={project.id} value={project.id}>
             {project.name}
@@ -143,3 +133,5 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
     </>
   )
 }
+
+    

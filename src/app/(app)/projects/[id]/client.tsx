@@ -42,14 +42,14 @@ const getStatusIcon = (status: string) => {
 }
 
 export default function ProjectDetailClient({ projectId }: ProjectDetailClientProps) {
-  const { projects, clients, updateProject, projectWorkflows, updateProjectWorkflow } = useAppContext();
+  const { allProjects, clients, updateProject, projectWorkflows, updateProjectWorkflow } = useAppContext();
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isWorkflowDialogOpen, setIsWorkflowDialogOpen] = React.useState(false);
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
     { id: 'name', desc: false }
   ]);
   
-  const project = projects.find(p => p.id === projectId);
+  const project = allProjects.find(p => p.id === projectId);
   const projectWorkflow = projectWorkflows[projectId] || [];
 
   const handleSave = (values: Omit<Project, 'id'>) => {
@@ -99,8 +99,8 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
         projectBooks.sort((a, b) => {
             for (const s of sorting) {
                 const key = s.id as keyof EnrichedBook;
-                const valA = a[key] ?? '';
-                const valB = b[key] ?? '';
+                const valA = a[key as keyof typeof a] ?? '';
+                const valB = b[key as keyof typeof b] ?? '';
                 let result = 0;
                 if (typeof valA === 'number' && typeof valB === 'number') {
                     result = valA - valB;
@@ -384,3 +384,5 @@ function WorkflowConfigDialog({ open, onOpenChange, projectName, currentWorkflow
     </Dialog>
   )
 }
+
+    
