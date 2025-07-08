@@ -426,14 +426,14 @@ export function AppProvider({
     setDocuments(prevDocs => 
       prevDocs.map(doc => {
         if (doc.id === pageId) {
-          // Combine new tags with existing, removing duplicates
-          const newTags = [...new Set([...doc.tags, ...tags])];
-          return { ...doc, tags: newTags };
+          // The new `tags` array from the UI is the source of truth.
+          // No need to merge, just replace.
+          return { ...doc, tags: tags };
         }
         return doc;
       })
     );
-    toast({ title: "Page Tagged", description: "The page has been tagged for rejection." });
+    toast({ title: "Tags Updated", description: "The rejection tags for the page have been updated." });
   };
   
   const clearPageRejectionTags = (pageId: string) => {
