@@ -124,7 +124,6 @@ const allMenuItems = [
     items: [
       { href: "/workflow/to-checking", label: "To Checking", icon: FileSearch2 },
       { href: "/workflow/checking-started", label: "Checking Started", icon: ClipboardCheck },
-      { href: "/workflow/final-quality-control", label: "Final Quality Control", icon: FileCheck2 },
     ]
   },
   {
@@ -140,6 +139,7 @@ const allMenuItems = [
     id: "workflow-delivery",
     title: "Delivery & Correction",
     items: [
+      { href: "/workflow/final-quality-control", label: "Final Quality Control", icon: FileCheck2 },
       { href: "/workflow/delivery", label: "Delivery", icon: Send },
       { href: "/workflow/client-rejections", label: "Client Rejections", icon: ThumbsDown },
       { href: "/workflow/corrected", label: "Corrected", icon: Undo2 },
