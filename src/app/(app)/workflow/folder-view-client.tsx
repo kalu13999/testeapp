@@ -124,15 +124,22 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     docId: string | null;
     docName: string | null;
     selectedTags: string[];
-  }>({ open: false, docId: null, docName: null, selectedTags: [] });
+    availableTags: RejectionTag[];
+  }>({ open: false, docId: null, docName: null, selectedTags: [], availableTags: [] });
 
   const stageDocuments = React.useMemo(() => {
     let baseDocs = documents.filter(doc => doc.status === config.dataStage);
     if(selectedProjectId) {
       baseDocs = baseDocs.filter(doc => doc.projectId === selectedProjectId);
     }
+    // For client-facing views, filter by their client ID if they are a client user
+    if (currentUser?.role === 'Client' && currentUser.clientId) {
+      const clientBooks = new Set(books.filter(b => b.clientId === currentUser.clientId).map(b => b.id));
+      baseDocs = baseDocs.filter(doc => doc.bookId && clientBooks.has(doc.bookId));
+    }
+
     return baseDocs;
-  }, [documents, config.dataStage, selectedProjectId]);
+  }, [documents, config.dataStage, selectedProjectId, currentUser, books]);
 
   const groupedByBook = React.useMemo(() => {
     const initialGroups = stageDocuments.reduce<GroupedDocuments>((acc, doc) => {
@@ -239,16 +246,22 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   }
 
   const openTaggingDialog = (doc: AppDocument) => {
+    const book = Object.values(groupedByBook).map(g => g.book).find(b => b.id === doc.bookId);
+    if (!book) return;
+    
+    const availableTags = rejectionTags.filter(tag => tag.clientId === book.clientId);
+
     setTaggingState({
       open: true,
       docId: doc.id,
       docName: doc.name,
       selectedTags: doc.tags,
+      availableTags: availableTags
     });
   };
   
   const closeTaggingDialog = () => {
-    setTaggingState({ open: false, docId: null, docName: null, selectedTags: [] });
+    setTaggingState({ open: false, docId: null, docName: null, selectedTags: [], availableTags: [] });
   };
   
   const handleTaggingSubmit = () => {
@@ -352,11 +365,6 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
         return actionButton;
     }
   }
-  
-  const clientRejectionTags = React.useMemo(() => {
-    if (!currentUser?.clientId) return [];
-    return rejectionTags.filter(tag => tag.clientId === currentUser.clientId);
-  }, [rejectionTags, currentUser]);
 
   return (
     <>
@@ -627,26 +635,30 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
             <div className="py-4">
                 <ScrollArea className="h-64">
                     <div className="space-y-2 pr-6">
-                        {clientRejectionTags.map(tag => (
-                            <div key={tag.id} className="flex items-center space-x-2">
-                                <Checkbox
-                                    id={`tag-${tag.id}`}
-                                    checked={taggingState.selectedTags.includes(tag.label)}
-                                    onCheckedChange={(checked) => {
-                                        setTaggingState(prev => ({
-                                            ...prev,
-                                            selectedTags: checked
-                                                ? [...prev.selectedTags, tag.label]
-                                                : prev.selectedTags.filter(t => t !== tag.label)
-                                        }));
-                                    }}
-                                />
-                                <Label htmlFor={`tag-${tag.id}`} className="flex flex-col gap-1 w-full">
-                                    <span className="font-medium">{tag.label}</span>
-                                    <span className="text-xs text-muted-foreground">{tag.description}</span>
-                                </Label>
-                            </div>
-                        ))}
+                         {taggingState.availableTags.length > 0 ? (
+                            taggingState.availableTags.map(tag => (
+                                <div key={tag.id} className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id={`tag-${tag.id}`}
+                                        checked={taggingState.selectedTags.includes(tag.label)}
+                                        onCheckedChange={(checked) => {
+                                            setTaggingState(prev => ({
+                                                ...prev,
+                                                selectedTags: checked
+                                                    ? [...prev.selectedTags, tag.label]
+                                                    : prev.selectedTags.filter(t => t !== tag.label)
+                                            }));
+                                        }}
+                                    />
+                                    <Label htmlFor={`tag-${tag.id}`} className="flex flex-col gap-1 w-full">
+                                        <span className="font-medium">{tag.label}</span>
+                                        <span className="text-xs text-muted-foreground">{tag.description}</span>
+                                    </Label>
+                                </div>
+                            ))
+                        ) : (
+                          <p className="text-sm text-muted-foreground text-center">No rejection tags have been defined for this client.</p>
+                        )}
                     </div>
                 </ScrollArea>
             </div>

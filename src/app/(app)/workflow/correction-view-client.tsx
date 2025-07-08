@@ -25,7 +25,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { AppDocument } from "@/context/workflow-context";
+import { AppDocument, RejectionTag } from "@/context/workflow-context";
 
 
 interface CorrectionViewClientProps {
@@ -57,6 +57,7 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
     rejectionTags,
     currentUser,
     tagPageForRejection,
+    clearPageRejectionTags,
   } = useAppContext();
   const { toast } = useToast();
   
@@ -68,7 +69,8 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
     docId: string | null;
     docName: string | null;
     selectedTags: string[];
-  }>({ open: false, docId: null, docName: null, selectedTags: [] });
+    availableTags: RejectionTag[];
+  }>({ open: false, docId: null, docName: null, selectedTags: [], availableTags: [] });
 
   const rejectedBooks = React.useMemo(() => {
     let baseBooks = books.filter(book => book.status === config.dataStage);
@@ -77,11 +79,6 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
     }
     return baseBooks;
   }, [books, config.dataStage, selectedProjectId]);
-
-  const clientRejectionTags = React.useMemo(() => {
-    if (!currentUser?.clientId) return [];
-    return rejectionTags.filter(tag => tag.clientId === currentUser.clientId);
-  }, [rejectionTags, currentUser]);
 
   const getPagesForBook = (bookId: string) => {
     const getPageNum = (name: string): number => {
@@ -125,16 +122,21 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
   }
 
   const openTaggingDialog = (doc: AppDocument) => {
+    const book = rejectedBooks.find(b => b.id === doc.bookId);
+    if (!book) return;
+
+    const availableTags = rejectionTags.filter(tag => tag.clientId === book.clientId);
     setTaggingState({
       open: true,
       docId: doc.id,
       docName: doc.name,
       selectedTags: doc.tags,
+      availableTags: availableTags
     });
   };
   
   const closeTaggingDialog = () => {
-    setTaggingState({ open: false, docId: null, docName: null, selectedTags: [] });
+    setTaggingState({ open: false, docId: null, docName: null, selectedTags: [], availableTags: [] });
   };
   
   const handleTaggingSubmit = () => {
@@ -358,26 +360,30 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
             <div className="py-4">
                 <ScrollArea className="h-64">
                     <div className="space-y-2 pr-6">
-                        {clientRejectionTags.map(tag => (
-                            <div key={tag.id} className="flex items-center space-x-2">
-                                <Checkbox
-                                    id={`tag-${tag.id}`}
-                                    checked={taggingState.selectedTags.includes(tag.label)}
-                                    onCheckedChange={(checked) => {
-                                        setTaggingState(prev => ({
-                                            ...prev,
-                                            selectedTags: checked
-                                                ? [...prev.selectedTags, tag.label]
-                                                : prev.selectedTags.filter(t => t !== tag.label)
-                                        }));
-                                    }}
-                                />
-                                <Label htmlFor={`tag-${tag.id}`} className="flex flex-col gap-1 w-full">
-                                    <span className="font-medium">{tag.label}</span>
-                                    <span className="text-xs text-muted-foreground">{tag.description}</span>
-                                </Label>
-                            </div>
-                        ))}
+                        {taggingState.availableTags.length > 0 ? (
+                            taggingState.availableTags.map(tag => (
+                                <div key={tag.id} className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id={`tag-${tag.id}`}
+                                        checked={taggingState.selectedTags.includes(tag.label)}
+                                        onCheckedChange={(checked) => {
+                                            setTaggingState(prev => ({
+                                                ...prev,
+                                                selectedTags: checked
+                                                    ? [...prev.selectedTags, tag.label]
+                                                    : prev.selectedTags.filter(t => t !== tag.label)
+                                            }));
+                                        }}
+                                    />
+                                    <Label htmlFor={`tag-${tag.id}`} className="flex flex-col gap-1 w-full">
+                                        <span className="font-medium">{tag.label}</span>
+                                        <span className="text-xs text-muted-foreground">{tag.description}</span>
+                                    </Label>
+                                </div>
+                            ))
+                        ) : (
+                          <p className="text-sm text-muted-foreground text-center">No rejection tags have been defined for this client.</p>
+                        )}
                     </div>
                 </ScrollArea>
             </div>
