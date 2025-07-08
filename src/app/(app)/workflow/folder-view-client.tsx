@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FolderSync, FileText, FileJson, Play, ThumbsUp, ThumbsDown, Send, Archive, Undo2, AlertTriangle, ShieldAlert, MoreHorizontal, Info, UserPlus, BookOpen } from "lucide-react";
+import { FolderSync, FileText, FileJson, Play, ThumbsUp, ThumbsDown, Send, Archive, Undo2, AlertTriangle, ShieldAlert, MoreHorizontal, Info, UserPlus, BookOpen, Check } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { useToast } from "@/hooks/use-toast";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -40,7 +40,8 @@ const iconMap: IconMap = {
   Send,
   Archive,
   Undo2,
-  UserPlus
+  UserPlus,
+  Check,
 };
 
 interface FolderViewClientProps {
