@@ -122,7 +122,7 @@ type AppContextType = {
 
 const AppContext = React.createContext<AppContextType | undefined>(undefined);
 
-const OPERATOR_ROLES = ["Operator", "QC Specialist", "Reception", "Scanning", "Indexing", "Processing", "Delivery", "Correction Specialist", "Multi-Operator"];
+const OPERATOR_ROLES = ["Operator", "QC Specialist", "Reception", "Scanning", "Indexing", "Processing", "Delivery", "Correction Specialist", "Multi-Operator", "Supervisor"];
 
 export function AppProvider({
   initialClients,
@@ -727,23 +727,27 @@ export function AppProvider({
     
     const workflow = projectWorkflows[book.projectId] || [];
     
+    let currentStageKey: string | null = null;
     let nextStatusKey: string | null = null;
     let newStatusName: string = '';
     
     if (role === 'scanner') {
-        nextStatusKey = getNextEnabledStage('assign-scanner', workflow);
+        currentStageKey = 'assign-scanner';
+        nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'to-scan']?.dataStatus || 'To Scan';
         updateBookStatus(bookId, newStatusName, () => ({ scannerUserId: userId }));
         logAction('Assigned to Scanner', `Book "${book.name}" assigned to ${user.name}.`, { bookId });
         toast({ title: "Book Assigned", description: `Assigned to ${user.name} for scanning.` });
     } else if (role === 'indexer') {
-        nextStatusKey = getNextEnabledStage('storage', workflow);
+        currentStageKey = 'storage';
+        nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'to-indexing']?.dataStatus || 'To Indexing';
         updateBookStatus(bookId, newStatusName, () => ({ indexerUserId: userId }));
         logAction('Assigned to Indexer', `Book "${book.name}" assigned to ${user.name}.`, { bookId });
         toast({ title: "Book Assigned", description: `Assigned to ${user.name} for indexing.` });
     } else if (role === 'qc') {
-        nextStatusKey = getNextEnabledStage('indexing-started', workflow);
+        currentStageKey = 'indexing-started';
+        nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'to-checking']?.dataStatus || 'To Checking';
         updateBookStatus(bookId, newStatusName, (b) => ({ qcUserId: userId, indexingStartTime: b.indexingStartTime || new Date().toISOString(), indexingEndTime: new Date().toISOString() }));
         logAction('Assigned for QC', `Book "${book.name}" assigned to ${user.name}.`, { bookId });
@@ -761,22 +765,26 @@ export function AppProvider({
 
     const workflow = projectWorkflows[book.projectId] || [];
     
+    let currentStageKey: string | null = null;
     let nextStatusKey: string | null = null;
     let newStatusName: string = '';
     let logMsg = '';
     
     if (role === 'scanner') {
-        nextStatusKey = getNextEnabledStage('to-scan', workflow);
+        currentStageKey = 'to-scan';
+        nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'scanning-started']?.dataStatus || 'Scanning Started';
         updateBookStatus(bookId, newStatusName, () => ({ scanStartTime: new Date().toISOString() }));
         logMsg = 'Scanning Started';
     } else if (role === 'indexing') {
-        nextStatusKey = getNextEnabledStage('to-indexing', workflow);
+        currentStageKey = 'to-indexing';
+        nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'indexing-started']?.dataStatus || 'Indexing Started';
         updateBookStatus(bookId, newStatusName, () => ({ indexingStartTime: new Date().toISOString() }));
         logMsg = 'Indexing Started';
     } else if (role === 'qc') {
-        nextStatusKey = getNextEnabledStage('to-checking', workflow);
+        currentStageKey = 'to-checking';
+        nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'checking-started']?.dataStatus || 'Checking Started';
         updateBookStatus(bookId, newStatusName, () => ({ qcStartTime: new Date().toISOString() }));
         logMsg = 'Checking Started';
