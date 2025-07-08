@@ -73,7 +73,7 @@ function ProjectDashboard() {
         if (!selectedProjectId) return null;
         return projects.find(p => p.id === selectedProjectId);
     }, [projects, selectedProjectId]);
-
+    
     const filteredDialogItems = React.useMemo(() => {
         if (!detailState.open || !detailFilter) return detailState.items;
         const query = detailFilter.toLowerCase();
@@ -99,17 +99,19 @@ function ProjectDashboard() {
         const warningDocs = projectDocs.filter(d => d.flag === 'warning');
         const booksWithErrors = Array.from(new Set(errorDocs.map(d => d.bookId))).map(bookId => books.find(b => b.id === bookId)).filter((b): b is EnrichedBook => !!b);
         const booksWithWarnings = Array.from(new Set(warningDocs.map(d => d.bookId))).map(bookId => books.find(b => b.id === bookId)).filter((b): b is EnrichedBook => !!b);
+        const actionsTodayLogs = projectLogs.filter(l => l.date.startsWith(new Date().toISOString().slice(0, 10)));
+
 
         const kpiData = [
-            { title: "Pending Shipping", value: pendingShippingBooks.length.toLocaleString(), icon: Package, description: "Books awaiting client shipment", items: pendingShippingBooks },
-            { title: "In Transit", value: inTransitBooks.length.toLocaleString(), icon: Send, description: "Books shipped by the client", items: inTransitBooks },
-            { title: "Received by Us", value: receivedBooks.length.toLocaleString(), icon: ArrowDownToLine, description: "Books confirmed at our facility", items: receivedBooks },
-            { title: "Pending Client Action", value: pendingValidationBooks.length.toLocaleString(), icon: UserCheck, description: "Books awaiting client approval", items: pendingValidationBooks },
-            { title: "Books in Workflow", value: workflowBooks.length.toLocaleString(), icon: BookCopy, description: "Active books being processed", items: workflowBooks },
-            { title: "Finalized Books", value: finalizedBooks.length.toLocaleString(), icon: CheckCheck, description: "Books that are approved", items: finalizedBooks },
-            { title: "SLA Warning", value: (new Date(project.endDate) < new Date() && project.status === 'In Progress') ? 'Yes' : 'No', icon: AlertTriangle, description: "Project past its due date" },
-            { title: "Document Errors", value: errorDocs.length.toLocaleString(), icon: ShieldAlert, description: "Pages flagged with errors", items: booksWithErrors },
-            { title: "Document Warnings", value: warningDocs.length.toLocaleString(), icon: AlertTriangle, description: "Pages flagged with warnings", items: booksWithWarnings },
+            { title: "Pending Shipping", value: pendingShippingBooks.length.toLocaleString(), icon: Package, description: "Books awaiting client shipment", items: pendingShippingBooks, type: 'books' },
+            { title: "In Transit", value: inTransitBooks.length.toLocaleString(), icon: Send, description: "Books shipped by the client", items: inTransitBooks, type: 'books' },
+            { title: "Received by Us", value: receivedBooks.length.toLocaleString(), icon: ArrowDownToLine, description: "Books confirmed at our facility", items: receivedBooks, type: 'books' },
+            { title: "Pending Client Action", value: pendingValidationBooks.length.toLocaleString(), icon: UserCheck, description: "Books awaiting client approval", items: pendingValidationBooks, type: 'books' },
+            { title: "Books in Workflow", value: workflowBooks.length.toLocaleString(), icon: BookCopy, description: "Active books being processed", items: workflowBooks, type: 'books' },
+            { title: "Finalized Books", value: finalizedBooks.length.toLocaleString(), icon: CheckCheck, description: "Books that are approved", items: finalizedBooks, type: 'books' },
+            { title: "Document Errors", value: errorDocs.length.toLocaleString(), icon: ShieldAlert, description: "Pages flagged with errors", items: booksWithErrors, type: 'books' },
+            { title: "Document Warnings", value: warningDocs.length.toLocaleString(), icon: AlertTriangle, description: "Pages flagged with warnings", items: booksWithWarnings, type: 'books' },
+            { title: "Actions Today", value: actionsTodayLogs.length.toLocaleString(), icon: Activity, description: "Actions recorded today", items: actionsTodayLogs, type: 'activities' },
         ];
 
         const orderedStageNames = [
@@ -146,6 +148,29 @@ function ProjectDashboard() {
         return { kpiData, workflowChartData, dailyChartData, recentActivities, booksByStage, allRelevantAuditLogs: projectLogs };
     }, [project, auditLogs, documents]);
 
+    const handleKpiClick = (kpi: typeof dashboardData.kpiData[0]) => {
+        if (!kpi.items || kpi.items.length === 0 || !kpi.type) return;
+        setDetailFilter('');
+        setDetailState({
+            open: true,
+            title: `Details for: ${kpi.title}`,
+            items: kpi.items,
+            type: kpi.type
+        });
+    };
+
+    const handleCloseDetailDialog = () => setDetailState({ open: false, title: '', items: [], type: null });
+    const handleWorkflowChartClick = (data: any) => {
+        if (!data || !data.activePayload?.length) return;
+        const stageName = data.activePayload[0].payload.name as string;
+        setDetailState({ open: true, title: `Books in Stage: ${stageName}`, items: dashboardData.booksByStage[stageName] || [], type: 'books' });
+    };
+    const handleDailyChartClick = (data: any) => {
+        if (!data || !data.activePayload?.length) return;
+        const fullDate = data.activePayload[0].payload.fullDate as string;
+        setDetailState({ open: true, title: `Activity for ${format(new Date(fullDate), 'MMMM d, yyyy')}`, items: dashboardData.allRelevantAuditLogs.filter(log => log.date.startsWith(fullDate)), type: 'activities' });
+    };
+
     if (!project) {
         return (
             <Card>
@@ -157,7 +182,7 @@ function ProjectDashboard() {
         );
     }
     
-    const { kpiData, workflowChartData, dailyChartData, recentActivities, booksByStage, allRelevantAuditLogs } = dashboardData;
+    const { kpiData, workflowChartData, dailyChartData, recentActivities } = dashboardData;
     const workflowChartConfig = { count: { label: "Books", color: "hsl(var(--primary))" } } satisfies ChartConfig;
     const ChartComponent = { bar: BarChart, line: LineChart, area: AreaChart }[chartType];
     const ChartElement = {
@@ -167,36 +192,13 @@ function ProjectDashboard() {
     }[chartType];
     const dailyChartConfig = { Scanned: { label: "Scanned", color: "hsl(var(--chart-3))" }, Checked: { label: "Checked", color: "hsl(var(--chart-4))" }, Processed: { label: "Processed", color: "hsl(var(--chart-5))" }, Finalized: { label: "Finalized", color: "hsl(100, 80%, 50%)" } } satisfies ChartConfig;
 
-    const handleKpiClick = (title: string, items: EnrichedBook[]) => {
-        if (!items || items.length === 0) return;
-        setDetailFilter('');
-        setDetailState({
-            open: true,
-            title: `Books for: ${title}`,
-            items: items,
-            type: 'books'
-        });
-    };
-
-    const handleCloseDetailDialog = () => setDetailState({ open: false, title: '', items: [], type: null });
-    const handleWorkflowChartClick = (data: any) => {
-        if (!data || !data.activePayload?.length) return;
-        const stageName = data.activePayload[0].payload.name as string;
-        setDetailState({ open: true, title: `Books in Stage: ${stageName}`, items: booksByStage[stageName] || [], type: 'books' });
-    };
-    const handleDailyChartClick = (data: any) => {
-        if (!data || !data.activePayload?.length) return;
-        const fullDate = data.activePayload[0].payload.fullDate as string;
-        setDetailState({ open: true, title: `Activity for ${format(new Date(fullDate), 'MMMM d, yyyy')}`, items: allRelevantAuditLogs.filter(log => log.date.startsWith(fullDate)), type: 'activities' });
-    };
-
     return (
         <>
             <div className="space-y-6">
-                <div className="grid gap-6 lg:grid-cols-4">
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                      <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                         {kpiData.map((kpi) => (
-                            <Card key={kpi.title} onClick={() => handleKpiClick(kpi.title, kpi.items as EnrichedBook[])} className="cursor-pointer transition-colors hover:bg-muted/50">
+                            <Card key={kpi.title} onClick={() => handleKpiClick(kpi)} className={kpi.items && kpi.items.length > 0 ? "cursor-pointer transition-colors hover:bg-muted/50" : ""}>
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                     <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
                                     <kpi.icon className="h-4 w-4 text-muted-foreground" />
@@ -212,7 +214,7 @@ function ProjectDashboard() {
                         <Card>
                             <CardHeader>
                                 <CardTitle>Project Details</CardTitle>
-                                <CardDescription>At-a-glance information about this project.</CardDescription>
+                                <CardDescription>At-a-glance project information.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <DetailItem label="Client" value={<Link href={`/clients`} className="hover:underline">{project.clientName}</Link>} />
@@ -234,7 +236,7 @@ function ProjectDashboard() {
                                 )}
                             </CardContent>
                             <CardFooter>
-                                <Button asChild variant="outline" className="w-full"><Link href={`/projects/${project.id}`}>View Full Project Details & Configure Workflow</Link></Button>
+                                <Button asChild variant="outline" className="w-full"><Link href={`/projects/${project.id}`}>View Project Details</Link></Button>
                             </CardFooter>
                         </Card>
                     </div>
@@ -257,7 +259,7 @@ function ProjectDashboard() {
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardHeader>
+                   <CardHeader>
                        <CardTitle className="font-headline flex items-center gap-2"><TrendingUp className="h-5 w-5"/> Daily Throughput</CardTitle>
                        <CardDescription>Count of books completing key stages over the last 7 days. Click for details.</CardDescription>
                     </CardHeader>
@@ -275,9 +277,10 @@ function ProjectDashboard() {
                     </CardContent>
                 </Card>
                 
-                <Card><CardHeader><CardTitle className="font-headline flex items-center gap-2"><ListTodo className="h-5 w-5" /> Book Progress</CardTitle><CardDescription>Detailed progress for each book in the project.</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Book Name</TableHead><TableHead>Status</TableHead><TableHead className="w-[150px]">Progress</TableHead></TableRow></TableHeader><TableBody>{project.books.length > 0 ? project.books.slice(0, 10).map(book => (<TableRow key={book.id}><TableCell className="font-medium"><Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link></TableCell><TableCell><Badge variant="outline">{book.status}</Badge></TableCell><TableCell><Progress value={book.progress} className="h-2"/></TableCell></TableRow>)) : <TableRow><TableCell colSpan={3} className="h-24 text-center">No books in this project.</TableCell></TableRow>}</TableBody></Table></CardContent></Card>
-                
-                <Card><CardHeader><CardTitle className="font-headline flex items-center gap-2"><Activity className="h-5 w-5" /> Recent Activity</CardTitle><CardDescription>Latest actions performed in this project.</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Details</TableHead><TableHead>User</TableHead><TableHead className="text-right">Date</TableHead></TableRow></TableHeader><TableBody>{recentActivities.length > 0 ? recentActivities.map(activity => (<TableRow key={activity.id}><TableCell><Link href={`/books/${activity.bookId}`} className="font-medium truncate hover:underline">{activity.action}</Link><div className="text-xs text-muted-foreground truncate">{activity.details}</div></TableCell><TableCell>{activity.user}</TableCell><TableCell className="text-xs text-right">{new Date(activity.date).toLocaleDateString()}</TableCell></TableRow>)) : (<TableRow><TableCell colSpan={3} className="h-24 text-center">No recent activity for this project.</TableCell></TableRow>)}</TableBody></Table></CardContent></Card>
+                <div className="grid md:grid-cols-2 gap-6">
+                    <Card><CardHeader><CardTitle className="font-headline flex items-center gap-2"><ListTodo className="h-5 w-5" /> Book Progress</CardTitle><CardDescription>Detailed progress for each book in the project.</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Book Name</TableHead><TableHead>Status</TableHead><TableHead className="w-[150px]">Progress</TableHead></TableRow></TableHeader><TableBody>{project.books.length > 0 ? project.books.slice(0, 10).map(book => (<TableRow key={book.id}><TableCell className="font-medium"><Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link></TableCell><TableCell><Badge variant="outline">{book.status}</Badge></TableCell><TableCell><Progress value={book.progress} className="h-2"/></TableCell></TableRow>)) : <TableRow><TableCell colSpan={3} className="h-24 text-center">No books in this project.</TableCell></TableRow>}</TableBody></Table></CardContent></Card>
+                    <Card><CardHeader><CardTitle className="font-headline flex items-center gap-2"><Activity className="h-5 w-5" /> Recent Activity</CardTitle><CardDescription>Latest actions performed in this project.</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Details</TableHead><TableHead>User</TableHead><TableHead className="text-right">Date</TableHead></TableRow></TableHeader><TableBody>{recentActivities.length > 0 ? recentActivities.map(activity => (<TableRow key={activity.id}><TableCell><Link href={`/books/${activity.bookId}`} className="font-medium truncate hover:underline">{activity.action}</Link><div className="text-xs text-muted-foreground truncate">{activity.details}</div></TableCell><TableCell>{activity.user}</TableCell><TableCell className="text-xs text-right">{new Date(activity.date).toLocaleDateString()}</TableCell></TableRow>)) : (<TableRow><TableCell colSpan={3} className="h-24 text-center">No recent activity for this project.</TableCell></TableRow>)}</TableBody></Table></CardContent></Card>
+                </div>
             </div>
             <Dialog open={detailState.open} onOpenChange={handleCloseDetailDialog}><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>{detailState.title}</DialogTitle><DialogDescription>Showing {filteredDialogItems.length} of {detailState.items.length} total items.</DialogDescription></DialogHeader><div className="py-2"><Input placeholder={detailState.type === 'books' ? "Filter by book name..." : "Filter by action, details, or user..."} value={detailFilter} onChange={(e) => setDetailFilter(e.target.value)} /></div><div className="max-h-[60vh] overflow-y-auto pr-4">{filteredDialogItems.length > 0 ? (<>{detailState.type === 'books' && (<Table><TableHeader><TableRow><TableHead>Book Name</TableHead><TableHead>Project</TableHead><TableHead>Client</TableHead></TableRow></TableHeader><TableBody>{(filteredDialogItems as EnrichedBook[]).map(book => (<TableRow key={book.id}><TableCell className="font-medium"><Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link></TableCell><TableCell>{book.projectName}</TableCell><TableCell>{book.clientName}</TableCell></TableRow>))}</TableBody></Table>)}{detailState.type === 'activities' && (<Table><TableHeader><TableRow><TableHead>Action</TableHead><TableHead>Details</TableHead><TableHead>User</TableHead><TableHead>Time</TableHead></TableRow></TableHeader><TableBody>{(filteredDialogItems as EnrichedAuditLog[]).map(log => (<TableRow key={log.id}><TableCell className="font-medium">{log.action}</TableCell><TableCell>{log.details}</TableCell><TableCell>{log.user}</TableCell><TableCell>{new Date(log.date).toLocaleTimeString()}</TableCell></TableRow>))}</TableBody></Table>)}</>) : (<div className="text-center py-10 text-muted-foreground"><p>No items match your filter.</p></div>)}</div></DialogContent></Dialog>
         </>

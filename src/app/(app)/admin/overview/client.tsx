@@ -56,6 +56,8 @@ type KpiData = {
     value: string;
     description: string;
     icon: React.ElementType;
+    items: (EnrichedBook | EnrichedAuditLog)[];
+    type: 'books' | 'activities' | null;
 }
 
 type ChartData = {
@@ -95,25 +97,28 @@ export default function GlobalOverviewClient() {
         const books = allProjects.flatMap(p => p.books);
         
         // --- KPI CALCULATIONS ---
-        const booksInWorkflow = books.filter(b => !['Archived', 'Pending Shipment'].includes(b.status)).length;
-        const pendingClientAction = books.filter(book => book.status === 'Pending Validation').length;
-        const slaWarnings = allProjects.filter(p => p.status === 'In Progress' && new Date(p.endDate) < new Date()).length;
+        const pendingShippingBooks = books.filter(b => b.status === 'Pending Shipment');
+        const inTransitBooks = books.filter(b => b.status === 'In Transit');
+        const receivedAtFacilityBooks = books.filter(b => b.status === 'Received');
+        const pendingClientActionBooks = books.filter(book => book.status === 'Pending Validation');
+        const booksInWorkflowBooks = books.filter(b => !['Archived', 'Pending Shipment'].includes(b.status));
+        const finalizedBooks = books.filter(b => b.status === 'Finalized');
+
+        const slaWarningProjects = allProjects.filter(p => p.status === 'In Progress' && new Date(p.endDate) < new Date());
+        const slaWarningBooks = slaWarningProjects.flatMap(p => p.books.filter(book => book.status === 'In Progress'));
+
         const today = new Date().toISOString().slice(0, 10);
-        const processedToday = auditLogs.filter(d => d.date.startsWith(today)).length;
-        const pendingShipping = books.filter(b => b.status === 'Pending Shipment').length;
-        const inTransit = books.filter(b => b.status === 'In Transit').length;
-        const receivedAtFacility = books.filter(b => b.status === 'Received').length;
-        const finalizedBooks = books.filter(b => b.status === 'Finalized').length;
+        const processedTodayLogs = auditLogs.filter(d => d.date.startsWith(today));
 
         const kpiData: KpiData[] = [
-            { title: "Pending Shipping", value: pendingShipping.toLocaleString(), icon: Package, description: "Batches awaiting client shipment" },
-            { title: "In Transit", value: inTransit.toLocaleString(), icon: Send, description: "Batches shipped by clients" },
-            { title: "Received by Us", value: receivedAtFacility.toLocaleString(), icon: ArrowDownToLine, description: "Batches confirmed at our facility" },
-            { title: "Pending Client Action", value: pendingClientAction.toLocaleString(), icon: UserCheck, description: "Batches awaiting client approval" },
-            { title: "Total Books in Workflow", value: booksInWorkflow.toLocaleString(), icon: BookCopy, description: "All active books being processed" },
-            { title: "Finalized Books", value: finalizedBooks.toLocaleString(), icon: CheckCheck, description: "Books that are approved" },
-            { title: "SLA Warnings", value: slaWarnings.toLocaleString(), icon: AlertTriangle, description: "Projects past their due date" },
-            { title: "Actions Today", value: processedToday.toLocaleString(), icon: Activity, description: "Any action performed today" },
+            { title: "Pending Shipping", value: pendingShippingBooks.length.toLocaleString(), icon: Package, description: "Batches awaiting client shipment", items: pendingShippingBooks, type: 'books' },
+            { title: "In Transit", value: inTransitBooks.length.toLocaleString(), icon: Send, description: "Batches shipped by clients", items: inTransitBooks, type: 'books' },
+            { title: "Received by Us", value: receivedAtFacilityBooks.length.toLocaleString(), icon: ArrowDownToLine, description: "Batches confirmed at our facility", items: receivedAtFacilityBooks, type: 'books' },
+            { title: "Pending Client Action", value: pendingClientActionBooks.length.toLocaleString(), icon: UserCheck, description: "Batches awaiting client approval", items: pendingClientActionBooks, type: 'books' },
+            { title: "Total Books in Workflow", value: booksInWorkflowBooks.length.toLocaleString(), icon: BookCopy, description: "All active books being processed", items: booksInWorkflowBooks, type: 'books' },
+            { title: "Finalized Books", value: finalizedBooks.length.toLocaleString(), icon: CheckCheck, description: "Books that are approved", items: finalizedBooks, type: 'books' },
+            { title: "SLA Warnings", value: slaWarningProjects.length.toLocaleString(), icon: AlertTriangle, description: "Projects past their due date", items: slaWarningBooks, type: 'books' },
+            { title: "Actions Today", value: processedTodayLogs.length.toLocaleString(), icon: Activity, description: "Any action performed today", items: processedTodayLogs, type: 'activities' },
         ];
 
         // --- WORKFLOW OVERVIEW CHART ---
@@ -200,6 +205,17 @@ export default function GlobalOverviewClient() {
       Finalized: { label: "Finalized", color: "hsl(100, 80%, 50%)" },
     } satisfies ChartConfig;
 
+    const handleKpiClick = (kpi: KpiData) => {
+        if (!kpi.items || kpi.items.length === 0 || !kpi.type) return;
+        setDetailFilter('');
+        setDetailState({
+            open: true,
+            title: `Details for: ${kpi.title}`,
+            items: kpi.items,
+            type: kpi.type
+        });
+    };
+
     const handleCloseDetailDialog = () => {
       setDetailState({ open: false, title: '', items: [], type: null });
       setDetailFilter('');
@@ -240,7 +256,7 @@ export default function GlobalOverviewClient() {
             <h1 className="font-headline text-3xl font-bold tracking-tight">Global Overview</h1>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {kpiData.map((kpi) => (
-                    <Card key={kpi.title}>
+                    <Card key={kpi.title} onClick={() => handleKpiClick(kpi)} className={kpi.items && kpi.items.length > 0 ? "cursor-pointer transition-colors hover:bg-muted/50" : ""}>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
                             <kpi.icon className="h-4 w-4 text-muted-foreground" />
