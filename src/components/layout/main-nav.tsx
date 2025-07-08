@@ -23,7 +23,6 @@ import {
   SlidersHorizontal,
   ThumbsDown,
   Undo2,
-  Users2,
   Warehouse,
   Play,
   PlayCircle,
@@ -123,7 +122,7 @@ const allMenuItems = [
 
 export function MainNav() {
   const pathname = usePathname();
-  const { currentUser, permissions } = useAppContext();
+  const { currentUser, permissions, selectedProjectId, projectWorkflows } = useAppContext();
 
   const isActive = (href: string) => {
     // Special case for dashboard to avoid it being active for all sub-pages
@@ -133,30 +132,61 @@ export function MainNav() {
     return pathname === href || (href !== '/' && pathname.startsWith(`${href}/`));
   };
   
-  if (!currentUser) return null; // Don't render nav if no user
+  if (!currentUser || !selectedProjectId && currentUser.role !== 'Admin' && currentUser.role !== 'Client') {
+    return (
+       <nav className="flex flex-col p-2">
+         <ul className="space-y-4">
+            <li>
+                <h3 className="px-2 mb-1 text-xs font-semibold text-muted-foreground/80 uppercase tracking-wider font-headline">
+                Account
+                </h3>
+                <ul className="space-y-1">
+                <li>
+                    <Link href="/profile" passHref>
+                        <Button
+                        variant={isActive("/profile") ? "secondary" : "ghost"}
+                        className="w-full justify-start font-normal gap-2"
+                        >
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        My Profile
+                        </Button>
+                    </Link>
+                </li>
+                </ul>
+            </li>
+         </ul>
+       </nav>
+    );
+  }
 
   const userPermissions = permissions[currentUser.role] || [];
   const isAdmin = userPermissions.includes('*');
+  const projectWorkflow = (selectedProjectId && projectWorkflows[selectedProjectId]) || Object.values(projectWorkflows)[0] || [];
 
   const menuItems = allMenuItems.map(menuSection => {
     const visibleItems = menuSection.items.filter(item => {
-      if (isAdmin) {
-        if (item.roles && !item.roles.includes(currentUser.role)) {
-          return false;
-        }
-        return true;
-      }
-
+      // 1. Role-based filter (for specific UIs like client/admin dashboard)
       if (item.roles && !item.roles.includes(currentUser.role)) {
         return false;
       }
       
-      const hasPermission = userPermissions.some(p => {
+      // 2. Permission-based filter
+      const hasPermission = isAdmin || userPermissions.some(p => {
         const regex = new RegExp(`^${p.replace(/\[.*?\]/g, '[^/]+')}$`);
         return regex.test(item.href);
       });
 
-      return hasPermission;
+      if (!hasPermission) return false;
+      
+      // 3. Project Workflow filter
+      if (item.href.startsWith('/workflow/')) {
+          const stage = item.href.split('/').pop();
+          if (stage && !projectWorkflow.includes(stage)) {
+            return false;
+          }
+      }
+
+      return true;
     });
 
     if (visibleItems.length > 0) {

@@ -29,6 +29,8 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { STAGE_CONFIG } from "@/lib/workflow-config";
+
 
 type IconMap = {
   [key: string]: React.ElementType;
@@ -94,6 +96,8 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     rejectionTags,
     currentUser,
     tagPageForRejection,
+    getNextEnabledStage,
+    projectWorkflows
   } = useAppContext();
   const { toast } = useToast();
   const ActionIcon = config.actionButtonIcon ? iconMap[config.actionButtonIcon] : FolderSync;
@@ -129,10 +133,10 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   }>({ open: false, docId: null, docName: null, selectedTags: [], availableTags: [] });
 
   const stageDocuments = React.useMemo(() => {
-    let baseDocs = documents.filter(doc => doc.status === config.dataStage);
-    if(selectedProjectId) {
-      baseDocs = baseDocs.filter(doc => doc.projectId === selectedProjectId);
-    }
+    if (!selectedProjectId) return []; // Always require a project to be selected
+    
+    let baseDocs = documents.filter(doc => doc.status === config.dataStage && doc.projectId === selectedProjectId);
+    
     // For client-facing views, filter by their client ID if they are a client user
     if (currentUser?.role === 'Client' && currentUser.clientId) {
       const clientBooks = new Set(books.filter(b => b.clientId === currentUser.clientId).map(b => b.id));
@@ -210,9 +214,10 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     }
   };
   
-  const assignmentConfig: { [key in 'indexer' | 'qc']: { permission: string } } = {
+  const assignmentConfig: { [key in 'indexer' | 'qc' | 'scanner']: { permission: string } } = {
     indexer: { permission: '/workflow/to-indexing' },
-    qc: { permission: '/workflow/to-checking' }
+    qc: { permission: '/workflow/to-checking' },
+    scanner: { permission: '/workflow/to-scan' }
   };
 
   const getAssignableUsers = (role: 'indexer' | 'qc', projectId: string) => {
@@ -225,15 +230,26 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
       return hasPermission && hasProjectAccess;
     });
   }
-
+  
   const handleMainAction = (book: EnrichedBook) => {
-    const { id: bookId, name: bookName, projectId, status } = book;
-    if (stage === 'storage') {
-      openAssignmentDialog(bookId, bookName, projectId, 'indexer');
+    if (!selectedProjectId) return;
+    const projectWorkflow = projectWorkflows[selectedProjectId] || [];
+    const nextStage = getNextEnabledStage(stage, projectWorkflow);
+    
+    if (!nextStage) {
+      toast({ title: "Workflow End", description: "This is the last configured step for this project.", variant: "default" });
+      return;
+    }
+    
+    const nextStageConfig = STAGE_CONFIG[nextStage];
+
+    if (nextStageConfig?.assigneeRole) {
+      openAssignmentDialog(book.id, book.name, book.projectId, nextStageConfig.assigneeRole);
     } else {
-      handleMoveBookToNextStage(bookId, status);
+       handleMoveBookToNextStage(book.id, book.status);
     }
   }
+
 
   const openTaggingDialog = (doc: AppDocument) => {
     const book = Object.values(groupedByBook).map(g => g.book).find(b => b.id === doc.bookId);
@@ -265,22 +281,31 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
 
   const renderActions = (bookGroup: GroupedDocuments[string]) => {
     const { book, hasError } = bookGroup;
-    const { id: bookId, name: bookName } = book;
-    
-    const actionButton = (
+    const { id: bookId, name: bookName, status } = book;
+
+    let actionButtonLabel = config.actionButtonLabel;
+    if (stage === 'storage' && selectedProjectId) {
+        const projectWorkflow = projectWorkflows[selectedProjectId] || [];
+        const nextStage = getNextEnabledStage(stage, projectWorkflow);
+        if (nextStage === 'to-indexing') actionButtonLabel = "Assign for Indexing";
+        else if (nextStage === 'to-checking') actionButtonLabel = "Assign for QC";
+        else actionButtonLabel = "Move to Next Stage";
+    }
+
+    const actionButton = actionButtonLabel ? (
         <Button 
             size="sm" 
             onClick={() => openConfirmationDialog({
               title: `Are you sure?`,
-              description: `This will perform the action "${config.actionButtonLabel}" on "${bookName}".`,
+              description: `This will perform the action "${actionButtonLabel}" on "${bookName}".`,
               onConfirm: () => handleMainAction(book)
             })}
             disabled={hasError}
         >
             <ActionIcon className="mr-2 h-4 w-4" />
-            {config.actionButtonLabel}
+            {actionButtonLabel}
         </Button>
-    );
+    ) : null;
 
     switch (stage) {
       case 'pending-deliveries':
@@ -338,7 +363,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
       case 'archive':
         return null; // No actions in archive
       default: // For standard workflow stages
-        if (!config.actionButtonLabel) return null;
+        if (!actionButtonLabel) return null;
         if (hasError) {
           return (
             <TooltipProvider>
@@ -674,5 +699,3 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     </>
   )
 }
-
-    

@@ -75,6 +75,7 @@ export interface User {
     clientId?: string;
     projectIds?: string[];
     status: 'active' | 'disabled';
+    defaultProjectId?: string;
 }
 
 export interface RawBook {

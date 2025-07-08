@@ -15,16 +15,20 @@ import { useToast } from '@/hooks/use-toast';
 const GlobalProjectFilter = () => {
   const { allProjects, selectedProjectId, setSelectedProjectId } = useAppContext();
 
+  // If no project is selected or available, don't render the filter.
+  if (!selectedProjectId || allProjects.length === 0) {
+    return null;
+  }
+
   return (
     <Select
-      value={selectedProjectId || 'all'}
-      onValueChange={(value) => setSelectedProjectId(value === 'all' ? null : value)}
+      value={selectedProjectId}
+      onValueChange={(value) => setSelectedProjectId(value)}
     >
       <SelectTrigger className="w-full max-w-xs h-9">
-        <SelectValue placeholder="Filter all data by project..." />
+        <SelectValue placeholder="Select a project..." />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="all">All Projects</SelectItem>
         {allProjects.map(project => (
           <SelectItem key={project.id} value={project.id}>
             {project.name}
@@ -36,7 +40,7 @@ const GlobalProjectFilter = () => {
 }
 
 export const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
-  const { currentUser, permissions } = useAppContext();
+  const { currentUser, permissions, allProjects } = useAppContext();
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
@@ -45,6 +49,19 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
     // Route guarding logic
     if (!currentUser) {
       router.push('/');
+      return;
+    }
+
+    if (allProjects.length === 0 && currentUser.role !== 'Admin') {
+       toast({
+        title: 'No Projects Assigned',
+        description: 'You are not assigned to any projects. Please contact an administrator.',
+        variant: 'destructive',
+      });
+      // Allow access only to profile page if no projects assigned
+      if (pathname !== '/profile') {
+        router.push('/profile');
+      }
       return;
     }
 
@@ -68,12 +85,15 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
         const firstAllowedPage = userPermissions.find(p => !p.includes('[')) || '/dashboard';
         router.push(firstAllowedPage);
     }
-  }, [currentUser, pathname, permissions, router, toast]);
+  }, [currentUser, pathname, permissions, router, toast, allProjects]);
 
   if (!currentUser) {
     // Render nothing or a loading spinner while redirecting
     return null;
   }
+  
+  const showProjectFilter = currentUser?.role === 'Admin' || (currentUser?.projectIds && currentUser.projectIds.length > 1);
+
 
   return (
     <>
@@ -94,7 +114,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm sm:px-6">
             <SidebarTrigger className="sm:hidden" />
             <div className="hidden sm:block">
-              {currentUser?.role !== 'Client' && <GlobalProjectFilter />}
+              {showProjectFilter && <GlobalProjectFilter />}
             </div>
             {/* Spacer for mobile view to push UserNav to the right */}
             <div className="flex-1 sm:hidden" /> 
