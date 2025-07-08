@@ -1,21 +1,21 @@
 
 {
   "proj_1": [
-    "reception", "to-scan", "scanning-started", "storage", "to-indexing", "indexing-started", "to-checking", "checking-started", "ready-for-processing", "in-processing", "processed", "final-quality-control", "delivery", "pending-deliveries", "client-rejections", "corrected", "finalized", "archive"
+    "pending-shipment", "confirm-reception", "assign-scanner", "to-scan", "scanning-started", "storage", "to-indexing", "indexing-started", "to-checking", "checking-started", "ready-for-processing", "in-processing", "processed", "final-quality-control", "delivery", "pending-deliveries", "client-rejections", "corrected", "finalized", "archive"
   ],
   "proj_11": [
-    "reception", "to-scan", "scanning-started", "storage", "to-indexing", "indexing-started", "to-checking", "checking-started", "ready-for-processing", "in-processing", "processed", "final-quality-control", "delivery", "pending-deliveries", "client-rejections", "corrected", "finalized", "archive"
+    "pending-shipment", "confirm-reception", "assign-scanner", "to-scan", "scanning-started", "storage", "to-indexing", "indexing-started", "to-checking", "checking-started", "ready-for-processing", "in-processing", "processed", "final-quality-control", "delivery", "pending-deliveries", "client-rejections", "corrected", "finalized", "archive"
   ],
   "proj_21": [
-    "reception", "to-scan", "scanning-started", "storage", "to-indexing", "indexing-started", "to-checking", "checking-started", "ready-for-processing", "in-processing", "processed", "final-quality-control", "delivery", "pending-deliveries", "client-rejections", "corrected", "finalized", "archive"
+    "pending-shipment", "confirm-reception", "assign-scanner", "to-scan", "scanning-started", "storage", "to-indexing", "indexing-started", "to-checking", "checking-started", "ready-for-processing", "in-processing", "processed", "final-quality-control", "delivery", "pending-deliveries", "client-rejections", "corrected", "finalized", "archive"
   ],
   "proj_2": [
-    "reception", "to-scan", "scanning-started", "storage", "to-indexing", "indexing-started", "to-checking", "checking-started", "ready-for-processing", "in-processing", "processed", "final-quality-control", "delivery", "pending-deliveries", "client-rejections", "corrected", "finalized", "archive"
+    "pending-shipment", "confirm-reception", "assign-scanner", "to-scan", "scanning-started", "storage", "to-indexing", "indexing-started", "to-checking", "checking-started", "ready-for-processing", "in-processing", "processed", "final-quality-control", "delivery", "pending-deliveries", "client-rejections", "corrected", "finalized", "archive"
   ],
   "proj_12": [
-    "reception", "to-scan", "scanning-started", "storage", "to-indexing", "indexing-started", "to-checking", "checking-started", "ready-for-processing", "in-processing", "processed", "final-quality-control", "delivery", "pending-deliveries", "client-rejections", "corrected", "finalized", "archive"
+    "pending-shipment", "confirm-reception", "assign-scanner", "to-scan", "scanning-started", "storage", "to-indexing", "indexing-started", "to-checking", "checking-started", "ready-for-processing", "in-processing", "processed", "final-quality-control", "delivery", "pending-deliveries", "client-rejections", "corrected", "finalized", "archive"
   ],
   "proj_22": [
-    "reception", "to-scan", "scanning-started", "storage", "to-indexing", "indexing-started", "to-checking", "checking-started", "ready-for-processing", "in-processing", "processed", "final-quality-control", "delivery", "pending-deliveries", "client-rejections", "corrected", "finalized", "archive"
+    "pending-shipment", "confirm-reception", "assign-scanner", "to-scan", "scanning-started", "storage", "to-indexing", "indexing-started", "to-checking", "checking-started", "ready-for-processing", "in-processing", "processed", "final-quality-control", "delivery", "pending-deliveries", "client-rejections", "corrected", "finalized", "archive"
   ]
 }
