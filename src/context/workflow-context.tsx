@@ -12,11 +12,12 @@ export interface BookImport {
 }
 
 
-// This map defines the status transition for books (physical items)
+// This map defines the status transition for books (physical items) for simple, one-click actions
 const bookStatusTransition: { [key: string]: string } = {
-  'In Transit': 'To Scan',
+  'In Transit': 'Received',
+  // 'Received' to 'To Scan' is handled by assignment
   'To Scan': 'Scanning Started',
-  'Scanning Started': 'Storage', // After scan, docs are in Storage
+  'Scanning Started': 'In Progress', // After scan, docs are in Storage, book is 'In Progress'
 };
 
 // This map defines the status transition for entire books of documents (digital items)
@@ -90,14 +91,14 @@ type AppContextType = {
   updateRejectionTag: (tagId: string, tagData: Partial<Omit<RejectionTag, 'id' | 'clientId'>>) => void;
   deleteRejectionTag: (tagId: string) => void;
   tagPageForRejection: (pageId: string, tags: string[]) => void;
-  clearPageRejectionTags: (pageId: string) => void;
+  clearPageRejectionTags: (pageId: string, tagsToKeep?: string[]) => void;
 
 
   // Workflow Actions
   handleMarkAsShipped: (bookIds: string[]) => void;
-  handleBookAction: (bookId: string, currentStatus: string, payload?: { actualPageCount?: number, scannerUserId?: string }) => void;
+  handleBookAction: (bookId: string, currentStatus: string, payload?: { actualPageCount?: number }) => void;
   handleMoveBookToNextStage: (bookId: string, currentStage: string) => void;
-  handleAssignUser: (bookId: string, userId: string, role: 'indexer' | 'qc') => void;
+  handleAssignUser: (bookId: string, userId: string, role: 'scanner' | 'indexer' | 'qc') => void;
   handleStartTask: (bookId: string, role: 'indexing' | 'qc') => void;
   handleCancelTask: (bookId: string, currentStatus: string) => void;
   handleAdminStatusOverride: (bookId: string, newStatus: string, reason: string) => void;
@@ -115,7 +116,7 @@ type AppContextType = {
 
 const AppContext = React.createContext<AppContextType | undefined>(undefined);
 
-const OPERATOR_ROLES = ["Operator", "QC Specialist", "Reception", "Scanning", "Indexing", "Processing", "Delivery", "Correction Specialist"];
+const OPERATOR_ROLES = ["Operator", "QC Specialist", "Reception", "Scanning", "Indexing", "Processing", "Delivery", "Correction Specialist", "Multi-Operator"];
 
 export function AppProvider({
   initialClients,
@@ -313,6 +314,7 @@ export function AppProvider({
 
   const deleteUser = (userId: string) => {
     const userToDelete = users.find(u => u.id === userId);
+    if (!userToDelete || userToDelete.role === 'System') return;
     setUsers(prev => prev.filter(u => u.id !== userId));
     logAction('User Deleted', `User "${userToDelete?.name}" was deleted.`, {});
     toast({ title: "User Deleted", description: "The user has been deleted.", variant: "destructive" });
@@ -515,19 +517,18 @@ export function AppProvider({
     toast({ title: `${bookIds.length} Book(s) Marked as Shipped` });
   };
 
-  const handleBookAction = (bookId: string, currentStatus: string, payload?: { actualPageCount?: number, scannerUserId?: string }) => {
+  const handleBookAction = (bookId: string, currentStatus: string, payload?: { actualPageCount?: number }) => {
     const nextStatus = bookStatusTransition[currentStatus];
     if (!nextStatus) return;
 
     const book = rawBooks.find(b => b.id === bookId);
     if (!book) return;
 
-    if (currentStatus === 'In Transit' && payload?.scannerUserId) {
-      const scanner = users.find(u => u.id === payload.scannerUserId);
-      updateBookStatus(bookId, nextStatus, () => ({ scannerUserId: payload.scannerUserId }));
-      logAction('Reception Confirmed', `Assigned to scanner ${scanner?.name || 'Unknown'}.`, { bookId });
-      toast({ title: "Book Receipt Confirmed" });
-      return;
+    if(currentStatus === 'In Transit') {
+        updateBookStatus(bookId, "Received");
+        logAction('Reception Confirmed', `Book "${book?.name}" has been marked as received.`, { bookId });
+        toast({ title: "Reception Confirmed" });
+        return;
     }
     
     if (currentStatus === 'To Scan') {
@@ -596,12 +597,17 @@ export function AppProvider({
     toast({ title: "Workflow Action", description: `Book moved to ${nextStage}.` });
   };
 
-  const handleAssignUser = (bookId: string, userId: string, role: 'indexer' | 'qc') => {
+  const handleAssignUser = (bookId: string, userId: string, role: 'scanner' | 'indexer' | 'qc') => {
     const user = users.find(u => u.id === userId);
     const book = rawBooks.find(b => b.id === bookId);
     if (!user || !book) return;
 
-    if (role === 'indexer') {
+    if (role === 'scanner') {
+        updateBookStatus(bookId, "To Scan", () => ({ scannerUserId: userId }));
+        moveBookDocuments(bookId, "To Scan");
+        logAction('Assigned to Scanner', `Book "${book.name}" assigned to ${user.name}.`, { bookId });
+        toast({ title: "Book Assigned", description: `Assigned to ${user.name} for scanning.` });
+    } else if (role === 'indexer') {
         updateBookStatus(bookId, "To Indexing", () => ({ indexerUserId: userId }));
         moveBookDocuments(bookId, "To Indexing");
         logAction('Assigned to Indexer', `Book "${book.name}" assigned to ${user.name}.`, { bookId });

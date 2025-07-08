@@ -31,7 +31,7 @@ const iconMap: { [key: string]: LucideIcon } = {
 };
 
 export const WORKFLOW_SEQUENCE = [
-  "pending-shipment", "reception", "to-scan", "scanning-started", "storage", 
+  "pending-shipment", "confirm-reception", "assign-scanner", "to-scan", "scanning-started", "storage", 
   "to-indexing", "indexing-started", "to-checking", "checking-started",
   "ready-for-processing", "in-processing", "processed", 
   "final-quality-control", "delivery", "pending-deliveries",
@@ -41,7 +41,7 @@ export const WORKFLOW_SEQUENCE = [
 export const WORKFLOW_STAGE_GROUPS = [
   {
     name: "Intake & Scanning",
-    stages: ["pending-shipment", "reception", "to-scan", "scanning-started", "storage"],
+    stages: ["pending-shipment", "confirm-reception", "assign-scanner", "to-scan", "scanning-started", "storage"],
   },
   {
     name: "Indexing & QC",
@@ -71,15 +71,26 @@ export const STAGE_CONFIG: StageConfig = {
     dataStatus: 'Pending',
     viewType: 'list',
   },
-  'reception': {
-    title: "Document Reception",
-    description: "Books marked as shipped and are awaiting physical confirmation.",
-    actionButtonLabel: "Assign & Confirm",
+  'confirm-reception': {
+    title: "Confirm Reception",
+    description: "Books marked as shipped by the client. Confirm their physical arrival.",
+    actionButtonLabel: "Confirm Arrival",
     actionButtonIcon: "Check",
     emptyStateText: "No books are currently in transit from clients.",
     dataType: 'book',
     dataStatus: 'In Transit',
     viewType: 'list',
+  },
+  'assign-scanner': {
+    title: "Assign Scanner",
+    description: "Books that have been received. Assign a scanner to begin digitization.",
+    actionButtonLabel: "Assign Scanner",
+    actionButtonIcon: "UserPlus",
+    emptyStateText: "No received books are awaiting scanner assignment.",
+    dataType: 'book',
+    dataStatus: 'Received',
+    viewType: 'list',
+    assigneeRole: 'scanner',
   },
   'to-scan': {
     title: "To Scan Queue",

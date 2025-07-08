@@ -16,7 +16,8 @@
     "/documents",
     "/documents/[id]",
     "/workflow/pending-shipment",
-    "/workflow/reception",
+    "/workflow/confirm-reception",
+    "/workflow/assign-scanner",
     "/workflow/to-scan",
     "/workflow/scanning-started",
     "/workflow/storage",
@@ -67,7 +68,8 @@
   "Reception": [
     "/profile",
     "/workflow/pending-shipment",
-    "/workflow/reception",
+    "/workflow/confirm-reception",
+    "/workflow/assign-scanner",
     "/books/[id]",
     "/documents/[id]"
   ],

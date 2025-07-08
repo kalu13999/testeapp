@@ -62,11 +62,10 @@
   {
     "id": "book_7",
     "name": "FutureTech-RD-Beta",
-    "status": "To Scan",
+    "status": "Received",
     "expectedDocuments": 180,
     "projectId": "proj_22",
-    "priority": "Low",
-    "scannerUserId": "u_scanner_2"
+    "priority": "Low"
   },
   {
     "id": "book_8",

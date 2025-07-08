@@ -33,6 +33,7 @@ import {
   GanttChartSquare,
   Settings,
   Tags,
+  UserPlus,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -73,7 +74,8 @@ const allMenuItems = [
     items: [
       { href: "/documents", label: "All Books", icon: Files },
       { href: "/workflow/pending-shipment", label: "Pending Shipment", icon: FileClock },
-      { href: "/workflow/reception", label: "Reception", icon: ArrowDownToLine },
+      { href: "/workflow/confirm-reception", label: "Confirm Reception", icon: ArrowDownToLine },
+      { href: "/workflow/assign-scanner", label: "Assign Scanner", icon: UserPlus },
       { href: "/workflow/to-scan", label: "To Scan", icon: ScanLine },
       { href: "/workflow/scanning-started", label: "Scanning Started", icon: PlayCircle },
       { href: "/workflow/storage", label: "Storage", icon: Warehouse },
@@ -138,7 +140,6 @@ export function MainNav() {
 
   const menuItems = allMenuItems.map(menuSection => {
     const visibleItems = menuSection.items.filter(item => {
-      // If the user is admin, show everything unless explicitly denied by item.roles.
       if (isAdmin) {
         if (item.roles && !item.roles.includes(currentUser.role)) {
           return false;
@@ -146,13 +147,10 @@ export function MainNav() {
         return true;
       }
 
-      // For non-admins, check permissions.
-      // First, check item-specific role restrictions (e.g. Client Dashboard).
       if (item.roles && !item.roles.includes(currentUser.role)) {
         return false;
       }
       
-      // Then, check if user has permission for the item's href.
       const hasPermission = userPermissions.some(p => {
         const regex = new RegExp(`^${p.replace(/\[.*?\]/g, '[^/]+')}$`);
         return regex.test(item.href);
@@ -161,12 +159,10 @@ export function MainNav() {
       return hasPermission;
     });
 
-    // If there are any visible items in this section, return the section with just those items.
     if (visibleItems.length > 0) {
       return { ...menuSection, items: visibleItems };
     }
     
-    // Otherwise, this section should not be rendered.
     return null;
   }).filter(Boolean);
 

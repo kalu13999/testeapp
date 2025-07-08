@@ -201,7 +201,9 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
             if (existingSortIndex > -1) {
                 if (newSorting[existingSortIndex].desc) { newSorting.splice(existingSortIndex, 1); } 
                 else { newSorting[existingSortIndex].desc = true; }
-            } else { newSorting.push({ id: columnId, desc: false }); }
+            } else {
+                newSorting.push({ id: columnId, desc: false });
+            }
             return newSorting;
         } else {
             if (currentSorting.length === 1 && currentSorting[0].id === columnId) {
@@ -398,7 +400,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
       return users.filter(user => {
         const userPermissions = permissions[user.role] || [];
         const hasPermission = userPermissions.includes('*') || userPermissions.includes(requiredPermission);
-        const hasProjectAccess = user.projectIds?.includes(projectId);
+        const hasProjectAccess = !user.projectIds || user.projectIds.length === 0 || user.projectIds.includes(projectId);
         return hasPermission && hasProjectAccess;
       });
   }
@@ -414,12 +416,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
   const handleConfirmAssignment = () => {
     if (assignState.book && selectedUserId && assignState.role) {
-      const { book, role } = assignState;
-      if (role === 'scanner') {
-        handleBookAction(book.id, book.status, { scannerUserId: selectedUserId });
-      } else {
-        handleAssignUser(book.id, selectedUserId, role);
-      }
+      handleAssignUser(assignState.book.id, selectedUserId, assignState.role);
       closeAssignmentDialog();
     } else {
       toast({ title: "No User Selected", description: "Please select a user to assign the task.", variant: "destructive" });
@@ -445,11 +442,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     selection.forEach(bookId => {
       const book = allDisplayItems.find(b => b.id === bookId) as EnrichedBook;
       if (book) {
-        if (role === 'scanner') {
-          handleBookAction(book.id, book.status, { scannerUserId: selectedUserId });
-        } else {
-          handleAssignUser(book.id, selectedUserId, role);
-        }
+        handleAssignUser(book.id, selectedUserId, role);
       }
     });
 
@@ -459,8 +452,14 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
   const handleSingleItemAction = (item: EnrichedBook) => {
       switch (stage) {
-        case 'reception':
+        case 'confirm-reception':
+            handleBookAction(item.id, item.status);
+            break;
+        case 'assign-scanner':
             openAssignmentDialog(item, 'scanner');
+            break;
+        case 'to-scan':
+            handleBookAction(item.id, item.status);
             break;
         case 'scanning-started':
             setScanState({ open: true, book: item, folderName: null, fileCount: null });
@@ -480,15 +479,15 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         case 'ready-for-processing':
             handleStartProcessing(item.id);
             break;
-        default: // Covers to-scan
-            handleBookAction(item.id, item.status);
+        default:
+            toast({ title: "Action not configured", description: `No action defined for stage: ${stage}`, variant: "destructive"});
             break;
       }
   };
 
   const handleBulkAction = () => {
       switch (stage) {
-        case 'reception':
+        case 'assign-scanner':
             openBulkAssignmentDialog('scanner');
             break;
         case 'indexing-started':
