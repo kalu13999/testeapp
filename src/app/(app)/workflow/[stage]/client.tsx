@@ -114,6 +114,12 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const { title, description, dataType, actionButtonLabel, actionButtonIcon, emptyStateText, dataStatus, dataStage } = config;
   const ActionIcon = actionButtonIcon ? iconMap[actionButtonIcon] : null;
 
+  const assignmentConfig: { [key in AssignmentRole]: { title: string, description: string, permission: string } } = {
+    scanner: { title: "Assign Scanner", description: "Select a scanner operator to process this book.", permission: '/workflow/reception' },
+    indexer: { title: "Assign Indexer", description: "Select an indexer to process this book.", permission: '/workflow/to-indexing' },
+    qc: { title: "Assign for QC", description: "Select a QC specialist to review this book.", permission: '/workflow/to-checking' }
+  };
+
   const [scanState, setScanState] = React.useState<{ open: boolean; book: EnrichedBook | null; folderName: string | null; fileCount: number | null; }>({ open: false, book: null, folderName: null, fileCount: null });
   const [selection, setSelection] = React.useState<string[]>([]);
   const [confirmationState, setConfirmationState] = React.useState({ open: false, title: '', description: '', onConfirm: () => {} });
@@ -180,7 +186,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     }
 
     return items;
-  }, [books, documents, dataType, dataStatus, dataStage, currentUser, stage, selectedProjectId, config.assigneeRole, users, permissions]);
+  }, [books, documents, dataType, dataStatus, dataStage, currentUser, stage, selectedProjectId, config.assigneeRole, users, permissions, assignmentConfig]);
 
   const handleColumnFilterChange = (columnId: string, value: string) => {
     setColumnFilters(prev => ({ ...prev, [columnId]: value }));
@@ -386,12 +392,6 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const closeScanningDialog = () => {
     setScanState({ open: false, book: null, folderName: null, fileCount: null });
   }
-
-  const assignmentConfig: { [key in AssignmentRole]: { title: string, description: string, permission: string } } = {
-    scanner: { title: "Assign Scanner", description: "Select a scanner operator to process this book.", permission: '/workflow/to-scan' },
-    indexer: { title: "Assign Indexer", description: "Select an indexer to process this book.", permission: '/workflow/to-indexing' },
-    qc: { title: "Assign for QC", description: "Select a QC specialist to review this book.", permission: '/workflow/to-checking' }
-  };
   
   const getAssignableUsers = (role: AssignmentRole, projectId: string) => {
       const requiredPermission = assignmentConfig[role].permission;
