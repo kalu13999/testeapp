@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -13,7 +14,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag } from "lucide-react";
+import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -25,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AppDocument, RejectionTag } from "@/context/workflow-context";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 
 interface CorrectionViewClientProps {
@@ -235,8 +237,9 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
                             {pages.map(page => (
-                                <Card key={page.id} className="overflow-hidden group relative">
-                                    <Link href={`/documents/${page.id}`}>
+                                <div key={page.id} className="relative group">
+                                <Link href={`/documents/${page.id}`}>
+                                    <Card className="overflow-hidden hover:shadow-lg transition-shadow relative">
                                         <CardContent className="p-0">
                                             <Image
                                                 src={page.imageUrl || "https://placehold.co/400x550.png"}
@@ -246,9 +249,27 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
                                                 height={550}
                                                 className="aspect-[4/5.5] object-cover w-full h-full"
                                             />
+                                            {page.flag === 'error' && <div className="absolute inset-0 bg-destructive/20 border-2 border-destructive"></div>}
+                                            {page.flag === 'warning' && <div className="absolute inset-0 bg-orange-500/20 border-2 border-orange-500"></div>}
                                         </CardContent>
                                          <CardFooter className="p-2 flex-col items-start gap-1">
-                                             <p className="text-xs font-medium truncate w-full">{page.name}</p>
+                                            <div className="flex justify-between items-center w-full">
+                                                <p className="text-xs font-medium truncate pr-2">{page.name}</p>
+                                                {page.flag && (
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger>
+                                                                {page.flag === 'error' && <ShieldAlert className="h-3 w-3 text-destructive flex-shrink-0"/>}
+                                                                {page.flag === 'warning' && <AlertTriangle className="h-3 w-3 text-orange-500 flex-shrink-0"/>}
+                                                                {page.flag === 'info' && <Info className="h-3 w-3 text-primary flex-shrink-0"/>}
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>{page.flagComment}</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+                                                )}
+                                            </div>
                                              <div className="flex flex-wrap gap-1">
                                                  {page.tags.map(tag => (
                                                      <Badge key={tag} variant="destructive" className="text-xs">
@@ -257,35 +278,36 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
                                                  ))}
                                              </div>
                                          </CardFooter>
-                                    </Link>
-                                    <div className="absolute top-1 right-1 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <Button variant="destructive" size="icon" className="h-7 w-7">
-                                                    <Trash2 className="h-4 w-4"/>
-                                                </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Delete Page?</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        This will permanently delete "{page.name}". This action cannot be undone.
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => handleDeletePage(page.id, page.name)}>Delete</AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                        <Button variant="secondary" size="icon" className="h-7 w-7">
-                                            <Replace className="h-4 w-4"/>
-                                        </Button>
-                                         <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => openTaggingDialog(page)}>
-                                            <Tag className="h-4 w-4"/>
-                                        </Button>
-                                    </div>
-                                </Card>
+                                    </Card>
+                                </Link>
+                                <div className="absolute top-1 right-1 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="destructive" size="icon" className="h-7 w-7">
+                                                <Trash2 className="h-4 w-4"/>
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Delete Page?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    This will permanently delete "{page.name}". This action cannot be undone.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleDeletePage(page.id, page.name)}>Delete</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                    <Button variant="secondary" size="icon" className="h-7 w-7">
+                                        <Replace className="h-4 w-4"/>
+                                    </Button>
+                                     <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => openTaggingDialog(page)}>
+                                        <Tag className="h-4 w-4"/>
+                                    </Button>
+                                </div>
+                                </div>
                             ))}
                         </div>
                     </div>
