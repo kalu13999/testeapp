@@ -348,7 +348,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const handleConfirmScan = () => {
     if (scanState.book) {
       if (stage === 'scanning-started') {
-        handleBookAction(scanState.book.id, stage, { actualPageCount: scanState.fileCount ?? 0 });
+        handleBookAction(scanState.book.id, { actualPageCount: scanState.fileCount ?? 0 });
       } else if (stage === 'confirm-reception') {
         handleConfirmReception(scanState.book.id, { actualPageCount: scanState.fileCount ?? 0 });
       }
