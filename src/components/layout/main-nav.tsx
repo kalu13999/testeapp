@@ -32,13 +32,14 @@ import {
   GanttChartSquare,
   Settings,
   Tags,
+  User,
+  Users,
   UserPlus,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { User } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 
 const INTERNAL_ROLES = ['Admin', 'Operator', 'QC Specialist', 'Reception', 'Scanning', 'Indexing', 'Processing', 'Delivery', 'Correction Specialist', 'Multi-Operator'];
@@ -61,7 +62,7 @@ const allMenuItems = [
     title: "Management",
     items: [
       { href: "/projects", label: "Projects", icon: Briefcase },
-      { href: "/clients", label: "Clients", icon: Users2 },
+      { href: "/clients", label: "Clients", icon: Users },
       { href: "/users", label: "Users", icon: User },
       { href: "/book-management", label: "Book Management", icon: BookUp },
       { href: "/role-management", label: "Role Management", icon: GanttChartSquare },
@@ -122,7 +123,7 @@ const allMenuItems = [
 
 export function MainNav() {
   const pathname = usePathname();
-  const { currentUser, permissions, selectedProjectId, projectWorkflows } = useAppContext();
+  const { currentUser, permissions, selectedProjectId, projectWorkflows, getNextEnabledStage } = useAppContext();
 
   const isActive = (href: string) => {
     // Special case for dashboard to avoid it being active for all sub-pages
@@ -180,8 +181,8 @@ export function MainNav() {
       
       // 3. Project Workflow filter
       if (item.href.startsWith('/workflow/')) {
-          const stage = item.href.split('/').pop();
-          if (stage && !projectWorkflow.includes(stage)) {
+          const stage = item.href.split('/').pop() || '';
+           if (!projectWorkflow.includes(stage)) {
             return false;
           }
       }
