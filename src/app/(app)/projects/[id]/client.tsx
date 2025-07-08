@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Book, CheckCircle, Clock, Package, Edit, DollarSign, Calendar, Info, ArrowUp, ArrowDown, ChevronsUpDown, Settings2 } from "lucide-react";
+import { Book, Edit, DollarSign, Calendar, Info, ArrowUp, ArrowDown, ChevronsUpDown, Settings2, Package, LucideIcon } from "lucide-react";
 import { ProjectForm } from "../project-form";
 import Link from "next/link";
 import { useAppContext } from "@/context/workflow-context";
@@ -25,21 +25,18 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { WORKFLOW_PHASES, MANDATORY_STAGES } from "@/lib/workflow-config";
 import { cn } from "@/lib/utils";
+import { Separator } from "@/components/ui/separator";
 
 interface ProjectDetailClientProps {
   projectId: string;
 }
 
-const getStatusIcon = (status: string) => {
-    switch(status) {
-        case "Complete":
-            return <CheckCircle className="h-4 w-4 text-green-500" />;
-        case "Pending":
-            return <Clock className="h-4 w-4 text-muted-foreground" />;
-        default:
-            return <Package className="h-4 w-4 text-primary" />;
-    }
-}
+const DetailItem = ({ icon: Icon, label, value }: { icon: LucideIcon, label: string; value: React.ReactNode }) => (
+  <div className="flex flex-col gap-1">
+      <div className="text-sm text-muted-foreground flex items-center gap-1.5"><Icon className="h-4 w-4" /> {label}</div>
+      <div className="font-semibold text-lg">{value}</div>
+  </div>
+);
 
 export default function ProjectDetailClient({ projectId }: ProjectDetailClientProps) {
   const { allProjects, clients, updateProject, projectWorkflows, updateProjectWorkflow } = useAppContext();
@@ -127,150 +124,124 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
   return (
     <>
       <div className="space-y-6">
-          <div className="flex justify-between items-start">
-              <div>
-                  <p className="text-sm text-muted-foreground">{project.clientName}</p>
-                  <h1 className="font-headline text-3xl font-bold tracking-tight">{project.name}</h1>
-                  <p className="text-muted-foreground max-w-2xl">{project.description}</p>
+        <Card>
+          <CardHeader className="flex flex-row items-start justify-between">
+            <div>
+              <CardTitle className="font-headline text-3xl tracking-tight">{project.name}</CardTitle>
+              <CardDescription className="text-base">{project.clientName}</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(true)}>
+                <Edit className="mr-2 h-4 w-4"/>
+                Edit Project
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+              <p className="text-muted-foreground max-w-4xl">{project.description}</p>
+              <Separator className="my-6" />
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                 <DetailItem icon={Package} label="Status" value={<Badge variant={project.status === 'Complete' ? 'default' : 'secondary'}>{project.status}</Badge>} />
+                 <DetailItem icon={DollarSign} label="Budget" value={`$${project.budget.toLocaleString()}`} />
+                 <DetailItem icon={Calendar} label="Timeline" value={`${project.startDate} to ${project.endDate}`} />
+                 <DetailItem icon={Book} label="Pages" value={`${project.documentCount.toLocaleString()} / ${project.totalExpected.toLocaleString()}`} />
               </div>
-               <div className="flex items-center gap-2">
-                 <Button variant="outline" onClick={() => setIsEditDialogOpen(true)}>
-                    <Edit className="mr-2 h-4 w-4"/>
-                    Edit Project
-                  </Button>
-               </div>
-          </div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Project Overview</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="bg-muted p-4 rounded-lg flex items-center gap-4">
-                            <Package className="h-8 w-8 text-muted-foreground" />
-                            <div>
-                              <p className="text-sm text-muted-foreground">Status</p>
-                              <p className="text-xl font-bold">{project.status}</p>
-                            </div>
-                        </div>
-                         <div className="bg-muted p-4 rounded-lg flex items-center gap-4">
-                            <DollarSign className="h-8 w-8 text-muted-foreground" />
-                            <div>
-                              <p className="text-sm text-muted-foreground">Budget</p>
-                              <p className="text-xl font-bold">${project.budget.toLocaleString()}</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="bg-muted p-4 rounded-lg flex items-center gap-4">
-                        <Calendar className="h-8 w-8 text-muted-foreground" />
-                        <div>
-                        <p className="text-sm text-muted-foreground">Timeline</p>
-                        <p className="text-base font-bold">{project.startDate} to {project.endDate}</p>
-                        </div>
-                    </div>
-                     <div>
-                        <div className="flex justify-between items-center mb-1">
-                            <span className="text-sm font-medium">Overall Progress ({project.documentCount} / {project.totalExpected} pages)</span>
-                            <span className="text-sm text-muted-foreground">{Math.round(project.progress)}%</span>
-                        </div>
-                        <Progress value={project.progress} />
-                     </div>
-                      {project.info && (
-                          <Card className="bg-background">
-                              <CardHeader className="flex flex-row items-center gap-2 pb-2">
-                                  <Info className="h-4 w-4" />
-                                  <CardTitle className="text-base">Additional Info</CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                  <p className="text-sm text-muted-foreground">{project.info}</p>
-                              </CardContent>
-                          </Card>
-                      )}
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>Workflow Configuration</CardTitle>
-                    <Button variant="outline" size="sm" onClick={() => setIsWorkflowDialogOpen(true)}>
-                      <Settings2 className="mr-2 h-4 w-4"/>
-                      Edit Workflow
-                    </Button>
+               <div className="mt-6">
+                  <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm font-medium">Overall Progress</span>
+                      <span className="text-sm text-muted-foreground">{Math.round(project.progress)}%</span>
                   </div>
-                  <CardDescription>
-                    Enabled steps for this project's workflow. Disabled steps will be skipped.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ScrollArea className="h-80">
-                    <div className="space-y-4">
-                      {WORKFLOW_PHASES.map(group => (
-                        <div key={group.name}>
-                          <h4 className="font-semibold text-sm mb-2">{group.name}</h4>
-                          <div className="space-y-2 pl-2 border-l">
-                            {group.stages.map(stageKey => {
-                                const stageConfig = group.config[stageKey];
-                                if (!stageConfig) return null;
-                                const isEnabled = projectWorkflow.includes(stageKey);
-                                return (
-                                  <div key={stageKey} className="flex items-center gap-3 text-sm">
-                                      <div className={`w-2 h-2 rounded-full ${isEnabled ? 'bg-primary' : 'bg-muted-foreground'}`} />
-                                      <span className={`${!isEnabled && 'text-muted-foreground line-through'}`}>
-                                        {stageConfig.title}
-                                      </span>
-                                  </div>
-                                )
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </CardContent>
-            </Card>
-          </div>
+                  <Progress value={project.progress} />
+              </div>
+              {project.info && (
+                <>
+                <Separator className="my-6"/>
+                 <div className="space-y-2">
+                    <h4 className="text-sm font-medium flex items-center gap-2"><Info className="h-4 w-4"/> Additional Info</h4>
+                    <p className="text-sm text-muted-foreground">{project.info}</p>
+                </div>
+                </>
+              )}
+          </CardContent>
+        </Card>
+        
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Book className="h-5 w-5" /> Books</CardTitle>
+                <CardDescription>Detailed breakdown of each book within the project.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>Book Name {getSortIndicator('name')}</div></TableHead>
+                            <TableHead className="w-[150px]"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Status {getSortIndicator('status')}</div></TableHead>
+                            <TableHead className="w-[150px] text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('documentCount', e.shiftKey)}>Documents {getSortIndicator('documentCount')}</div></TableHead>
+                            <TableHead className="w-[200px]"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('progress', e.shiftKey)}>Progress {getSortIndicator('progress')}</div></TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {sortedBooks.map(book => (
+                            <TableRow key={book.id}>
+                                <TableCell className="font-medium">
+                                    <Link href={`/books/${book.id}`} className="hover:underline">
+                                        {book.name}
+                                    </Link>
+                                </TableCell>
+                                <TableCell>
+                                    <Badge variant="outline">{book.status}</Badge>
+                                </TableCell>
+                                <TableCell className="text-center">{book.documentCount} / {book.expectedDocuments}</TableCell>
+                                <TableCell>
+                                    <Progress value={book.progress} className="h-2" />
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
 
-          <Card>
-              <CardHeader>
-                  <CardTitle className="flex items-center gap-2"><Book className="h-5 w-5" /> Books</CardTitle>
-                  <CardDescription>Detailed breakdown of each book within the project.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                  <Table>
-                      <TableHeader>
-                          <TableRow>
-                              <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>Book Name {getSortIndicator('name')}</div></TableHead>
-                              <TableHead className="w-[150px]"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Status {getSortIndicator('status')}</div></TableHead>
-                              <TableHead className="w-[150px] text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('documentCount', e.shiftKey)}>Documents {getSortIndicator('documentCount')}</div></TableHead>
-                              <TableHead className="w-[200px]"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('progress', e.shiftKey)}>Progress {getSortIndicator('progress')}</div></TableHead>
-                          </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                          {sortedBooks.map(book => (
-                              <TableRow key={book.id}>
-                                  <TableCell className="font-medium">
-                                      <Link href={`/books/${book.id}`} className="hover:underline">
-                                          {book.name}
-                                      </Link>
-                                  </TableCell>
-                                  <TableCell>
-                                      <div className="flex items-center gap-2">
-                                          {getStatusIcon(book.status)}
-                                          <span>{book.status}</span>
-                                      </div>
-                                  </TableCell>
-                                  <TableCell className="text-center">{book.documentCount} / {book.expectedDocuments}</TableCell>
-                                  <TableCell>
-                                      <Progress value={book.progress} className="h-2" />
-                                  </TableCell>
-                              </TableRow>
-                          ))}
-                      </TableBody>
-                  </Table>
-              </CardContent>
-          </Card>
+        <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Workflow Configuration</CardTitle>
+                <Button variant="outline" size="sm" onClick={() => setIsWorkflowDialogOpen(true)}>
+                  <Settings2 className="mr-2 h-4 w-4"/>
+                  Edit Workflow
+                </Button>
+              </div>
+              <CardDescription>
+                Customize the sequence of steps for this project. Disabled phases will be skipped, moving books to the next enabled stage.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-80">
+                <div className="space-y-4">
+                  {WORKFLOW_PHASES.map(group => (
+                    <div key={group.name}>
+                      <h4 className="font-semibold text-sm mb-2">{group.name}</h4>
+                      <div className="space-y-2 pl-2 border-l">
+                        {group.stages.map(stageKey => {
+                            const stageConfig = group.config[stageKey];
+                            if (!stageConfig) return null;
+                            const isEnabled = projectWorkflow.includes(stageKey);
+                            return (
+                              <div key={stageKey} className="flex items-center gap-3 text-sm">
+                                  <div className={`w-2 h-2 rounded-full ${isEnabled ? 'bg-primary' : 'bg-muted-foreground'}`} />
+                                  <span className={`${!isEnabled && 'text-muted-foreground line-through'}`}>
+                                    {stageConfig.title}
+                                  </span>
+                              </div>
+                            )
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </CardContent>
+        </Card>
       </div>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -319,7 +290,6 @@ function WorkflowConfigDialog({ open, onOpenChange, projectName, currentWorkflow
       const initialPhases: { [key: string]: boolean } = {};
       WORKFLOW_PHASES.forEach(group => {
         if (group.toggleable) {
-          // A phase is considered enabled if its FIRST stage is in the workflow array.
           const isEnabled = currentWorkflow.includes(group.stages[0]);
           initialPhases[group.id] = isEnabled;
         }
@@ -353,7 +323,7 @@ function WorkflowConfigDialog({ open, onOpenChange, projectName, currentWorkflow
         <DialogHeader>
           <DialogTitle>Configure Workflow for: {projectName}</DialogTitle>
           <DialogDescription>
-            Enable or disable workflow phases for this project. Unchecked phases will be skipped.
+            Select which optional phases this project will use. Unchecking a phase like "Scanning" or "Indexing" will cause the workflow to bypass those steps. Mandatory steps cannot be disabled.
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="h-[60vh] p-4 border rounded-md">
