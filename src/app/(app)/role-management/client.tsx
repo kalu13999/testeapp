@@ -158,6 +158,7 @@ export default function RoleManagementClient() {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                 <DropdownMenuItem onSelect={() => openDialog('edit', role)}>
                                   <Edit className="mr-2 h-4 w-4" /> Edit
                                 </DropdownMenuItem>
@@ -227,29 +228,47 @@ export default function RoleManagementClient() {
       </AlertDialog>
 
       <Dialog open={isInfoModalOpen} onOpenChange={setIsInfoModalOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-xl">
             <DialogHeader>
                 <DialogTitle>About Role Management</DialogTitle>
                 <DialogDescription>
-                    Roles define what users can see and do within the application. Here's how it works:
+                    Use roles to precisely control what each user can see and do within FlowVault.
                 </DialogDescription>
             </DialogHeader>
             <div className="py-4 space-y-4 text-sm text-muted-foreground">
                 <p>
-                    <strong className="text-foreground">Roles:</strong> A role is a collection of permissions. You can create custom roles like "Supervisor" or "Junior Indexer" to fit your team's structure.
+                    A <strong className="text-foreground">Role</strong> is a collection of permissions that you can assign to a user. When you create or edit a role, you are choosing which pages and features users with that role can access.
                 </p>
+                
+                <p className="font-medium text-foreground">Permission Groups Explained:</p>
+                
+                <ul className="list-disc list-inside space-y-2">
+                    <li>
+                        <strong className="text-foreground">General:</strong> Core access to the Dashboard, user Profile, and Settings pages.
+                    </li>
+                    <li>
+                        <strong className="text-foreground">Management:</strong> High-level control over Projects, Clients, Books, Users, and Roles. Also includes powerful admin tools.
+                    </li>
+                    <li>
+                        <strong className="text-foreground">Book & Document Views:</strong> Permissions to view the main document lists and their detailed pages.
+                    </li>
+                    <li>
+                        <strong className="text-foreground">Internal Workflow Stages:</strong> Granular access to each operational queue, like Scanning, Indexing, and Quality Control.
+                    </li>
+                    <li>
+                        <strong className="text-foreground">Finalization Stages:</strong> Permissions for the final steps of the workflow, including Finalized and Archive.
+                    </li>
+                    <li>
+                        <strong className="text-foreground">Client Portal:</strong> Access to pages specifically designed for external clients, such as Prepare Shipment and Pending Deliveries.
+                    </li>
+                </ul>
+
                 <p>
-                    <strong className="text-foreground">Permissions:</strong> Permissions are tied to specific page routes (e.g., `/projects`, `/clients`). Granting a permission to a role allows all users with that role to access the corresponding page.
-                </p>
-                 <p>
-                    <strong className="text-foreground">Wildcard (`*`):</strong> The `*` permission grants access to all pages and features. It should be reserved for Administrators only.
-                </p>
-                <p>
-                    Users are assigned a single role, and their access is determined entirely by the permissions granted to that role.
+                    The wildcard permission (<code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold">*</code>) grants access to all pages and features and should be reserved for <strong className="text-foreground">Admin</strong> roles only.
                 </p>
             </div>
             <DialogFooter>
-                <Button onClick={() => setIsInfoModalOpen(false)}>Close</Button>
+                <Button onClick={() => setIsInfoModalOpen(false)}>Got it</Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>
