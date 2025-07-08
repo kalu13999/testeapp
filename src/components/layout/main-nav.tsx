@@ -65,7 +65,6 @@ const allMenuItems = [
     items: [
       { href: "/projects", label: "Projects", icon: Briefcase },
       { href: "/clients", label: "Clients", icon: Users },
-      { href: "/book-management", label: "Book Management", icon: BookUp },
     ],
   },
   {
@@ -82,6 +81,7 @@ const allMenuItems = [
     title: "Workflow Tools",
     items: [
       { href: "/documents", label: "All Books", icon: Files },
+      { href: "/book-management", label: "Book Management", icon: BookUp },
       { href: "/admin/reassign-user", label: "Reassign User", icon: UserCog },
       { href: "/admin/default-projects", label: "Default Projects", icon: Star },
     ]
