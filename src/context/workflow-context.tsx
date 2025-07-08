@@ -37,6 +37,7 @@ type AppContextType = {
   currentUser: User | null;
   login: (username: string, password: string) => User | null;
   logout: () => void;
+  changePassword: (userId: string, currentPassword: string, newPassword: string) => boolean;
 
   // State (filtered by project or based on user)
   clients: Client[];
@@ -209,6 +210,22 @@ export function AppProvider({
     localStorage.removeItem('flowvault_userid');
   };
   
+  const changePassword = (userId: string, currentPassword: string, newPassword: string): boolean => {
+    const user = users.find(u => u.id === userId);
+    if (!user || user.password !== currentPassword) {
+      toast({ title: "Password Change Failed", description: "The current password you entered is incorrect.", variant: "destructive" });
+      return false;
+    }
+
+    setUsers(prev => prev.map(u => 
+      u.id === userId ? { ...u, password: newPassword } : u
+    ));
+
+    logAction('Password Changed', `User "${user.name}" changed their password.`, {});
+    toast({ title: "Password Changed Successfully" });
+    return true;
+  };
+
   // --- Centralized Action Logger ---
   const logAction = React.useCallback((
     action: string, 
@@ -320,7 +337,7 @@ export function AppProvider({
   const updateUser = (userId: string, userData: Partial<Omit<User, 'id' | 'avatar' | 'lastLogin'>>) => {
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...userData } : u));
     logAction('User Updated', `Details for user "${userData.name}" updated.`, {});
-    toast({ title: "User Updated", description: "User details have been saved." });
+    // Toast is handled in the component for better user feedback
   };
   
   const toggleUserStatus = (userId: string) => {
@@ -974,7 +991,7 @@ export function AppProvider({
 
 
   const value = { 
-    currentUser, login, logout,
+    currentUser, login, logout, changePassword,
     clients, users, scannerUsers, indexerUsers, qcUsers,
     projects: projectsForContext, 
     books: booksForContext, 

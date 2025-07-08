@@ -20,9 +20,10 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAppContext } from '@/context/workflow-context';
-import { BookCheck, Clock, History, User, Files } from 'lucide-react';
+import { BookCheck, Clock, History, User, Files, Settings } from 'lucide-react';
 import { EnrichedBook, EnrichedAuditLog } from '@/context/workflow-context';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 const getInitials = (name: string) => {
     if (!name) return "";
@@ -35,7 +36,7 @@ const completionActions = [
 ];
 
 export default function ProfileClient() {
-    const { currentUser, books, auditLogs } = useAppContext();
+    const { currentUser, books, auditLogs, permissions } = useAppContext();
 
     const userStats = React.useMemo(() => {
         if (!currentUser) return { tasksInQueue: 0, tasksToday: 0, myQueue: [], myHistory: [] };
@@ -73,20 +74,32 @@ export default function ProfileClient() {
         )
     }
 
+    const userPermissions = permissions[currentUser.role] || [];
+    const hasSettingsPermission = userPermissions.includes('*') || userPermissions.includes('/settings');
+
     return (
         <div className="space-y-6">
             <div className="grid gap-6 md:grid-cols-3">
                 <Card className="md:col-span-1">
-                    <CardHeader className="flex flex-row items-center gap-4">
-                        <Avatar className="h-20 w-20">
-                            {currentUser.avatar && <AvatarImage src={currentUser.avatar} alt={currentUser.name} data-ai-hint="person avatar"/>}
-                            <AvatarFallback>{getInitials(currentUser.name)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                            <CardTitle className="text-2xl font-bold">{currentUser.name}</CardTitle>
-                            <CardDescription>{currentUser.jobTitle}</CardDescription>
-                             <Badge variant="secondary" className="mt-2">{currentUser.role}</Badge>
+                    <CardHeader className="flex flex-row items-start justify-between">
+                        <div className="flex items-center gap-4">
+                            <Avatar className="h-20 w-20">
+                                {currentUser.avatar && <AvatarImage src={currentUser.avatar} alt={currentUser.name} data-ai-hint="person avatar"/>}
+                                <AvatarFallback>{getInitials(currentUser.name)}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                                <CardTitle className="text-2xl font-bold">{currentUser.name}</CardTitle>
+                                <CardDescription>{currentUser.jobTitle}</CardDescription>
+                                <Badge variant="secondary" className="mt-2">{currentUser.role}</Badge>
+                            </div>
                         </div>
+                        {hasSettingsPermission && (
+                            <Button asChild variant="outline" size="icon">
+                                <Link href="/settings" aria-label="Go to settings">
+                                    <Settings className="h-4 w-4" />
+                                </Link>
+                            </Button>
+                        )}
                     </CardHeader>
                     <CardContent className="text-sm text-muted-foreground">
                         <p>{currentUser.department} Department</p>
