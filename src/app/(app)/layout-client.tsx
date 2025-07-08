@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Sidebar, SidebarHeader, SidebarContent, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
 import { MainNav } from '@/components/layout/main-nav';
 import { UserNav } from '@/components/layout/user-nav';
-import { FileLock2 } from 'lucide-react';
+import { FileLock2, Loader2 } from 'lucide-react';
 import { useAppContext } from '@/context/workflow-context';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
@@ -48,6 +48,13 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
+  const [isChecking, setIsChecking] = React.useState(true);
+  const [isAllowed, setIsAllowed] = React.useState(false);
+
+  useEffect(() => {
+    setIsChecking(true);
+    setIsAllowed(false);
+  }, [pathname]);
 
   useEffect(() => {
     // Route guarding logic
@@ -65,21 +72,28 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
       // Allow access only to profile page if no projects assigned
       if (pathname !== '/profile') {
         router.push('/profile');
+      } else {
+        setIsAllowed(true);
       }
+      setIsChecking(false);
       return;
     }
 
     const userPermissions = permissions[currentUser.role] || [];
     const isAdmin = userPermissions.includes('*');
-    if (isAdmin) return; // Admin can access everything
+    if (isAdmin) {
+      setIsAllowed(true);
+      setIsChecking(false);
+      return; // Admin can access everything
+    }
 
     // Check if the current path is allowed
-    const isAllowed = userPermissions.some(p => {
+    const isPathAllowed = userPermissions.some(p => {
         const regex = new RegExp(`^${p.replace(/\[.*?\]/g, '[^/]+')}$`);
         return regex.test(pathname);
     });
 
-    if (!isAllowed) {
+    if (!isPathAllowed) {
         toast({
             title: 'Access Denied',
             description: "You don't have permission to view that page.",
@@ -88,7 +102,10 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
         // Redirect to the first allowed page or dashboard
         const firstAllowedPage = userPermissions.find(p => !p.includes('[')) || '/dashboard';
         router.push(firstAllowedPage);
+    } else {
+        setIsAllowed(true);
     }
+    setIsChecking(false);
   }, [currentUser, pathname, permissions, router, toast, accessibleProjectsForUser]);
   
    // Effect to manage the selected project ID automatically
@@ -153,7 +170,13 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
             </div>
         </header>
         <main className="flex-1 p-4 md:p-6">
-          {children}
+          {isChecking ? (
+            <div className="flex h-full items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            isAllowed ? children : null
+          )}
         </main>
       </SidebarInset>
     </>
