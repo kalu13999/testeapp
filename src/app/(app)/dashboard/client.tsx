@@ -98,63 +98,42 @@ function AdminDashboard() {
         const relevantProjects = selectedProjectId ? projects.filter(p => p.id === selectedProjectId) : projects;
         const relevantProjectIds = new Set(relevantProjects.map(p => p.id));
         const relevantBooks = books.filter(b => relevantProjectIds.has(b.projectId));
-        const relevantDocuments = documents.filter(d => relevantProjectIds.has(d.projectId));
         const relevantAuditLogs = auditLogs.filter(log => log.bookId && relevantProjectIds.has(books.find(b => b.id === log.bookId)?.projectId || ''));
         
-        // Combine all KPIs
-        const booksInWorkflow = relevantBooks.filter(b => !['Complete', 'Archived'].includes(b.status)).length;
+        // --- KPI CALCULATIONS ---
+        const booksInWorkflow = relevantBooks.filter(b => !['Archived', 'Pending Shipment'].includes(b.status)).length;
         const pendingClientAction = relevantBooks.filter(book => book.status === 'Pending Validation').length;
         const slaWarnings = relevantProjects.filter(p => p.status === 'In Progress' && new Date(p.endDate) < new Date()).length;
         const today = new Date().toISOString().slice(0, 10);
         const processedToday = relevantAuditLogs.filter(d => d.date.startsWith(today)).length;
-        const pendingShipping = relevantBooks.filter(b => b.status === 'Pending').length;
+        const pendingShipping = relevantBooks.filter(b => b.status === 'Pending Shipment').length;
         const inTransit = relevantBooks.filter(b => b.status === 'In Transit').length;
-        const receivedAtFacility = relevantBooks.filter(b => b.status === 'To Scan').length;
-        const completedBooks = relevantBooks.filter(b => b.status === 'Complete').length;
+        const receivedAtFacility = relevantBooks.filter(b => b.status === 'Received').length;
+        const finalizedBooks = relevantBooks.filter(b => b.status === 'Finalized').length;
 
         const kpiData: KpiData[] = [
             { title: "Pending Shipping", value: pendingShipping.toLocaleString(), icon: Package, description: "Batches awaiting client shipment" },
             { title: "In Transit", value: inTransit.toLocaleString(), icon: Send, description: "Batches shipped by clients" },
             { title: "Received by Us", value: receivedAtFacility.toLocaleString(), icon: ArrowDownToLine, description: "Batches confirmed at our facility" },
             { title: "Pending Client Action", value: pendingClientAction.toLocaleString(), icon: UserCheck, description: "Batches awaiting client approval" },
-
             { title: "Total Books in Workflow", value: booksInWorkflow.toLocaleString(), icon: BookCopy, description: "All active books being processed" },
-            { title: "Completed Books", value: completedBooks.toLocaleString(), icon: CheckCheck, description: "Books that are finalized" },
+            { title: "Finalized Books", value: finalizedBooks.toLocaleString(), icon: CheckCheck, description: "Books that are approved" },
             { title: "SLA Warnings", value: slaWarnings.toLocaleString(), icon: AlertTriangle, description: "Projects past their due date" },
             { title: "Actions Today", value: processedToday.toLocaleString(), icon: Activity, description: "Any action performed today" },
         ];
 
+        // --- WORKFLOW OVERVIEW CHART ---
         const orderedStageNames = [
-          'Pending Shipment', 'In Transit', 'To Scan', 'Scanning', 'Storage', 
-          'To Indexing', 'Indexing', 'To Checking', 'Initial QC', 
-          'Ready to Process', 'Processing', 'Processed', 'Final QC', 
-          'Delivery', 'Client Validation', 'Rejections', 'Corrected', 
-          'Complete', 'Archived'
+          'In Transit', 'Received', 'To Scan', 'Scanning Started', 'Storage', 
+          'To Indexing', 'Indexing Started', 'To Checking', 'Checking Started', 
+          'Ready for Processing', 'In Processing', 'Processed', 'Final Quality Control', 
+          'Delivery', 'Pending Validation', 'Client Rejected', 'Corrected', 
+          'Finalized'
         ];
         
-        const chartStageMapping: { [key: string]: string } = {
-          'Pending': 'Pending Shipment', 'In Transit': 'In Transit', 'To Scan': 'To Scan',
-          'Scanning Started': 'Scanning', 'To Indexing': 'To Indexing', 'Indexing Started': 'Indexing',
-          'To Checking': 'To Checking', 'Checking Started': 'Initial QC', 'In Processing': 'Processing',
-          'Pending Validation': 'Client Validation', 'Client Rejected': 'Rejections', 'Corrected': 'Corrected',
-          'Complete': 'Complete', 'Archived': 'Archived'
-        };
-
         const booksByStage: { [key: string]: EnrichedBook[] } = {};
-
-        const getBookDisplayStage = (book: EnrichedBook): string | null => {
-            if (book.status === 'In Progress' && documents.some(d => d.bookId === book.id && d.status === 'Storage')) return 'Storage';
-            if (book.status === 'Ready for Processing') return 'Ready to Process';
-            const docStatuses = new Set(documents.filter(d => d.bookId === book.id).map(d => d.status));
-            if (docStatuses.has('Processed')) return 'Processed';
-            if (docStatuses.has('Final Quality Control')) return 'Final QC';
-            if (docStatuses.has('Delivery')) return 'Delivery';
-            if (docStatuses.has('In Processing')) return 'Processing';
-            return chartStageMapping[book.status] || null;
-        }
-
         relevantBooks.forEach(book => {
-            const stageName = getBookDisplayStage(book);
+            const stageName = book.status;
             if (stageName && orderedStageNames.includes(stageName)) {
                 if (!booksByStage[stageName]) booksByStage[stageName] = [];
                 booksByStage[stageName].push(book);
@@ -162,13 +141,14 @@ function AdminDashboard() {
         });
 
         const chartData: ChartData[] = orderedStageNames.map(name => ({ name, count: booksByStage[name]?.length || 0 }));
-
+        
+        // --- DAILY THROUGHPUT CHART ---
         const dailyActivity: { [date: string]: { [action: string]: number } } = {};
         const sevenDaysAgo = subDays(new Date(), 6);
 
         const actionsToTrack: { [key: string]: string } = {
             'Book Shipped': 'Shipped', 'Reception Confirmed': 'Received', 'Scanning Finished': 'Scanned',
-            'Indexing Started': 'Indexed', 'Checking Started': 'Checked', 'Processing Completed': 'Processed',
+            'Initial QC Complete': 'Checked', 'Processing Completed': 'Processed',
             'Client Approval': 'Finalized', 'Book Archived': 'Archived'
         };
         const actionKeys = Object.keys(actionsToTrack);
@@ -181,7 +161,8 @@ function AdminDashboard() {
             dailyActivity[date][actionName]++;
         });
 
-        relevantAuditLogs.filter(log => new Date(log.date) >= sevenDaysAgo && log.details.includes('to Delivery')).forEach(log => {
+        // Track Delivery specifically
+        relevantAuditLogs.filter(log => new Date(log.date) >= sevenDaysAgo && log.action === 'Workflow Step' && log.details.includes('to Delivery')).forEach(log => {
             const date = log.date.slice(0, 10);
             if (!dailyActivity[date]) dailyActivity[date] = {};
             if (!dailyActivity[date]['Delivered']) dailyActivity[date]['Delivered'] = 0;
@@ -195,7 +176,7 @@ function AdminDashboard() {
             return {
                 date: format(new Date(dateStr), 'MMM d'), fullDate: dateStr,
                 Shipped: dayData.Shipped || 0, Received: dayData.Received || 0, Scanned: dayData.Scanned || 0,
-                Indexed: dayData.Indexed || 0, Checked: dayData.Checked || 0, Processed: dayData.Processed || 0,
+                Checked: dayData.Checked || 0, Processed: dayData.Processed || 0,
                 Delivered: dayData.Delivered || 0, Finalized: dayData.Finalized || 0, Archived: dayData.Archived || 0,
             };
         });
@@ -374,10 +355,10 @@ function ClientDashboard() {
         }
         const clientBooks = books.filter(b => b.clientId === currentUser.clientId);
         
-        const pendingShipping = clientBooks.filter(b => b.status === 'Pending');
+        const pendingShipping = clientBooks.filter(b => b.status === 'Pending Shipment');
         const inTransit = clientBooks.filter(b => b.status === 'In Transit');
         const pendingValidation = clientBooks.filter(b => b.status === 'Pending Validation');
-        const received = clientBooks.filter(b => b.status === 'To Scan');
+        const received = clientBooks.filter(b => b.status === 'Received');
 
         return { pendingShipping, inTransit, pendingValidation, received };
     }, [books, currentUser]);

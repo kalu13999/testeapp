@@ -78,22 +78,18 @@ const assignmentConfig: { [key in AssignmentRole]: { title: string, description:
 
 const getBadgeVariant = (status: string): BadgeVariant => {
     switch (status) {
-        case "Delivered":
+        case "Delivery":
         case "Finalized":
-        case "Scanned":
-        case "Complete":
+        case "Processed":
+        case "Archived":
             return "default";
         case "Client Rejected":
-        case "Rejected Final QC":
             return "destructive";
-        case "Quality Control":
-        case "Processing":
-        case "Indexing":
-        case "Storage":
-        case "Final Quality Control":
         case "Scanning Started":
         case "Indexing Started":
         case "Checking Started":
+        case "In Processing":
+        case "Final Quality Control":
             return "secondary"
         default:
             return "outline";
@@ -145,14 +141,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     let items: (EnrichedBook | AppDocument)[] = [];
 
     if (dataType === 'book' && dataStatus) {
-      if (stage === 'ready-for-processing') {
-        const booksWithReadyDocs = new Set(
-          baseDocuments.filter(doc => doc.status === 'Ready for Processing').map(doc => doc.bookId)
-        );
-        items = baseBooks.filter(book => booksWithReadyDocs.has(book.id));
-      } else {
-        items = baseBooks.filter(book => book.status === dataStatus);
-      }
+      items = baseBooks.filter(book => book.status === dataStatus);
       
       if (currentUser && config.assigneeRole && currentUser.role !== 'Admin') {
           const requiredPermission = assignmentConfig[config.assigneeRole].permission;
@@ -386,7 +375,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
   const handleConfirmScan = () => {
     if (scanState.book) {
-      handleBookAction(scanState.book.id, scanState.book.status, { actualPageCount: scanState.fileCount ?? 0 });
+      handleBookAction(scanState.book.id, { actualPageCount: scanState.fileCount ?? 0 });
       closeScanningDialog();
     }
   };
@@ -398,6 +387,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const getAssignableUsers = (role: AssignmentRole, projectId: string) => {
       const requiredPermission = assignmentConfig[role].permission;
       return users.filter(user => {
+        if (user.role === 'Admin') return false; // Exclude admins
         const userPermissions = permissions[user.role] || [];
         const hasPermission = userPermissions.includes('*') || userPermissions.includes(requiredPermission);
         const hasProjectAccess = !user.projectIds || user.projectIds.length === 0 || user.projectIds.includes(projectId);
@@ -453,13 +443,13 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const handleSingleItemAction = (item: EnrichedBook) => {
       switch (stage) {
         case 'confirm-reception':
-            handleBookAction(item.id, item.status);
+            handleBookAction(item.id);
             break;
         case 'assign-scanner':
             openAssignmentDialog(item, 'scanner');
             break;
         case 'to-scan':
-            handleBookAction(item.id, item.status);
+            handleStartTask(item.id, 'scanner');
             break;
         case 'scanning-started':
             setScanState({ open: true, book: item, folderName: null, fileCount: null });
@@ -468,7 +458,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
             openAssignmentDialog(item, 'qc');
             break;
         case 'checking-started':
-            handleMoveBookToNextStage(item.id, item.status);
+            handleMoveBookToNextStage(item.id);
             break;
         case 'to-indexing':
             handleStartTask(item.id, 'indexing');
@@ -525,7 +515,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
 
   const renderBookRow = (item: any, index: number) => {
-    const isCancelable = ['scanning-started', 'indexing-started', 'checking-started'].includes(stage);
+    const isCancelable = ['Scanning Started', 'Indexing Started', 'Checking Started'].includes(stage);
     return (
         <TableRow key={item.id} data-state={selection.includes(item.id) && "selected"}>
         <TableCell>
@@ -627,7 +617,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                  <Button size="sm" onClick={() => openConfirmationDialog({
                     title: `Are you sure?`,
                     description: `This will move the book for "${item.name}" to the next stage.`,
-                    onConfirm: () => handleMoveBookToNextStage(item.bookId, item.status)
+                    onConfirm: () => handleMoveBookToNextStage(item.bookId!)
                 })}>
                     {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
                     {actionButtonLabel}
@@ -682,7 +672,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                 {selection.length > 0 && (
                     <div className="flex items-center gap-2">
                         <span className="text-sm text-muted-foreground">{selection.length} of {sortedAndFilteredItems.length} selected</span>
-                        {['scanning-started', 'indexing-started', 'checking-started'].includes(stage) && (
+                        {['Scanning Started', 'Indexing Started', 'Checking Started'].includes(stage) && (
                             <Button
                                 size="sm"
                                 variant="outline"

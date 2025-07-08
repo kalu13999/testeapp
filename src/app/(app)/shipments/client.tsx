@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -102,7 +103,7 @@ export default function ShipmentsClient() {
   
   const sortedAndFilteredBooks = React.useMemo(() => {
     let filtered = books
-      .filter(book => book.status === 'Pending');
+      .filter(book => book.status === 'Pending Shipment');
       
     Object.entries(columnFilters).forEach(([columnId, value]) => {
       if (value) {

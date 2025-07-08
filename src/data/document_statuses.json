@@ -1,11 +1,10 @@
 
 [
-  { "id": "ds_1", "name": "Pending", "stage": "Pre-Reception" },
+  { "id": "ds_1", "name": "Pending Shipment", "stage": "Pre-Reception" },
   { "id": "ds_22", "name": "In Transit", "stage": "Reception" },
   { "id": "ds_2", "name": "Received", "stage": "Reception" },
   { "id": "ds_3", "name": "To Scan", "stage": "Scanning" },
   { "id": "ds_18", "name": "Scanning Started", "stage": "Scanning" },
-  { "id": "ds_19", "name": "Scanned", "stage": "Scanning" },
   { "id": "ds_4", "name": "Storage", "stage": "Storage" },
   { "id": "ds_5", "name": "To Indexing", "stage": "Indexing" },
   { "id": "ds_20", "name": "Indexing Started", "stage": "Indexing" },
@@ -15,10 +14,10 @@
   { "id": "ds_16", "name": "In Processing", "stage": "Processing" },
   { "id": "ds_17", "name": "Processed", "stage": "Processing" },
   { "id": "ds_7", "name": "Final Quality Control", "stage": "Final Quality Control" },
-  { "id": "ds_9", "name": "Rejected Final QC", "stage": "Final Quality Control" },
-  { "id": "ds_10", "name": "Finalized", "stage": "Finalization" },
-  { "id": "ds_11", "name": "Archived", "stage": "Archive" },
+  { "id": "ds_23", "name": "Delivery", "stage": "Delivery" },
   { "id": "ds_12", "name": "Pending Validation", "stage": "Client Portal" },
-  { "id": "ds_13", "name": "Client Rejected", "stage": "Workflow" },
-  { "id": "ds_14", "name": "Corrected", "stage": "Workflow" }
+  { "id": "ds_13", "name": "Client Rejected", "stage": "Correction" },
+  { "id": "ds_14", "name": "Corrected", "stage": "Correction" },
+  { "id": "ds_10", "name": "Finalized", "stage": "Finalization" },
+  { "id": "ds_11", "name": "Archived", "stage": "Archive" }
 ]

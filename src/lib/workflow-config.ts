@@ -68,7 +68,7 @@ export const STAGE_CONFIG: StageConfig = {
     description: "Books that have been created but are not yet in transit from the client.",
     emptyStateText: "No books are currently pending shipment.",
     dataType: 'book',
-    dataStatus: 'Pending',
+    dataStatus: 'Pending Shipment',
     viewType: 'list',
   },
   'confirm-reception': {

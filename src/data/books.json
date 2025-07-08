@@ -3,7 +3,7 @@
   {
     "id": "book_0",
     "name": "Innovate-HR-Batch01",
-    "status": "Pending",
+    "status": "Pending Shipment",
     "expectedDocuments": 120,
     "projectId": "proj_21",
     "priority": "High",
@@ -12,7 +12,7 @@
   {
     "id": "book_1",
     "name": "Innovate-FIN-Q3-Reports",
-    "status": "Pending",
+    "status": "Pending Shipment",
     "expectedDocuments": 250,
     "projectId": "proj_1",
     "priority": "Medium",
@@ -21,7 +21,7 @@
   {
     "id": "book_2",
     "name": "Innovate-PLAN-2025-Strategy",
-    "status": "Pending",
+    "status": "Pending Shipment",
     "expectedDocuments": 75,
     "projectId": "proj_11",
     "priority": "High"
@@ -29,7 +29,7 @@
   {
     "id": "book_3",
     "name": "FutureTech-RD-Alpha",
-    "status": "Pending",
+    "status": "Pending Shipment",
     "expectedDocuments": 300,
     "projectId": "proj_22",
     "priority": "Medium",
@@ -38,7 +38,7 @@
   {
     "id": "book_4",
     "name": "FutureTech-PATENT-XYZ",
-    "status": "Pending",
+    "status": "Pending Shipment",
     "expectedDocuments": 50,
     "projectId": "proj_12",
     "priority": "High"
@@ -245,7 +245,7 @@
   {
     "id": "book_27",
     "name": "Innovate-PLAN-2025-Ops",
-    "status": "Complete",
+    "status": "Archived",
     "expectedDocuments": 100,
     "projectId": "proj_11",
     "priority": "High"

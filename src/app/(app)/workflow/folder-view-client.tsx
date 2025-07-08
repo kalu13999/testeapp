@@ -143,7 +143,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   }, [documents, config.dataStage, selectedProjectId, currentUser, books]);
 
   const groupedByBook = React.useMemo(() => {
-    const initialGroups = stageDocuments.reduce<GroupedDocuments>((acc, doc) => {
+    return stageDocuments.reduce<GroupedDocuments>((acc, doc) => {
       if (!doc.bookId) return acc;
       const bookInfo = books.find(b => b.id === doc.bookId);
       if (!bookInfo) return acc;
@@ -161,20 +161,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
       if (doc.flag === 'warning') acc[doc.bookId].hasWarning = true;
       return acc;
     }, {});
-    
-    if (stage === 'storage') {
-        const filteredGroups: GroupedDocuments = {};
-        for (const bookId in initialGroups) {
-            const book = books.find(b => b.id === bookId);
-            if (book && book.status === 'In Progress') {
-                filteredGroups[bookId] = initialGroups[bookId];
-            }
-        }
-        return filteredGroups;
-    }
-
-    return initialGroups;
-  }, [stageDocuments, books, stage]);
+  }, [stageDocuments, books]);
   
   const handleRejectSubmit = () => {
     if (!currentBook) return;
@@ -231,25 +218,20 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   const getAssignableUsers = (role: 'indexer' | 'qc', projectId: string) => {
     const requiredPermission = assignmentConfig[role].permission;
     return users.filter(user => {
+      if (user.role === 'Admin') return false; // Exclude admins
       const userPermissions = permissions[user.role] || [];
       const hasPermission = userPermissions.includes('*') || userPermissions.includes(requiredPermission);
-      const hasProjectAccess = user.projectIds?.includes(projectId);
+      const hasProjectAccess = !user.projectIds || user.projectIds.length === 0 || user.projectIds.includes(projectId);
       return hasPermission && hasProjectAccess;
     });
   }
 
   const handleMainAction = (book: EnrichedBook) => {
     const { id: bookId, name: bookName, projectId } = book;
-    if (stage === 'ready-for-processing') {
-      handleStartProcessing(bookId);
-    } else if (stage === 'storage') {
+    if (stage === 'storage') {
       openAssignmentDialog(bookId, bookName, projectId, 'indexer');
-    } else if (stage === 'indexing-started') {
-      openAssignmentDialog(bookId, bookName, projectId, 'qc');
-    } else if (stage === 'checking-started') {
-      handleMoveBookToNextStage(bookId, config.dataStage);
     } else {
-      handleMoveBookToNextStage(bookId, config.dataStage);
+      handleMoveBookToNextStage(bookId);
     }
   }
 
@@ -463,7 +445,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                                             </TooltipProvider>
                                           </CardContent>
                                           <CardFooter className="p-2 flex-col items-start gap-1">
-                                              <p className="text-xs font-medium break-words">{page.name}</p>
+                                              <p className="text-xs font-medium whitespace-pre-wrap">{page.name}</p>
 
                                               {page.flag && page.flagComment && (
                                                 <TooltipProvider>
