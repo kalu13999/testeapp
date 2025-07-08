@@ -883,14 +883,10 @@ export function AppProvider({
 
   const handleClientAction = (bookId: string, action: 'approve' | 'reject', reason?: string) => {
     const book = enrichedBooks.find(b => b.id === bookId);
-    if (!book || !book.projectId) return;
-    const workflow = projectWorkflows[book.projectId] || [];
+    if (!book) return;
+
     const isApproval = action === 'approve';
-
-    const nextStageKey = getNextEnabledStage('pending-deliveries', workflow) || 'finalized';
-    const nextStatus = STAGE_CONFIG[nextStageKey]?.dataStatus || STAGE_CONFIG[nextStageKey]?.dataStage || 'Finalized';
-
-    const newStatus = isApproval ? nextStatus : 'Client Rejected';
+    const newStatus = isApproval ? 'Finalized' : 'Client Rejected';
     
     moveBookDocuments(bookId, newStatus);
     
