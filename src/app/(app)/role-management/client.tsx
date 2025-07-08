@@ -18,7 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAppContext } from '@/context/workflow-context';
-import { GanttChartSquare, MoreHorizontal, Edit, Trash2, PlusCircle } from 'lucide-react';
+import { GanttChartSquare, MoreHorizontal, Edit, Trash2, PlusCircle, Info } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,6 +29,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -50,6 +51,7 @@ export default function RoleManagementClient() {
   const { roles, permissions, addRole, updateRole, deleteRole } = useAppContext();
   const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit'; data?: RoleData }>({ open: false, type: 'new' });
   const [deleteDialogState, setDeleteDialogState] = React.useState<{ open: boolean; role?: string }>({ open: false });
+  const [isInfoModalOpen, setIsInfoModalOpen] = React.useState(false);
 
   // Exclude 'System' and 'Admin' roles from being edited or deleted
   const coreRoles = ['System', 'Admin'];
@@ -93,9 +95,14 @@ export default function RoleManagementClient() {
               Define user roles and manage their page access permissions.
             </p>
           </div>
-          <Button onClick={() => openDialog('new')}>
-            <PlusCircle className="mr-2 h-4 w-4" /> New Role
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon" onClick={() => setIsInfoModalOpen(true)}>
+                <Info className="h-4 w-4" />
+            </Button>
+            <Button onClick={() => openDialog('new')}>
+              <PlusCircle className="mr-2 h-4 w-4" /> New Role
+            </Button>
+          </div>
         </div>
 
         <Card>
@@ -218,6 +225,34 @@ export default function RoleManagementClient() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={isInfoModalOpen} onOpenChange={setIsInfoModalOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>About Role Management</DialogTitle>
+                <DialogDescription>
+                    Roles define what users can see and do within the application. Here's how it works:
+                </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-4 text-sm text-muted-foreground">
+                <p>
+                    <strong className="text-foreground">Roles:</strong> A role is a collection of permissions. You can create custom roles like "Supervisor" or "Junior Indexer" to fit your team's structure.
+                </p>
+                <p>
+                    <strong className="text-foreground">Permissions:</strong> Permissions are tied to specific page routes (e.g., `/projects`, `/clients`). Granting a permission to a role allows all users with that role to access the corresponding page.
+                </p>
+                 <p>
+                    <strong className="text-foreground">Wildcard (`*`):</strong> The `*` permission grants access to all pages and features. It should be reserved for Administrators only.
+                </p>
+                <p>
+                    Users are assigned a single role, and their access is determined entirely by the permissions granted to that role.
+                </p>
+            </div>
+            <DialogFooter>
+                <Button onClick={() => setIsInfoModalOpen(false)}>Close</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
