@@ -225,7 +225,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   const getAssignableUsers = (role: 'indexer' | 'qc', projectId: string) => {
       const targetRole = role === 'indexer' ? 'Indexing' : 'QC Specialist';
       return users.filter(user => 
-        user.role === targetRole && 
+        (user.role === targetRole || user.role === 'Multi-Operator') &&
         (user.projectIds?.includes(projectId))
       );
   }
@@ -249,12 +249,8 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     const book = Object.values(groupedByBook).map(g => g.book).find(b => b.id === doc.bookId);
     if (!book) return;
     
-    let availableTags;
-    if (currentUser?.role === 'Admin' || currentUser?.role === 'Correction Specialist') {
-      availableTags = rejectionTags.filter(tag => tag.clientId === book.clientId);
-    } else {
-      availableTags = rejectionTags.filter(tag => tag.clientId === currentUser?.clientId);
-    }
+    // Always load tags based on the book's client.
+    const availableTags = rejectionTags.filter(tag => tag.clientId === book.clientId);
 
     setTaggingState({
       open: true,
@@ -462,14 +458,19 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                                               <p className="text-xs font-medium break-words">{page.name}</p>
 
                                               {page.flag && page.flagComment && (
-                                                <div 
-                                                  className="flex items-start gap-1.5 text-xs w-full text-muted-foreground"
-                                                >
-                                                  {page.flag === 'error' && <ShieldAlert className="h-3 w-3 mt-0.5 flex-shrink-0 text-destructive"/>}
-                                                  {page.flag === 'warning' && <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0 text-orange-500"/>}
-                                                  {page.flag === 'info' && <Info className="h-3 w-3 mt-0.5 flex-shrink-0 text-primary"/>}
-                                                  <p className="break-words">{page.flagComment}</p>
-                                                </div>
+                                                <TooltipProvider>
+                                                  <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                      <div className="flex items-start gap-1.5 text-xs w-full text-muted-foreground">
+                                                        {page.flag === 'error' && <ShieldAlert className="h-3 w-3 mt-0.5 flex-shrink-0 text-destructive"/>}
+                                                        {page.flag === 'warning' && <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0 text-orange-500"/>}
+                                                        {page.flag === 'info' && <Info className="h-3 w-3 mt-0.5 flex-shrink-0 text-primary"/>}
+                                                        <p className="whitespace-pre-wrap break-words">{page.flagComment}</p>
+                                                      </div>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent><p>{page.flagComment}</p></TooltipContent>
+                                                  </Tooltip>
+                                                </TooltipProvider>
                                               )}
 
                                               {page.tags && page.tags.length > 0 && (

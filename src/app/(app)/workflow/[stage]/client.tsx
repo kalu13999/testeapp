@@ -395,7 +395,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const getAssignableUsers = (role: AssignmentRole, projectId: string) => {
       const targetRole = assignmentConfig[role].roleName;
       return users.filter(user => 
-        user.role === targetRole && 
+        (user.role === targetRole || user.role === 'Multi-Operator') &&
         (user.projectIds?.includes(projectId))
       );
   }
@@ -951,6 +951,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
             <DialogDescription>{detailsState.book?.name}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4 text-sm">
+            <DetailItem label="Book" value={<Link href={`/books/${detailsState.book?.id}`} className="text-primary hover:underline">{detailsState.book?.name}</Link>} />
             <DetailItem label="Project" value={detailsState.book?.projectName} />
             <DetailItem label="Client" value={detailsState.book?.clientName} />
             <Separator />
