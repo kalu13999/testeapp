@@ -17,7 +17,7 @@
     "/documents/[id]",
     "/workflow/pending-shipment",
     "/workflow/confirm-reception",
-    "/workflow/assign-scanner",
+    "/workflow/already-received",
     "/workflow/to-scan",
     "/workflow/scanning-started",
     "/workflow/storage",
@@ -72,7 +72,7 @@
     "/profile",
     "/workflow/pending-shipment",
     "/workflow/confirm-reception",
-    "/workflow/assign-scanner",
+    "/workflow/already-received",
     "/books/[id]",
     "/documents/[id]"
   ],
@@ -125,7 +125,7 @@
     "/documents/[id]",
     "/workflow/pending-shipment",
     "/workflow/confirm-reception",
-    "/workflow/assign-scanner",
+    "/workflow/already-received",
     "/workflow/storage",
     "/workflow/ready-for-processing",
     "/workflow/in-processing",
@@ -139,3 +139,5 @@
     "/admin/reassign-user"
   ]
 }
+
+    

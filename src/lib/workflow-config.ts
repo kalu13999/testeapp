@@ -19,7 +19,7 @@ type StageConfig = {
 }
 
 export const MANDATORY_STAGES = [
-  "pending-shipment", "confirm-reception", "storage",
+  "pending-shipment", "confirm-reception", "already-received", "storage",
   "delivery", "client-rejections", "corrected",
   "finalized", "archive"
 ];
@@ -30,7 +30,7 @@ export const WORKFLOW_PHASES = [
     name: "Intake & Reception",
     toggleable: false,
     description: "Initial stages for receiving books.",
-    stages: ["pending-shipment", "confirm-reception"],
+    stages: ["pending-shipment", "confirm-reception", "already-received"],
     config: {
       'pending-shipment': {
         title: "Pending Shipment",
@@ -50,6 +50,16 @@ export const WORKFLOW_PHASES = [
         dataStatus: 'In Transit',
         viewType: 'list',
       },
+      'already-received': {
+        title: "Already Received",
+        description: "Books that have been received. Assign to a scanner or send directly to storage if scanning is disabled.",
+        actionButtonLabel: "Process Book", // This will be dynamic
+        actionButtonIcon: "Play",
+        emptyStateText: "No received books are awaiting processing.",
+        dataType: 'book',
+        dataStatus: 'Received',
+        viewType: 'list',
+      },
     }
   },
   {
@@ -57,18 +67,8 @@ export const WORKFLOW_PHASES = [
     name: "Scanning",
     toggleable: true,
     description: "Digitization of physical books into image files.",
-    stages: ["assign-scanner", "to-scan", "scanning-started"],
+    stages: ["to-scan", "scanning-started"],
     config: {
-      'assign-scanner': {
-        title: "Already Received",
-        description: "Books that have been received. Assign them to a scanner to move them to the 'To Scan' queue.",
-        actionButtonLabel: "Assign Scanner",
-        actionButtonIcon: "UserPlus",
-        emptyStateText: "No received books are awaiting assignment.",
-        dataType: 'book',
-        dataStatus: 'Received',
-        viewType: 'list',
-      },
       'to-scan': {
         title: "To Scan Queue",
         description: "Books that have been received and are ready to be scanned.",
@@ -321,5 +321,7 @@ export const findStageKeyFromStatus = (statusName: string): string | undefined =
     }
     return undefined;
 };
+
+    
 
     

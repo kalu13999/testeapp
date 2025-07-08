@@ -101,7 +101,8 @@ type AppContextType = {
   // Workflow Actions
   getNextEnabledStage: (currentStage: string, workflow: string[]) => string | null;
   handleMarkAsShipped: (bookIds: string[]) => void;
-  handleConfirmReception: (bookId: string, payload?: { actualPageCount: number }) => void;
+  handleConfirmReception: (bookId: string) => void;
+  handleSendToStorage: (bookId: string, payload: { actualPageCount: number }) => void;
   handleBookAction: (bookId: string, payload?: { actualPageCount?: number }) => void;
   handleMoveBookToNextStage: (bookId: string, currentStatus: string) => void;
   handleAssignUser: (bookId: string, userId: string, role: 'scanner' | 'indexer' | 'qc') => void;
@@ -581,60 +582,55 @@ export function AppProvider({
     toast({ title: `${bookIds.length} Book(s) Marked as Shipped` });
   };
 
-  const handleConfirmReception = (bookId: string, payload?: { actualPageCount: number }) => {
+  const handleConfirmReception = (bookId: string) => {
     const book = rawBooks.find(b => b.id === bookId);
     if (!book || !book.projectId) return;
 
-    const workflow = projectWorkflows[book.projectId] || [];
-    const isScanningEnabled = workflow.includes('assign-scanner');
+    const newStatus = 'Received';
+    updateBookStatus(bookId, newStatus);
+    logAction('Reception Confirmed', `Book "${book.name}" has been marked as received.`, { bookId });
+    toast({ title: "Reception Confirmed" });
+  };
+  
+  const handleSendToStorage = (bookId: string, payload: { actualPageCount: number }) => {
+    const book = rawBooks.find(b => b.id === bookId);
+    if (!book || !book.projectId) return;
 
-    if (isScanningEnabled) {
-        const newStatus = STAGE_CONFIG['assign-scanner'].dataStatus!; // This is 'Received'
-        updateBookStatus(bookId, newStatus);
-        moveBookDocuments(bookId, newStatus);
-        logAction('Reception Confirmed', `Book "${book.name}" has been marked as received.`, { bookId });
-        toast({ title: "Reception Confirmed" });
-    } else {
-        if (!payload) {
-             toast({ title: "Error", description: "File count is missing for direct-to-storage action.", variant: "destructive" });
-             return;
-        }
+    const project = rawProjects.find(p => p.id === book.projectId);
+    const client = clients.find(c => c.id === project?.clientId);
+    if (!project || !client) return;
 
-        const project = rawProjects.find(p => p.id === book.projectId);
-        const client = clients.find(c => c.id === project?.clientId);
-        if (!project || !client) return;
+    const pagesToCreate = payload.actualPageCount;
 
-        const pagesToCreate = payload.actualPageCount;
+    const newDocs: AppDocument[] = Array.from({ length: pagesToCreate }).map((_, i) => {
+        const pageName = `${book.name} - Page ${i + 1}`;
+        return {
+            id: `doc_${book.id}_${i + 1}`, name: pageName, clientId: client.id, client: client.name,
+            status: 'Storage', statusId: 'ds_4', type: 'Scanned Page',
+            lastUpdated: new Date().toISOString().slice(0, 10), tags: [], folderId: null,
+            projectId: book.projectId, bookId: book.id, flag: null,
+            imageUrl: `https://dummyimage.com/400x550/e0e0e0/5c5c5c.png&text=${encodeURIComponent(pageName)}`
+        };
+    });
 
-        const newDocs: AppDocument[] = Array.from({ length: pagesToCreate }).map((_, i) => {
-            const pageName = `${book.name} - Page ${i + 1}`;
-            return {
-                id: `doc_${book.id}_${i + 1}`, name: pageName, clientId: client.id, client: client.name,
-                status: 'Storage', statusId: 'ds_4', type: 'Scanned Page',
-                lastUpdated: new Date().toISOString().slice(0, 10), tags: [], folderId: null,
-                projectId: book.projectId, bookId: book.id, flag: null,
-                imageUrl: `https://dummyimage.com/400x550/e0e0e0/5c5c5c.png&text=${encodeURIComponent(pageName)}`
-            };
-        });
-
-        setDocuments(prevDocs => [...prevDocs.filter(d => d.bookId !== bookId), ...newDocs]);
-        
-        const nextStageKey = getNextEnabledStage('storage', workflow);
-        if (!nextStageKey) {
-          toast({title: "Workflow End", description: "No further steps configured after Storage."});
-          return;
-        }
-        
-        const newBookStatus = STAGE_CONFIG[nextStageKey]?.dataStatus;
-        if (!newBookStatus) {
-          toast({ title: "Workflow Config Error", description: `Next stage ${nextStageKey} has no configured book status.`, variant: "destructive"});
-          return;
-        }
-        
-        updateBookStatus(bookId, newBookStatus, () => ({ scanEndTime: new Date().toISOString() }));
-        logAction('Reception & Scan Skipped', `${pagesToCreate} pages created. Book "${book.name}" moved directly to ${newBookStatus}.`, { bookId });
-        toast({ title: "Reception Confirmed & Scanning Bypassed" });
+    setDocuments(prevDocs => [...prevDocs.filter(d => d.bookId !== bookId), ...newDocs]);
+    
+    const workflow = projectWorkflows[project.id] || [];
+    const nextStageKey = getNextEnabledStage('storage', workflow);
+    if (!nextStageKey) {
+      toast({title: "Workflow End", description: "No further steps configured after Storage."});
+      return;
     }
+    
+    const newBookStatus = STAGE_CONFIG[nextStageKey]?.dataStatus;
+    if (!newBookStatus) {
+      toast({ title: "Workflow Config Error", description: `Next stage ${nextStageKey} has no configured book status.`, variant: "destructive"});
+      return;
+    }
+    
+    updateBookStatus(bookId, newBookStatus, () => ({ scanEndTime: new Date().toISOString() }));
+    logAction('Reception & Scan Skipped', `${pagesToCreate} pages created. Book "${book.name}" moved directly to ${newBookStatus}.`, { bookId });
+    toast({ title: "Reception Confirmed & Scanning Bypassed" });
   };
 
 
@@ -733,7 +729,7 @@ export function AppProvider({
     let newStatusName: string = '';
     
     if (role === 'scanner') {
-        currentStageKey = 'assign-scanner';
+        currentStageKey = 'already-received';
         nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'to-scan']?.dataStatus || 'To Scan';
         updateBookStatus(bookId, newStatusName, () => ({ scannerUserId: userId }));
@@ -1114,6 +1110,7 @@ export function AppProvider({
     getNextEnabledStage,
     handleMarkAsShipped,
     handleConfirmReception,
+    handleSendToStorage,
     handleBookAction, handleMoveBookToNextStage, handleClientAction,
     handleFinalize, handleMarkAsCorrected, handleResubmit,
     addPageToBook, deletePageFromBook, updateDocumentStatus,
@@ -1136,3 +1133,5 @@ export function useAppContext() {
   }
   return context;
 }
+
+    

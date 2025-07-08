@@ -91,7 +91,7 @@ const allMenuItems = [
       { href: "/documents", label: "All Books", icon: Files },
       { href: "/workflow/pending-shipment", label: "Pending Shipment", icon: FileClock },
       { href: "/workflow/confirm-reception", label: "Confirm Reception", icon: ArrowDownToLine },
-      { href: "/workflow/assign-scanner", label: "Already Received", icon: CheckCheck },
+      { href: "/workflow/already-received", label: "Already Received", icon: CheckCheck },
       { href: "/workflow/to-scan", label: "To Scan", icon: ScanLine },
       { href: "/workflow/scanning-started", label: "Scanning Started", icon: PlayCircle },
       { href: "/workflow/storage", label: "Storage", icon: Warehouse },
@@ -254,3 +254,5 @@ export function MainNav() {
     </nav>
   );
 }
+
+    
