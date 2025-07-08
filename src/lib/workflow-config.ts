@@ -31,7 +31,7 @@ const iconMap: { [key: string]: LucideIcon } = {
 };
 
 export const WORKFLOW_SEQUENCE = [
-  "reception", "to-scan", "scanning-started", "storage", 
+  "pending-shipment", "reception", "to-scan", "scanning-started", "storage", 
   "to-indexing", "indexing-started", "to-checking", "checking-started",
   "ready-for-processing", "in-processing", "processed", 
   "final-quality-control", "delivery", "pending-deliveries",
@@ -41,7 +41,7 @@ export const WORKFLOW_SEQUENCE = [
 export const WORKFLOW_STAGE_GROUPS = [
   {
     name: "Intake & Scanning",
-    stages: ["reception", "to-scan", "scanning-started", "storage"],
+    stages: ["pending-shipment", "reception", "to-scan", "scanning-started", "storage"],
   },
   {
     name: "Indexing & QC",
@@ -63,6 +63,14 @@ export const WORKFLOW_STAGE_GROUPS = [
 
 
 export const STAGE_CONFIG: StageConfig = {
+  'pending-shipment': {
+    title: "Pending Shipment",
+    description: "Books that have been created but are not yet in transit from the client.",
+    emptyStateText: "No books are currently pending shipment.",
+    dataType: 'book',
+    dataStatus: 'Pending',
+    viewType: 'list',
+  },
   'reception': {
     title: "Document Reception",
     description: "Books marked as shipped and are awaiting physical confirmation.",
