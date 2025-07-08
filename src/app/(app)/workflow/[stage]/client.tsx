@@ -146,10 +146,12 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     const isSharedQueue = dataStatus === 'Received';
 
     if (currentUser && config.assigneeRole && dataType === 'book') {
-        if(isSharedQueue) {
-            items = (items as EnrichedBook[]).filter(book => (book as any)[`${config.assigneeRole}UserId`] === currentUser.id || !(book as any)[`${config.assigneeRole}UserId`]);
+        if(isSharedQueue && currentUser.role === 'Admin') {
+            // Admins see all in shared queue
+        } else if (isSharedQueue) {
+            items = (items as EnrichedBook[]).filter(book => book[(config.assigneeRole as AssignmentRole) + 'UserId'] === currentUser.id || !book[(config.assigneeRole as AssignmentRole) + 'UserId']);
         } else {
-            items = (items as EnrichedBook[]).filter(book => (book as any)[`${config.assigneeRole}UserId`] === currentUser.id);
+            items = (items as EnrichedBook[]).filter(book => book[(config.assigneeRole as AssignmentRole) + 'UserId'] === currentUser.id);
         }
     }
 
@@ -440,17 +442,6 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
           return;
       }
       
-      if (stage === 'already-received') {
-          const projectWorkflow = projectWorkflows[book.projectId!] || [];
-          const isScanningEnabled = projectWorkflow.includes('to-scan');
-          if (isScanningEnabled) {
-              openAssignmentDialog(book, 'scanner');
-          } else {
-              setScanState({ open: true, book: book, folderName: null, fileCount: null });
-          }
-          return;
-      }
-
       if (['to-scan', 'to-indexing', 'to-checking'].includes(stage)) {
           openConfirmationDialog({
               title: `Confirm: ${actionButtonLabel}?`,
@@ -999,7 +990,3 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     </>
   )
 }
-
-    
-
-    

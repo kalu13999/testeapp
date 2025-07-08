@@ -53,8 +53,6 @@ export const WORKFLOW_PHASES = [
       'already-received': {
         title: "Already Received",
         description: "Books that have been received. Assign to a scanner or send directly to storage if scanning is disabled.",
-        actionButtonLabel: "Process Book", // This will be dynamic
-        actionButtonIcon: "Play",
         emptyStateText: "No received books are awaiting processing.",
         dataType: 'book',
         dataStatus: 'Received',
