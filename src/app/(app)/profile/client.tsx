@@ -38,14 +38,50 @@ const completionActions = [
 export default function ProfileClient() {
     const { currentUser, books, auditLogs, permissions } = useAppContext();
 
+    const getAssignedDateString = (book: EnrichedBook): string => {
+        let date: string | undefined;
+
+        switch (book.status) {
+            case 'Scanning Started':
+                date = book.scanStartTime;
+                break;
+            case 'To Indexing':
+                // Book is assigned to indexer after scanning is finished
+                date = book.scanEndTime;
+                break;
+            case 'Indexing Started':
+                date = book.indexingStartTime;
+                break;
+            case 'To Checking':
+                // Book is assigned to QC after indexing is finished
+                date = book.indexingEndTime;
+                break;
+            case 'Checking Started':
+                date = book.qcStartTime;
+                break;
+            // 'To Scan' has no specific date on the book object when it's assigned.
+        }
+        return date ? new Date(date).toLocaleDateString() : 'Pending Start';
+    };
+
+
     const userStats = React.useMemo(() => {
         if (!currentUser) return { tasksInQueue: 0, tasksToday: 0, myQueue: [], myHistory: [] };
 
-        const myQueue = books.filter(book => 
-            (currentUser.role === 'Scanning' && book.scannerUserId === currentUser.id && book.status === 'Scanning Started') ||
-            (currentUser.role === 'Indexing' && book.indexerUserId === currentUser.id && book.status === 'Indexing Started') ||
-            (currentUser.role === 'QC Specialist' && book.qcUserId === currentUser.id && book.status === 'Checking Started')
-        );
+        const myQueue = books.filter(book => {
+            if (!currentUser) return false;
+            
+            const isScannerTask = book.scannerUserId === currentUser.id && 
+                ['To Scan', 'Scanning Started'].includes(book.status);
+                
+            const isIndexerTask = book.indexerUserId === currentUser.id && 
+                ['To Indexing', 'Indexing Started'].includes(book.status);
+                
+            const isQcTask = book.qcUserId === currentUser.id && 
+                ['To Checking', 'Checking Started'].includes(book.status);
+
+            return isScannerTask || isIndexerTask || isQcTask;
+        });
 
         const myHistory = auditLogs
             .filter(log => log.userId === currentUser.id)
@@ -154,7 +190,7 @@ export default function ProfileClient() {
                                         </TableCell>
                                         <TableCell>{book.projectName}</TableCell>
                                         <TableCell><Badge variant="secondary">{book.status}</Badge></TableCell>
-                                        <TableCell>{new Date(book.scanStartTime || book.indexingStartTime || book.qcStartTime || Date.now()).toLocaleDateString()}</TableCell>
+                                        <TableCell>{getAssignedDateString(book)}</TableCell>
                                     </TableRow>
                                 )) : (
                                     <TableRow>
