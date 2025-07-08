@@ -444,9 +444,6 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
   const handleBulkAction = () => {
       switch (stage) {
-        case 'assign-scanner':
-            openBulkAssignmentDialog('scanner');
-            break;
         case 'indexing-started':
             openBulkAssignmentDialog('qc');
             break;
@@ -487,6 +484,10 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
 
   const getDynamicActionButtonLabel = React.useCallback((book: EnrichedBook) => {
+    if (stage === 'confirm-reception') {
+      return "Confirm Arrival";
+    }
+
     if (!actionButtonLabel || !book.projectId) return actionButtonLabel;
     
     const workflow = projectWorkflows[book.projectId] || [];
@@ -502,7 +503,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     }
     return `Move to ${nextStageConfig.title}`;
 
-  }, [actionButtonLabel, projectWorkflows, getNextEnabledStage]);
+  }, [actionButtonLabel, projectWorkflows, getNextEnabledStage, stage]);
 
   const renderBookRow = (item: any, index: number) => {
     const isCancelable = ['Scanning Started', 'Indexing Started', 'Checking Started'].includes(item.status);
@@ -510,7 +511,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     const performAction = () => {
         switch (stage) {
             case 'assign-scanner':
-                openAssignmentDialog(item, 'scanner');
+                handleMoveBookToNextStage(item.id, item.status);
                 break;
             case 'to-scan':
                 handleStartTask(item.id, 'scanner');
@@ -539,7 +540,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     
     const isConfirmReception = stage === 'confirm-reception';
     const isScanningEnabled = isConfirmReception && item.projectId && projectWorkflows[item.projectId]?.includes('assign-scanner');
-    const dynamicLabel = isConfirmReception ? 'Confirm Arrival' : getDynamicActionButtonLabel(item);
+    const dynamicLabel = getDynamicActionButtonLabel(item);
 
 
     return (

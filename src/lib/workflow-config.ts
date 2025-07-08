@@ -70,14 +70,13 @@ export const WORKFLOW_PHASES = [
     config: {
       'assign-scanner': {
         title: "Assign Scanner",
-        description: "Books that have been received. Assign a scanner to begin digitization.",
-        actionButtonLabel: "Assign Scanner",
-        actionButtonIcon: "UserPlus",
-        emptyStateText: "No received books are awaiting scanner assignment.",
+        description: "Books that have been received. Move them to the shared scanning queue.",
+        actionButtonLabel: "Send to Scanning Queue",
+        actionButtonIcon: "Send",
+        emptyStateText: "No received books are awaiting processing.",
         dataType: 'book',
         dataStatus: 'Received',
         viewType: 'list',
-        assigneeRole: 'scanner',
       },
       'to-scan': {
         title: "To Scan Queue",

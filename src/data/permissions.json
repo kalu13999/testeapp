@@ -111,7 +111,30 @@
     "/workflow/client-rejections",
     "/workflow/corrected",
     "/documents/[id]"
+  ],
+  "Supervisor": [
+    "/profile",
+    "/dashboard",
+    "/admin/overview",
+    "/projects",
+    "/projects/[id]",
+    "/clients",
+    "/book-management",
+    "/documents",
+    "/books/[id]",
+    "/documents/[id]",
+    "/workflow/pending-shipment",
+    "/workflow/confirm-reception",
+    "/workflow/assign-scanner",
+    "/workflow/storage",
+    "/workflow/ready-for-processing",
+    "/workflow/in-processing",
+    "/workflow/processed",
+    "/workflow/final-quality-control",
+    "/workflow/delivery",
+    "/workflow/client-rejections",
+    "/workflow/corrected",
+    "/finalized",
+    "/archive"
   ]
 }
-
-    
