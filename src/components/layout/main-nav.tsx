@@ -74,6 +74,7 @@ const allMenuItems = [
     title: "Admin Tools",
     items: [
       { href: "/admin/status-override", label: "Status Override", icon: Sliders },
+      { href: "/book-management", label: "Book Management", icon: BookUp },
     ]
   },
   {
@@ -81,7 +82,6 @@ const allMenuItems = [
     title: "Workflow Tools",
     items: [
       { href: "/documents", label: "All Books", icon: Files },
-      { href: "/book-management", label: "Book Management", icon: BookUp },
       { href: "/admin/reassign-user", label: "Reassign User", icon: UserCog },
       { href: "/admin/default-projects", label: "Default Projects", icon: Star },
     ]
