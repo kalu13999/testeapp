@@ -135,6 +135,19 @@
     "flag": null
   },
   {
+    "id": "doc_book_23_1",
+    "clientId": "cl_1",
+    "statusId": "ds_12",
+    "type": "Scanned Page",
+    "lastUpdated": "2025-07-03T19:00:00Z",
+    "tags": ["review-required", "blurry-text"],
+    "name": "Innovate-HR-Batch04 - Page 2",
+    "projectId": "proj_21",
+    "bookId": "book_23",
+    "flag": "warning",
+    "flagComment": "Text is slightly blurry on this page."
+  },
+  {
     "id": "doc_book_24_11",
     "clientId": "cl_2",
     "statusId": "ds_13",
