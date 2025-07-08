@@ -23,7 +23,7 @@ import { EnrichedBook, Project } from "@/lib/data";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { STAGE_CONFIG, WORKFLOW_STAGE_GROUPS } from "@/lib/workflow-config";
+import { WORKFLOW_PHASES, MANDATORY_STAGES } from "@/lib/workflow-config";
 import { cn } from "@/lib/utils";
 
 interface ProjectDetailClientProps {
@@ -206,12 +206,12 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                 <CardContent>
                   <ScrollArea className="h-80">
                     <div className="space-y-4">
-                      {WORKFLOW_STAGE_GROUPS.map(group => (
+                      {WORKFLOW_PHASES.map(group => (
                         <div key={group.name}>
                           <h4 className="font-semibold text-sm mb-2">{group.name}</h4>
                           <div className="space-y-2 pl-2 border-l">
                             {group.stages.map(stageKey => {
-                                const stageConfig = STAGE_CONFIG[stageKey as keyof typeof STAGE_CONFIG];
+                                const stageConfig = group.config[stageKey];
                                 if (!stageConfig) return null;
                                 const isEnabled = projectWorkflow.includes(stageKey);
                                 return (
@@ -311,31 +311,41 @@ interface WorkflowConfigDialogProps {
 }
 
 function WorkflowConfigDialog({ open, onOpenChange, projectName, currentWorkflow, onSave }: WorkflowConfigDialogProps) {
-  const [enabledStages, setEnabledStages] = React.useState(new Set(currentWorkflow));
+  
+  const [enabledPhases, setEnabledPhases] = React.useState<{ [key: string]: boolean }>({});
 
   React.useEffect(() => {
-    // Reset local state if the dialog is reopened with new props
-    setEnabledStages(new Set(currentWorkflow));
+    if (open) {
+      const initialPhases: { [key: string]: boolean } = {};
+      WORKFLOW_PHASES.forEach(group => {
+        if (group.toggleable) {
+          // A phase is considered enabled if its FIRST stage is in the workflow array.
+          const isEnabled = currentWorkflow.includes(group.stages[0]);
+          initialPhases[group.id] = isEnabled;
+        }
+      });
+      setEnabledPhases(initialPhases);
+    }
   }, [open, currentWorkflow]);
   
-  const handleToggle = (stageKey: string, checked: boolean) => {
-    setEnabledStages(prev => {
-      const newSet = new Set(prev);
-      if (checked) {
-        newSet.add(stageKey);
-      } else {
-        newSet.delete(stageKey);
-      }
-      return newSet;
-    });
+  const handleToggle = (phaseId: string, checked: boolean) => {
+    setEnabledPhases(prev => ({
+      ...prev,
+      [phaseId]: checked,
+    }));
   }
   
   const handleSaveChanges = () => {
-    onSave(Array.from(enabledStages));
+    let newWorkflow = [...MANDATORY_STAGES];
+    
+    WORKFLOW_PHASES.forEach(group => {
+      if (group.toggleable && enabledPhases[group.id]) {
+        newWorkflow.push(...group.stages);
+      }
+    });
+
+    onSave(newWorkflow);
   }
-  
-  // Some stages are mandatory and cannot be disabled
-  const mandatoryStages = ['reception', 'to-scan', 'storage'];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -343,34 +353,41 @@ function WorkflowConfigDialog({ open, onOpenChange, projectName, currentWorkflow
         <DialogHeader>
           <DialogTitle>Configure Workflow for: {projectName}</DialogTitle>
           <DialogDescription>
-            Enable or disable workflow stages for this specific project. Unchecked steps will be skipped.
+            Enable or disable workflow phases for this project. Unchecked phases will be skipped.
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="h-[60vh] p-4 border rounded-md">
           <div className="space-y-6">
-            {WORKFLOW_STAGE_GROUPS.map(group => (
+            {WORKFLOW_PHASES.map(group => (
               <div key={group.name}>
                 <h4 className="font-semibold text-base mb-3 border-b pb-2">{group.name}</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                  {group.stages.map(stageKey => {
-                    const stageConfig = STAGE_CONFIG[stageKey as keyof typeof STAGE_CONFIG];
-                    if (!stageConfig) return null;
-                    const isMandatory = mandatoryStages.includes(stageKey);
-                    return (
-                       <div key={stageKey} className="flex items-center space-x-3">
-                          <Switch
-                            id={stageKey}
-                            checked={enabledStages.has(stageKey)}
-                            onCheckedChange={(checked) => handleToggle(stageKey, checked)}
-                            disabled={isMandatory}
-                          />
-                          <Label htmlFor={stageKey} className={cn("flex flex-col", isMandatory && "opacity-70")}>
-                            <span>{stageConfig.title}</span>
-                             {isMandatory && <span className="text-xs text-muted-foreground">Mandatory</span>}
-                          </Label>
-                        </div>
-                    )
-                  })}
+                  {group.toggleable ? (
+                     <div className="flex items-center space-x-3">
+                        <Switch
+                          id={group.id}
+                          checked={enabledPhases[group.id] ?? false}
+                          onCheckedChange={(checked) => handleToggle(group.id, checked)}
+                        />
+                        <Label htmlFor={group.id} className="flex flex-col">
+                          <span>Enable {group.name} Phase</span>
+                           <span className="text-xs text-muted-foreground">{group.description}</span>
+                        </Label>
+                      </div>
+                  ) : (
+                    group.stages.map(stageKey => {
+                      const stageConfig = group.config[stageKey];
+                      return (
+                         <div key={stageKey} className="flex items-center space-x-3 opacity-70">
+                            <Switch checked={true} disabled={true} />
+                            <Label htmlFor={stageKey} className="flex flex-col">
+                              <span>{stageConfig.title}</span>
+                              <span className="text-xs text-muted-foreground">Mandatory</span>
+                            </Label>
+                          </div>
+                      )
+                    })
+                  )}
                 </div>
               </div>
             ))}
@@ -384,5 +401,3 @@ function WorkflowConfigDialog({ open, onOpenChange, projectName, currentWorkflow
     </Dialog>
   )
 }
-
-    

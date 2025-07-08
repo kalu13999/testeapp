@@ -110,7 +110,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     books, documents, handleBookAction, handleMoveBookToNextStage, 
     updateDocumentStatus, currentUser, users, permissions,
     handleStartTask, handleAssignUser, handleStartProcessing, handleCancelTask,
-    selectedProjectId
+    selectedProjectId, projectWorkflows
   } = useAppContext();
 
   const { toast } = useToast();
@@ -142,7 +142,10 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     }
 
     if (currentUser && config.assigneeRole && currentUser.role !== 'Admin' && dataStatus) {
-        const requiredPermission = STAGE_CONFIG[stage]?.viewType === 'list' ? assignmentConfig[config.assigneeRole].permission : `/workflow/${stage}`;
+        const stageConfig = Object.values(STAGE_CONFIG).find(sc => sc.dataStatus === dataStatus);
+        const stageKey = Object.keys(STAGE_CONFIG).find(key => STAGE_CONFIG[key] === stageConfig);
+        const requiredPermission = stageKey ? `/workflow/${stageKey}` : '';
+
         const userPermissions = permissions[currentUser.role] || [];
         const canAccessStage = userPermissions.includes('*') || userPermissions.includes(requiredPermission);
         
@@ -209,7 +212,6 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   
   const handleClearFilters = () => {
     setColumnFilters({});
-    setCurrentPage(1);
   };
 
   const sortedAndFilteredItems = React.useMemo(() => {
@@ -322,31 +324,6 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     toast({ title: "Export Successful", description: `${data.length} items exported as XLSX.` });
   }
 
-  const handleQCAction = (item: any, newStatus: string) => {
-    let actionText = '';
-    let nextStageStatus = '';
-
-    switch(newStatus) {
-        case 'Approved':
-            actionText = 'approved and sent to Delivery';
-            nextStageStatus = 'Delivery';
-            break;
-        case 'Rejected':
-            actionText = 'rejected';
-            nextStageStatus = 'Rejected Final QC';
-            break;
-        case 'Sent Back':
-            actionText = 'sent back to Processing';
-            nextStageStatus = 'Processing';
-            break;
-    }
-    updateDocumentStatus(item.id, nextStageStatus);
-    toast({
-        title: `Action: ${newStatus}`,
-        description: `"${item.name}" has been ${actionText}.`,
-    })
-  }
-
   const handleDirectorySelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
@@ -370,7 +347,8 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
   const handleConfirmScan = () => {
     if (scanState.book) {
-      handleBookAction(scanState.book.id, scanState.book.status, { actualPageCount: scanState.fileCount ?? 0 });
+      // Pass the current stage to handleBookAction to allow for dynamic next-stage lookup
+      handleBookAction(scanState.book.id, stage, { actualPageCount: scanState.fileCount ?? 0 });
       closeScanningDialog();
     }
   };
@@ -436,9 +414,17 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   };
 
   const handleSingleItemAction = (item: EnrichedBook) => {
+      if (!item.projectId) return;
+      const workflow = projectWorkflows[item.projectId] || [];
+
       switch (stage) {
         case 'confirm-reception':
-            handleBookAction(item.id, item.status);
+            const isScanningEnabled = workflow.includes('assign-scanner');
+            if (isScanningEnabled) {
+              handleBookAction(item.id, stage);
+            } else {
+              setScanState({ open: true, book: item, folderName: null, fileCount: null });
+            }
             break;
         case 'assign-scanner':
             openAssignmentDialog(item, 'scanner');
@@ -599,25 +585,17 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         <Badge variant={getBadgeVariant(item.status)}>{item.status}</Badge>
       </TableCell>
        <TableCell className="hidden md:table-cell">{item.lastUpdated}</TableCell>
-      {(actionButtonLabel || stage === 'final-quality-control') && (
+      {(actionButtonLabel) && (
         <TableCell>
           <div className="flex gap-2">
-            {stage === 'final-quality-control' ? (
-                <>
-                    <Button size="sm" variant="outline" onClick={() => handleQCAction(item, 'Approved')}><ThumbsUp className="h-4 w-4" /></Button>
-                    <Button size="sm" variant="destructive" onClick={() => handleQCAction(item, 'Rejected')}><ThumbsDown className="h-4 w-4" /></Button>
-                    <Button size="sm" variant="ghost" onClick={() => handleQCAction(item, 'Sent Back')}><Undo2 className="h-4 w-4" /></Button>
-                </>
-            ) : actionButtonLabel ? (
-                 <Button size="sm" onClick={() => openConfirmationDialog({
-                    title: `Are you sure?`,
-                    description: `This will move the book for "${item.name}" to the next stage.`,
-                    onConfirm: () => handleMoveBookToNextStage(item.bookId!, item.status)
-                })}>
-                    {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
-                    {actionButtonLabel}
-                </Button>
-            ) : null}
+            <Button size="sm" onClick={() => openConfirmationDialog({
+                title: `Are you sure?`,
+                description: `This will move the book for "${item.name}" to the next stage.`,
+                onConfirm: () => handleMoveBookToNextStage(item.bookId!, item.status)
+            })}>
+                {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
+                {actionButtonLabel}
+            </Button>
           </div>
         </TableCell>
       )}
@@ -764,7 +742,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                 <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('type', e.shiftKey)}>Type {getSortIndicator('type')}</div></TableHead>
                 <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Status {getSortIndicator('status')}</div></TableHead>
                 <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('lastUpdated', e.shiftKey)}>Last Updated {getSortIndicator('lastUpdated')}</div></TableHead>
-                {(actionButtonLabel || stage === 'final-quality-control') && (
+                {(actionButtonLabel) && (
                   <TableHead>Actions</TableHead>
                 )}
               </TableRow>
@@ -775,7 +753,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                 <TableHead className="hidden md:table-cell"><Input placeholder="Filter type..." value={columnFilters['type'] || ''} onChange={(e) => handleColumnFilterChange('type', e.target.value)} className="h-8"/></TableHead>
                 <TableHead><Input placeholder="Filter status..." value={columnFilters['status'] || ''} onChange={(e) => handleColumnFilterChange('status', e.target.value)} className="h-8"/></TableHead>
                 <TableHead className="hidden md:table-cell"><Input placeholder="Filter date..." value={columnFilters['lastUpdated'] || ''} onChange={(e) => handleColumnFilterChange('lastUpdated', e.target.value)} className="h-8"/></TableHead>
-                {(actionButtonLabel || stage === 'final-quality-control') && (<TableHead className="text-right"><Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Clear Filters</Button></TableHead>)}
+                {(actionButtonLabel) && (<TableHead className="text-right"><Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Clear Filters</Button></TableHead>)}
               </TableRow>
               </>
             )}
