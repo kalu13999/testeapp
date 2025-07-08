@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -125,7 +124,13 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
     const book = rejectedBooks.find(b => b.id === doc.bookId);
     if (!book) return;
 
-    const availableTags = rejectionTags.filter(tag => tag.clientId === book.clientId);
+    let availableTags;
+    if (currentUser?.role === 'Admin' || currentUser?.role === 'Correction Specialist') {
+        availableTags = rejectionTags.filter(tag => tag.clientId === book.clientId);
+    } else {
+        availableTags = rejectionTags.filter(tag => tag.clientId === currentUser?.clientId);
+    }
+    
     setTaggingState({
       open: true,
       docId: doc.id,
@@ -141,7 +146,7 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
   
   const handleTaggingSubmit = () => {
     if (taggingState.docId) {
-      tagPageForRejection(taggingState.docId, taggingState.selectedTags);
+      clearPageRejectionTags(taggingState.docId, taggingState.selectedTags);
     }
     closeTaggingDialog();
   };
@@ -190,7 +195,8 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
                                 <CardTitle className="text-base">Book Details</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4 text-sm">
-                                <DetailItem label="Project" value={<Link href={`/projects/${book.projectId}`} className="text-primary hover:underline">{book.projectName}</Link>} />
+                                <DetailItem label="Book" value={<Link href={`/books/${book.id}`} className="text-primary hover:underline">{book.name}</Link>} />
+                                <DetailItem label="Project" value={book.projectName} />
                                 <DetailItem label="Client" value={book.clientName} />
                                 <Separator />
                                 <DetailItem label="Author" value={book.author || '—'} />

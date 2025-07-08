@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -249,7 +248,12 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     const book = Object.values(groupedByBook).map(g => g.book).find(b => b.id === doc.bookId);
     if (!book) return;
     
-    const availableTags = rejectionTags.filter(tag => tag.clientId === book.clientId);
+    let availableTags;
+    if (currentUser?.role === 'Admin' || currentUser?.role === 'Correction Specialist') {
+      availableTags = rejectionTags.filter(tag => tag.clientId === book.clientId);
+    } else {
+      availableTags = rejectionTags.filter(tag => tag.clientId === currentUser?.clientId);
+    }
 
     setTaggingState({
       open: true,
@@ -407,7 +411,8 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                                 <CardTitle className="text-base">Book Details</CardTitle>
                             </CardHeader>
                             <CardContent className="text-sm space-y-4">
-                                <DetailItem label="Project" value={<Link href={`/projects/${book.projectId}`} className="text-primary hover:underline">{book.projectName}</Link>} />
+                                <DetailItem label="Book" value={<Link href={`/books/${book.id}`} className="text-primary hover:underline">{book.name}</Link>} />
+                                <DetailItem label="Project" value={book.projectName} />
                                 <DetailItem label="Client" value={book.clientName} />
                                 <Separator />
                                 <DetailItem label="Author" value={book.author || '—'} />
