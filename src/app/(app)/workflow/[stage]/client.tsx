@@ -506,15 +506,9 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
   const renderBookRow = (item: any, index: number) => {
     const isCancelable = ['Scanning Started', 'Indexing Started', 'Checking Started'].includes(item.status);
-    const dynamicLabel = getDynamicActionButtonLabel(item);
     
     const performAction = () => {
-        const currentStageKey = findStageKeyFromStatus(item.status);
-        
-        switch (currentStageKey) {
-            case 'confirm-reception':
-                handleConfirmReception(item.id);
-                break;
+        switch (stage) {
             case 'assign-scanner':
                 openAssignmentDialog(item, 'scanner');
                 break;
@@ -542,6 +536,10 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                 break;
         }
     };
+    
+    const isConfirmReception = stage === 'confirm-reception';
+    const isScanningEnabled = isConfirmReception && item.projectId && projectWorkflows[item.projectId]?.includes('assign-scanner');
+    const dynamicLabel = isConfirmReception ? 'Confirm Arrival' : getDynamicActionButtonLabel(item);
 
 
     return (
@@ -569,12 +567,26 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         <TableCell>
           <div className="flex items-center justify-end gap-2">
             {actionButtonLabel && (
-              <Button size="sm" onClick={() => openConfirmationDialog({
-                  title: `Are you sure?`,
-                  description: `This will perform the action "${dynamicLabel}" on "${item.name}".`,
-                  onConfirm: performAction
-              })}>
-                  {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
+              <Button size="sm" onClick={() => {
+                if (isConfirmReception) {
+                    if (isScanningEnabled) {
+                        openConfirmationDialog({
+                            title: 'Confirm Arrival?',
+                            description: `This will confirm that "${item.name}" has arrived.`,
+                            onConfirm: () => handleConfirmReception(item.id)
+                        });
+                    } else {
+                        setScanState({ open: true, book: item, folderName: null, fileCount: null });
+                    }
+                } else {
+                    openConfirmationDialog({
+                        title: `Are you sure?`,
+                        description: `This will perform the action "${dynamicLabel}" on "${item.name}".`,
+                        onConfirm: performAction
+                    })
+                }
+              }}>
+                  {isConfirmReception ? <Check className="mr-2 h-4 w-4" /> : (ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />)}
                   {dynamicLabel}
               </Button>
             )}

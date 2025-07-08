@@ -286,31 +286,30 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   };
 
 
+  const getDynamicActionButtonLabel = React.useCallback((book: EnrichedBook) => {
+    if (!config.actionButtonLabel || !book.projectId) return config.actionButtonLabel;
+    
+    const workflow = projectWorkflows[book.projectId] || [];
+    const currentStageKey = findStageKeyFromStatus(book.status);
+    if (!currentStageKey) return config.actionButtonLabel;
+    
+    const nextStageKey = getNextEnabledStage(currentStageKey, workflow);
+    if (!nextStageKey) return "End of Workflow";
+    
+    const nextStageConfig = STAGE_CONFIG[nextStageKey];
+    if (nextStageConfig.assigneeRole) {
+        return `Assign for ${nextStageConfig.title}`;
+    }
+    return `Move to ${nextStageConfig.title}`;
+
+  }, [config.actionButtonLabel, projectWorkflows, getNextEnabledStage]);
+
+
   const renderActions = (bookGroup: GroupedDocuments[string]) => {
     const { book, hasError } = bookGroup;
     const { id: bookId, name: bookName, status } = book;
 
-    let actionButtonLabel = config.actionButtonLabel;
-    
-    if (actionButtonLabel && book.projectId) {
-        const workflow = projectWorkflows[book.projectId] || [];
-        const currentStageKey = findStageKeyFromStatus(book.status);
-        
-        if (currentStageKey) {
-            const nextStageKey = getNextEnabledStage(currentStageKey, workflow);
-            if (nextStageKey) {
-                const nextStageConfig = STAGE_CONFIG[nextStageKey];
-                if (nextStageConfig.assigneeRole) {
-                    actionButtonLabel = `Assign for ${nextStageConfig.title}`;
-                } else {
-                    actionButtonLabel = `Move to ${nextStageConfig.title}`;
-                }
-            } else {
-                actionButtonLabel = "End of Workflow";
-            }
-        }
-    }
-
+    const actionButtonLabel = getDynamicActionButtonLabel(book);
 
     const actionButton = actionButtonLabel ? (
         <Button 
