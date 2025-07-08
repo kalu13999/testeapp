@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -28,6 +29,8 @@ import { cn } from "@/lib/utils"
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   email: z.string().email("Please enter a valid email."),
+  username: z.string().min(3, "Username must be at least 3 characters."),
+  password: z.string().min(6, "Password must be at least 6 characters.").or(z.literal("")).optional(),
   role: z.string({ required_error: "Please select a role." }),
   phone: z.string().optional(),
   jobTitle: z.string().optional(),
@@ -52,7 +55,7 @@ interface UserFormProps {
   roles: string[]
   clients: Client[]
   projects: Project[]
-  onSave: (values: UserFormValues) => void
+  onSave: (values: Partial<UserFormValues>) => void
   onCancel: () => void
 }
 
@@ -62,6 +65,8 @@ export function UserForm({ user, roles, clients, projects, onSave, onCancel }: U
     defaultValues: {
       name: user?.name || "",
       email: user?.email || "",
+      username: user?.username || "",
+      password: "", // Always empty for security
       role: user?.role || "",
       phone: user?.phone || "",
       jobTitle: user?.jobTitle || "",
@@ -87,6 +92,8 @@ export function UserForm({ user, roles, clients, projects, onSave, onCancel }: U
     form.reset({
       name: user?.name || "",
       email: user?.email || "",
+      username: user?.username || "",
+      password: "", // Always empty for security
       role: user?.role || "",
       phone: user?.phone || "",
       jobTitle: user?.jobTitle || "",
@@ -98,7 +105,11 @@ export function UserForm({ user, roles, clients, projects, onSave, onCancel }: U
   }, [user, form])
 
   const onSubmit = (values: UserFormValues) => {
-    onSave(values)
+    const dataToSave: Partial<UserFormValues> = { ...values };
+    if (!dataToSave.password) {
+        delete dataToSave.password;
+    }
+    onSave(dataToSave)
   }
 
   const isOperatorRole = role && !['Admin', 'Client', 'System'].includes(role);
@@ -134,6 +145,39 @@ export function UserForm({ user, roles, clients, projects, onSave, onCancel }: U
             )}
           />
         </div>
+
+        <div className="grid grid-cols-2 gap-4">
+            <FormField
+                control={form.control}
+                name="username"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Username</FormLabel>
+                    <FormControl>
+                        <Input placeholder="e.g. jdoe" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+            />
+            <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                        <Input type="password" placeholder="••••••••" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                        Leave blank to keep current password.
+                    </FormDescription>
+                    <FormMessage />
+                    </FormItem>
+                )}
+            />
+        </div>
+
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
