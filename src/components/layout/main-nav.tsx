@@ -11,7 +11,6 @@ import {
   FileCheck2,
   FileClock,
   FileCog,
-  FileJson,
   FileSearch2,
   FileText,
   Files,
@@ -24,20 +23,17 @@ import {
   ThumbsDown,
   Undo2,
   Warehouse,
-  Play,
   PlayCircle,
   PencilRuler,
   ClipboardCheck,
-  Package,
   GanttChartSquare,
   Settings,
   Tags,
   User,
   Users,
-  UserPlus,
+  UserCog,
   Star,
   Globe,
-  UserCog,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -45,8 +41,6 @@ import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useAppContext } from "@/context/workflow-context";
 import { MANDATORY_STAGES } from "@/lib/workflow-config";
-
-const INTERNAL_ROLES = ['Admin', 'Operator', 'QC Specialist', 'Reception', 'Scanning', 'Indexing', 'Processing', 'Delivery', 'Correction Specialist', 'Multi-Operator'];
 
 const allMenuItems = [
   {
@@ -80,33 +74,77 @@ const allMenuItems = [
       { href: "/role-management", label: "Role Management", icon: GanttChartSquare },
       { href: "/users", label: "Users", icon: User },
       { href: "/admin/status-override", label: "Status Override", icon: Sliders },
-      { href: "/admin/default-projects", label: "Default Projects", icon: Star },
-      { href: "/admin/reassign-user", label: "Reassign User", icon: UserCog },
       { href: "/settings", label: "Settings", icon: Settings },
     ]
   },
   {
-    id: "workflow",
-    title: "Workflow",
+    id: "workflow-tools",
+    title: "Workflow Tools",
     items: [
       { href: "/documents", label: "All Books", icon: Files },
+      { href: "/admin/reassign-user", label: "Reassign User", icon: UserCog },
+      { href: "/admin/default-projects", label: "Default Projects", icon: Star },
+    ]
+  },
+  {
+    id: "workflow-intake",
+    title: "Intake & Reception",
+    items: [
       { href: "/workflow/pending-shipment", label: "Pending Shipment", icon: FileClock },
       { href: "/workflow/confirm-reception", label: "Confirm Reception", icon: ArrowDownToLine },
       { href: "/workflow/already-received", label: "Already Received", icon: CheckCheck },
+    ]
+  },
+  {
+    id: "workflow-scanning",
+    title: "Scanning",
+    items: [
       { href: "/workflow/to-scan", label: "To Scan", icon: ScanLine },
       { href: "/workflow/scanning-started", label: "Scanning Started", icon: PlayCircle },
+    ]
+  },
+  {
+    id: "workflow-digitization",
+    title: "Digitization",
+    items: [
       { href: "/workflow/storage", label: "Storage", icon: Warehouse },
       { href: "/workflow/to-indexing", label: "To Indexing", icon: FileText },
       { href: "/workflow/indexing-started", label: "Indexing Started", icon: PencilRuler },
+    ]
+  },
+  {
+    id: "workflow-qc",
+    title: "Quality Control",
+    items: [
       { href: "/workflow/to-checking", label: "To Checking", icon: FileSearch2 },
       { href: "/workflow/checking-started", label: "Checking Started", icon: ClipboardCheck },
+      { href: "/workflow/final-quality-control", label: "Final Quality Control", icon: FileCheck2 },
+    ]
+  },
+  {
+    id: "workflow-processing",
+    title: "Processing",
+    items: [
       { href: "/workflow/ready-for-processing", label: "Ready for Processing", icon: FileCog },
       { href: "/workflow/in-processing", label: "In Processing", icon: Loader2 },
       { href: "/workflow/processed", label: "Processed", icon: FileCheck2 },
-      { href: "/workflow/final-quality-control", label: "Final Quality Control", icon: FileCheck2 },
+    ]
+  },
+  {
+    id: "workflow-delivery",
+    title: "Delivery & Correction",
+    items: [
       { href: "/workflow/delivery", label: "Delivery", icon: Send },
       { href: "/workflow/client-rejections", label: "Client Rejections", icon: ThumbsDown },
       { href: "/workflow/corrected", label: "Corrected", icon: Undo2 },
+    ]
+  },
+  {
+    id: "finalization",
+    title: "Finalization",
+    items: [
+      { href: "/finalized", label: "Finalized", icon: CheckCheck },
+      { href: "/archive", label: "Archive", icon: Archive },
     ],
   },
   {
@@ -118,14 +156,6 @@ const allMenuItems = [
       { href: "/pending-deliveries", label: "Pending Deliveries", icon: FileClock },
       { href: "/validated-history", label: "Validated History", icon: FileCheck },
       { href: "/reasons", label: "Rejection Reasons", icon: Tags },
-    ],
-  },
-  {
-    id: "finalization",
-    title: "Finalization",
-    items: [
-      { href: "/finalized", label: "Finalized", icon: CheckCheck },
-      { href: "/archive", label: "Archive", icon: Archive },
     ],
   },
 ];
