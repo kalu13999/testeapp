@@ -446,21 +446,29 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                                                   height={550}
                                                   className="aspect-[4/5.5] object-cover w-full h-full"
                                               />
-                                              {page.flag === 'error' && <div className="absolute inset-0 bg-destructive/20 border-2 border-destructive"></div>}
-                                              {page.flag === 'warning' && <div className="absolute inset-0 bg-orange-500/20 border-2 border-orange-500"></div>}
+                                              <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <div className="absolute inset-0">
+                                                            {page.flag === 'error' && <div className="absolute inset-0 bg-destructive/20 border-2 border-destructive"></div>}
+                                                            {page.flag === 'warning' && <div className="absolute inset-0 bg-orange-500/20 border-2 border-orange-500"></div>}
+                                                        </div>
+                                                    </TooltipTrigger>
+                                                    {page.flagComment && <TooltipContent><p>{page.flagComment}</p></TooltipContent>}
+                                                </Tooltip>
+                                            </TooltipProvider>
                                           </CardContent>
                                           <CardFooter className="p-2 flex-col items-start gap-1">
-                                              <p className="text-xs font-medium truncate">{page.name}</p>
+                                              <p className="text-xs font-medium break-words">{page.name}</p>
 
                                               {page.flag && page.flagComment && (
                                                 <div 
                                                   className="flex items-start gap-1.5 text-xs w-full text-muted-foreground"
-                                                  title={page.flagComment}
                                                 >
                                                   {page.flag === 'error' && <ShieldAlert className="h-3 w-3 mt-0.5 flex-shrink-0 text-destructive"/>}
                                                   {page.flag === 'warning' && <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0 text-orange-500"/>}
                                                   {page.flag === 'info' && <Info className="h-3 w-3 mt-0.5 flex-shrink-0 text-primary"/>}
-                                                  <p className="truncate">{page.flagComment}</p>
+                                                  <p className="break-words">{page.flagComment}</p>
                                                 </div>
                                               )}
 
