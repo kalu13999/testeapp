@@ -17,27 +17,46 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { type RejectionTag } from "@/lib/data"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { type Client, type RejectionTag } from "@/lib/data"
 
-const formSchema = z.object({
-  label: z.string().min(2, "Label must be at least 2 characters."),
-  description: z.string().min(1, "Description is required."),
-})
+const getFormSchema = (isAdmin: boolean, isEditing: boolean) => {
+    const schema = z.object({
+      label: z.string().min(2, "Label must be at least 2 characters."),
+      description: z.string().min(1, "Description is required."),
+      clientId: z.string().optional(),
+    });
 
-type ReasonFormValues = z.infer<typeof formSchema>
+    if (isAdmin && !isEditing) {
+        return schema.refine(data => !!data.clientId, {
+            message: "A client must be selected.",
+            path: ["clientId"],
+        });
+    }
+
+    return schema;
+};
+
+export type ReasonFormValues = z.infer<ReturnType<typeof getFormSchema>>;
 
 interface ReasonFormProps {
   reason?: Partial<RejectionTag> | null
   onSave: (values: ReasonFormValues) => void
   onCancel: () => void
+  clients?: Client[]
+  isEditing?: boolean
+  showClientSelector?: boolean
 }
 
-export function ReasonForm({ reason, onSave, onCancel }: ReasonFormProps) {
+export function ReasonForm({ reason, onSave, onCancel, clients, isEditing = false, showClientSelector = false }: ReasonFormProps) {
+  const formSchema = getFormSchema(showClientSelector, isEditing);
+  
   const form = useForm<ReasonFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       label: reason?.label || "",
       description: reason?.description || "",
+      clientId: reason?.clientId || undefined,
     },
   })
 
@@ -45,6 +64,7 @@ export function ReasonForm({ reason, onSave, onCancel }: ReasonFormProps) {
     form.reset({
       label: reason?.label || "",
       description: reason?.description || "",
+      clientId: reason?.clientId || undefined,
     })
   }, [reason, form])
 
@@ -81,6 +101,32 @@ export function ReasonForm({ reason, onSave, onCancel }: ReasonFormProps) {
             </FormItem>
             )}
         />
+        {showClientSelector && !isEditing && (
+          <FormField
+            control={form.control}
+            name="clientId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Client</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a client" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {clients?.map(client => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
         <div className="flex justify-end gap-2 pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel

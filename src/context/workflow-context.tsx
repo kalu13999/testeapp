@@ -85,7 +85,7 @@ type AppContextType = {
   importBooks: (projectId: string, newBooks: BookImport[]) => void;
   
   // Rejection Tag Actions
-  addRejectionTag: (tagData: Omit<RejectionTag, 'id' | 'clientId'>) => void;
+  addRejectionTag: (tagData: Omit<RejectionTag, 'id' | 'clientId'>, clientId: string) => void;
   updateRejectionTag: (tagId: string, tagData: Partial<Omit<RejectionTag, 'id' | 'clientId'>>) => void;
   deleteRejectionTag: (tagId: string) => void;
   tagPageForRejection: (pageId: string, tags: string[]) => void;
@@ -401,11 +401,16 @@ export function AppProvider({
   };
 
   // --- REJECTION TAG ACTIONS ---
-  const addRejectionTag = (tagData: Omit<RejectionTag, 'id' | 'clientId'>) => {
-    if (!currentUser || !currentUser.clientId) return;
-    const newTag: RejectionTag = { id: `rt_${Date.now()}`, clientId: currentUser.clientId, ...tagData };
+  const addRejectionTag = (tagData: Omit<RejectionTag, 'id' | 'clientId'>, clientId: string) => {
+    if (!clientId) {
+      toast({ title: "Client ID is missing", variant: "destructive" });
+      return;
+    }
+    const newTag: RejectionTag = { id: `rt_${Date.now()}`, clientId: clientId, ...tagData };
     setRejectionTags(prev => [...prev, newTag]);
-    logAction('Rejection Tag Created', `Client "${currentUser.name}" created tag: "${newTag.label}".`, {});
+    const client = clients.find(c => c.id === clientId);
+    const actor = currentUser?.role === 'Admin' ? 'Admin' : `Client "${currentUser?.name}"`;
+    logAction('Rejection Tag Created', `${actor} created tag: "${newTag.label}" for client "${client?.name}".`, {});
     toast({ title: "Rejection Reason Added" });
   };
 

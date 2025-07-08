@@ -43,20 +43,30 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { type RejectionTag } from "@/lib/data"
-import { ReasonForm } from "./reason-form"
+import { type Client, type RejectionTag } from "@/lib/data"
+import { ReasonForm, type ReasonFormValues } from "./reason-form"
 import { useAppContext } from "@/context/workflow-context"
+import { useToast } from "@/hooks/use-toast"
 
 export default function RejectionReasonsClient() {
-  const { rejectionTags, addRejectionTag, updateRejectionTag, deleteRejectionTag, currentUser } = useAppContext();
+  const { clients, rejectionTags, addRejectionTag, updateRejectionTag, deleteRejectionTag, currentUser } = useAppContext();
   const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit'; data?: RejectionTag }>({ open: false, type: 'new' })
-
   const [deleteDialogState, setDeleteDialogState] = React.useState<{ open: boolean; data?: RejectionTag }>({ open: false });
+  const { toast } = useToast();
 
-  const clientRejectionTags = React.useMemo(() => {
-    if (!currentUser || !currentUser.clientId) return [];
-    return rejectionTags.filter(tag => tag.clientId === currentUser.clientId);
-  }, [rejectionTags, currentUser]);
+  const displayedTags = React.useMemo(() => {
+    if (!currentUser) return [];
+    if (currentUser.role === 'Admin') {
+      return rejectionTags.map(tag => ({
+        ...tag,
+        clientName: clients.find(c => c.id === tag.clientId)?.name || 'Unknown'
+      }));
+    }
+    if (currentUser.clientId) {
+      return rejectionTags.filter(tag => tag.clientId === currentUser.clientId);
+    }
+    return [];
+  }, [rejectionTags, currentUser, clients]);
 
   const openDialog = (type: 'new' | 'edit', data?: RejectionTag) => {
     setDialogState({ open: true, type, data })
@@ -66,11 +76,23 @@ export default function RejectionReasonsClient() {
     setDialogState({ open: false, type: 'new', data: undefined })
   }
 
-  const handleSave = (values: Omit<RejectionTag, 'id' | 'clientId'>) => {
+  const handleSave = (values: ReasonFormValues) => {
+    const { clientId, ...tagData } = values;
+
     if (dialogState.type === 'new') {
-      addRejectionTag(values);
+      const finalClientId = currentUser?.role === 'Admin' ? clientId : currentUser?.clientId;
+
+      if (!finalClientId) {
+        toast({
+          title: "Client Not Specified",
+          description: "An admin must select a client for the new reason.",
+          variant: "destructive"
+        });
+        return;
+      }
+      addRejectionTag(tagData, finalClientId);
     } else if (dialogState.type === 'edit' && dialogState.data) {
-      updateRejectionTag(dialogState.data.id, values);
+      updateRejectionTag(dialogState.data.id, tagData);
     }
     closeDialog()
   }
@@ -86,7 +108,7 @@ export default function RejectionReasonsClient() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-headline text-3xl font-bold tracking-tight">Rejection Reasons</h1>
-          <p className="text-muted-foreground">Manage your custom tags for rejecting documents.</p>
+          <p className="text-muted-foreground">Manage custom tags for rejecting documents.</p>
         </div>
         <Button onClick={() => openDialog('new')}>
             <PlusCircle className="mr-2 h-4 w-4" />
@@ -100,16 +122,18 @@ export default function RejectionReasonsClient() {
               <TableRow>
                 <TableHead>Label</TableHead>
                 <TableHead>Description</TableHead>
+                {currentUser?.role === 'Admin' && <TableHead>Client</TableHead>}
                 <TableHead>
                   <span className="sr-only">Actions</span>
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {clientRejectionTags.length > 0 ? clientRejectionTags.map((tag) => (
+              {displayedTags.length > 0 ? displayedTags.map((tag) => (
                 <TableRow key={tag.id}>
                   <TableCell className="font-medium">{tag.label}</TableCell>
                   <TableCell>{tag.description}</TableCell>
+                  {currentUser?.role === 'Admin' && <TableCell>{(tag as any).clientName}</TableCell>}
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -132,7 +156,7 @@ export default function RejectionReasonsClient() {
                 </TableRow>
               )) : (
                  <TableRow>
-                  <TableCell colSpan={3} className="h-24 text-center">
+                  <TableCell colSpan={currentUser?.role === 'Admin' ? 4 : 3} className="h-24 text-center">
                     No rejection reasons defined. Add one to get started.
                   </TableCell>
                 </TableRow>
@@ -147,10 +171,17 @@ export default function RejectionReasonsClient() {
           <DialogHeader>
             <DialogTitle>{dialogState.type === 'new' ? 'Create New Reason' : 'Edit Reason'}</DialogTitle>
             <DialogDescription>
-              {dialogState.type === 'new' ? 'Add a new rejection tag for your team to use.' : `Editing reason: ${dialogState.data?.label}`}
+              {dialogState.type === 'new' ? 'Add a new rejection tag for a client to use.' : `Editing reason: ${dialogState.data?.label}`}
             </DialogDescription>
           </DialogHeader>
-          <ReasonForm reason={dialogState.data} onSave={handleSave} onCancel={closeDialog} />
+          <ReasonForm 
+            reason={dialogState.data} 
+            onSave={handleSave} 
+            onCancel={closeDialog}
+            clients={clients}
+            isEditing={dialogState.type === 'edit'}
+            showClientSelector={currentUser?.role === 'Admin'}
+          />
         </DialogContent>
       </Dialog>
       
