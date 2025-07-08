@@ -37,6 +37,7 @@ import {
   UserPlus,
   Star,
   Globe,
+  UserCog,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -79,6 +80,7 @@ const allMenuItems = [
       { href: "/users", label: "Users", icon: User },
       { href: "/admin/status-override", label: "Status Override", icon: Sliders },
       { href: "/admin/default-projects", label: "Default Projects", icon: Star },
+      { href: "/admin/reassign-user", label: "Reassign User", icon: UserCog },
       { href: "/settings", label: "Settings", icon: Settings },
     ]
   },

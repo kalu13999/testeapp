@@ -105,6 +105,7 @@ type AppContextType = {
   handleBookAction: (bookId: string, payload?: { actualPageCount?: number }) => void;
   handleMoveBookToNextStage: (bookId: string, currentStatus: string) => void;
   handleAssignUser: (bookId: string, userId: string, role: 'scanner' | 'indexer' | 'qc') => void;
+  reassignUser: (bookId: string, newUserId: string, role: 'scanner' | 'indexer' | 'qc') => void;
   handleStartTask: (bookId: string, role: 'scanner' | 'indexing' | 'qc') => void;
   handleCancelTask: (bookId: string, currentStatus: string) => void;
   handleAdminStatusOverride: (bookId: string, newStatus: string, reason: string) => void;
@@ -759,6 +760,28 @@ export function AppProvider({
     }
   };
 
+  const reassignUser = (bookId: string, newUserId: string, role: 'scanner' | 'indexer' | 'qc') => {
+    const book = rawBooks.find(b => b.id === bookId);
+    const newUser = users.find(u => u.id === newUserId);
+    if (!book || !newUser) return;
+
+    let updateField: 'scannerUserId' | 'indexerUserId' | 'qcUserId' = `${role}UserId`;
+    
+    setRawBooks(prev => prev.map(b => 
+      b.id === bookId ? { ...b, [updateField]: newUserId } : b
+    ));
+    
+    const oldUser = users.find(u => u.id === book[updateField]);
+    
+    logAction(
+      'User Reassigned', 
+      `Task for book "${book.name}" was reassigned from ${oldUser?.name || 'Unassigned'} to ${newUser.name}.`, 
+      { bookId }
+    );
+    toast({ title: "User Reassigned", description: `${newUser.name} is now responsible for this task.` });
+  };
+
+
   const handleStartTask = (bookId: string, role: 'scanner' | 'indexing' | 'qc') => {
     const book = rawBooks.find(b => b.id === bookId);
     if (!book || !book.projectId) return;
@@ -1070,7 +1093,7 @@ export function AppProvider({
     handleFinalize, handleMarkAsCorrected, handleResubmit,
     addPageToBook, deletePageFromBook, updateDocumentStatus,
     updateDocumentFlag, handleStartProcessing, handleCompleteProcessing,
-    handleAssignUser, handleStartTask, handleCancelTask,
+    handleAssignUser, reassignUser, handleStartTask, handleCancelTask,
     handleAdminStatusOverride,
   };
 

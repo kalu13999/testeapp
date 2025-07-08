@@ -135,6 +135,7 @@
     "/workflow/client-rejections",
     "/workflow/corrected",
     "/finalized",
-    "/archive"
+    "/archive",
+    "/admin/reassign-user"
   ]
 }
