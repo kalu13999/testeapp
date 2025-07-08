@@ -4,8 +4,15 @@
   { "id": "rt_2", "clientId": "cl_1", "label": "Incorrect Page Order", "description": "The page is not in the correct sequence." },
   { "id": "rt_3", "clientId": "cl_1", "label": "Page Upside Down", "description": "The page was scanned upside down or rotated incorrectly." },
   { "id": "rt_4", "clientId": "cl_1", "label": "Duplicate Page", "description": "This page appears to be a duplicate of another page." },
+  { "id": "rt_9", "clientId": "cl_1", "label": "Document Cut Off", "description": "The edges of the document appear to be cut off." },
+  { "id": "rt_10", "clientId": "cl_1", "label": "Unreadable Fine Print", "description": "The fine print or footnotes are not legible." },
+  { "id": "rt_11", "clientId": "cl_1", "label": "Incorrect Amount", "description": "A financial figure on the document appears to be incorrect." },
+
   { "id": "rt_5", "clientId": "cl_2", "label": "Missing Signature", "description": "A required signature is not present on the document." },
   { "id": "rt_6", "clientId": "cl_2", "label": "Incomplete Form", "description": "One or more required fields on the form are blank." },
   { "id": "rt_7", "clientId": "cl_2", "label": "Wrong Document", "description": "This document does not belong in this batch." },
-  { "id": "rt_8", "clientId": "cl_2", "label": "Poor Quality", "description": "General low quality, stains, or other legibility issues." }
+  { "id": "rt_8", "clientId": "cl_2", "label": "Poor Quality", "description": "General low quality, stains, or other legibility issues." },
+  { "id": "rt_12", "clientId": "cl_2", "label": "Diagram Unclear", "description": "A technical diagram or schematic is not legible." },
+  { "id": "rt_13", "clientId": "cl_2", "label": "Handwriting Illegible", "description": "Handwritten notes or annotations cannot be read." },
+  { "id": "rt_14", "clientId": "cl_2", "label": "Incorrect Version", "description": "This appears to be an outdated version of the document." }
 ]
