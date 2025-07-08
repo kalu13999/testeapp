@@ -348,7 +348,7 @@ export function AppProvider({
   const addBook = (projectId: string, bookData: Omit<RawBook, 'id' | 'projectId' | 'status'>) => {
       const newRawBook: RawBook = {
           id: `book_${Date.now()}`,
-          status: 'Pending',
+          status: 'Pending Shipment',
           projectId,
           ...bookData,
       };
@@ -375,7 +375,7 @@ export function AppProvider({
     const booksToAdd = newBooks.map((book, i) => {
         const newRawBook: RawBook = {
             id: `book_imp_${Date.now()}_${i}`,
-            status: 'Pending',
+            status: 'Pending Shipment',
             projectId,
             ...book
         };
@@ -507,7 +507,7 @@ export function AppProvider({
   const handleMarkAsShipped = (bookIds: string[]) => {
     setRawBooks(prevBooks =>
       prevBooks.map(book =>
-        bookIds.includes(book.id) && book.status === 'Pending' ? { ...book, status: 'In Transit' } : book
+        bookIds.includes(book.id) && book.status === 'Pending Shipment' ? { ...book, status: 'In Transit' } : book
       )
     );
     bookIds.forEach(bookId => {
@@ -518,9 +518,6 @@ export function AppProvider({
   };
 
   const handleBookAction = (bookId: string, currentStatus: string, payload?: { actualPageCount?: number }) => {
-    const nextStatus = bookStatusTransition[currentStatus];
-    if (!nextStatus) return;
-
     const book = rawBooks.find(b => b.id === bookId);
     if (!book) return;
 
@@ -532,7 +529,8 @@ export function AppProvider({
     }
     
     if (currentStatus === 'To Scan') {
-      updateBookStatus(bookId, nextStatus, () => ({ scanStartTime: new Date().toISOString() }));
+      updateBookStatus(bookId, 'Scanning Started', () => ({ scanStartTime: new Date().toISOString() }));
+      moveBookDocuments(bookId, 'Scanning Started');
       logAction('Scanning Started', `Scanning process initiated for book.`, { bookId });
       toast({ title: "Scanning Started" });
       return;
@@ -569,7 +567,8 @@ export function AppProvider({
           const otherDocs = prevDocs.filter(d => d.bookId !== bookId);
           return [...otherDocs, ...newDocs];
       });
-      updateBookStatus(bookId, "In Progress", () => ({ scanEndTime: new Date().toISOString() }));
+      updateBookStatus(bookId, "Storage", () => ({ scanEndTime: new Date().toISOString() }));
+      moveBookDocuments(bookId, 'Storage');
       logAction('Scanning Finished', `${pagesToCreate} pages created. Book moved to Storage.`, { bookId });
       toast({ title: "Scanning Complete", description: `${pagesToCreate} pages created.` });
       return;
@@ -580,7 +579,6 @@ export function AppProvider({
   const handleMoveBookToNextStage = (bookId: string, currentStage: string) => {
     const book = rawBooks.find(b => b.id === bookId);
     
-    // This is a special handler for marking checking as complete
     if (currentStage === 'Checking Started') {
         moveBookDocuments(bookId, 'Ready for Processing');
         updateBookStatus(bookId, 'Ready for Processing');
@@ -588,11 +586,20 @@ export function AppProvider({
         toast({ title: "Initial QC Complete", description: 'Book moved to Ready for Processing.' });
         return;
     }
+    
+    if (currentStage === 'Storage') {
+      updateBookStatus(bookId, 'To Indexing');
+      moveBookDocuments(bookId, 'To Indexing');
+      logAction('Workflow Step', `Book "${book?.name}" moved from Storage to To Indexing.`, { bookId });
+      toast({ title: "Workflow Action", description: `Book moved to To Indexing.` });
+      return;
+    }
 
     const nextStage = digitalStageTransitions[currentStage];
     if (!nextStage) return;
 
     moveBookDocuments(bookId, nextStage);
+    updateBookStatus(bookId, nextStage);
     logAction('Workflow Step', `Book "${book?.name}" moved from ${currentStage} to ${nextStage}.`, { bookId });
     toast({ title: "Workflow Action", description: `Book moved to ${nextStage}.` });
   };
@@ -730,7 +737,7 @@ export function AppProvider({
   const handleFinalize = (bookId: string) => {
     const book = rawBooks.find(b => b.id === bookId);
     moveBookDocuments(bookId, 'Archived');
-    updateBookStatus(bookId, 'Complete');
+    updateBookStatus(bookId, 'Archived');
     logAction('Book Archived', `Book "${book?.name}" was finalized and archived.`, { bookId });
     toast({ title: "Book Archived" });
   };
@@ -739,7 +746,7 @@ export function AppProvider({
     const book = rawBooks.find(b => b.id === bookId);
     moveBookDocuments(bookId, 'Corrected');
     updateBookStatus(bookId, 'Corrected');
-    logAction('Marked as Corrected', `Book "${book?.name}" marked as corrected after client rejection.`, { bookId });
+    logAction('Marked as Corrected', `Book "${book.name}" marked as corrected after client rejection.`, { bookId });
     toast({ title: "Book Corrected" });
   };
 
