@@ -29,7 +29,8 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { BookCopy, BarChart2, ListTodo, Package, Send, FileClock, ArrowDownToLine, CheckCheck, TrendingUp, Activity } from "lucide-react"
+import { Separator } from "@/components/ui/separator"
+import { AlertTriangle, BookCopy, BarChart2, ListTodo, Package, Send, FileClock, ArrowDownToLine, CheckCheck, TrendingUp, Activity, UserCheck, ShieldAlert } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import { useMemo } from "react"
 import type { EnrichedBook, EnrichedProject, EnrichedAuditLog } from "@/context/workflow-context"
@@ -45,37 +46,54 @@ import {
 } from "@/components/ui/dialog"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
+const getStatusBadgeVariant = (status: string) => {
+    switch (status) {
+        case 'Complete': return 'default';
+        case 'In Progress': return 'secondary';
+        case 'On Hold': return 'outline';
+        default: return 'outline';
+    }
+}
+
+const DetailItem = ({ label, value }: { label: React.ReactNode; value: React.ReactNode }) => (
+  <div className="flex justify-between items-center">
+    <p className="text-sm text-muted-foreground">{label}</p>
+    <div className="font-medium text-sm text-right">{value}</div>
+  </div>
+);
 
 function ProjectDashboard() {
-    const { projects, selectedProjectId, auditLogs } = useAppContext();
+    const { projects, selectedProjectId, auditLogs, documents } = useAppContext();
     const [chartType, setChartType] = React.useState<'bar' | 'line' | 'area'>('bar');
     const [detailState, setDetailState] = React.useState<{ open: boolean; title: string; items: (EnrichedBook | EnrichedAuditLog)[]; type: 'books' | 'activities' | null; }>({ open: false, title: '', items: [], type: null });
     const [detailFilter, setDetailFilter] = React.useState('');
-
+    
     const project = useMemo(() => {
         if (!selectedProjectId) return null;
         return projects.find(p => p.id === selectedProjectId);
     }, [projects, selectedProjectId]);
-    
+
     const dashboardData = useMemo(() => {
         if (!project) return { kpiData: [], workflowChartData: [], dailyChartData: [], recentActivities: [], booksByStage: {}, allRelevantAuditLogs: [] };
         
-        const projectLogs = auditLogs.filter(log => log.bookId && project.books.some(b => b.id === log.bookId));
         const books = project.books;
-        
+        const projectDocs = documents.filter(doc => doc.projectId === project.id);
+        const projectLogs = auditLogs.filter(log => log.bookId && project.books.some(b => b.id === log.bookId));
+
         const kpiData = [
-            { title: "Total Books", value: books.length.toLocaleString(), icon: BookCopy, description: "All books in this project" },
-            { title: "Pending Shipment", value: books.filter(b => b.status === 'Pending Shipment').length.toLocaleString(), icon: Package, description: "Books waiting to be sent" },
-            { title: "In Transit", value: books.filter(b => b.status === 'In Transit').length.toLocaleString(), icon: Send, description: "Books on their way to us" },
-            { title: "Finalized Books", value: books.filter(b => b.status === 'Finalized').length.toLocaleString(), icon: CheckCheck, description: "Approved and completed books" },
+            { title: "Pending Shipping", value: books.filter(b => b.status === 'Pending Shipment').length.toLocaleString(), icon: Package, description: "Books awaiting client shipment" },
+            { title: "In Transit", value: books.filter(b => b.status === 'In Transit').length.toLocaleString(), icon: Send, description: "Books shipped by the client" },
+            { title: "Received by Us", value: books.filter(b => b.status === 'Received').length.toLocaleString(), icon: ArrowDownToLine, description: "Books confirmed at our facility" },
+            { title: "Pending Client Action", value: books.filter(b => b.status === 'Pending Validation').length.toLocaleString(), icon: UserCheck, description: "Books awaiting client approval" },
+            { title: "Books in Workflow", value: books.filter(b => !['Archived', 'Pending Shipment', 'Finalized', 'Complete'].includes(b.status)).length.toLocaleString(), icon: BookCopy, description: "Active books being processed" },
+            { title: "Finalized Books", value: books.filter(b => b.status === 'Finalized').length.toLocaleString(), icon: CheckCheck, description: "Books that are approved" },
+            { title: "SLA Warning", value: (new Date(project.endDate) < new Date() && project.status === 'In Progress') ? 'Yes' : 'No', icon: AlertTriangle, description: "Project past its due date" },
+            { title: "Document Errors", value: projectDocs.filter(d => d.flag === 'error').length.toLocaleString(), icon: ShieldAlert, description: "Pages flagged with errors" },
+            { title: "Document Warnings", value: projectDocs.filter(d => d.flag === 'warning').length.toLocaleString(), icon: AlertTriangle, description: "Pages flagged with warnings" },
         ];
 
         const orderedStageNames = [
-          'In Transit', 'Received', 'To Scan', 'Scanning Started', 'Storage', 
-          'To Indexing', 'Indexing Started', 'To Checking', 'Checking Started', 
-          'Ready for Processing', 'In Processing', 'Processed', 'Final Quality Control', 
-          'Delivery', 'Pending Validation', 'Client Rejected', 'Corrected', 
-          'Finalized'
+          'In Transit', 'Received', 'To Scan', 'Scanning Started', 'Storage', 'To Indexing', 'Indexing Started', 'To Checking', 'Checking Started', 'Ready for Processing', 'In Processing', 'Processed', 'Final Quality Control', 'Delivery', 'Pending Validation', 'Client Rejected', 'Corrected', 'Finalized'
         ];
         
         const booksByStage: { [key: string]: EnrichedBook[] } = {};
@@ -103,13 +121,31 @@ function ProjectDashboard() {
             ...Object.fromEntries(Object.values(actionsToTrack).map(val => [val, (dailyActivity[dateStr] || {})[val] || 0]))
         }));
         
-        const recentActivities = projectLogs.slice(0, 5);
+        const recentActivities = projectLogs.slice(0, 7);
 
         return { kpiData, workflowChartData, dailyChartData, recentActivities, booksByStage, allRelevantAuditLogs: projectLogs };
-    }, [project, auditLogs]);
+    }, [project, auditLogs, documents]);
+
+    const filteredDialogItems = React.useMemo(() => {
+        if (!detailState.open || !detailFilter) return detailState.items;
+        const query = detailFilter.toLowerCase();
+        if (detailState.type === 'books') return (detailState.items as EnrichedBook[]).filter(b => b.name.toLowerCase().includes(query));
+        if (detailState.type === 'activities') return (detailState.items as EnrichedAuditLog[]).filter(l => l.action.toLowerCase().includes(query) || l.details.toLowerCase().includes(query));
+        return detailState.items;
+    }, [detailState, detailFilter]);
+
+    if (!project) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>No Project Selected</CardTitle>
+                    <CardDescription>Please select a project from the header to view its dashboard.</CardDescription>
+                </CardHeader>
+            </Card>
+        );
+    }
     
     const { kpiData, workflowChartData, dailyChartData, recentActivities, booksByStage, allRelevantAuditLogs } = dashboardData;
-    
     const workflowChartConfig = { count: { label: "Books", color: "hsl(var(--primary))" } } satisfies ChartConfig;
     const ChartComponent = { bar: BarChart, line: LineChart, area: AreaChart }[chartType];
     const ChartElement = {
@@ -131,35 +167,16 @@ function ProjectDashboard() {
         setDetailState({ open: true, title: `Activity for ${format(new Date(fullDate), 'MMMM d, yyyy')}`, items: allRelevantAuditLogs.filter(log => log.date.startsWith(fullDate)), type: 'activities' });
     };
 
-    const filteredDialogItems = React.useMemo(() => {
-        if (!detailState.open || !detailFilter) return detailState.items;
-        const query = detailFilter.toLowerCase();
-        if (detailState.type === 'books') return (detailState.items as EnrichedBook[]).filter(b => b.name.toLowerCase().includes(query));
-        if (detailState.type === 'activities') return (detailState.items as EnrichedAuditLog[]).filter(l => l.action.toLowerCase().includes(query) || l.details.toLowerCase().includes(query));
-        return detailState.items;
-    }, [detailState, detailFilter]);
-
-    if (!project) {
-        return (
-            <Card>
-                <CardHeader>
-                    <CardTitle>No Project Selected</CardTitle>
-                    <CardDescription>Please select a project from the header to view its dashboard.</CardDescription>
-                </CardHeader>
-            </Card>
-        );
-    }
-
     return (
         <>
-            <div className="space-y-6">
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    {kpiData.map((kpi) => (
-                        <Card key={kpi.title}><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">{kpi.title}</CardTitle><kpi.icon className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{kpi.value}</div><p className="text-xs text-muted-foreground">{kpi.description}</p></CardContent></Card>
-                    ))}
-                </div>
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                    <Card className="lg:col-span-3">
+            <div className="grid lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 space-y-6">
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {kpiData.map((kpi) => (
+                            <Card key={kpi.title}><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">{kpi.title}</CardTitle><kpi.icon className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{kpi.value}</div><p className="text-xs text-muted-foreground">{kpi.description}</p></CardContent></Card>
+                        ))}
+                    </div>
+                    <Card>
                         <CardHeader className="flex flex-row items-start justify-between">
                             <div>
                                 <CardTitle className="font-headline flex items-center gap-2"><BarChart2 className="h-5 w-5"/> Workflow State</CardTitle>
@@ -175,20 +192,38 @@ function ProjectDashboard() {
                             </ChartContainer>
                         </CardContent>
                     </Card>
-                    <Card className="lg:col-span-2">
-                        <CardHeader><CardTitle className="font-headline flex items-center gap-2"><TrendingUp className="h-5 w-5"/> Daily Throughput</CardTitle><CardDescription>Key stage completions over the last 7 days.</CardDescription></CardHeader>
-                        <CardContent>
-                            <ChartContainer config={dailyChartConfig} className="h-[300px] w-full cursor-pointer">
-                                <LineChart data={dailyChartData} margin={{ left: 12, right: 12 }} onClick={handleDailyChartClick}>
-                                    <CartesianGrid vertical={false} /><XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} /><YAxis allowDecimals={false} /><ChartTooltip content={<ChartTooltipContent indicator="dot" />} /><ChartLegend content={<ChartLegendContent />} />{Object.keys(dailyChartConfig).map((key) => (<Line key={key} dataKey={key} type="monotone" stroke={`var(--color-${key})`} strokeWidth={2} dot={false} />))}
-                                </LineChart>
-                            </ChartContainer>
-                        </CardContent>
-                    </Card>
+                    <Card><CardHeader><CardTitle className="font-headline flex items-center gap-2"><ListTodo className="h-5 w-5" /> Book Progress</CardTitle><CardDescription>Detailed progress for each book in the project.</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Book Name</TableHead><TableHead>Status</TableHead><TableHead className="w-[150px]">Progress</TableHead></TableRow></TableHeader><TableBody>{project.books.length > 0 ? project.books.slice(0, 10).map(book => (<TableRow key={book.id}><TableCell className="font-medium"><Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link></TableCell><TableCell><Badge variant="outline">{book.status}</Badge></TableCell><TableCell><Progress value={book.progress} className="h-2"/></TableCell></TableRow>)) : <TableRow><TableCell colSpan={3} className="h-24 text-center">No books in this project.</TableCell></TableRow>}</TableBody></Table></CardContent></Card>
                 </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <Card><CardHeader><CardTitle className="font-headline flex items-center gap-2"><ListTodo className="h-5 w-5" /> Book Progress</CardTitle><CardDescription>Detailed progress for each book in the project.</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Book Name</TableHead><TableHead>Status</TableHead><TableHead className="w-[150px]">Progress</TableHead></TableRow></TableHeader><TableBody>{project.books.slice(0, 10).map(book => (<TableRow key={book.id}><TableCell className="font-medium"><Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link></TableCell><TableCell><Badge variant="outline">{book.status}</Badge></TableCell><TableCell><Progress value={book.progress} className="h-2"/></TableCell></TableRow>))}</TableBody></Table></CardContent></Card>
-                    <Card><CardHeader><CardTitle className="font-headline flex items-center gap-2"><Activity className="h-5 w-5" /> Recent Activity</CardTitle><CardDescription>Latest actions performed in this project.</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Details</TableHead><TableHead>User</TableHead><TableHead>Date</TableHead></TableRow></TableHeader><TableBody>{recentActivities.length > 0 ? recentActivities.map(activity => (<TableRow key={activity.id}><TableCell><Link href={`/books/${activity.bookId}`} className="font-medium truncate hover:underline">{activity.action}</Link><div className="text-xs text-muted-foreground truncate">{activity.details}</div></TableCell><TableCell>{activity.user}</TableCell><TableCell className="text-xs">{new Date(activity.date).toLocaleString()}</TableCell></TableRow>)) : (<TableRow><TableCell colSpan={3} className="h-24 text-center">No recent activity for this project.</TableCell></TableRow>)}</TableBody></Table></CardContent></Card>
+                <div className="lg:col-span-1 space-y-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Project Details</CardTitle>
+                            <CardDescription>At-a-glance information about this project.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <DetailItem label="Client" value={<Link href={`/clients`} className="hover:underline">{project.clientName}</Link>} />
+                            <DetailItem label="Status" value={<Badge variant={getStatusBadgeVariant(project.status)}>{project.status}</Badge>} />
+                            <Separator/>
+                            <DetailItem label="Budget" value={`$${project.budget.toLocaleString()}`} />
+                            <DetailItem label="Timeline" value={`${project.startDate} to ${project.endDate}`} />
+                            <Separator/>
+                            <DetailItem label="Total Pages" value={`${project.documentCount.toLocaleString()} / ${project.totalExpected.toLocaleString()}`} />
+                            <Progress value={project.progress} />
+                            {project.info && (
+                                <>
+                                <Separator/>
+                                <div className="pt-2">
+                                    <p className="text-sm text-muted-foreground">Additional Info</p>
+                                    <p className="text-sm font-medium whitespace-pre-wrap">{project.info}</p>
+                                </div>
+                                </>
+                            )}
+                        </CardContent>
+                         <CardFooter>
+                            <Button asChild variant="outline" className="w-full"><Link href={`/projects/${project.id}`}>View Full Project Details</Link></Button>
+                         </CardFooter>
+                    </Card>
+                    <Card><CardHeader><CardTitle className="font-headline flex items-center gap-2"><Activity className="h-5 w-5" /> Recent Activity</CardTitle><CardDescription>Latest actions performed in this project.</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Details</TableHead><TableHead>User</TableHead><TableHead className="text-right">Date</TableHead></TableRow></TableHeader><TableBody>{recentActivities.length > 0 ? recentActivities.map(activity => (<TableRow key={activity.id}><TableCell><Link href={`/books/${activity.bookId}`} className="font-medium truncate hover:underline">{activity.action}</Link><div className="text-xs text-muted-foreground truncate">{activity.details}</div></TableCell><TableCell>{activity.user}</TableCell><TableCell className="text-xs text-right">{new Date(activity.date).toLocaleDateString()}</TableCell></TableRow>)) : (<TableRow><TableCell colSpan={3} className="h-24 text-center">No recent activity for this project.</TableCell></TableRow>)}</TableBody></Table></CardContent></Card>
                 </div>
             </div>
             <Dialog open={detailState.open} onOpenChange={handleCloseDetailDialog}><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>{detailState.title}</DialogTitle><DialogDescription>Showing {filteredDialogItems.length} of {detailState.items.length} total items.</DialogDescription></DialogHeader><div className="py-2"><Input placeholder={detailState.type === 'books' ? "Filter by book name..." : "Filter by action, details, or user..."} value={detailFilter} onChange={(e) => setDetailFilter(e.target.value)} /></div><div className="max-h-[60vh] overflow-y-auto pr-4">{filteredDialogItems.length > 0 ? (<>{detailState.type === 'books' && (<Table><TableHeader><TableRow><TableHead>Book Name</TableHead><TableHead>Project</TableHead><TableHead>Client</TableHead></TableRow></TableHeader><TableBody>{(filteredDialogItems as EnrichedBook[]).map(book => (<TableRow key={book.id}><TableCell className="font-medium"><Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link></TableCell><TableCell>{book.projectName}</TableCell><TableCell>{book.clientName}</TableCell></TableRow>))}</TableBody></Table>)}{detailState.type === 'activities' && (<Table><TableHeader><TableRow><TableHead>Action</TableHead><TableHead>Details</TableHead><TableHead>User</TableHead><TableHead>Time</TableHead></TableRow></TableHeader><TableBody>{(filteredDialogItems as EnrichedAuditLog[]).map(log => (<TableRow key={log.id}><TableCell className="font-medium">{log.action}</TableCell><TableCell>{log.details}</TableCell><TableCell>{log.user}</TableCell><TableCell>{new Date(log.date).toLocaleTimeString()}</TableCell></TableRow>))}</TableBody></Table>)}</>) : (<div className="text-center py-10 text-muted-foreground"><p>No items match your filter.</p></div>)}</div></DialogContent></Dialog>
