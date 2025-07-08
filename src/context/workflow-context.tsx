@@ -101,6 +101,7 @@ type AppContextType = {
   // Workflow Actions
   getNextEnabledStage: (currentStage: string, workflow: string[]) => string | null;
   handleMarkAsShipped: (bookIds: string[]) => void;
+  handleConfirmReception: (bookId: string, payload?: { actualPageCount: number }) => void;
   handleBookAction: (bookId: string, currentStatus: string, payload?: { actualPageCount?: number }) => void;
   handleMoveBookToNextStage: (bookId: string, currentStatus: string) => void;
   handleAssignUser: (bookId: string, userId: string, role: 'scanner' | 'indexer' | 'qc') => void;
@@ -381,6 +382,9 @@ export function AppProvider({
   const addProject = (projectData: Omit<Project, 'id'>) => {
     const newProjectData: Project = { id: `proj_${Date.now()}`, ...projectData };
     setRawProjects(prev => [...prev, newProjectData]);
+    // Assign a default full workflow to the new project
+    const defaultWorkflow = WORKFLOW_SEQUENCE;
+    setProjectWorkflows(prev => ({...prev, [newProjectData.id]: defaultWorkflow }));
     logAction('Project Created', `New project "${newProjectData.name}" added.`, {});
     toast({ title: "Project Added", description: `Project "${newProjectData.name}" has been created.` });
   };
@@ -587,18 +591,70 @@ export function AppProvider({
     toast({ title: `${bookIds.length} Book(s) Marked as Shipped` });
   };
 
-  const handleBookAction = (bookId: string, currentStatus: string, payload?: { actualPageCount?: number }) => {
+  const handleConfirmReception = (bookId: string, payload?: { actualPageCount: number }) => {
     const book = rawBooks.find(b => b.id === bookId);
-    if (!book) return;
+    if (!book || !book.projectId) return;
 
-    if(currentStatus === 'In Transit') {
-        const newStatus = 'Received';
+    const workflow = projectWorkflows[book.projectId] || [];
+    const isScanningEnabled = workflow.includes('assign-scanner');
+
+    if (isScanningEnabled) {
+        // Simple case: move to "Received" status, which is the status for the "assign-scanner" stage
+        const newStatus = STAGE_CONFIG['assign-scanner'].dataStatus!;
         updateBookStatus(bookId, newStatus);
         moveBookDocuments(bookId, newStatus);
-        logAction('Reception Confirmed', `Book "${book?.name}" has been marked as received.`, { bookId });
+        logAction('Reception Confirmed', `Book "${book.name}" has been marked as received.`, { bookId });
         toast({ title: "Reception Confirmed" });
-        return;
+    } else {
+        // Complex case: bypass scanning, create documents, move to "Storage"
+        if (!payload) {
+             toast({ title: "Error", description: "File count is missing for direct-to-storage action.", variant: "destructive" });
+             return;
+        }
+
+        const project = rawProjects.find(p => p.id === book.projectId);
+        const client = clients.find(c => c.id === project?.clientId);
+        if (!project || !client) return;
+
+        const pagesToCreate = payload.actualPageCount;
+
+        const newDocs: AppDocument[] = Array.from({ length: pagesToCreate }).map((_, i) => {
+            const pageName = `${book.name} - Page ${i + 1}`;
+            return {
+                id: `doc_${book.id}_${i + 1}`,
+                name: pageName,
+                clientId: client.id,
+                client: client.name,
+                status: 'Storage',
+                statusId: 'ds_4',
+                type: 'Scanned Page',
+                lastUpdated: new Date().toISOString().slice(0, 10),
+                tags: [],
+                folderId: null,
+                projectId: book.projectId,
+                bookId: book.id,
+                flag: null,
+                imageUrl: `https://dummyimage.com/400x550/e0e0e0/5c5c5c.png&text=${encodeURIComponent(pageName)}`
+            };
+        });
+
+        setDocuments(prevDocs => {
+            const otherDocs = prevDocs.filter(d => d.bookId !== bookId);
+            return [...otherDocs, ...newDocs];
+        });
+        
+        const newStatus = STAGE_CONFIG['storage'].dataStatus!;
+        updateBookStatus(bookId, newStatus, () => ({ scanEndTime: new Date().toISOString() })); // Mark scan as 'complete' even if skipped
+        moveBookDocuments(bookId, newStatus);
+        logAction('Reception & Scan Skipped', `${pagesToCreate} pages created. Book "${book.name}" moved directly to Storage.`, { bookId });
+        toast({ title: "Reception Confirmed & Scanning Bypassed" });
     }
+  };
+
+
+  const handleBookAction = (bookId: string, currentStatus: string, payload?: { actualPageCount?: number }) => {
+    const book = rawBooks.find(b => b.id === bookId);
+    if (!book || !book.projectId) return;
 
     if (currentStatus === 'Scanning Started') {
       const project = rawProjects.find(p => p.id === book.projectId);
@@ -632,7 +688,7 @@ export function AppProvider({
           return [...otherDocs, ...newDocs];
       });
       const workflow = projectWorkflows[project.id] || [];
-      const nextStage = getNextEnabledStage('scanning-started', workflow) || 'Storage'; // Fallback
+      const nextStage = getNextEnabledStage('scanning-started', workflow) || 'storage'; // Fallback
       const newStatus = STAGE_CONFIG[nextStage]?.dataStatus || STAGE_CONFIG[nextStage]?.dataStage || 'Storage';
       updateBookStatus(bookId, newStatus, () => ({ scanEndTime: new Date().toISOString() }));
       moveBookDocuments(bookId, newStatus);
@@ -1016,6 +1072,7 @@ export function AppProvider({
     tagPageForRejection, clearPageRejectionTags,
     getNextEnabledStage,
     handleMarkAsShipped,
+    handleConfirmReception,
     handleBookAction, handleMoveBookToNextStage, handleClientAction,
     handleFinalize, handleMarkAsCorrected, handleResubmit,
     addPageToBook, deletePageFromBook, updateDocumentStatus,

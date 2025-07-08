@@ -110,7 +110,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     books, documents, handleBookAction, handleMoveBookToNextStage, 
     updateDocumentStatus, currentUser, users, permissions,
     handleStartTask, handleAssignUser, handleStartProcessing, handleCancelTask,
-    selectedProjectId, projectWorkflows
+    selectedProjectId, projectWorkflows, handleConfirmReception
   } = useAppContext();
 
   const { toast } = useToast();
@@ -347,8 +347,11 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
   const handleConfirmScan = () => {
     if (scanState.book) {
-      // Pass the current stage to handleBookAction to allow for dynamic next-stage lookup
-      handleBookAction(scanState.book.id, stage, { actualPageCount: scanState.fileCount ?? 0 });
+      if (stage === 'scanning-started') {
+        handleBookAction(scanState.book.id, stage, { actualPageCount: scanState.fileCount ?? 0 });
+      } else if (stage === 'confirm-reception') {
+        handleConfirmReception(scanState.book.id, { actualPageCount: scanState.fileCount ?? 0 });
+      }
       closeScanningDialog();
     }
   };
@@ -421,7 +424,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         case 'confirm-reception':
             const isScanningEnabled = workflow.includes('assign-scanner');
             if (isScanningEnabled) {
-              handleBookAction(item.id, stage);
+              handleConfirmReception(item.id);
             } else {
               setScanState({ open: true, book: item, folderName: null, fileCount: null });
             }
