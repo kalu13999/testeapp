@@ -99,7 +99,7 @@ type AppContextType = {
   handleBookAction: (bookId: string, currentStatus: string, payload?: { actualPageCount?: number }) => void;
   handleMoveBookToNextStage: (bookId: string, currentStage: string) => void;
   handleAssignUser: (bookId: string, userId: string, role: 'scanner' | 'indexer' | 'qc') => void;
-  handleStartTask: (bookId: string, role: 'indexing' | 'qc') => void;
+  handleStartTask: (bookId: string, role: 'scanner' | 'indexing' | 'qc') => void;
   handleCancelTask: (bookId: string, currentStatus: string) => void;
   handleAdminStatusOverride: (bookId: string, newStatus: string, reason: string) => void;
   handleStartProcessing: (bookId: string) => void;
@@ -523,17 +523,10 @@ export function AppProvider({
 
     if(currentStatus === 'In Transit') {
         updateBookStatus(bookId, "Received");
+        moveBookDocuments(bookId, "Received");
         logAction('Reception Confirmed', `Book "${book?.name}" has been marked as received.`, { bookId });
         toast({ title: "Reception Confirmed" });
         return;
-    }
-    
-    if (currentStatus === 'To Scan') {
-      updateBookStatus(bookId, 'Scanning Started', () => ({ scanStartTime: new Date().toISOString() }));
-      moveBookDocuments(bookId, 'Scanning Started');
-      logAction('Scanning Started', `Scanning process initiated for book.`, { bookId });
-      toast({ title: "Scanning Started" });
-      return;
     }
 
     if (currentStatus === 'Scanning Started') {
@@ -627,11 +620,16 @@ export function AppProvider({
     }
   };
 
-  const handleStartTask = (bookId: string, role: 'indexing' | 'qc') => {
+  const handleStartTask = (bookId: string, role: 'scanner' | 'indexing' | 'qc') => {
     const book = rawBooks.find(b => b.id === bookId);
     if (!book) return;
-    
-    if (role === 'indexing') {
+
+    if (role === 'scanner') {
+        updateBookStatus(bookId, 'Scanning Started', () => ({ scanStartTime: new Date().toISOString() }));
+        moveBookDocuments(bookId, 'Scanning Started');
+        logAction('Scanning Started', `Scanning process initiated for book.`, { bookId });
+        toast({ title: "Scanning Started" });
+    } else if (role === 'indexing') {
         updateBookStatus(bookId, 'Indexing Started', () => ({ indexingStartTime: new Date().toISOString() }));
         moveBookDocuments(bookId, 'Indexing Started');
         logAction('Indexing Started', `Indexing started for book "${book.name}".`, { bookId });
@@ -642,7 +640,7 @@ export function AppProvider({
         logAction('Checking Started', `Initial QC started for book "${book.name}".`, { bookId });
         toast({ title: "Checking Started" });
     }
-  }
+  };
 
   const handleCancelTask = (bookId: string, currentStatus: string) => {
     const book = rawBooks.find(b => b.id === bookId);
