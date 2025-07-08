@@ -133,6 +133,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const allDisplayItems = React.useMemo(() => {
     let items: (EnrichedBook | AppDocument)[];
     
+    // Base filtering by stage status
     if (dataType === 'book' && dataStatus) {
       items = books.filter(book => book.status === dataStatus);
     } else if (dataType === 'document' && dataStage) {
@@ -141,21 +142,12 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
       items = [];
     }
 
-    if (currentUser && config.assigneeRole && currentUser.role !== 'Admin' && dataStatus) {
-        const stageConfig = Object.values(STAGE_CONFIG).find(sc => sc.dataStatus === dataStatus);
-        const stageKey = Object.keys(STAGE_CONFIG).find(key => STAGE_CONFIG[key] === stageConfig);
-        const requiredPermission = stageKey ? `/workflow/${stageKey}` : '';
-
-        const userPermissions = permissions[currentUser.role] || [];
-        const canAccessStage = userPermissions.includes('*') || userPermissions.includes(requiredPermission);
-        
-        if (canAccessStage) {
-          items = (items as EnrichedBook[]).filter(book => (book as any)[`${config.assigneeRole}UserId`] === currentUser.id);
-        } else {
-          items = [];
-        }
+    // Further filter for personal queues if the user is not an Admin
+    if (currentUser && config.assigneeRole && currentUser.role !== 'Admin' && dataType === 'book') {
+        items = (items as EnrichedBook[]).filter(book => (book as any)[`${config.assigneeRole}UserId`] === currentUser.id);
     }
 
+    // Add assigneeName for Admin display
     if (dataType === 'book' && config.assigneeRole) {
       return (items as EnrichedBook[]).map(book => {
         let assigneeName = '—';
@@ -173,7 +165,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     }
 
     return items;
-  }, [books, documents, dataType, dataStatus, dataStage, currentUser, stage, permissions, config.assigneeRole, users]);
+  }, [books, documents, dataType, dataStatus, dataStage, currentUser, stage, config.assigneeRole, users]);
 
   const handleColumnFilterChange = (columnId: string, value: string) => {
     setColumnFilters(prev => ({ ...prev, [columnId]: value }));
@@ -458,17 +450,6 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         // Check if the primary action is to assign a user
         if (stageConfig?.assigneeRole) {
             openAssignmentDialog(book, stageConfig.assigneeRole);
-            return;
-        }
-
-        if (stage === 'indexing-started') {
-            openConfirmationDialog({
-                title: 'Complete Indexing?',
-                description: `This will mark indexing as complete for "${book.name}" and open the dialog to assign a QC specialist.`,
-                onConfirm: () => {
-                    openAssignmentDialog(book, 'qc');
-                }
-            });
             return;
         }
         
@@ -936,5 +917,3 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     </>
   )
 }
-
-    
