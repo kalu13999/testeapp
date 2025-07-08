@@ -11,6 +11,7 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart"
 import * as React from "react"
+import * as XLSX from 'xlsx';
 import {
   Table,
   TableBody,
@@ -31,7 +32,7 @@ import {
 } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
-import { AlertTriangle, BookCopy, BarChart2, ListTodo, Package, Send, FileClock, ArrowDownToLine, CheckCheck, TrendingUp, Activity, UserCheck, ShieldAlert } from "lucide-react"
+import { AlertTriangle, BookCopy, BarChart2, ListTodo, Package, Send, FileClock, ArrowDownToLine, CheckCheck, TrendingUp, Activity, UserCheck, ShieldAlert, Download, ChevronsUpDown, ArrowUp, ArrowDown } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import { useMemo } from "react"
 import type { EnrichedBook, EnrichedProject, EnrichedAuditLog, AppDocument } from "@/context/workflow-context"
@@ -46,6 +47,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useToast } from "@/hooks/use-toast";
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
 const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -65,9 +69,22 @@ const DetailItem = ({ label, value }: { label: React.ReactNode; value: React.Rea
 
 function ProjectDashboard() {
     const { projects, selectedProjectId, auditLogs, documents } = useAppContext();
+    const { toast } = useToast();
     const [chartType, setChartType] = React.useState<'bar' | 'line' | 'area'>('bar');
     const [detailState, setDetailState] = React.useState<{ open: boolean; title: string; items: (EnrichedBook | EnrichedAuditLog)[]; type: 'books' | 'activities' | null; }>({ open: false, title: '', items: [], type: null });
     const [detailFilter, setDetailFilter] = React.useState('');
+    
+    const ITEMS_PER_PAGE = 5;
+
+    // State for Book Progress Table
+    const [bookSorting, setBookSorting] = React.useState<{ id: string; desc: boolean }[]>([{ id: 'name', desc: false }]);
+    const [bookColumnFilters, setBookColumnFilters] = React.useState<{ [key: string]: string }>({});
+    const [bookCurrentPage, setBookCurrentPage] = React.useState(1);
+
+    // State for Recent Activity Table
+    const [activitySorting, setActivitySorting] = React.useState<{ id: string; desc: boolean }[]>([{ id: 'date', desc: true }]);
+    const [activityColumnFilters, setActivityColumnFilters] = React.useState<{ [key: string]: string }>({});
+    const [activityCurrentPage, setActivityCurrentPage] = React.useState(1);
     
     const project = useMemo(() => {
         if (!selectedProjectId) return null;
@@ -83,7 +100,7 @@ function ProjectDashboard() {
     }, [detailState.items, detailState.type, detailFilter, detailState.open]);
 
     const dashboardData = useMemo(() => {
-        if (!project) return { kpiData: [], workflowChartData: [], dailyChartData: [], recentActivities: [], booksByStage: {}, allRelevantAuditLogs: [] };
+        if (!project) return { kpiData: [], workflowChartData: [], dailyChartData: [], projectBooks: [], projectLogs: [], booksByStage: {}, allRelevantAuditLogs: [] };
         
         const books = project.books;
         const projectDocs = documents.filter(doc => doc.projectId === project.id);
@@ -143,10 +160,93 @@ function ProjectDashboard() {
             ...Object.fromEntries(Object.values(actionsToTrack).map(val => [val, (dailyActivity[dateStr] || {})[val] || 0]))
         }));
         
-        const recentActivities = projectLogs.slice(0, 7);
-
-        return { kpiData, workflowChartData, dailyChartData, recentActivities, booksByStage, allRelevantAuditLogs: projectLogs };
+        return { kpiData, workflowChartData, dailyChartData, projectBooks: books, projectLogs, booksByStage, allRelevantAuditLogs: projectLogs };
     }, [project, auditLogs, documents]);
+
+    const { kpiData, workflowChartData, dailyChartData, projectBooks, projectLogs } = dashboardData;
+
+    // --- Books Table Logic ---
+    const sortedAndFilteredBooks = React.useMemo(() => {
+        let filtered = projectBooks || [];
+        Object.entries(bookColumnFilters).forEach(([columnId, value]) => {
+            if (value) filtered = filtered.filter(b => String(b[columnId as keyof EnrichedBook]).toLowerCase().includes(value.toLowerCase()));
+        });
+        if (bookSorting.length > 0) {
+            filtered.sort((a, b) => {
+                for (const s of bookSorting) {
+                    const valA = a[s.id as keyof EnrichedBook];
+                    const valB = b[s.id as keyof EnrichedBook];
+                    const result = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' });
+                    if (result !== 0) return s.desc ? -result : result;
+                }
+                return 0;
+            });
+        }
+        return filtered;
+    }, [projectBooks, bookColumnFilters, bookSorting]);
+    const paginatedBooks = sortedAndFilteredBooks.slice((bookCurrentPage - 1) * ITEMS_PER_PAGE, bookCurrentPage * ITEMS_PER_PAGE);
+
+    // --- Activity Table Logic ---
+    const sortedAndFilteredActivities = React.useMemo(() => {
+        let filtered = projectLogs || [];
+        Object.entries(activityColumnFilters).forEach(([columnId, value]) => {
+            if (value) filtered = filtered.filter(l => String(l[columnId as keyof EnrichedAuditLog]).toLowerCase().includes(value.toLowerCase()));
+        });
+        if (activitySorting.length > 0) {
+            filtered.sort((a, b) => {
+                for (const s of activitySorting) {
+                    const valA = a[s.id as keyof EnrichedAuditLog];
+                    const valB = b[s.id as keyof EnrichedAuditLog];
+                    const result = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' });
+                    if (result !== 0) return s.desc ? -result : result;
+                }
+                return 0;
+            });
+        }
+        return filtered;
+    }, [projectLogs, activityColumnFilters, activitySorting]);
+    const paginatedActivities = sortedAndFilteredActivities.slice((activityCurrentPage - 1) * ITEMS_PER_PAGE, activityCurrentPage * ITEMS_PER_PAGE);
+
+    // --- Generic Table Helpers ---
+    const handleSort = (columnId: string, sorting: any[], setSorting: Function, setCurrentPage: Function) => {
+        setCurrentPage(1);
+        setSorting((currentSorting: any[]) => {
+            if (currentSorting.length === 1 && currentSorting[0].id === columnId) {
+                if (currentSorting[0].desc) return [];
+                return [{ id: columnId, desc: true }];
+            }
+            return [{ id: columnId, desc: false }];
+        });
+    };
+    const getSortIndicator = (columnId: string, sorting: any[]) => {
+        const sort = sorting.find(s => s.id === columnId);
+        if (!sort) return <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-0 group-hover:opacity-50" />;
+        return sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />;
+    };
+    const PaginationNav = ({ totalPages, currentPage, setCurrentPage }: { totalPages: number; currentPage: number; setCurrentPage: Function; }) => {
+        if (totalPages <= 1) return null;
+        return ( <Pagination> <PaginationContent> <PaginationItem><PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setCurrentPage((p: number) => Math.max(1, p - 1)); }} className={currentPage === 1 ? "pointer-events-none opacity-50" : undefined}/></PaginationItem> <PaginationItem><PaginationLink href="#" isActive>{currentPage} of {totalPages}</PaginationLink></PaginationItem> <PaginationItem><PaginationNext href="#" onClick={(e) => { e.preventDefault(); setCurrentPage((p: number) => Math.min(totalPages, p + 1)); }} className={currentPage === totalPages ? "pointer-events-none opacity-50" : undefined}/></PaginationItem> </PaginationContent> </Pagination> );
+    };
+    const downloadFile = (content: string, fileName: string, mimeType: string) => {
+        const blob = new Blob([content], { type: mimeType });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+    const exportXLSX = (data: any[], filename: string) => {
+        if (data.length === 0) return;
+        const worksheet = XLSX.utils.json_to_sheet(data);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Data");
+        XLSX.writeFile(workbook, filename);
+        toast({ title: "Export Successful", description: `${data.length} items exported as XLSX.` });
+    }
+    const exportJSON = (data: any[], filename: string) => { if(data.length === 0) return; downloadFile(JSON.stringify(data, null, 2), filename, 'application/json'); toast({ title: "Export Successful", description: `${data.length} items exported as JSON.` }); };
+    const exportCSV = (data: any[], headers: string[], filename: string) => { if (data.length === 0) return; const csvContent = [headers.join(','), ...data.map(item => headers.map(header => { let value = item[header as keyof typeof item] ?? ''; if (typeof value === 'string' && value.includes(',')) return `"${value.replace(/"/g, '""')}"`; return value; }).join(','))].join('\n'); downloadFile(csvContent, filename, 'text/csv;charset=utf-8;'); toast({ title: "Export Successful", description: `${data.length} items exported as CSV.` }); };
 
     const handleKpiClick = (kpi: typeof dashboardData.kpiData[0]) => {
         if (!kpi.items || kpi.items.length === 0 || !kpi.type) return;
@@ -182,7 +282,6 @@ function ProjectDashboard() {
         );
     }
     
-    const { kpiData, workflowChartData, dailyChartData, recentActivities } = dashboardData;
     const workflowChartConfig = { count: { label: "Books", color: "hsl(var(--primary))" } } satisfies ChartConfig;
     const ChartComponent = { bar: BarChart, line: LineChart, area: AreaChart }[chartType];
     const ChartElement = {
@@ -278,8 +377,42 @@ function ProjectDashboard() {
                 </Card>
                 
                 <div className="grid grid-cols-1 gap-6">
-                    <Card><CardHeader><CardTitle className="font-headline flex items-center gap-2"><ListTodo className="h-5 w-5" /> Book Progress</CardTitle><CardDescription>Detailed progress for each book in the project.</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Book Name</TableHead><TableHead>Status</TableHead><TableHead className="w-[150px]">Progress</TableHead></TableRow></TableHeader><TableBody>{project.books.length > 0 ? project.books.slice(0, 10).map(book => (<TableRow key={book.id}><TableCell className="font-medium"><Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link></TableCell><TableCell><Badge variant="outline">{book.status}</Badge></TableCell><TableCell><Progress value={book.progress} className="h-2"/></TableCell></TableRow>)) : <TableRow><TableCell colSpan={3} className="h-24 text-center">No books in this project.</TableCell></TableRow>}</TableBody></Table></CardContent></Card>
-                    <Card><CardHeader><CardTitle className="font-headline flex items-center gap-2"><Activity className="h-5 w-5" /> Recent Activity</CardTitle><CardDescription>Latest actions performed in this project.</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Details</TableHead><TableHead>User</TableHead><TableHead className="text-right">Date</TableHead></TableRow></TableHeader><TableBody>{recentActivities.length > 0 ? recentActivities.map(activity => (<TableRow key={activity.id}><TableCell><Link href={`/books/${activity.bookId}`} className="font-medium truncate hover:underline">{activity.action}</Link><div className="text-xs text-muted-foreground truncate">{activity.details}</div></TableCell><TableCell>{activity.user}</TableCell><TableCell className="text-xs text-right">{new Date(activity.date).toLocaleDateString()}</TableCell></TableRow>)) : (<TableRow><TableCell colSpan={3} className="h-24 text-center">No recent activity for this project.</TableCell></TableRow>)}</TableBody></Table></CardContent></Card>
+                    <Card>
+                        <CardHeader className="flex items-center justify-between">
+                            <div><CardTitle className="font-headline flex items-center gap-2"><ListTodo className="h-5 w-5" /> Book Progress</CardTitle><CardDescription>Detailed progress for each book in the project.</CardDescription></div>
+                            <DropdownMenu><DropdownMenuTrigger asChild><Button size="sm" variant="outline" className="h-9 gap-1"><Download className="h-3.5 w-3.5" /><span>Export</span></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuLabel>Export All ({sortedAndFilteredBooks.length})</DropdownMenuLabel><DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredBooks, 'project_books.xlsx')}>Export as XLSX</DropdownMenuItem><DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredBooks, 'project_books.json')}>Export as JSON</DropdownMenuItem><DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredBooks, ['name', 'status', 'progress'], 'project_books.csv')}>Export as CSV</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow><TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name', bookSorting, setBookSorting, setBookCurrentPage)}>Book Name {getSortIndicator('name', bookSorting)}</div></TableHead><TableHead className="w-40"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('status', bookSorting, setBookSorting, setBookCurrentPage)}>Status {getSortIndicator('status', bookSorting)}</div></TableHead><TableHead className="w-48"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('progress', bookSorting, setBookSorting, setBookCurrentPage)}>Progress {getSortIndicator('progress', bookSorting)}</div></TableHead></TableRow>
+                                    <TableRow><TableHead><Input placeholder="Filter name..." value={bookColumnFilters['name'] || ''} onChange={e => setBookColumnFilters(p => ({...p, name: e.target.value}))} className="h-8"/></TableHead><TableHead><Input placeholder="Filter status..." value={bookColumnFilters['status'] || ''} onChange={e => setBookColumnFilters(p => ({...p, status: e.target.value}))} className="h-8"/></TableHead><TableHead/></TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {paginatedBooks.length > 0 ? paginatedBooks.map(book => (<TableRow key={book.id}><TableCell className="font-medium"><Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link></TableCell><TableCell><Badge variant="outline">{book.status}</Badge></TableCell><TableCell><Progress value={book.progress} className="h-2"/></TableCell></TableRow>)) : <TableRow><TableCell colSpan={3} className="h-24 text-center">No books match your filters.</TableCell></TableRow>}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                        <CardFooter className="justify-end"><PaginationNav totalPages={Math.ceil(sortedAndFilteredBooks.length/ITEMS_PER_PAGE)} currentPage={bookCurrentPage} setCurrentPage={setBookCurrentPage} /></CardFooter>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex items-center justify-between">
+                            <div><CardTitle className="font-headline flex items-center gap-2"><Activity className="h-5 w-5" /> Recent Activity</CardTitle><CardDescription>Latest actions performed in this project.</CardDescription></div>
+                            <DropdownMenu><DropdownMenuTrigger asChild><Button size="sm" variant="outline" className="h-9 gap-1"><Download className="h-3.5 w-3.5" /><span>Export</span></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuLabel>Export All ({sortedAndFilteredActivities.length})</DropdownMenuLabel><DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredActivities, 'project_activity.xlsx')}>Export as XLSX</DropdownMenuItem><DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredActivities, 'project_activity.json')}>Export as JSON</DropdownMenuItem><DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredActivities, ['action', 'details', 'user', 'date'], 'project_activity.csv')}>Export as CSV</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow><TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('action', activitySorting, setActivitySorting, setActivityCurrentPage)}>Action {getSortIndicator('action', activitySorting)}</div></TableHead><TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('user', activitySorting, setActivitySorting, setActivityCurrentPage)}>User {getSortIndicator('user', activitySorting)}</div></TableHead><TableHead className="w-48"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('date', activitySorting, setActivitySorting, setActivityCurrentPage)}>Date {getSortIndicator('date', activitySorting)}</div></TableHead></TableRow>
+                                    <TableRow><TableHead><Input placeholder="Filter action..." value={activityColumnFilters['action'] || ''} onChange={e => setActivityColumnFilters(p => ({...p, action: e.target.value}))} className="h-8"/></TableHead><TableHead><Input placeholder="Filter user..." value={activityColumnFilters['user'] || ''} onChange={e => setActivityColumnFilters(p => ({...p, user: e.target.value}))} className="h-8"/></TableHead><TableHead/></TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {paginatedActivities.length > 0 ? paginatedActivities.map(activity => (<TableRow key={activity.id}><TableCell><Link href={`/books/${activity.bookId}`} className="font-medium truncate hover:underline">{activity.action}</Link><div className="text-xs text-muted-foreground truncate">{activity.details}</div></TableCell><TableCell>{activity.user}</TableCell><TableCell className="text-xs">{new Date(activity.date).toLocaleString()}</TableCell></TableRow>)) : <TableRow><TableCell colSpan={3} className="h-24 text-center">No recent activity for this project.</TableCell></TableRow>}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                         <CardFooter className="justify-end"><PaginationNav totalPages={Math.ceil(sortedAndFilteredActivities.length/ITEMS_PER_PAGE)} currentPage={activityCurrentPage} setCurrentPage={setActivityCurrentPage} /></CardFooter>
+                    </Card>
                 </div>
             </div>
             <Dialog open={detailState.open} onOpenChange={handleCloseDetailDialog}><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>{detailState.title}</DialogTitle><DialogDescription>Showing {filteredDialogItems.length} of {detailState.items.length} total items.</DialogDescription></DialogHeader><div className="py-2"><Input placeholder={detailState.type === 'books' ? "Filter by book name..." : "Filter by action, details, or user..."} value={detailFilter} onChange={(e) => setDetailFilter(e.target.value)} /></div><div className="max-h-[60vh] overflow-y-auto pr-4">{filteredDialogItems.length > 0 ? (<>{detailState.type === 'books' && (<Table><TableHeader><TableRow><TableHead>Book Name</TableHead><TableHead>Project</TableHead><TableHead>Client</TableHead></TableRow></TableHeader><TableBody>{(filteredDialogItems as EnrichedBook[]).map(book => (<TableRow key={book.id}><TableCell className="font-medium"><Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link></TableCell><TableCell>{book.projectName}</TableCell><TableCell>{book.clientName}</TableCell></TableRow>))}</TableBody></Table>)}{detailState.type === 'activities' && (<Table><TableHeader><TableRow><TableHead>Action</TableHead><TableHead>Details</TableHead><TableHead>User</TableHead><TableHead>Time</TableHead></TableRow></TableHeader><TableBody>{(filteredDialogItems as EnrichedAuditLog[]).map(log => (<TableRow key={log.id}><TableCell className="font-medium">{log.action}</TableCell><TableCell>{log.details}</TableCell><TableCell>{log.user}</TableCell><TableCell>{new Date(log.date).toLocaleTimeString()}</TableCell></TableRow>))}</TableBody></Table>)}</>) : (<div className="text-center py-10 text-muted-foreground"><p>No items match your filter.</p></div>)}</div></DialogContent></Dialog>
