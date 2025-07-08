@@ -32,12 +32,15 @@ import {
 } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
-import { AlertTriangle, BookCopy, BarChart2, ListTodo, Package, Send, FileClock, ArrowDownToLine, CheckCheck, TrendingUp, Activity, UserCheck, ShieldAlert, Download, ChevronsUpDown, ArrowUp, ArrowDown } from "lucide-react"
+import { AlertTriangle, BookCopy, BarChart2, ListTodo, Package, Send, FileClock, ArrowDownToLine, CheckCheck, TrendingUp, Activity, UserCheck, ShieldAlert, Download, ChevronsUpDown, ArrowUp, ArrowDown, Calendar as CalendarIcon } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import { useMemo } from "react"
 import type { EnrichedBook, EnrichedProject, EnrichedAuditLog, AppDocument } from "@/context/workflow-context"
 import Link from "next/link"
-import { subDays, format } from "date-fns"
+import { subDays, format, eachDayOfInterval, isWithinInterval } from "date-fns"
+import type { DateRange } from "react-day-picker"
+import { DatePickerWithRange } from "@/components/ui/date-range-picker"
+
 import { Input } from "@/components/ui/input"
 import {
   Dialog,
@@ -73,6 +76,10 @@ function ProjectDashboard() {
     const [chartType, setChartType] = React.useState<'bar' | 'line' | 'area'>('bar');
     const [detailState, setDetailState] = React.useState<{ open: boolean; title: string; items: (EnrichedBook | EnrichedAuditLog)[]; type: 'books' | 'activities' | null; }>({ open: false, title: '', items: [], type: null });
     const [detailFilter, setDetailFilter] = React.useState('');
+    const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
+      from: subDays(new Date(), 29),
+      to: new Date(),
+    });
     
     const ITEMS_PER_PAGE = 5;
 
@@ -145,23 +152,61 @@ function ProjectDashboard() {
         const workflowChartData = orderedStageNames.map(name => ({ name, count: booksByStage[name]?.length || 0 }));
         
         const dailyActivity: { [date: string]: { [action: string]: number } } = {};
-        const sevenDaysAgo = subDays(new Date(), 6);
-        const actionsToTrack: { [key: string]: string } = { 'Scanning Finished': 'Scanned', 'Initial QC Complete': 'Checked', 'Processing Completed': 'Processed', 'Client Approval': 'Finalized' };
-        projectLogs.filter(log => new Date(log.date) >= sevenDaysAgo && Object.keys(actionsToTrack).includes(log.action)).forEach(log => {
-            const date = log.date.slice(0, 10);
-            const actionName = actionsToTrack[log.action as keyof typeof actionsToTrack];
-            if (!dailyActivity[date]) dailyActivity[date] = {};
-            if (!dailyActivity[date][actionName]) dailyActivity[date][actionName] = 0;
-            dailyActivity[date][actionName]++;
+        const relevantInterval = (dateRange?.from && dateRange.to) ? { start: dateRange.from, end: dateRange.to } : null;
+
+        if (relevantInterval) {
+            const actionsToTrack: { [key: string]: string } = {
+                'Book Shipped': 'Shipped',
+                'Reception Confirmed': 'Received',
+                'Scanning Finished': 'Scanned',
+                'Assigned for QC': 'Indexed',
+                'Initial QC Complete': 'Checked',
+                'Processing Completed': 'Processed',
+                'Client Approval': 'Finalized',
+                'Book Archived': 'Archived',
+                'Client Rejection': 'Rejected'
+            };
+            
+            projectLogs.filter(log => isWithinInterval(new Date(log.date), relevantInterval))
+              .forEach(log => {
+                const date = log.date.slice(0, 10);
+                if (!dailyActivity[date]) dailyActivity[date] = {};
+
+                if (actionsToTrack[log.action]) {
+                    const actionName = actionsToTrack[log.action as keyof typeof actionsToTrack];
+                    if (!dailyActivity[date][actionName]) dailyActivity[date][actionName] = 0;
+                    dailyActivity[date][actionName]++;
+                }
+                
+                if (log.action === 'Workflow Step' && log.details.includes('to Delivery')) {
+                    if (!dailyActivity[date]['Delivered']) dailyActivity[date]['Delivered'] = 0;
+                    dailyActivity[date]['Delivered']++;
+                }
+            });
+        }
+        
+        const dateSteps = relevantInterval ? eachDayOfInterval(relevantInterval) : [];
+        const dailyChartData = dateSteps.map(date => {
+            const dateStr = format(date, 'yyyy-MM-dd');
+            const dayData = dailyActivity[dateStr] || {};
+            return {
+                date: format(date, 'MMM d'),
+                fullDate: dateStr,
+                Shipped: dayData.Shipped || 0,
+                Received: dayData.Received || 0,
+                Scanned: dayData.Scanned || 0,
+                Indexed: dayData.Indexed || 0,
+                Checked: dayData.Checked || 0,
+                Processed: dayData.Processed || 0,
+                Delivered: dayData.Delivered || 0,
+                Finalized: dayData.Finalized || 0,
+                Rejected: dayData.Rejected || 0,
+                Archived: dayData.Archived || 0
+            };
         });
-        const dateRange = Array.from({ length: 7 }, (_, i) => format(subDays(new Date(), i), 'yyyy-MM-dd')).reverse();
-        const dailyChartData = dateRange.map(dateStr => ({
-            date: format(new Date(dateStr), 'MMM d'), fullDate: dateStr,
-            ...Object.fromEntries(Object.values(actionsToTrack).map(val => [val, (dailyActivity[dateStr] || {})[val] || 0]))
-        }));
         
         return { kpiData, workflowChartData, dailyChartData, projectBooks: books, projectLogs, booksByStage, allRelevantAuditLogs: projectLogs };
-    }, [project, auditLogs, documents]);
+    }, [project, auditLogs, documents, dateRange]);
 
     const { kpiData, workflowChartData, dailyChartData, projectBooks, projectLogs } = dashboardData;
 
@@ -289,7 +334,18 @@ function ProjectDashboard() {
         line: <Line type="monotone" dataKey="count" stroke="var(--color-count)" strokeWidth={2} />,
         area: <Area type="monotone" dataKey="count" stroke="var(--color-count)" fill="var(--color-count)" fillOpacity={0.3} />,
     }[chartType];
-    const dailyChartConfig = { Scanned: { label: "Scanned", color: "hsl(var(--chart-3))" }, Checked: { label: "Checked", color: "hsl(var(--chart-4))" }, Processed: { label: "Processed", color: "hsl(var(--chart-5))" }, Finalized: { label: "Finalized", color: "hsl(100, 80%, 50%)" } } satisfies ChartConfig;
+    const dailyChartConfig = {
+        Shipped: { label: "Shipped", color: "hsl(210, 80%, 50%)" },
+        Received: { label: "Received", color: "hsl(180, 70%, 40%)" },
+        Scanned: { label: "Scanned", color: "hsl(150, 70%, 40%)" },
+        Indexed: { label: "Indexed", color: "hsl(100, 70%, 40%)" },
+        Checked: { label: "Checked", color: "hsl(60, 80%, 50%)" },
+        Processed: { label: "Processed", color: "hsl(30, 80%, 50%)" },
+        Delivered: { label: "Delivered", color: "hsl(0, 80%, 50%)" },
+        Finalized: { label: "Finalized", color: "hsl(270, 80%, 60%)" },
+        Rejected: { label: "Rejected", color: "hsl(330, 80%, 60%)" },
+        Archived: { label: "Archived", color: "hsl(240, 5%, 50%)" },
+    } satisfies ChartConfig;
 
     return (
         <>
@@ -358,9 +414,12 @@ function ProjectDashboard() {
                     </CardContent>
                 </Card>
                 <Card>
-                   <CardHeader>
-                       <CardTitle className="font-headline flex items-center gap-2"><TrendingUp className="h-5 w-5"/> Daily Throughput</CardTitle>
-                       <CardDescription>Count of books completing key stages over the last 7 days. Click for details.</CardDescription>
+                   <CardHeader className="flex flex-row items-center justify-between">
+                        <div>
+                            <CardTitle className="font-headline flex items-center gap-2"><TrendingUp className="h-5 w-5"/> Daily Throughput</CardTitle>
+                            <CardDescription>Count of books completing key stages. Click a point for details.</CardDescription>
+                        </div>
+                        <DatePickerWithRange date={dateRange} onDateChange={setDateRange} />
                     </CardHeader>
                     <CardContent>
                        <ChartContainer config={dailyChartConfig} className="h-[300px] w-full cursor-pointer">
@@ -572,5 +631,3 @@ export default function DashboardClient() {
         </div>
     )
 }
-
-    
