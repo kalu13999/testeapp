@@ -56,13 +56,13 @@ const allMenuItems = [
     title: "Dashboards",
     items: [
         { href: "/dashboard", label: "Project Dashboard", icon: SlidersHorizontal },
-        { href: "/admin/overview", label: "Global Overview", icon: Globe, roles: ['Admin'] },
     ],
   },
   {
     id: "management",
     title: "Management",
     items: [
+      { href: "/admin/overview", label: "Global Overview", icon: Globe, roles: ['Admin'] },
       { href: "/projects", label: "Projects", icon: Briefcase },
       { href: "/clients", label: "Clients", icon: Users },
       { href: "/users", label: "Users", icon: User },
