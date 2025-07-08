@@ -37,7 +37,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
-import { STAGE_CONFIG } from "@/lib/workflow-config";
+import { STAGE_CONFIG, findStageKeyFromStatus } from "@/lib/workflow-config";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -110,7 +110,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     books, documents, handleBookAction, handleMoveBookToNextStage, 
     updateDocumentStatus, currentUser, users, permissions,
     handleStartTask, handleAssignUser, handleStartProcessing, handleCancelTask,
-    selectedProjectId, projectWorkflows, handleConfirmReception
+    selectedProjectId, projectWorkflows, handleConfirmReception, getNextEnabledStage
   } = useAppContext();
 
   const { toast } = useToast();
@@ -419,43 +419,26 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const handleSingleItemAction = (item: EnrichedBook) => {
       if (!item.projectId) return;
       const workflow = projectWorkflows[item.projectId] || [];
+      const currentStageKey = findStageKeyFromStatus(item.status);
 
-      switch (stage) {
-        case 'confirm-reception':
-            const isScanningEnabled = workflow.includes('assign-scanner');
-            if (isScanningEnabled) {
-              handleConfirmReception(item.id);
-            } else {
-              setScanState({ open: true, book: item, folderName: null, fileCount: null });
-            }
-            break;
-        case 'assign-scanner':
-            openAssignmentDialog(item, 'scanner');
-            break;
-        case 'to-scan':
-            handleStartTask(item.id, 'scanner');
-            break;
-        case 'scanning-started':
-            setScanState({ open: true, book: item, folderName: null, fileCount: null });
-            break;
-        case 'indexing-started':
-            openAssignmentDialog(item, 'qc');
-            break;
-        case 'checking-started':
-            handleMoveBookToNextStage(item.id, item.status);
-            break;
-        case 'to-indexing':
-            handleStartTask(item.id, 'indexing');
-            break;
-        case 'to-checking':
-            handleStartTask(item.id, 'qc');
-            break;
-        case 'ready-for-processing':
-            handleStartProcessing(item.id);
-            break;
-        default:
-            toast({ title: "Action not configured", description: `No action defined for stage: ${stage}`, variant: "destructive"});
-            break;
+      if (!currentStageKey) {
+        toast({title: "Workflow Error", description: `Cannot find stage for status: ${item.status}`, variant: "destructive" });
+        return;
+      }
+      
+      const nextStageKey = getNextEnabledStage(currentStageKey, workflow);
+      
+      if (!nextStageKey) {
+          toast({ title: "End of Workflow" });
+          return;
+      }
+
+      const nextStageConfig = STAGE_CONFIG[nextStageKey];
+
+      if (nextStageConfig?.assigneeRole) {
+          openAssignmentDialog(item, nextStageConfig.assigneeRole);
+      } else {
+          handleMoveBookToNextStage(item.id, item.status);
       }
   };
 
@@ -471,7 +454,12 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
             selection.forEach(id => {
               const item = allDisplayItems.find(d => d.id === id) as EnrichedBook;
               if (item) {
-                handleSingleItemAction(item);
+                const currentStageKey = findStageKeyFromStatus(item.status);
+                if (currentStageKey === 'confirm-reception' || currentStageKey === 'assign-scanner' || currentStageKey === 'to-scan') {
+                    handleSingleItemAction(item);
+                } else {
+                    handleMoveBookToNextStage(item.id, item.status);
+                }
               }
             });
             setSelection([]);
@@ -498,8 +486,64 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   }, [dataType, stage, config.actionButtonLabel, currentUser?.role, config.assigneeRole]);
 
 
+  const getDynamicActionButtonLabel = React.useCallback((book: EnrichedBook) => {
+    if (!actionButtonLabel || !book.projectId) return actionButtonLabel;
+    
+    const workflow = projectWorkflows[book.projectId] || [];
+    const currentStageKey = findStageKeyFromStatus(book.status);
+    if (!currentStageKey) return actionButtonLabel;
+    
+    const nextStageKey = getNextEnabledStage(currentStageKey, workflow);
+    if (!nextStageKey) return "End of Workflow";
+    
+    const nextStageConfig = STAGE_CONFIG[nextStageKey];
+    if (nextStageConfig.assigneeRole) {
+        return `Assign for ${nextStageConfig.title}`;
+    }
+    return `Move to ${nextStageConfig.title}`;
+
+  }, [actionButtonLabel, projectWorkflows, getNextEnabledStage]);
+
   const renderBookRow = (item: any, index: number) => {
     const isCancelable = ['Scanning Started', 'Indexing Started', 'Checking Started'].includes(item.status);
+    const dynamicLabel = getDynamicActionButtonLabel(item);
+    
+    const performAction = () => {
+        const currentStageKey = findStageKeyFromStatus(item.status);
+        
+        switch (currentStageKey) {
+            case 'confirm-reception':
+                handleConfirmReception(item.id);
+                break;
+            case 'assign-scanner':
+                openAssignmentDialog(item, 'scanner');
+                break;
+            case 'to-scan':
+                handleStartTask(item.id, 'scanner');
+                break;
+            case 'scanning-started':
+                setScanState({ open: true, book: item, folderName: null, fileCount: null });
+                break;
+            case 'to-indexing':
+                handleStartTask(item.id, 'indexing');
+                break;
+            case 'to-checking':
+                handleStartTask(item.id, 'qc');
+                break;
+            case 'ready-for-processing':
+                handleStartProcessing(item.id);
+                break;
+            case 'indexing-started':
+            case 'checking-started':
+                handleSingleItemAction(item);
+                break;
+            default:
+                toast({ title: "Action not configured", description: `No action for stage: ${stage}`, variant: "destructive"});
+                break;
+        }
+    };
+
+
     return (
         <TableRow key={item.id} data-state={selection.includes(item.id) && "selected"}>
         <TableCell>
@@ -527,11 +571,11 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
             {actionButtonLabel && (
               <Button size="sm" onClick={() => openConfirmationDialog({
                   title: `Are you sure?`,
-                  description: `This will perform the action "${actionButtonLabel}" on "${item.name}".`,
-                  onConfirm: () => handleSingleItemAction(item)
+                  description: `This will perform the action "${dynamicLabel}" on "${item.name}".`,
+                  onConfirm: performAction
               })}>
                   {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
-                  {actionButtonLabel}
+                  {dynamicLabel}
               </Button>
             )}
             <DropdownMenu>

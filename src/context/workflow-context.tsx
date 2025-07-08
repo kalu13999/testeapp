@@ -4,7 +4,7 @@
 import * as React from 'react';
 import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions, ProjectWorkflows, RejectionTag } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
-import { WORKFLOW_SEQUENCE, STAGE_CONFIG } from '@/lib/workflow-config';
+import { WORKFLOW_SEQUENCE, STAGE_CONFIG, findStageKeyFromStatus } from '@/lib/workflow-config';
 
 // Define the shape of the book data when importing
 export interface BookImport {
@@ -123,17 +123,6 @@ type AppContextType = {
 const AppContext = React.createContext<AppContextType | undefined>(undefined);
 
 const OPERATOR_ROLES = ["Operator", "QC Specialist", "Reception", "Scanning", "Indexing", "Processing", "Delivery", "Correction Specialist", "Multi-Operator"];
-
-const findStageKeyFromStatus = (statusName: string): string | undefined => {
-    for (const stageKey in STAGE_CONFIG) {
-        const config = STAGE_CONFIG[stageKey as keyof typeof STAGE_CONFIG];
-        if (config.dataStatus === statusName || config.dataStage === statusName) {
-            return stageKey;
-        }
-    }
-    return undefined;
-};
-
 
 export function AppProvider({
   initialClients,
@@ -718,8 +707,15 @@ export function AppProvider({
         return;
     }
 
+    const updateFn = (book: RawBook): Partial<RawBook> => {
+        if (currentStatusName === 'Checking Started') {
+            return { qcStartTime: book.qcStartTime || new Date().toISOString(), qcEndTime: new Date().toISOString() };
+        }
+        return {};
+    };
+
     moveBookDocuments(bookId, newStatusName);
-    updateBookStatus(bookId, newStatusName);
+    updateBookStatus(bookId, newStatusName, updateFn);
     logAction('Workflow Step', `Book "${book.name}" moved from ${currentStatusName} to ${newStatusName}.`, { bookId });
     toast({ title: "Workflow Action", description: `Book moved to ${newStatusName}.` });
   };
@@ -749,7 +745,7 @@ export function AppProvider({
     } else if (role === 'qc') {
         nextStatusKey = getNextEnabledStage('indexing-started', workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'to-checking']?.dataStatus || 'To Checking';
-        updateBookStatus(bookId, newStatusName, () => ({ qcUserId: userId, indexingStartTime: undefined, indexingEndTime: new Date().toISOString() }));
+        updateBookStatus(bookId, newStatusName, (b) => ({ qcUserId: userId, indexingStartTime: b.indexingStartTime || new Date().toISOString(), indexingEndTime: new Date().toISOString() }));
         logAction('Assigned for QC', `Book "${book.name}" assigned to ${user.name}.`, { bookId });
         toast({ title: "Book Assigned", description: `Assigned to ${user.name} for checking.` });
     }

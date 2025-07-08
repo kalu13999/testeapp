@@ -301,3 +301,14 @@ export const WORKFLOW_SEQUENCE: string[] = WORKFLOW_PHASES.flatMap(group => grou
 export const STAGE_CONFIG: StageConfig = WORKFLOW_PHASES.reduce((acc, group) => {
   return { ...acc, ...group.config };
 }, {});
+
+
+export const findStageKeyFromStatus = (statusName: string): string | undefined => {
+    for (const stageKey in STAGE_CONFIG) {
+        const config = STAGE_CONFIG[stageKey as keyof typeof STAGE_CONFIG];
+        if (config.dataStatus === statusName || config.dataStage === statusName) {
+            return stageKey;
+        }
+    }
+    return undefined;
+};

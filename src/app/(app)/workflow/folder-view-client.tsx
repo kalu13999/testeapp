@@ -29,7 +29,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { STAGE_CONFIG } from "@/lib/workflow-config";
+import { STAGE_CONFIG, findStageKeyFromStatus } from "@/lib/workflow-config";
 
 
 type IconMap = {
@@ -232,9 +232,16 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   }
   
   const handleMainAction = (book: EnrichedBook) => {
-    if (!selectedProjectId) return;
-    const projectWorkflow = projectWorkflows[selectedProjectId] || [];
-    const nextStage = getNextEnabledStage(stage, projectWorkflow);
+    if (!book.projectId) {
+        toast({ title: "Error", description: "Project ID not found for this book.", variant: "destructive" });
+        return;
+    }
+    
+    const workflow = projectWorkflows[book.projectId] || [];
+    const currentStageKey = findStageKeyFromStatus(book.status);
+    if (!currentStageKey) return;
+    
+    const nextStage = getNextEnabledStage(currentStageKey, workflow);
     
     if (!nextStage) {
       toast({ title: "Workflow End", description: "This is the last configured step for this project.", variant: "default" });
@@ -284,13 +291,26 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     const { id: bookId, name: bookName, status } = book;
 
     let actionButtonLabel = config.actionButtonLabel;
-    if (stage === 'storage' && selectedProjectId) {
-        const projectWorkflow = projectWorkflows[selectedProjectId] || [];
-        const nextStage = getNextEnabledStage(stage, projectWorkflow);
-        if (nextStage === 'to-indexing') actionButtonLabel = "Assign for Indexing";
-        else if (nextStage === 'to-checking') actionButtonLabel = "Assign for QC";
-        else actionButtonLabel = "Move to Next Stage";
+    
+    if (actionButtonLabel && book.projectId) {
+        const workflow = projectWorkflows[book.projectId] || [];
+        const currentStageKey = findStageKeyFromStatus(book.status);
+        
+        if (currentStageKey) {
+            const nextStageKey = getNextEnabledStage(currentStageKey, workflow);
+            if (nextStageKey) {
+                const nextStageConfig = STAGE_CONFIG[nextStageKey];
+                if (nextStageConfig.assigneeRole) {
+                    actionButtonLabel = `Assign for ${nextStageConfig.title}`;
+                } else {
+                    actionButtonLabel = `Move to ${nextStageConfig.title}`;
+                }
+            } else {
+                actionButtonLabel = "End of Workflow";
+            }
+        }
     }
+
 
     const actionButton = actionButtonLabel ? (
         <Button 
@@ -300,7 +320,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
               description: `This will perform the action "${actionButtonLabel}" on "${bookName}".`,
               onConfirm: () => handleMainAction(book)
             })}
-            disabled={hasError}
+            disabled={hasError || actionButtonLabel === "End of Workflow"}
         >
             <ActionIcon className="mr-2 h-4 w-4" />
             {actionButtonLabel}
