@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from 'react';
@@ -46,6 +47,49 @@ import {
 import { RoleForm } from './role-form';
 import type { RoleData } from './role-form';
 import { ALL_PERMISSIONS } from './permissions';
+import { ScrollArea } from '@/components/ui/scroll-area';
+
+const permissionDescriptions: { [key: string]: string } = {
+  '/dashboard': 'Allows user to view the main project dashboard.',
+  '/profile': 'Allows user to view and edit their own profile.',
+  '/settings': 'Grants access to global application settings. (Admin recommended)',
+  '/projects': 'Allows user to view and manage the list of projects.',
+  '/projects/[id]': 'Allows user to view the detailed page for a single project.',
+  '/clients': 'Allows user to view and manage the list of company clients.',
+  '/users': 'Grants access to create, edit, and manage all user accounts.',
+  '/book-management': 'Allows user to add, edit, delete, and import books for a project.',
+  '/role-management': 'Grants access to define roles and manage their permissions.',
+  '/admin/status-override': 'Allows manual override of any book\'s status. (High-level permission)',
+  '/admin/default-projects': 'Allows setting a default login project for other users.',
+  '/admin/reassign-user': 'Grants access to reassign a task from one user to another.',
+  '/documents': 'Allows viewing a master list of all books across all accessible projects.',
+  '/books/[id]': 'Allows viewing the detailed page for a single book, including its pages.',
+  '/documents/[id]': 'Allows viewing the detailed page for a single document (page scan).',
+  '/workflow/view-all': 'Allows a user to see all tasks in a queue, not just their own. Essential for managers.',
+  '/workflow/pending-shipment': 'Access the queue of books waiting to be shipped by the client.',
+  '/workflow/confirm-reception': 'Access the queue to confirm physical arrival of books from clients.',
+  '/workflow/assign-scanner': 'Access the queue to assign a received book to a scanner.',
+  '/workflow/to-scan': 'Access the personal queue of books ready to be scanned.',
+  '/workflow/scanning-started': 'Access the personal queue of books currently being scanned.',
+  '/workflow/storage': 'Access the queue of scanned books ready for the digital workflow (e.g., indexing).',
+  '/workflow/to-indexing': 'Access the personal queue of books ready to be indexed.',
+  '/workflow/indexing-started': 'Access the personal queue of books currently being indexed.',
+  '/workflow/to-checking': 'Access the personal queue of books ready for quality control.',
+  '/workflow/checking-started': 'Access the personal queue of books currently being checked.',
+  '/workflow/ready-for-processing': 'Access the queue of books ready for automated scripts (e.g., OCR).',
+  '/workflow/in-processing': 'Access the monitoring page for books currently in automated processing.',
+  '/workflow/processed': 'Access the queue of books that have finished automated processing.',
+  '/workflow/final-quality-control': 'Access the queue for final quality review before client delivery.',
+  '/workflow/delivery': 'Access the queue to prepare and send finalized books to the client.',
+  '/workflow/client-rejections': 'Access the queue of books rejected by the client that require correction.',
+  '/workflow/corrected': 'Access the queue of corrected books ready for re-submission.',
+  '/finalized': 'Access the queue of client-approved books waiting for final archival.',
+  '/archive': 'Access the view of all fully archived and completed books.',
+  '/shipments': 'Client-facing page to prepare and mark books as shipped.',
+  '/pending-deliveries': 'Client-facing page to review and approve/reject delivered books.',
+  '/validated-history': 'Client-facing page to view the history of all their validated batches.',
+  '/reasons': 'Allows management of custom rejection reasons for clients.'
+};
 
 export default function RoleManagementClient() {
   const { roles, permissions, addRole, updateRole, deleteRole } = useAppContext();
@@ -228,44 +272,41 @@ export default function RoleManagementClient() {
       </AlertDialog>
 
       <Dialog open={isInfoModalOpen} onOpenChange={setIsInfoModalOpen}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-w-3xl">
             <DialogHeader>
-                <DialogTitle>About Role Management</DialogTitle>
+                <DialogTitle>About Role Management & Permissions</DialogTitle>
                 <DialogDescription>
                     Use roles to precisely control what each user can see and do within FlowVault.
                 </DialogDescription>
             </DialogHeader>
-            <div className="py-4 space-y-4 text-sm text-muted-foreground">
+            <div className="py-2 space-y-3 text-sm text-muted-foreground">
                 <p>
                     A <strong className="text-foreground">Role</strong> is a collection of permissions that you can assign to a user. When you create or edit a role, you are choosing which pages and features users with that role can access.
                 </p>
-                
-                <p className="font-medium text-foreground">Permission Groups Explained:</p>
-                
-                <ul className="list-disc list-inside space-y-2">
-                    <li>
-                        <strong className="text-foreground">General:</strong> Core access to the Dashboard, user Profile, and Settings pages.
-                    </li>
-                    <li>
-                        <strong className="text-foreground">Management:</strong> High-level control over Projects, Clients, Books, Users, and Roles. Also includes powerful admin tools.
-                    </li>
-                    <li>
-                        <strong className="text-foreground">Book & Document Views:</strong> Permissions to view the main document lists and their detailed pages.
-                    </li>
-                    <li>
-                        <strong className="text-foreground">Internal Workflow Stages:</strong> Granular access to each operational queue, like Scanning, Indexing, and Quality Control.
-                    </li>
-                    <li>
-                        <strong className="text-foreground">Finalization Stages:</strong> Permissions for the final steps of the workflow, including Finalized and Archive.
-                    </li>
-                    <li>
-                        <strong className="text-foreground">Client Portal:</strong> Access to pages specifically designed for external clients, such as Prepare Shipment and Pending Deliveries.
-                    </li>
-                </ul>
-
                 <p>
                     The wildcard permission (<code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold">*</code>) grants access to all pages and features and should be reserved for <strong className="text-foreground">Admin</strong> roles only.
                 </p>
+                
+                <h4 className="font-medium text-foreground pt-3 border-t">Permission Details:</h4>
+                <ScrollArea className="h-[50vh] pr-4">
+                    <div className="space-y-5">
+                        {ALL_PERMISSIONS.map(group => (
+                        <div key={group.group}>
+                            <h5 className="font-semibold text-foreground mb-3">{group.group}</h5>
+                            <div className="space-y-4">
+                                {group.permissions.map(permission => (
+                                <div key={permission.id} className="pl-2">
+                                    <p className="font-medium text-foreground">{permission.label}</p>
+                                    <p className="text-xs text-muted-foreground pl-3 border-l-2 ml-1 mt-1">
+                                    {permissionDescriptions[permission.id] || `Grants access to the ${permission.label.toLowerCase()} page.`}
+                                    </p>
+                                </div>
+                                ))}
+                            </div>
+                        </div>
+                        ))}
+                    </div>
+                </ScrollArea>
             </div>
             <DialogFooter>
                 <Button onClick={() => setIsInfoModalOpen(false)}>Got it</Button>
