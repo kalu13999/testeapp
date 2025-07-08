@@ -48,6 +48,7 @@ const allMenuItems = [
     title: "Account",
     items: [
       { href: "/profile", label: "My Profile", icon: User },
+      { href: "/settings", label: "Settings", icon: Settings },
     ],
   },
   {
@@ -74,7 +75,6 @@ const allMenuItems = [
       { href: "/role-management", label: "Role Management", icon: GanttChartSquare },
       { href: "/users", label: "Users", icon: User },
       { href: "/admin/status-override", label: "Status Override", icon: Sliders },
-      { href: "/settings", label: "Settings", icon: Settings },
     ]
   },
   {
@@ -189,6 +189,17 @@ export function MainNav() {
                         >
                         <User className="h-4 w-4 text-muted-foreground" />
                         My Profile
+                        </Button>
+                    </Link>
+                </li>
+                 <li>
+                    <Link href="/settings" passHref>
+                        <Button
+                        variant={isActive("/settings") ? "secondary" : "ghost"}
+                        className="w-full justify-start font-normal gap-2"
+                        >
+                        <Settings className="h-4 w-4 text-muted-foreground" />
+                        Settings
                         </Button>
                     </Link>
                 </li>
