@@ -35,6 +35,7 @@ import {
   User,
   Users,
   UserPlus,
+  Star,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -63,9 +64,9 @@ const allMenuItems = [
     items: [
       { href: "/projects", label: "Projects", icon: Briefcase },
       { href: "/clients", label: "Clients", icon: Users },
+      { href: "/role-management", label: "Role Management", icon: GanttChartSquare },
       { href: "/users", label: "Users", icon: User },
       { href: "/book-management", label: "Book Management", icon: BookUp },
-      { href: "/role-management", label: "Role Management", icon: GanttChartSquare },
     ],
   },
   {
@@ -108,6 +109,7 @@ const allMenuItems = [
     title: "Admin Tools",
     items: [
       { href: "/admin/status-override", label: "Status Override", icon: Sliders },
+      { href: "/admin/default-projects", label: "Default Projects", icon: Star },
       { href: "/settings", label: "Settings", icon: Settings },
     ]
   },

@@ -69,6 +69,7 @@ type AppContextType = {
   updateUser: (userId: string, userData: Partial<Omit<User, 'id' | 'avatar' | 'lastLogin'>>) => void;
   deleteUser: (userId: string) => void;
   toggleUserStatus: (userId: string) => void;
+  updateUserDefaultProject: (userId: string, projectId: string | null) => void;
   
   // Role Actions
   addRole: (roleName: string, permissions: string[]) => void;
@@ -353,6 +354,22 @@ export function AppProvider({
     toast({ title: "User Deleted", description: "The user has been deleted.", variant: "destructive" });
   };
   
+  const updateUserDefaultProject = (userId: string, projectId: string | null) => {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    
+    setUsers(prev => prev.map(u => 
+        u.id === userId ? { ...u, defaultProjectId: projectId || undefined } : u
+    ));
+    
+    logAction(
+        'User Default Project Set', 
+        `Default project for "${user.name}" set to "${allEnrichedProjects.find(p => p.id === projectId)?.name || 'None'}".`,
+        {}
+    );
+    toast({ title: "Default Project Updated" });
+  };
+  
   const addProject = (projectData: Omit<Project, 'id'>) => {
     const newProjectData: Project = { id: `proj_${Date.now()}`, ...projectData };
     setRawProjects(prev => [...prev, newProjectData]);
@@ -574,7 +591,7 @@ export function AppProvider({
         return;
     }
 
-    if (currentStatus === 'Scanning') {
+    if (currentStatus === 'Scanning Started') {
       const project = rawProjects.find(p => p.id === book.projectId);
       const client = clients.find(c => c.id === project?.clientId);
       if (!project || !client) return;
@@ -662,18 +679,18 @@ export function AppProvider({
     if (!book) return;
 
     if (role === 'scanner') {
-        updateBookStatus(bookId, 'Scanning', () => ({ scanStartTime: new Date().toISOString() }));
-        moveBookDocuments(bookId, 'Scanning');
+        updateBookStatus(bookId, 'Scanning Started', () => ({ scanStartTime: new Date().toISOString() }));
+        moveBookDocuments(bookId, 'Scanning Started');
         logAction('Scanning Started', `Scanning process initiated for book.`, { bookId });
         toast({ title: "Scanning Started" });
     } else if (role === 'indexing') {
-        updateBookStatus(bookId, 'Indexing', () => ({ indexingStartTime: new Date().toISOString() }));
-        moveBookDocuments(bookId, 'Indexing');
+        updateBookStatus(bookId, 'Indexing Started', () => ({ indexingStartTime: new Date().toISOString() }));
+        moveBookDocuments(bookId, 'Indexing Started');
         logAction('Indexing Started', `Indexing started for book "${book.name}".`, { bookId });
         toast({ title: "Indexing Started" });
     } else if (role === 'qc') {
-        updateBookStatus(bookId, 'Checking', () => ({ qcStartTime: new Date().toISOString() }));
-        moveBookDocuments(bookId, 'Checking');
+        updateBookStatus(bookId, 'Checking Started', () => ({ qcStartTime: new Date().toISOString() }));
+        moveBookDocuments(bookId, 'Checking Started');
         logAction('Checking Started', `Initial QC started for book "${book.name}".`, { bookId });
         toast({ title: "Checking Started" });
     }
@@ -915,7 +932,7 @@ export function AppProvider({
     selectedProjectId,
     setSelectedProjectId,
     addClient, updateClient, deleteClient,
-    addUser, updateUser, deleteUser, toggleUserStatus,
+    addUser, updateUser, deleteUser, toggleUserStatus, updateUserDefaultProject,
     addRole, updateRole, deleteRole,
     addProject, updateProject, deleteProject,
     updateProjectWorkflow,

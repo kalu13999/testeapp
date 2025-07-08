@@ -28,6 +28,7 @@ export const ALL_PERMISSIONS: PermissionGroup[] = [
       { id: '/book-management', label: 'Book Management' },
       { id: '/role-management', label: 'Role Management' },
       { id: '/admin/status-override', label: 'Admin Status Override' },
+      { id: '/admin/default-projects', label: 'Default Project Management' },
     ],
   },
   {

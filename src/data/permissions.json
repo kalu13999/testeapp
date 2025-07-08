@@ -33,7 +33,8 @@
     "/workflow/client-rejections",
     "/workflow/corrected",
     "/finalized",
-    "/archive"
+    "/archive",
+    "/admin/default-projects"
   ],
   "Multi-Operator": [
     "/profile",
