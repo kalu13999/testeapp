@@ -109,17 +109,6 @@ function ProjectDashboard() {
     }, [project, auditLogs]);
     
     const { kpiData, workflowChartData, dailyChartData, recentActivities, booksByStage, allRelevantAuditLogs } = dashboardData;
-
-    if (!project) {
-        return (
-            <Card>
-                <CardHeader>
-                    <CardTitle>No Project Selected</CardTitle>
-                    <CardDescription>Please select a project from the header to view its dashboard.</CardDescription>
-                </CardHeader>
-            </Card>
-        );
-    }
     
     const workflowChartConfig = { count: { label: "Books", color: "hsl(var(--primary))" } } satisfies ChartConfig;
     const ChartComponent = { bar: BarChart, line: LineChart, area: AreaChart }[chartType];
@@ -141,6 +130,7 @@ function ProjectDashboard() {
         const fullDate = data.activePayload[0].payload.fullDate as string;
         setDetailState({ open: true, title: `Activity for ${format(new Date(fullDate), 'MMMM d, yyyy')}`, items: allRelevantAuditLogs.filter(log => log.date.startsWith(fullDate)), type: 'activities' });
     };
+
     const filteredDialogItems = React.useMemo(() => {
         if (!detailState.open || !detailFilter) return detailState.items;
         const query = detailFilter.toLowerCase();
@@ -148,6 +138,17 @@ function ProjectDashboard() {
         if (detailState.type === 'activities') return (detailState.items as EnrichedAuditLog[]).filter(l => l.action.toLowerCase().includes(query) || l.details.toLowerCase().includes(query));
         return detailState.items;
     }, [detailState, detailFilter]);
+
+    if (!project) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>No Project Selected</CardTitle>
+                    <CardDescription>Please select a project from the header to view its dashboard.</CardDescription>
+                </CardHeader>
+            </Card>
+        );
+    }
 
     return (
         <>
