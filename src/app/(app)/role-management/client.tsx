@@ -46,50 +46,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import { RoleForm } from './role-form';
 import type { RoleData } from './role-form';
-import { ALL_PERMISSIONS } from './permissions';
+import { ALL_PERMISSIONS, permissionDescriptions } from './permissions';
 import { ScrollArea } from '@/components/ui/scroll-area';
-
-const permissionDescriptions: { [key: string]: string } = {
-  '/dashboard': 'Allows user to view the main project dashboard.',
-  '/profile': 'Allows user to view and edit their own profile.',
-  '/settings': 'Grants access to global application settings. (Admin recommended)',
-  '/projects': 'Allows user to view and manage the list of projects.',
-  '/projects/[id]': 'Allows user to view the detailed page for a single project.',
-  '/clients': 'Allows user to view and manage the list of company clients.',
-  '/users': 'Grants access to create, edit, and manage all user accounts.',
-  '/book-management': 'Allows user to add, edit, delete, and import books for a project.',
-  '/role-management': 'Grants access to define roles and manage their permissions.',
-  '/admin/status-override': 'Allows manual override of any book\'s status. (High-level permission)',
-  '/admin/default-projects': 'Allows setting a default login project for other users.',
-  '/admin/reassign-user': 'Grants access to reassign a task from one user to another.',
-  '/documents': 'Allows viewing a master list of all books across all accessible projects.',
-  '/books/[id]': 'Allows viewing the detailed page for a single book, including its pages.',
-  '/documents/[id]': 'Allows viewing the detailed page for a single document (page scan).',
-  '/workflow/view-all': 'Allows a user to see all tasks in a queue, not just their own. Essential for managers.',
-  '/workflow/pending-shipment': 'Access the queue of books waiting to be shipped by the client.',
-  '/workflow/confirm-reception': 'Access the queue to confirm physical arrival of books from clients.',
-  '/workflow/assign-scanner': 'Access the queue to assign a received book to a scanner.',
-  '/workflow/to-scan': 'Access the personal queue of books ready to be scanned.',
-  '/workflow/scanning-started': 'Access the personal queue of books currently being scanned.',
-  '/workflow/storage': 'Access the queue of scanned books ready for the digital workflow (e.g., indexing).',
-  '/workflow/to-indexing': 'Access the personal queue of books ready to be indexed.',
-  '/workflow/indexing-started': 'Access the personal queue of books currently being indexed.',
-  '/workflow/to-checking': 'Access the personal queue of books ready for quality control.',
-  '/workflow/checking-started': 'Access the personal queue of books currently being checked.',
-  '/workflow/ready-for-processing': 'Access the queue of books ready for automated scripts (e.g., OCR).',
-  '/workflow/in-processing': 'Access the monitoring page for books currently in automated processing.',
-  '/workflow/processed': 'Access the queue of books that have finished automated processing.',
-  '/workflow/final-quality-control': 'Access the queue for final quality review before client delivery.',
-  '/workflow/delivery': 'Access the queue to prepare and send finalized books to the client.',
-  '/workflow/client-rejections': 'Access the queue of books rejected by the client that require correction.',
-  '/workflow/corrected': 'Access the queue of corrected books ready for re-submission.',
-  '/finalized': 'Access the queue of client-approved books waiting for final archival.',
-  '/archive': 'Access the view of all fully archived and completed books.',
-  '/shipments': 'Client-facing page to prepare and mark books as shipped.',
-  '/pending-deliveries': 'Client-facing page to review and approve/reject delivered books.',
-  '/validated-history': 'Client-facing page to view the history of all their validated batches.',
-  '/reasons': 'Allows management of custom rejection reasons for clients.'
-};
 
 export default function RoleManagementClient() {
   const { roles, permissions, addRole, updateRole, deleteRole } = useAppContext();

@@ -18,7 +18,9 @@ import {
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { type PermissionGroup } from "./permissions"
+import { type PermissionGroup, permissionDescriptions } from "./permissions"
+import { Info } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 const formSchema = z.object({
   name: z.string().min(2, "Role name must be at least 2 characters."),
@@ -95,27 +97,43 @@ export function RoleForm({ initialData, allPermissions, onSave, onCancel, isEdit
                                 render={({ field }) => {
                                 return (
                                     <FormItem
-                                    key={item.id}
-                                    className="flex flex-row items-start space-x-3 space-y-0"
+                                        key={item.id}
+                                        className="flex flex-row items-start space-x-3 space-y-0"
                                     >
-                                    <FormControl>
-                                        <Checkbox
-                                        checked={field.value?.includes(item.id)}
-                                        onCheckedChange={(checked) => {
-                                            return checked
-                                            ? field.onChange([...field.value, item.id])
-                                            : field.onChange(
-                                                field.value?.filter(
-                                                (value) => value !== item.id
-                                                )
-                                            )
-                                        }}
-                                        />
-                                    </FormControl>
-                                    <FormLabel className="font-normal text-sm">
-                                        {item.label}
-                                        <p className="text-xs text-muted-foreground font-mono">{item.id}</p>
-                                    </FormLabel>
+                                        <FormControl>
+                                            <Checkbox
+                                                checked={field.value?.includes(item.id)}
+                                                onCheckedChange={(checked) => {
+                                                    return checked
+                                                        ? field.onChange([...(field.value || []), item.id])
+                                                        : field.onChange(
+                                                            field.value?.filter(
+                                                                (value) => value !== item.id
+                                                            )
+                                                        );
+                                                }}
+                                            />
+                                        </FormControl>
+                                        <div className="space-y-1 leading-none">
+                                            <FormLabel className="font-normal text-sm">
+                                                {item.label}
+                                            </FormLabel>
+                                            <div className="flex items-center gap-2">
+                                                <p className="text-xs text-muted-foreground font-mono">{item.id}</p>
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p className="max-w-xs text-sm">
+                                                                {permissionDescriptions[item.id] || "No description available."}
+                                                            </p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            </div>
+                                        </div>
                                     </FormItem>
                                 )
                                 }}
