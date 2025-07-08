@@ -30,7 +30,7 @@ export const WORKFLOW_PHASES = [
     name: "Intake & Reception",
     toggleable: false,
     description: "Initial stages for receiving books.",
-    stages: ["pending-shipment", "confirm-reception", "storage"],
+    stages: ["pending-shipment", "confirm-reception"],
     config: {
       'pending-shipment': {
         title: "Pending Shipment",
@@ -49,16 +49,6 @@ export const WORKFLOW_PHASES = [
         dataType: 'book',
         dataStatus: 'In Transit',
         viewType: 'list',
-      },
-      'storage': {
-        title: "Storage",
-        description: "Scanned documents are organized by book. Assign books to an indexer.",
-        actionButtonLabel: "Assign for Indexing",
-        actionButtonIcon: "UserPlus",
-        emptyStateText: "No scanned documents are waiting in storage.",
-        dataStage: 'Storage',
-        viewType: 'folder',
-        assigneeRole: 'indexer',
       },
     }
   },
@@ -101,6 +91,25 @@ export const WORKFLOW_PHASES = [
         dataStatus: 'Scanning Started',
         viewType: 'list',
         assigneeRole: 'scanner',
+      },
+    }
+  },
+  {
+    id: 'storage',
+    name: "Storage",
+    toggleable: false,
+    description: "The entry point for the digital workflow.",
+    stages: ["storage"],
+    config: {
+      'storage': {
+        title: "Storage",
+        description: "Scanned documents are organized by book. Assign books to an indexer.",
+        actionButtonLabel: "Assign for Indexing",
+        actionButtonIcon: "UserPlus",
+        emptyStateText: "No scanned documents are waiting in storage.",
+        dataStage: 'Storage',
+        viewType: 'folder',
+        assigneeRole: 'indexer',
       },
     }
   },
