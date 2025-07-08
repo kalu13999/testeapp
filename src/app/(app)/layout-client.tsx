@@ -13,19 +13,19 @@ import { useToast } from '@/hooks/use-toast';
 
 // New component for the global filter to keep the layout cleaner
 const GlobalProjectFilter = () => {
-  const { allProjects, selectedProjectId, setSelectedProjectId } = useAppContext();
+  const { projects, selectedProjectId, setSelectedProjectId } = useAppContext();
 
   // If there's only one project, display its name statically for clarity.
-  if (allProjects.length === 1 && selectedProjectId) {
+  if (projects.length === 1 && selectedProjectId) {
     return (
       <div className="flex items-center h-9 px-3 text-sm font-medium border rounded-md bg-muted text-muted-foreground">
-        {allProjects[0].name}
+        {projects[0].name}
       </div>
     )
   }
   
   // If no project is selected or there are no projects to choose from, don't render.
-  if (!selectedProjectId || allProjects.length <= 1) {
+  if (!selectedProjectId || projects.length <= 1) {
     return null;
   }
 
@@ -38,7 +38,7 @@ const GlobalProjectFilter = () => {
         <SelectValue placeholder="Select a project..." />
       </SelectTrigger>
       <SelectContent>
-        {allProjects.map(project => (
+        {projects.map(project => (
           <SelectItem key={project.id} value={project.id}>
             {project.name}
           </SelectItem>
@@ -49,7 +49,7 @@ const GlobalProjectFilter = () => {
 }
 
 export const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
-  const { currentUser, permissions, allProjects, selectedProjectId } = useAppContext();
+  const { currentUser, permissions, projects, selectedProjectId } = useAppContext();
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
@@ -61,7 +61,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
       return;
     }
 
-    if (allProjects.length === 0 && !['Admin', 'Client'].includes(currentUser.role)) {
+    if (projects.length === 0 && !['Admin', 'Client'].includes(currentUser.role)) {
        toast({
         title: 'No Projects Assigned',
         description: 'You are not assigned to any projects. Please contact an administrator.',
@@ -94,7 +94,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
         const firstAllowedPage = userPermissions.find(p => !p.includes('[')) || '/dashboard';
         router.push(firstAllowedPage);
     }
-  }, [currentUser, pathname, permissions, router, toast, allProjects]);
+  }, [currentUser, pathname, permissions, router, toast, projects]);
 
   if (!currentUser) {
     // Render nothing or a loading spinner while redirecting
@@ -102,7 +102,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
   }
   
   // The filter is only needed if there are any projects to choose from.
-  const showProjectFilter = allProjects.length > 0;
+  const showProjectFilter = projects.length > 0;
 
   return (
     <>
