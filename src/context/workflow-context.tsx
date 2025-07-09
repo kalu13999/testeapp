@@ -1,5 +1,4 @@
 
-
 "use client"
 
 import * as React from 'react';
@@ -274,16 +273,15 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         });
 
         if (!response.ok) {
-            let errorBody: any = 'Unknown API error';
+           let errorBody: any = 'Unknown API error';
             try {
                 errorBody = await response.json();
             } catch (e) {
                 errorBody = await response.text();
             }
-            console.error("Audit log API error:", errorBody);
-            throw new Error(`Failed to create audit log. Status: ${response.status}`);
+           console.error("Audit log API error:", errorBody);
+           throw new Error('Failed to create audit log');
         }
-
         const newLog = await response.json();
         setAuditLogs(prev => [{ ...newLog, user: currentUser.name }, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     } catch (error) {
@@ -960,7 +958,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     
     const additionalUpdates: Partial<RawBook> = {};
     if (currentStatusName === 'Checking Started') {
-        updates.qcEndTime = new Date().toISOString();
+        additionalUpdates.qcEndTime = new Date().toISOString();
     }
     
     updateBookStatus(bookId, newStatusName, additionalUpdates);

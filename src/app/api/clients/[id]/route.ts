@@ -47,9 +47,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         return NextResponse.json({ id, ...clientData });
     } catch (error) {
         console.error(`Error updating client ${id}:`, error);
+        if (connection) releaseConnection(connection);
         return NextResponse.json({ error: 'Failed to update client' }, { status: 500 });
-    } finally {
-        if (connection && connection.connection) releaseConnection(connection);
     }
 }
 
@@ -68,8 +67,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
         if (error.code === 'ER_ROW_IS_REFERENCED_2') {
              return NextResponse.json({ error: 'Cannot delete client with associated projects.' }, { status: 409 });
         }
+        if (connection) releaseConnection(connection);
         return NextResponse.json({ error: 'Failed to delete client' }, { status: 500 });
-    } finally {
-        if (connection && connection.connection) releaseConnection(connection);
     }
 }

@@ -24,17 +24,20 @@ export async function POST(request: Request) {
         const logData = await request.json();
         const { action = '', details = '', userId, date, bookId, documentId } = logData;
         
+        // Ensure date is in a format MySQL/MariaDB can understand
+        const formattedDate = date ? new Date(date).toISOString().slice(0, 19).replace('T', ' ') : new Date().toISOString().slice(0, 19).replace('T', ' ');
+
         const newId = `al_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
         
         connection = await getConnection();
         const query = 'INSERT INTO audit_logs (id, action, details, userId, date, bookId, documentId) VALUES (?, ?, ?, ?, ?, ?, ?)';
-        const values = [newId, action, details, userId, date, bookId || null, documentId || null];
+        const values = [newId, action, details, userId, formattedDate, bookId || null, documentId || null];
         
         await connection.execute(query, values);
         
         releaseConnection(connection);
 
-        const newLog = { id: newId, action, details, userId, date, bookId, documentId };
+        const newLog = { id: newId, action, details, userId, date: formattedDate, bookId, documentId };
         return NextResponse.json(newLog, { status: 201 });
     } catch (error) {
         console.error("Error creating audit log:", error);
