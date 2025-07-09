@@ -1,3 +1,4 @@
+
 import mysql from 'mysql2/promise';
 import type { PoolConnection } from 'mysql2/promise';
 
@@ -8,7 +9,10 @@ const dbConfig = {
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   ssl: {
-    rejectUnauthorized: true,
+    // Setting rejectUnauthorized to false is a common workaround for development
+    // with cloud databases that have self-signed certificates.
+    // For production, you should use a proper CA certificate.
+    rejectUnauthorized: false,
   }
 };
 
