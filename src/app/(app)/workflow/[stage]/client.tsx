@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/card"
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send, FolderSync, Upload, XCircle, CheckCircle, FileWarning, PlayCircle, UserPlus, Info, MoreHorizontal, Download, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
+import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send, FolderSync, Upload, XCircle, CheckCircle, FileWarning, PlayCircle, UserPlus, Info, MoreHorizontal, Download, ArrowUp, ArrowDown, ChevronsUpDown, CheckCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppContext } from "@/context/workflow-context";
 import { type AppDocument, type RejectionTag } from "@/context/workflow-context";
@@ -52,7 +52,8 @@ const iconMap: { [key: string]: LucideIcon } = {
     Send,
     FolderSync,
     PlayCircle,
-    UserPlus
+    UserPlus,
+    CheckCheck,
 };
 
 interface WorkflowClientProps {
@@ -450,6 +451,23 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   };
 
   const handleBulkAction = () => {
+    if (['indexing-started', 'checking-started'].includes(stage)) {
+        openConfirmationDialog({
+            title: `Complete ${selection.length} tasks?`,
+            description: "This will move all selected books to the next step in their workflow.",
+            onConfirm: () => {
+                selection.forEach(bookId => {
+                    const book = (allDisplayItems.find(b => b.id === bookId) as EnrichedBook);
+                    if (book) {
+                        handleMoveBookToNextStage(book.id, book.status);
+                    }
+                });
+                setSelection([]);
+            }
+        });
+        return;
+    }
+    
     const stageToRoleMap = {
       'to-scan': 'scanner',
       'to-indexing': 'indexing',
@@ -731,6 +749,36 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     );
   }
 
+  const renderBulkActions = () => {
+    if (selection.length === 0) return null;
+
+    if (['indexing-started', 'checking-started'].includes(stage)) {
+        return (
+            <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">{selection.length} selected</span>
+                <Button size="sm" onClick={handleBulkAction}>
+                    <CheckCheck className="mr-2 h-4 w-4" />
+                    Complete Selected
+                </Button>
+            </div>
+        );
+    }
+
+    if (SIMPLE_BULK_ACTION_STAGES.includes(stage) && actionButtonLabel) {
+        return (
+            <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">{selection.length} selected</span>
+                <Button size="sm" onClick={handleBulkAction}>
+                    {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
+                    {actionButtonLabel} Selected
+                </Button>
+            </div>
+        );
+    }
+    
+    return null;
+  }
+
   return (
     <>
     <Card>
@@ -741,35 +789,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                 <CardDescription>{description}</CardDescription>
             </div>
             <div className="flex items-center gap-2">
-                {selection.length > 0 && (
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">{selection.length} of {sortedAndFilteredItems.length} selected</span>
-                        {['Scanning Started', 'Indexing Started', 'Checking Started'].includes(stage) && (
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => openConfirmationDialog({
-                                    title: `Cancel ${selection.length} selected tasks?`,
-                                    description: "This will revert all selected books to their previous step.",
-                                    onConfirm: () => handleBulkCancel()
-                                })}
-                            >
-                                <Undo2 className="mr-2 h-4 w-4" />
-                                Cancel Selected
-                            </Button>
-                        )}
-                        {actionButtonLabel && SIMPLE_BULK_ACTION_STAGES.includes(stage) && (
-                        <Button size="sm" onClick={() => openConfirmationDialog({
-                            title: `Are you sure?`,
-                            description: `This will perform the action "${actionButtonLabel}" on ${selection.length} selected items.`,
-                            onConfirm: handleBulkAction
-                        })}>
-                            {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
-                            {actionButtonLabel} Selected
-                        </Button>
-                        )}
-                    </div>
-                )}
+                {renderBulkActions()}
                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button size="sm" variant="outline" className="h-9 gap-1">
