@@ -8,40 +8,7 @@ import { MainNav } from '@/components/layout/main-nav';
 import { UserNav } from '@/components/layout/user-nav';
 import { FileLock2, Loader2 } from 'lucide-react';
 import { useAppContext } from '@/context/workflow-context';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-
-// New component for the global filter to keep the layout cleaner
-const GlobalProjectFilter = () => {
-  const { accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, currentUser } = useAppContext();
-  
-  // Render nothing if there are no projects to choose from.
-  if (accessibleProjectsForUser.length < 2) {
-    return (
-      <div className="flex items-center h-9 px-3 text-sm font-medium border rounded-md bg-muted text-muted-foreground">
-        {accessibleProjectsForUser[0]?.name || "No Project Assigned"}
-      </div>
-    )
-  }
-  
-  return (
-    <Select
-      value={selectedProjectId || ''}
-      onValueChange={(value) => setSelectedProjectId(value)}
-    >
-      <SelectTrigger className="w-full max-w-xs h-9">
-        <SelectValue placeholder="Select a project..." />
-      </SelectTrigger>
-      <SelectContent>
-        {accessibleProjectsForUser.map(project => (
-          <SelectItem key={project.id} value={project.id}>
-            {project.name}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  )
-}
 
 export const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
   const { currentUser, permissions, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loading } = useAppContext();
@@ -149,9 +116,6 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
     return null;
   }
   
-  // The filter is only needed if there are any projects to choose from.
-  const showProjectFilter = accessibleProjectsForUser.length > 0;
-
   return (
     <>
       <Sidebar>
@@ -170,20 +134,12 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
       <SidebarInset>
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm sm:px-6">
             <SidebarTrigger className="sm:hidden" />
-            <div className="hidden sm:block">
-              {showProjectFilter && <GlobalProjectFilter />}
-            </div>
-            {/* Spacer for mobile view to push UserNav to the right */}
-            <div className="flex-1 sm:hidden" /> 
+            <div className="flex-1" /> 
             <div className="flex items-center gap-4">
               <UserNav user={currentUser} />
             </div>
         </header>
         <main className="flex-1 p-4 md:p-6">
-          {/* Mobile-only project filter */}
-          <div className="sm:hidden mb-4">
-            {showProjectFilter && <GlobalProjectFilter />}
-          </div>
           {isChecking ? (
             <div className="flex h-full items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />

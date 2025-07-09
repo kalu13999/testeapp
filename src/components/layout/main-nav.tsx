@@ -42,6 +42,7 @@ import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useAppContext } from "@/context/workflow-context";
 import { MANDATORY_STAGES } from "@/lib/workflow-config";
+import { GlobalProjectFilter } from "./global-project-filter";
 
 const allMenuItems = [
   {
@@ -179,7 +180,7 @@ export function MainNav() {
     return pathname === href || (href !== '/' && pathname.startsWith(`${href}/`));
   };
   
-  if (!currentUser || !selectedProjectId) {
+  if (!currentUser) {
     return (
        <nav className="flex flex-col p-2">
          <ul className="space-y-4">
@@ -271,7 +272,10 @@ export function MainNav() {
 
 
   return (
-    <nav className="flex flex-col p-2">
+    <nav className="flex flex-col p-2 gap-4">
+      <div className="px-2">
+        <GlobalProjectFilter />
+      </div>
       <ul className="space-y-4">
         {menuItems.map((menu) => (
           menu && <li key={menu.id}>
