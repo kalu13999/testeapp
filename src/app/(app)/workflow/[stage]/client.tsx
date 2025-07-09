@@ -27,7 +27,8 @@ import Link from "next/link";
 import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send, FolderSync, Upload, XCircle, CheckCircle, FileWarning, PlayCircle, UserPlus, Info, MoreHorizontal, Download, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppContext } from "@/context/workflow-context";
-import { EnrichedBook, AppDocument, User } from "@/context/workflow-context";
+import { type AppDocument, type RejectionTag } from "@/context/workflow-context";
+import type { EnrichedBook, User } from "@/lib/data";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -239,7 +240,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     Object.entries(columnFilters).forEach(([columnId, value]) => {
       if (value) {
         filtered = filtered.filter(item => {
-          const itemValue = item[columnId as keyof typeof item] as any;
+          const itemValue = (item as any)[columnId];
           return String(itemValue).toLowerCase().includes(value.toLowerCase());
         });
       }
@@ -248,9 +249,9 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     if (sorting.length > 0) {
         filtered.sort((a, b) => {
             for (const s of sorting) {
-                const key = s.id as keyof (EnrichedBook | AppDocument);
-                const valA = a[key as keyof typeof a];
-                const valB = b[key as keyof typeof b];
+                const key = s.id;
+                const valA = (a as any)[key];
+                const valB = (b as any)[key];
                 let result = 0;
                 if (valA === null || valA === undefined) result = -1;
                 else if (valB === null || valB === undefined) result = 1;
@@ -918,13 +919,22 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
           <div className="grid w-full items-center gap-1.5">
               <Label htmlFor="folder-upload">Select Scanned Folder</Label>
               <div className="flex items-center gap-2">
-                <Input id="folder-upload" type="file" onChange={handleDirectorySelect} webkitdirectory="true" directory="true" className="hidden" accept=".tif" />
                 <Button asChild variant="outline">
                     <label htmlFor="folder-upload" className="cursor-pointer">
                         <Upload className="mr-2 h-4 w-4" />
                         Choose Directory
                     </label>
                 </Button>
+                <Input {...{
+                  id: "folder-upload",
+                  type: "file",
+                  onChange: handleDirectorySelect,
+                  webkitdirectory: "true",
+                  directory: "true",
+                  className: "hidden",
+                  accept: ".tif"
+                } as any} />
+
                 {scanState.folderName && (
                     <div className="flex items-center gap-2 text-sm font-medium">
                         {isScanFolderMatch ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-destructive" />}
