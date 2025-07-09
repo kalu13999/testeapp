@@ -11,7 +11,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     try {
         const { actualPageCount, bookName, clientId, projectId } = await request.json();
 
-        if (!actualPageCount || !bookName || !clientId || !projectId) {
+        if (actualPageCount === undefined || !bookName || !clientId || !projectId) {
             return NextResponse.json({ error: 'Missing required data' }, { status: 400 });
         }
 
