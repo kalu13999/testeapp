@@ -35,7 +35,8 @@ import { Separator } from "@/components/ui/separator"
 import { AlertTriangle, BookCopy, BarChart2, ListTodo, Package, Send, FileClock, ArrowDownToLine, CheckCheck, TrendingUp, Activity, UserCheck, ShieldAlert, Download, ChevronsUpDown, ArrowUp, ArrowDown, Calendar as CalendarIcon } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import { useMemo } from "react"
-import type { EnrichedBook, EnrichedProject, EnrichedAuditLog, AppDocument } from "@/context/workflow-context"
+import type { EnrichedProject, EnrichedBook } from "@/lib/data";
+import type { EnrichedAuditLog, AppDocument } from "@/context/workflow-context";
 import Link from "next/link"
 import { subDays, format, eachDayOfInterval, isWithinInterval } from "date-fns"
 import type { DateRange } from "react-day-picker"
@@ -127,15 +128,15 @@ function ProjectDashboard() {
 
 
         const kpiData = [
-            { title: "Pending Shipping", value: pendingShippingBooks.length.toLocaleString(), icon: Package, description: "Books awaiting client shipment", items: pendingShippingBooks, type: 'books' },
-            { title: "In Transit", value: inTransitBooks.length.toLocaleString(), icon: Send, description: "Books shipped by the client", items: inTransitBooks, type: 'books' },
-            { title: "Received by Us", value: receivedBooks.length.toLocaleString(), icon: ArrowDownToLine, description: "Books confirmed at our facility", items: receivedBooks, type: 'books' },
-            { title: "Pending Client Action", value: pendingValidationBooks.length.toLocaleString(), icon: UserCheck, description: "Books awaiting client approval", items: pendingValidationBooks, type: 'books' },
-            { title: "Books in Workflow", value: workflowBooks.length.toLocaleString(), icon: BookCopy, description: "Active books being processed", items: workflowBooks, type: 'books' },
-            { title: "Finalized Books", value: finalizedBooks.length.toLocaleString(), icon: CheckCheck, description: "Books that are approved", items: finalizedBooks, type: 'books' },
-            { title: "Document Errors", value: errorDocs.length.toLocaleString(), icon: ShieldAlert, description: "Pages flagged with errors", items: booksWithErrors, type: 'books' },
-            { title: "Document Warnings", value: warningDocs.length.toLocaleString(), icon: AlertTriangle, description: "Pages flagged with warnings", items: booksWithWarnings, type: 'books' },
-            { title: "Actions Today", value: actionsTodayLogs.length.toLocaleString(), icon: Activity, description: "Actions recorded today", items: actionsTodayLogs, type: 'activities' },
+            { title: "Pending Shipping", value: pendingShippingBooks.length.toLocaleString(), icon: Package, description: "Books awaiting client shipment", items: pendingShippingBooks, type: 'books' as const },
+            { title: "In Transit", value: inTransitBooks.length.toLocaleString(), icon: Send, description: "Books shipped by the client", items: inTransitBooks, type: 'books' as const },
+            { title: "Received by Us", value: receivedBooks.length.toLocaleString(), icon: ArrowDownToLine, description: "Books confirmed at our facility", items: receivedBooks, type: 'books' as const },
+            { title: "Pending Client Action", value: pendingValidationBooks.length.toLocaleString(), icon: UserCheck, description: "Books awaiting client approval", items: pendingValidationBooks, type: 'books' as const },
+            { title: "Books in Workflow", value: workflowBooks.length.toLocaleString(), icon: BookCopy, description: "Active books being processed", items: workflowBooks, type: 'books' as const },
+            { title: "Finalized Books", value: finalizedBooks.length.toLocaleString(), icon: CheckCheck, description: "Books that are approved", items: finalizedBooks, type: 'books' as const },
+            { title: "Document Errors", value: errorDocs.length.toLocaleString(), icon: ShieldAlert, description: "Pages flagged with errors", items: booksWithErrors, type: 'books' as const },
+            { title: "Document Warnings", value: warningDocs.length.toLocaleString(), icon: AlertTriangle, description: "Pages flagged with warnings", items: booksWithWarnings, type: 'books' as const },
+            { title: "Actions Today", value: actionsTodayLogs.length.toLocaleString(), icon: Activity, description: "Actions recorded today", items: actionsTodayLogs, type: 'activities' as const },
         ];
 
         const orderedStageNames = [
@@ -631,3 +632,5 @@ export default function DashboardClient() {
         </div>
     )
 }
+
+    
