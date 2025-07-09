@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -18,6 +17,7 @@ import { ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import Link from "next/link"
 import type { EnrichedProject } from "@/context/workflow-context"
+import { format } from "date-fns"
 
 const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -41,6 +41,7 @@ export function ProjectStatsTab() {
         ...project,
         errorBooksCount: errorDocs.size,
         finalizedBooksCount: finalizedBooks,
+        timeline: `${format(new Date(project.startDate), "LLL d, y")} to ${format(new Date(project.endDate), "LLL d, y")}`,
       }
     })
   }, [allProjects, documents])
@@ -92,6 +93,7 @@ export function ProjectStatsTab() {
             <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name')}>Project Name {getSortIndicator('name')}</div></TableHead>
             <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('clientName')}>Client {getSortIndicator('clientName')}</div></TableHead>
             <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('status')}>Status {getSortIndicator('status')}</div></TableHead>
+            <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('timeline')}>Timeline {getSortIndicator('timeline')}</div></TableHead>
             <TableHead>Progress</TableHead>
             <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('totalExpected')}>Total Pages {getSortIndicator('totalExpected')}</div></TableHead>
             <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('finalizedBooksCount')}>Finalized Books {getSortIndicator('finalizedBooksCount')}</div></TableHead>
@@ -101,6 +103,7 @@ export function ProjectStatsTab() {
             <TableHead><Input placeholder="Filter name..." value={columnFilters['name'] || ''} onChange={e => setColumnFilters(p => ({...p, name: e.target.value}))} className="h-8"/></TableHead>
             <TableHead><Input placeholder="Filter client..." value={columnFilters['clientName'] || ''} onChange={e => setColumnFilters(p => ({...p, clientName: e.target.value}))} className="h-8"/></TableHead>
             <TableHead><Input placeholder="Filter status..." value={columnFilters['status'] || ''} onChange={e => setColumnFilters(p => ({...p, status: e.target.value}))} className="h-8"/></TableHead>
+            <TableHead><Input placeholder="Filter timeline..." value={columnFilters['timeline'] || ''} onChange={e => setColumnFilters(p => ({...p, timeline: e.target.value}))} className="h-8"/></TableHead>
             <TableHead colSpan={4}><Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Clear Filters</Button></TableHead>
           </TableRow>
         </TableHeader>
@@ -110,6 +113,7 @@ export function ProjectStatsTab() {
               <TableCell className="font-medium"><Link href={`/projects/${project.id}`} className="hover:underline">{project.name}</Link></TableCell>
               <TableCell>{project.clientName}</TableCell>
               <TableCell><Badge variant={getStatusBadgeVariant(project.status)}>{project.status}</Badge></TableCell>
+              <TableCell>{project.timeline}</TableCell>
               <TableCell><Progress value={project.progress} className="h-2"/></TableCell>
               <TableCell className="text-center">{project.documentCount} / {project.totalExpected}</TableCell>
               <TableCell className="text-center">{project.finalizedBooksCount}</TableCell>

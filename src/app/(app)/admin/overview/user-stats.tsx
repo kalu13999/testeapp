@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -16,6 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
+import { cn } from "@/lib/utils"
 
 const getInitials = (name: string) => {
     if (!name) return ""
@@ -39,6 +39,7 @@ export function UserStatsTab() {
         name: user.name,
         avatar: user.avatar,
         role: user.role,
+        status: user.status,
         totalActions: userLogs.length,
         scannedCount,
         indexedCount,
@@ -93,6 +94,7 @@ export function UserStatsTab() {
           <TableRow>
             <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name')}>User {getSortIndicator('name')}</div></TableHead>
             <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('role')}>Role {getSortIndicator('role')}</div></TableHead>
+            <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('status')}>Status {getSortIndicator('status')}</div></TableHead>
             <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('totalActions')}>Total Actions {getSortIndicator('totalActions')}</div></TableHead>
             <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('scannedCount')}>Books Scanned {getSortIndicator('scannedCount')}</div></TableHead>
             <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('indexedCount')}>Books Indexed {getSortIndicator('indexedCount')}</div></TableHead>
@@ -101,6 +103,7 @@ export function UserStatsTab() {
            <TableRow>
             <TableHead><Input placeholder="Filter user..." value={columnFilters['name'] || ''} onChange={e => setColumnFilters(p => ({...p, name: e.target.value}))} className="h-8"/></TableHead>
             <TableHead><Input placeholder="Filter role..." value={columnFilters['role'] || ''} onChange={e => setColumnFilters(p => ({...p, role: e.target.value}))} className="h-8"/></TableHead>
+            <TableHead><Input placeholder="Filter status..." value={columnFilters['status'] || ''} onChange={e => setColumnFilters(p => ({...p, status: e.target.value}))} className="h-8"/></TableHead>
             <TableHead colSpan={4}><Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Clear Filters</Button></TableHead>
           </TableRow>
         </TableHeader>
@@ -117,6 +120,7 @@ export function UserStatsTab() {
                   </div>
               </TableCell>
               <TableCell><Badge variant="secondary">{user.role}</Badge></TableCell>
+              <TableCell><Badge variant={user.status === 'active' ? 'default' : 'destructive'} className={cn("capitalize", user.status === 'active' && "bg-green-600")}>{user.status}</Badge></TableCell>
               <TableCell className="text-center">{user.totalActions}</TableCell>
               <TableCell className="text-center">{user.scannedCount}</TableCell>
               <TableCell className="text-center">{user.indexedCount}</TableCell>

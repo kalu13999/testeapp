@@ -33,7 +33,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { AlertTriangle, BookCopy, UserCheck, BarChart2, ListTodo, Activity, TrendingUp, ScanLine, Clock, ThumbsUp, Package, Send, FileClock, CheckCheck, ArrowDownToLine, CheckCircle2 } from "lucide-react"
+import { AlertTriangle, BookCopy, UserCheck, BarChart2, ListTodo, Activity, TrendingUp, ScanLine, Clock, ThumbsUp, Package, Send, FileClock, CheckCheck, ArrowDownToLine, CheckCircle2, History } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import { useMemo } from "react"
 import type { EnrichedBook, AppDocument, EnrichedProject, EnrichedAuditLog, User } from "@/context/workflow-context"
@@ -44,6 +44,7 @@ import { Input } from "@/components/ui/input"
 import { ProjectStatsTab } from "./project-stats"
 import { ClientStatsTab } from "./client-stats"
 import { UserStatsTab } from "./user-stats"
+import { HistoryStatsTab } from "./history-stats"
 
 const kpiIconMap: { [key: string]: React.ElementType } = {
     "Books in Workflow": BookCopy,
@@ -322,11 +323,12 @@ export default function GlobalOverviewClient() {
     <div className="flex flex-col gap-6">
         <h1 className="font-headline text-3xl font-bold tracking-tight">Global Overview</h1>
         <Tabs defaultValue="system">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="system">System Health</TabsTrigger>
                 <TabsTrigger value="projects">By Project</TabsTrigger>
                 <TabsTrigger value="clients">By Client</TabsTrigger>
                 <TabsTrigger value="users">By User</TabsTrigger>
+                <TabsTrigger value="history">History</TabsTrigger>
             </TabsList>
             <TabsContent value="system" className="pt-4">
                 <SystemOverviewTab />
@@ -361,6 +363,17 @@ export default function GlobalOverviewClient() {
                     </CardHeader>
                     <CardContent>
                         <UserStatsTab />
+                    </CardContent>
+                </Card>
+            </TabsContent>
+            <TabsContent value="history" className="pt-4">
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>System Audit Log</CardTitle>
+                        <CardDescription>A complete log of all actions performed across the application.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <HistoryStatsTab />
                     </CardContent>
                 </Card>
             </TabsContent>

@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -24,6 +23,7 @@ export function ClientStatsTab() {
     return clients.map(client => {
       const projectsForClient = allProjects.filter(p => p.clientId === client.id)
       const activeProjects = projectsForClient.filter(p => p.status === 'In Progress').length
+      const onHoldProjects = projectsForClient.filter(p => p.status === 'On Hold').length
       const totalBooks = projectsForClient.reduce((sum, p) => sum + p.books.length, 0)
       const finalizedBooks = projectsForClient.reduce((sum, p) => sum + p.books.filter(b => b.status === 'Finalized').length, 0)
       const totalBudget = projectsForClient.reduce((sum, p) => sum + p.budget, 0)
@@ -34,6 +34,7 @@ export function ClientStatsTab() {
         name: client.name,
         totalProjects: projectsForClient.length,
         activeProjects,
+        onHoldProjects,
         totalBooks,
         finalizedBooks,
         avgBudget: avgBudget.toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
@@ -88,13 +89,14 @@ export function ClientStatsTab() {
             <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name')}>Client Name {getSortIndicator('name')}</div></TableHead>
             <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('totalProjects')}>Total Projects {getSortIndicator('totalProjects')}</div></TableHead>
             <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('activeProjects')}>Active Projects {getSortIndicator('activeProjects')}</div></TableHead>
+            <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('onHoldProjects')}>On Hold {getSortIndicator('onHoldProjects')}</div></TableHead>
             <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('totalBooks')}>Total Books {getSortIndicator('totalBooks')}</div></TableHead>
             <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('finalizedBooks')}>Finalized Books {getSortIndicator('finalizedBooks')}</div></TableHead>
             <TableHead className="text-right"><div className="flex items-center justify-end gap-2 cursor-pointer select-none group" onClick={() => handleSort('avgBudget')}>Avg. Project Budget {getSortIndicator('avgBudget')}</div></TableHead>
           </TableRow>
            <TableRow>
             <TableHead><Input placeholder="Filter name..." value={columnFilters['name'] || ''} onChange={e => setColumnFilters(p => ({...p, name: e.target.value}))} className="h-8"/></TableHead>
-            <TableHead colSpan={5}><Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Clear Filters</Button></TableHead>
+            <TableHead colSpan={6}><Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Clear Filters</Button></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -103,6 +105,7 @@ export function ClientStatsTab() {
               <TableCell className="font-medium">{client.name}</TableCell>
               <TableCell className="text-center">{client.totalProjects}</TableCell>
               <TableCell className="text-center">{client.activeProjects}</TableCell>
+              <TableCell className="text-center">{client.onHoldProjects}</TableCell>
               <TableCell className="text-center">{client.totalBooks}</TableCell>
               <TableCell className="text-center">{client.finalizedBooks}</TableCell>
               <TableCell className="text-right">{client.avgBudget}</TableCell>
