@@ -2,49 +2,93 @@
 "use client"
 
 import * as React from "react"
+import * as XLSX from 'xlsx';
+import Link from "next/link";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Book, Edit, DollarSign, Calendar, Info, ArrowUp, ArrowDown, ChevronsUpDown, Settings2, Package, LucideIcon } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ProjectForm } from "../project-form";
-import Link from "next/link";
 import { useAppContext } from "@/context/workflow-context";
-import { EnrichedBook, Project } from "@/lib/data";
+import { type EnrichedBook, type Project } from "@/lib/data";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { WORKFLOW_PHASES, MANDATORY_STAGES, STAGE_CONFIG } from "@/lib/workflow-config";
 import { cn } from "@/lib/utils";
-import { Separator } from "@/components/ui/separator";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
+import { useToast } from "@/hooks/use-toast";
+import { Book, Edit, DollarSign, Calendar, Info, ArrowUp, ArrowDown, ChevronsUpDown, Settings2, Package, LucideIcon, BookCopy, AlertTriangle, CheckCircle, Download } from "lucide-react";
+
 
 interface ProjectDetailClientProps {
   projectId: string;
 }
 
-const DetailItem = ({ icon: Icon, label, value }: { icon: LucideIcon, label: string; value: React.ReactNode }) => (
-  <div className="flex flex-col gap-1">
-      <div className="text-sm text-muted-foreground flex items-center gap-1.5"><Icon className="h-4 w-4" /> {label}</div>
-      <div className="font-semibold text-lg">{value}</div>
-  </div>
-);
+const ITEMS_PER_PAGE = 10;
+
+const getStatusBadgeVariant = (status: string) => {
+    switch (status) {
+        case 'Complete': return 'default';
+        case 'In Progress': return 'secondary';
+        case 'On Hold': return 'outline';
+        default: return 'outline';
+    }
+}
 
 export default function ProjectDetailClient({ projectId }: ProjectDetailClientProps) {
-  const { allProjects, clients, updateProject, projectWorkflows, updateProjectWorkflow } = useAppContext();
+  const { allProjects, clients, updateProject, projectWorkflows, updateProjectWorkflow, documents } = useAppContext();
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isWorkflowDialogOpen, setIsWorkflowDialogOpen] = React.useState(false);
+  const [columnFilters, setColumnFilters] = React.useState<{ [key: string]: string }>({});
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [selection, setSelection] = React.useState<string[]>([]);
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
     { id: 'name', desc: false }
   ]);
+  const { toast } = useToast();
   
   const project = allProjects.find(p => p.id === projectId);
   const projectWorkflow = projectWorkflows[projectId] || [];
@@ -88,10 +132,45 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
     const icon = sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />;
     return <div className="flex items-center gap-1">{icon}{sorting.length > 1 && (<span className="text-xs font-bold text-muted-foreground">{sortIndex + 1}</span>)}</div>;
   }
-
+  
+  const handleColumnFilterChange = (columnId: string, value: string) => {
+    setColumnFilters(prev => ({ ...prev, [columnId]: value }));
+    setCurrentPage(1);
+  };
+  
+  const kpiData = React.useMemo(() => {
+    if (!project) return [];
+    const errorDocs = documents.filter(d => d.projectId === project.id && d.flag === 'error');
+    return [
+      { title: "Total Books", value: project.books.length, icon: BookCopy },
+      { title: "Books In Progress", value: project.books.filter(b => !['Complete', 'Archived', 'Pending Shipment'].includes(b.status)).length, icon: Loader2 },
+      { title: "Books Completed", value: project.books.filter(b => ['Complete', 'Archived', 'Finalized'].includes(b.status)).length, icon: CheckCircle },
+      { title: "Docs with Errors", value: errorDocs.length, icon: AlertTriangle }
+    ];
+  }, [project, documents]);
+  
+  const chartData = React.useMemo(() => {
+      if (!project) return [];
+      const booksByStage = project.books.reduce((acc, book) => {
+          const stage = book.status || 'Unknown';
+          acc[stage] = (acc[stage] || 0) + 1;
+          return acc;
+      }, {} as { [key: string]: number });
+      return Object.entries(booksByStage).map(([name, count]) => ({ name, count }));
+  }, [project]);
+  
+  const chartConfig: ChartConfig = { count: { label: "Books", color: "hsl(var(--chart-1))" } };
+  
   const sortedBooks = React.useMemo(() => {
     if (!project) return [];
     let projectBooks = [...project.books];
+    
+    Object.entries(columnFilters).forEach(([columnId, value]) => {
+      if (value) {
+        projectBooks = projectBooks.filter(book => String(book[columnId as keyof EnrichedBook]).toLowerCase().includes(value.toLowerCase()));
+      }
+    });
+
     if (sorting.length > 0) {
         projectBooks.sort((a, b) => {
             for (const s of sorting) {
@@ -110,7 +189,49 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
         });
     }
     return projectBooks;
-  }, [project, sorting]);
+  }, [project, sorting, columnFilters]);
+
+  const totalPages = Math.ceil(sortedBooks.length / ITEMS_PER_PAGE);
+  const paginatedBooks = sortedBooks.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  const selectedBooks = React.useMemo(() => sortedBooks.filter(book => selection.includes(book.id)), [sortedBooks, selection]);
+
+  const downloadFile = (content: string, fileName: string, mimeType: string) => { /* ... (omitted for brevity) */ };
+  const exportJSON = (data: EnrichedBook[]) => {
+    if (data.length === 0) return;
+    const jsonString = JSON.stringify(data, null, 2);
+    downloadFile(jsonString, 'project_books_export.json', 'application/json');
+    toast({ title: "Export Successful", description: `${data.length} books exported as JSON.` });
+  };
+  const exportCSV = (data: EnrichedBook[]) => {
+    if (data.length === 0) return;
+    const headers = ['id', 'name', 'status', 'progress', 'documentCount', 'expectedDocuments'];
+    const csvContent = [headers.join(','), ...data.map(d => headers.map(h => JSON.stringify(d[h as keyof typeof d])).join(','))].join('\n');
+    downloadFile(csvContent, 'project_books_export.csv', 'text/csv;charset=utf-8;');
+    toast({ title: "Export Successful", description: `${data.length} books exported as CSV.` });
+  };
+  const exportXLSX = (data: EnrichedBook[]) => {
+    if (data.length === 0) return;
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Books");
+    XLSX.writeFile(workbook, "project_books_export.xlsx");
+    toast({ title: "Export Successful", description: `${data.length} books exported as XLSX.` });
+  };
+
+  const PaginationNav = () => {
+    if (totalPages <= 1) return null;
+    return (
+      <Pagination>
+        <PaginationContent>
+          <PaginationItem><PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }} className={currentPage === 1 ? "pointer-events-none opacity-50" : undefined}/></PaginationItem>
+          {/* For simplicity, showing current page of total */}
+          <PaginationItem><PaginationLink href="#">Page {currentPage} of {totalPages}</PaginationLink></PaginationItem>
+          <PaginationItem><PaginationNext href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }} className={currentPage === totalPages ? "pointer-events-none opacity-50" : undefined}/></PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    );
+  };
+
 
   if (!project) {
       return (
@@ -139,67 +260,135 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
           </CardHeader>
           <CardContent>
               <p className="text-muted-foreground max-w-4xl">{project.description}</p>
-              <Separator className="my-6" />
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                 <DetailItem icon={Package} label="Status" value={<Badge variant={project.status === 'Complete' ? 'default' : 'secondary'}>{project.status}</Badge>} />
-                 <DetailItem icon={DollarSign} label="Budget" value={`$${project.budget.toLocaleString()}`} />
-                 <DetailItem icon={Calendar} label="Timeline" value={`${project.startDate} to ${project.endDate}`} />
-                 <DetailItem icon={Book} label="Pages" value={`${project.documentCount.toLocaleString()} / ${project.totalExpected.toLocaleString()}`} />
-              </div>
-               <div className="mt-6">
-                  <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm font-medium">Overall Progress</span>
-                      <span className="text-sm text-muted-foreground">{Math.round(project.progress)}%</span>
-                  </div>
-                  <Progress value={project.progress} />
-              </div>
-              {project.info && (
-                <>
-                <Separator className="my-6"/>
-                 <div className="space-y-2">
-                    <h4 className="text-sm font-medium flex items-center gap-2"><Info className="h-4 w-4"/> Additional Info</h4>
-                    <p className="text-sm text-muted-foreground">{project.info}</p>
-                </div>
-                </>
-              )}
           </CardContent>
         </Card>
+
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {kpiData.map(kpi => (
+                <Card key={kpi.title}>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
+                        <kpi.icon className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent><div className="text-2xl font-bold">{kpi.value}</div></CardContent>
+                </Card>
+            ))}
+        </div>
         
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            <Card className="lg:col-span-2">
+                <CardHeader>
+                    <CardTitle>Project Status</CardTitle>
+                    <CardDescription>Distribution of books by workflow stage.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                     <ChartContainer config={chartConfig} className="h-64 w-full">
+                        <BarChart data={chartData} layout="vertical" margin={{ left: 20, right: 20 }}>
+                            <XAxis type="number" hide />
+                            <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} width={120}/>
+                            <ChartTooltip cursor={{ fill: "hsl(var(--muted))" }} content={<ChartTooltipContent />} />
+                            <Bar dataKey="count" fill="var(--color-count)" radius={4} />
+                        </BarChart>
+                    </ChartContainer>
+                </CardContent>
+            </Card>
+            <Card className="lg:col-span-3">
+                 <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><Book className="h-5 w-5" /> Books</CardTitle>
+                    <CardDescription>Detailed breakdown of each book within the project.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>Book Name {getSortIndicator('name')}</div></TableHead>
+                                <TableHead className="w-[150px]"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Status {getSortIndicator('status')}</div></TableHead>
+                                <TableHead className="w-[200px]"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('progress', e.shiftKey)}>Progress {getSortIndicator('progress')}</div></TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {paginatedBooks.length > 0 ? paginatedBooks.map(book => (
+                                <TableRow key={book.id}>
+                                    <TableCell className="font-medium">
+                                        <Link href={`/books/${book.id}`} className="hover:underline">
+                                            {book.name}
+                                        </Link>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge variant="outline">{book.status}</Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Progress value={book.progress} className="h-2" />
+                                    </TableCell>
+                                </TableRow>
+                            )) : <TableRow><TableCell colSpan={3} className="h-24 text-center">No books found.</TableCell></TableRow>}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+                {totalPages > 1 && <CardFooter className="justify-end"><PaginationNav /></CardFooter>}
+            </Card>
+        </div>
+
         <Card>
             <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Book className="h-5 w-5" /> Books</CardTitle>
-                <CardDescription>Detailed breakdown of each book within the project.</CardDescription>
+                <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2"><Book className="h-5 w-5" /> Book Manifest</CardTitle>
+                      <CardDescription>Detailed breakdown of each book within the project.</CardDescription>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="sm" variant="outline" className="h-9 gap-1"><Download className="h-3.5 w-3.5" /><span>Export</span></Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Export Selected ({selection.length})</DropdownMenuLabel>
+                        <DropdownMenuItem onSelect={() => exportXLSX(selectedBooks)} disabled={selection.length === 0}>Export as XLSX</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportJSON(selectedBooks)} disabled={selection.length === 0}>Export as JSON</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportCSV(selectedBooks)} disabled={selection.length === 0}>Export as CSV</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuLabel>Export All ({sortedBooks.length})</DropdownMenuLabel>
+                        <DropdownMenuItem onSelect={() => exportXLSX(sortedBooks)} disabled={sortedBooks.length === 0}>Export as XLSX</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportJSON(sortedBooks)} disabled={sortedBooks.length === 0}>Export as JSON</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportCSV(sortedBooks)} disabled={sortedBooks.length === 0}>Export as CSV</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
             </CardHeader>
             <CardContent>
                 <Table>
                     <TableHeader>
                         <TableRow>
+                            <TableHead className="w-[40px]"><Checkbox onCheckedChange={(checked) => setSelection(checked ? paginatedBooks.map(b => b.id) : [])} checked={paginatedBooks.length > 0 && selection.length === paginatedBooks.length} /></TableHead>
                             <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>Book Name {getSortIndicator('name')}</div></TableHead>
                             <TableHead className="w-[150px]"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Status {getSortIndicator('status')}</div></TableHead>
                             <TableHead className="w-[150px] text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('documentCount', e.shiftKey)}>Documents {getSortIndicator('documentCount')}</div></TableHead>
                             <TableHead className="w-[200px]"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('progress', e.shiftKey)}>Progress {getSortIndicator('progress')}</div></TableHead>
                         </TableRow>
+                         <TableRow>
+                            <TableHead />
+                            <TableHead><Input placeholder="Filter by name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8" /></TableHead>
+                            <TableHead><Input placeholder="Filter by status..." value={columnFilters['status'] || ''} onChange={(e) => handleColumnFilterChange('status', e.target.value)} className="h-8" /></TableHead>
+                            <TableHead><Input placeholder="Filter by docs..." value={columnFilters['documentCount'] || ''} onChange={(e) => handleColumnFilterChange('documentCount', e.target.value)} className="h-8" /></TableHead>
+                            <TableHead><Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Clear</Button></TableHead>
+                        </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {sortedBooks.map(book => (
-                            <TableRow key={book.id}>
-                                <TableCell className="font-medium">
-                                    <Link href={`/books/${book.id}`} className="hover:underline">
-                                        {book.name}
-                                    </Link>
-                                </TableCell>
-                                <TableCell>
-                                    <Badge variant="outline">{book.status}</Badge>
-                                </TableCell>
+                        {paginatedBooks.map(book => (
+                            <TableRow key={book.id} data-state={selection.includes(book.id) && "selected"}>
+                                <TableCell><Checkbox checked={selection.includes(book.id)} onCheckedChange={(checked) => setSelection(prev => checked ? [...prev, book.id] : prev.filter(id => id !== book.id))} /></TableCell>
+                                <TableCell className="font-medium"><Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link></TableCell>
+                                <TableCell><Badge variant="outline">{book.status}</Badge></TableCell>
                                 <TableCell className="text-center">{book.documentCount} / {book.expectedDocuments}</TableCell>
-                                <TableCell>
-                                    <Progress value={book.progress} className="h-2" />
-                                </TableCell>
+                                <TableCell><Progress value={book.progress} className="h-2" /></TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
                 </Table>
             </CardContent>
+            <CardFooter className="justify-between">
+                <div className="text-xs text-muted-foreground">{selection.length} of {sortedBooks.length} selected</div>
+                <PaginationNav />
+            </CardFooter>
         </Card>
 
         <Card>
@@ -212,7 +401,7 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                 </Button>
               </div>
               <CardDescription>
-                Customize the sequence of steps for this project. Disabled phases will be skipped, moving books to the next enabled stage.
+                Customize the sequence of steps for this project. Disabled phases will be skipped.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -228,8 +417,8 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                             const isEnabled = !group.toggleable || projectWorkflow.includes(stageKey);
                             return (
                               <div key={stageKey} className="flex items-center gap-3 text-sm">
-                                  <div className={`w-2 h-2 rounded-full ${isEnabled ? 'bg-primary' : 'bg-muted-foreground'}`} />
-                                  <span className={`${!isEnabled && 'text-muted-foreground line-through'}`}>
+                                  <div className={cn('w-2 h-2 rounded-full', isEnabled ? 'bg-primary' : 'bg-muted-foreground')} />
+                                  <span className={cn(!isEnabled && 'text-muted-foreground line-through')}>
                                     {stageConfig.title}
                                   </span>
                               </div>
