@@ -225,7 +225,7 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                         {group.stages.map(stageKey => {
                             const stageConfig = STAGE_CONFIG[stageKey as keyof typeof STAGE_CONFIG];
                             if (!stageConfig) return null;
-                            const isEnabled = projectWorkflow.includes(stageKey);
+                            const isEnabled = !group.toggleable || projectWorkflow.includes(stageKey);
                             return (
                               <div key={stageKey} className="flex items-center gap-3 text-sm">
                                   <div className={`w-2 h-2 rounded-full ${isEnabled ? 'bg-primary' : 'bg-muted-foreground'}`} />
