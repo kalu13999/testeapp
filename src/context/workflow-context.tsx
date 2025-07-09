@@ -865,6 +865,38 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     return null; // Reached end of workflow
   };
 
+  const moveBookDocuments = React.useCallback(async (bookId: string, newStatusName: string) => {
+    try {
+      const statusMapping = await dataApi.getDocumentStatuses();
+      const newStatusId = statusMapping.find(s => s.name === newStatusName)?.id;
+
+      if (!newStatusId) {
+        console.error(`Status '${newStatusName}' not found in status mapping.`);
+        return;
+      }
+      
+      const response = await fetch('/api/documents/bulk-update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookId, newStatusId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to bulk update document statuses via API');
+      }
+
+      // Optimistically update client state
+      setDocuments(prevDocs =>
+        prevDocs.map(doc =>
+          doc.bookId === bookId ? { ...doc, status: newStatusName, statusId: newStatusId } : doc
+        )
+      );
+    } catch (error) {
+      console.error(error);
+      toast({ title: "Document Update Error", description: "Could not update the status of associated documents.", variant: "destructive" });
+    }
+  }, [toast]);
+
   const updateBookStatus = React.useCallback(async (bookId: string, newStatusName: string, additionalUpdates: Partial<RawBook> = {}) => {
     try {
         const response = await fetch(`/api/books/${bookId}`, {
@@ -874,6 +906,9 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         });
         if (!response.ok) throw new Error('Failed to update book status');
         const updatedBook = await response.json();
+        
+        await moveBookDocuments(bookId, newStatusName);
+
         setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
         return true;
     } catch (error) {
@@ -881,22 +916,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         toast({ title: "Error", description: "Could not update book status.", variant: "destructive" });
         return false;
     }
-  }, [toast]);
+  }, [toast, moveBookDocuments]);
   
-  const moveBookDocuments = React.useCallback(async (bookId: string, newStatusName: string) => {
-    // This action is now handled by backend triggers or logic when book status changes.
-    // For client-side consistency, we update the state optimistically.
-    const statusMapping = await dataApi.getDocumentStatuses();
-    const newStatusId = statusMapping.find(s => s.name === newStatusName)?.id;
-    if(!newStatusId) return;
-
-    setDocuments(prevDocs =>
-        prevDocs.map(doc =>
-            doc.bookId === bookId ? { ...doc, status: newStatusName, statusId: newStatusId } : doc
-        )
-    );
-  }, []);
-
   const handleMarkAsShipped = (bookIds: string[]) => {
     bookIds.forEach(async bookId => {
       const success = await updateBookStatus(bookId, 'In Transit');
