@@ -45,6 +45,7 @@ import { subDays, format } from "date-fns"
 import { Input } from "@/components/ui/input"
 import { ProjectStatsTab } from "./project-stats"
 import { ClientStatsTab } from "./client-stats"
+import { BookStatsTab } from "./book-stats"
 import { OperationalUserStatsTab } from "./user-stats"
 import { ClientUserStatsTab } from "./client-user-stats"
 import { HistoryStatsTab } from "./history-stats"
@@ -97,7 +98,7 @@ function SystemOverviewTab() {
             { title: "Finalized Books", value: finalizedBooks.length.toLocaleString(), icon: CheckCircle2, description: "Books that are approved", items: finalizedBooks, type: 'books' },
             { title: "Pending Client Action", value: pendingClientActionBooks.length.toLocaleString(), icon: UserCheck, description: "Batches awaiting client approval", items: pendingClientActionBooks, type: 'books' },
             { title: "SLA Warnings", value: slaWarningProjects.length.toLocaleString(), icon: AlertTriangle, description: "Projects past their due date", items: slaWarningBooks, type: 'books' },
-            { title: "Actions Today", value: processedTodayLogs.length.toLocaleString(), icon: Activity, description: "Any action performed today", items: processedTodayLogs, type: 'activities' },
+            { title: "Actions Today", value: actionsTodayLogs.length.toLocaleString(), icon: Activity, description: "Any action performed today", items: processedTodayLogs, type: 'activities' },
         ];
 
         const orderedStageNames = [
@@ -301,9 +302,10 @@ export default function GlobalOverviewClient() {
     <div className="flex flex-col gap-6">
         <h1 className="font-headline text-3xl font-bold tracking-tight">Global Overview</h1>
         <Tabs defaultValue="system">
-            <TabsList className="grid w-full grid-cols-6">
+            <TabsList className="grid w-full grid-cols-7">
                 <TabsTrigger value="system">System Health</TabsTrigger>
                 <TabsTrigger value="projects">By Project</TabsTrigger>
+                <TabsTrigger value="books">By Book</TabsTrigger>
                 <TabsTrigger value="clients">By Client</TabsTrigger>
                 <TabsTrigger value="operators">By Operator</TabsTrigger>
                 <TabsTrigger value="client-users">By Client User</TabsTrigger>
@@ -314,6 +316,9 @@ export default function GlobalOverviewClient() {
             </TabsContent>
             <TabsContent value="projects" className="pt-4">
                 <ProjectStatsTab />
+            </TabsContent>
+            <TabsContent value="books" className="pt-4">
+                <BookStatsTab />
             </TabsContent>
             <TabsContent value="clients" className="pt-4">
                 <ClientStatsTab />
@@ -331,5 +336,3 @@ export default function GlobalOverviewClient() {
     </div>
   )
 }
-
-    
