@@ -76,7 +76,9 @@ export function BookStatsTab() {
         return acc;
     }, {} as {[key: string]: number});
 
-    return Object.entries(statusCounts).map(([name, value]) => ({ name, value, fill: `hsl(${Math.random() * 360}, 70%, 50%)` }));
+    return Object.entries(statusCounts)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
   }, [books]);
   
   const booksByProjectChartData = React.useMemo(() => (
@@ -85,7 +87,10 @@ export function BookStatsTab() {
       .slice(0, 10)
   ), [allProjects]);
   
-  const chartConfig: ChartConfig = { books: { label: "Books", color: "hsl(var(--chart-1))" } };
+  const chartConfig: ChartConfig = { 
+    books: { label: "Books", color: "hsl(var(--chart-1))" },
+    value: { label: "Books", color: "hsl(var(--chart-2))" }
+  };
 
   const handleSort = (columnId: string) => {
     setSorting(currentSorting => {
@@ -194,13 +199,15 @@ export function BookStatsTab() {
             <Card>
                 <CardHeader><CardTitle>Books by Status</CardTitle></CardHeader>
                 <CardContent>
-                     <ChartContainer config={{}} className="h-[250px] w-full">
-                        <PieChart>
-                            <Tooltip content={<ChartTooltipContent hideLabel />} />
-                            <Pie data={booksByStatusChartData} dataKey="value" nameKey="name" innerRadius={50} />
-                            <Legend/>
-                        </PieChart>
-                     </ChartContainer>
+                    <ChartContainer config={chartConfig} className="h-[250px] w-full">
+                        <BarChart data={booksByStatusChartData} layout="vertical" margin={{ left: 50 }}>
+                            <CartesianGrid horizontal={false} />
+                            <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} width={120} />
+                            <XAxis dataKey="value" type="number" hide />
+                            <Tooltip cursor={{ fill: "hsl(var(--muted))" }} content={<ChartTooltipContent />} />
+                            <Bar dataKey="value" radius={4} fill="var(--color-value)" />
+                        </BarChart>
+                    </ChartContainer>
                 </CardContent>
             </Card>
             <Card>
