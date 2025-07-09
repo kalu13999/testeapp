@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import * as React from 'react';
@@ -69,9 +70,9 @@ type AppContextType = {
   deleteRole: (roleName: string) => void;
 
   // Project Actions
-  addProject: (projectData: Omit<Project, 'id'>) => void;
-  updateProject: (projectId: string, projectData: Partial<Omit<Project, 'id'>>) => void;
-  deleteProject: (projectId: string) => void;
+  addProject: (projectData: Omit<Project, 'id'>) => Promise<void>;
+  updateProject: (projectId: string, projectData: Partial<Omit<Project, 'id'>>) => Promise<void>;
+  deleteProject: (projectId: string) => Promise<void>;
   updateProjectWorkflow: (projectId: string, workflow: string[]) => void;
 
   // Book Actions
@@ -250,7 +251,11 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(logData),
         });
-        if (!response.ok) throw new Error('Failed to create audit log');
+        if (!response.ok) {
+           const errorBody = await response.json();
+           console.error("Audit log API error:", errorBody);
+           throw new Error('Failed to create audit log');
+        }
         const newLog = await response.json();
         setAuditLogs(prev => [{ ...newLog, user: currentUser.name }, ...prev]);
     } catch (error) {
@@ -333,17 +338,18 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const updateClient = async (clientId: string, clientData: Partial<Omit<Client, 'id'>>) => {
     try {
         const originalClient = clients.find(c => c.id === clientId);
-        const updatedClient = { ...originalClient, ...clientData };
+        const updatedClientData = { ...originalClient, ...clientData };
 
         const response = await fetch(`/api/clients/${clientId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updatedClient),
+            body: JSON.stringify(updatedClientData),
         });
         if (!response.ok) throw new Error('Failed to update client');
         
+        const updatedClient = await response.json();
         setClients(prev => prev.map(c => c.id === clientId ? updatedClient as Client : c));
-        logAction('Client Updated', `Details for "${clientData.name}" updated.`, {});
+        logAction('Client Updated', `Details for "${updatedClient.name}" updated.`, {});
         toast({ title: "Client Updated", description: "Client details have been saved." });
     } catch (error) {
         console.error(error);
@@ -484,32 +490,75 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     toast({ title: "Default Project Updated" });
   };
   
-  const addProject = (projectData: Omit<Project, 'id'>) => {
-    const newProjectData: Project = { id: `proj_${Date.now()}`, ...projectData };
-    setRawProjects(prev => [...prev, newProjectData]);
-    // Assign a default full workflow to the new project
-    const defaultWorkflow = WORKFLOW_SEQUENCE;
-    setProjectWorkflows(prev => ({...prev, [newProjectData.id]: defaultWorkflow }));
-    logAction('Project Created', `New project "${newProjectData.name}" added.`, {});
-    toast({ title: "Project Added", description: `Project "${newProjectData.name}" has been created.` });
+  const addProject = async (projectData: Omit<Project, 'id'>) => {
+    try {
+        const response = await fetch('/api/projects', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(projectData),
+        });
+        if (!response.ok) throw new Error('Failed to create project');
+        
+        const newProject = await response.json();
+        
+        setRawProjects(prev => [...prev, newProject]);
+        setProjectWorkflows(prev => ({ ...prev, [newProject.id]: WORKFLOW_SEQUENCE }));
+
+        logAction('Project Created', `New project "${newProject.name}" added.`, {});
+        toast({ title: "Project Added", description: `Project "${newProject.name}" has been created.` });
+    } catch (error) {
+        console.error(error);
+        toast({ title: "Error", description: "Could not create project.", variant: "destructive" });
+    }
   };
   
-  const updateProject = (projectId: string, projectData: Partial<Omit<Project, 'id'>>) => {
-    setRawProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...projectData } : p));
-    logAction('Project Updated', `Details for project "${projectData.name}" updated.`, {});
-    toast({ title: "Project Updated" });
+  const updateProject = async (projectId: string, projectData: Partial<Omit<Project, 'id'>>) => {
+    try {
+        const originalProject = rawProjects.find(p => p.id === projectId);
+        const updatedProjectData = { ...originalProject, ...projectData };
+
+        const response = await fetch(`/api/projects/${projectId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedProjectData),
+        });
+        if (!response.ok) throw new Error('Failed to update project');
+        
+        const updatedProject = await response.json();
+        
+        setRawProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...updatedProject } : p));
+        logAction('Project Updated', `Details for project "${updatedProject.name}" updated.`, {});
+        toast({ title: "Project Updated" });
+    } catch (error) {
+        console.error(error);
+        toast({ title: "Error", description: "Could not update project.", variant: "destructive" });
+    }
   };
 
-  const deleteProject = (projectId: string) => {
+  const deleteProject = async (projectId: string) => {
       const projectToDelete = rawProjects.find(p => p.id === projectId);
-      if (selectedProjectId === projectId) {
-        setSelectedProjectId(null);
+      try {
+          const response = await fetch(`/api/projects/${projectId}`, { method: 'DELETE' });
+          if (!response.ok) throw new Error('Failed to delete project');
+
+          if (selectedProjectId === projectId) {
+              setSelectedProjectId(null);
+          }
+          setRawProjects(prev => prev.filter(p => p.id !== projectId));
+          setRawBooks(prev => prev.filter(b => b.projectId !== projectId));
+          setDocuments(prev => prev.filter(d => d.projectId !== projectId));
+          setProjectWorkflows(prev => {
+              const newWorkflows = { ...prev };
+              delete newWorkflows[projectId];
+              return newWorkflows;
+          });
+
+          logAction('Project Deleted', `Project "${projectToDelete?.name}" was deleted.`, {});
+          toast({ title: "Project Deleted", variant: "destructive" });
+      } catch (error) {
+          console.error(error);
+          toast({ title: "Error", description: "Could not delete project.", variant: "destructive" });
       }
-      setRawProjects(prev => prev.filter(p => p.id !== projectId));
-      setRawBooks(prev => prev.filter(b => b.projectId !== projectId));
-      setDocuments(prev => prev.filter(d => d.projectId !== projectId));
-      logAction('Project Deleted', `Project "${projectToDelete?.name}" and all data deleted.`, {});
-      toast({ title: "Project Deleted", variant: "destructive" });
   };
 
   const addBook = (projectId: string, bookData: Omit<RawBook, 'id' | 'projectId' | 'status'>) => {
