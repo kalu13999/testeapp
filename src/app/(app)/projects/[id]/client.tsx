@@ -32,7 +32,7 @@ import { type EnrichedBook, type Project } from "@/lib/data";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { WORKFLOW_PHASES, MANDATORY_STAGES, STAGE_CONFIG } from "@/lib/workflow-config";
+import { WORKFLOW_PHASES, MANDATORY_STAGES, STAGE_CONFIG, findStageKeyFromStatus } from "@/lib/workflow-config";
 import { cn } from "@/lib/utils";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Pie, PieChart, Cell, Legend, Tooltip } from "recharts"
 import {
@@ -80,9 +80,9 @@ const getStatusBadgeVariant = (status: string) => {
 }
 
 const DetailItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
-  <div className="flex justify-between items-center text-sm">
-    <p className="text-muted-foreground">{label}</p>
-    <div className="font-medium text-right">{value}</div>
+  <div className="flex flex-col space-y-1">
+    <p className="text-sm text-muted-foreground">{label}</p>
+    <div className="font-medium">{value}</div>
   </div>
 );
 
@@ -314,35 +314,40 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
             </CardHeader>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {kpiData.map((kpi) => (
-                  <Card key={kpi.title} onClick={() => handleKpiClick(kpi)} className={kpi.items && kpi.items.length > 0 ? "cursor-pointer transition-colors hover:bg-muted/50" : ""}>
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                          <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
-                          <kpi.icon className="h-4 w-4 text-muted-foreground" />
-                      </CardHeader>
-                      <CardContent><div className="text-2xl font-bold">{kpi.value}</div></CardContent>
-                  </Card>
-              ))}
-            </div>
-             <div className="lg:col-span-1">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-base">Project Summary</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <DetailItem label="Status" value={<Badge variant={getStatusBadgeVariant(project.status)}>{project.status}</Badge>} />
-                        <DetailItem label="Budget" value={`$${project.budget.toLocaleString()}`} />
-                        <DetailItem label="Timeline" value={`${format(new Date(project.startDate), "LLL d, y")} to ${format(new Date(project.endDate), "LLL d, y")}`} />
-                        <Separator/>
-                        <div className="space-y-2">
-                            <DetailItem label="Total Pages" value={`${project.documentCount.toLocaleString()} / ${project.totalExpected.toLocaleString()}`} />
-                            <Progress value={project.progress} />
+        <Card>
+            <CardHeader>
+                <CardTitle>Project Summary</CardTitle>
+                <CardDescription>{project.description}</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-8">
+                    <DetailItem label="Status" value={<Badge variant={getStatusBadgeVariant(project.status)}>{project.status}</Badge>} />
+                    <DetailItem label="Budget" value={`$${project.budget.toLocaleString()}`} />
+                    <DetailItem label="Timeline" value={`${format(new Date(project.startDate), "LLL d, y")} to ${format(new Date(project.endDate), "LLL d, y")}`} />
+                    <div className="lg:col-span-2 lg:row-start-2">
+                        <DetailItem label="Overall Progress" value={`${project.documentCount.toLocaleString()} / ${project.totalExpected.toLocaleString()} pages`} />
+                        <Progress value={project.progress} className="mt-2 h-2" />
+                    </div>
+                    {project.info && (
+                        <div className="md:col-span-2 lg:col-span-4 lg:row-start-3 pt-4 border-t">
+                            <p className="text-sm font-medium">Additional Info</p>
+                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{project.info}</p>
                         </div>
-                    </CardContent>
+                    )}
+                </div>
+            </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {kpiData.map((kpi) => (
+                <Card key={kpi.title} onClick={() => handleKpiClick(kpi)} className={kpi.items && kpi.items.length > 0 ? "cursor-pointer transition-colors hover:bg-muted/50" : ""}>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
+                        <kpi.icon className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent><div className="text-2xl font-bold">{kpi.value}</div></CardContent>
                 </Card>
-            </div>
+            ))}
         </div>
         
         <Card>
@@ -430,6 +435,57 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                 </Table>
             </CardContent>
             {totalPages > 1 && <CardFooter className="justify-between"><div className="text-xs text-muted-foreground">{selection.length} of {sortedBooks.length} selected</div><PaginationNav /></CardFooter>}
+        </Card>
+
+        <Card>
+            <CardHeader>
+                <CardTitle>Workflow Configuration</CardTitle>
+                <CardDescription>
+                    The sequence of stages enabled for this project. Disabled phases are skipped.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="space-y-6">
+                {WORKFLOW_PHASES.map(group => {
+                    const isGroupRelevant = group.stages.some(stage => MANDATORY_STAGES.includes(stage) || projectWorkflow.includes(stage));
+                    
+                    if (!isGroupRelevant) return null;
+
+                    return (
+                    <div key={group.name}>
+                        <h4 className="font-semibold text-base mb-3 border-b pb-2">{group.name}</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
+                        {group.stages.map(stageKey => {
+                            const stageConfig = STAGE_CONFIG[stageKey as keyof typeof STAGE_CONFIG];
+                            if (!stageConfig) return null;
+
+                            const isMandatory = MANDATORY_STAGES.includes(stageKey);
+                            const isEnabled = isMandatory || projectWorkflow.includes(stageKey);
+
+                            if (!isEnabled) return null;
+
+                            return (
+                                <div key={stageKey} className="flex items-center space-x-3">
+                                <CheckCircle className="h-5 w-5 text-green-600" />
+                                <div className="flex flex-col">
+                                    <span className="font-medium text-sm">{stageConfig.title}</span>
+                                    <span className="text-xs text-muted-foreground">{stageConfig.description}</span>
+                                </div>
+                                </div>
+                            );
+                        })}
+                        </div>
+                    </div>
+                    )
+                })}
+                </div>
+            </CardContent>
+             <CardFooter>
+                <Button variant="outline" onClick={() => setIsWorkflowDialogOpen(true)}>
+                    <Settings2 className="mr-2 h-4 w-4"/>
+                    Edit Workflow
+                </Button>
+            </CardFooter>
         </Card>
       </div>
 
@@ -561,7 +617,7 @@ function WorkflowConfigDialog({ open, onOpenChange, projectName, currentWorkflow
         <DialogHeader>
           <DialogTitle>Configure Workflow for: {projectName}</DialogTitle>
           <DialogDescription>
-            Select which optional phases this project will use. Unchecking a phase like "Scanning" or "Indexing" will cause the workflow to bypass those steps. Mandatory steps cannot be disabled.
+            Select which optional phases this project will use. Disabled phases will be skipped, moving books to the next enabled stage.
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="h-[60vh] p-4 border rounded-md">
