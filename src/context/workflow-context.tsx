@@ -6,6 +6,7 @@ import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Doc
 import { useToast } from '@/hooks/use-toast';
 import { WORKFLOW_SEQUENCE, STAGE_CONFIG, findStageKeyFromStatus } from '@/lib/workflow-config';
 import * as dataApi from '@/lib/data';
+import { UserFormValues } from '@/app/(app)/users/user-form';
 
 // Define the shape of the book data when importing
 export interface BookImport {
@@ -13,21 +14,6 @@ export interface BookImport {
   expectedDocuments: number;
 }
 
-
-// This map defines the status transition for books (physical items) for simple, one-click actions
-const bookStatusTransition: { [key: string]: string } = {
-  'In Transit': 'Received',
-  // 'Received' to 'To Scan' is handled by assignment
-  'To Scan': 'Scanning Started',
-  'Scanning Started': 'In Progress', // After scan, docs are in Storage, book is 'In Progress'
-};
-
-// This map defines the status transition for entire books of documents (digital items)
-const digitalStageTransitions: { [key: string]: string } = {
-    'Processed': 'Final Quality Control',
-    'Final Quality Control': 'Delivery',
-    'Delivery': 'Pending Validation',
-}
 
 // Client-side representation of a document
 export type AppDocument = RawDocument & { client: string; status: string; };
@@ -71,8 +57,8 @@ type AppContextType = {
   deleteClient: (clientId: string) => void;
 
   // User Actions
-  addUser: (userData: Omit<User, 'id' | 'avatar' | 'lastLogin' | 'status'>) => void;
-  updateUser: (userId: string, userData: Partial<Omit<User, 'id' | 'avatar' | 'lastLogin' | 'status'>>) => void;
+  addUser: (userData: UserFormValues) => void;
+  updateUser: (userId: string, userData: Partial<UserFormValues>) => void;
   deleteUser: (userId: string) => void;
   toggleUserStatus: (userId: string) => void;
   updateUserDefaultProject: (userId: string, projectId: string | null) => void;
@@ -245,22 +231,22 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   // --- Centralized Action Logger ---
-  const logAction = React.useCallback((
+  const logAction = React.useCallback(async (
     action: string, 
     details: string, 
     ids: { bookId?: string, documentId?: string }
   ) => {
     if (!currentUser) return;
-    const newLogEntry: EnrichedAuditLog = {
-      id: `al_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+    const newLogEntry: Omit<AuditLog, 'id'> = {
       action,
       details,
       userId: currentUser.id,
-      user: currentUser.name,
       date: new Date().toISOString(),
       ...ids,
     };
-    setAuditLogs(prev => [newLogEntry, ...prev]);
+    // This part should be an API call in the future
+    // For now, we update local state
+    setAuditLogs(prev => [{ ...newLogEntry, id: `al_${Date.now()}`, user: currentUser.name }, ...prev]);
   }, [currentUser]);
 
   // --- Memoized Data Enrichment ---
@@ -284,7 +270,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         const totalExpected = projectBooks.reduce((sum, book) => sum + book.expectedDocuments, 0);
         const documentCount = projectBooks.reduce((sum, book) => sum + book.documentCount, 0);
         const progress = totalExpected > 0 ? (documentCount / totalExpected) * 100 : 0;
-        
+  
         return {
             ...project,
             clientName: client?.name || 'Unknown Client',
@@ -345,44 +331,87 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     toast({ title: "Client Deleted", description: "Client and all associated projects/data have been deleted.", variant: "destructive" });
   };
   
-  const addUser = (userData: Omit<User, 'id' | 'avatar' | 'lastLogin' | 'status'>) => {
-    const newUser: User = { 
-        id: `u_${Date.now()}`, 
-        avatar: 'https://placehold.co/100x100.png', 
-        status: 'active', 
-        ...userData 
-    };
-    setUsers(prev => [...prev, newUser]);
-    logAction('User Created', `New user "${newUser.name}" added with role ${newUser.role}.`, {});
-    toast({ title: "User Added", description: `User "${newUser.name}" has been created.` });
+  const addUser = async (userData: UserFormValues) => {
+    try {
+        const response = await fetch('/api/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(userData),
+        });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to create user');
+        }
+        const newUser: User = await response.json();
+        setUsers(prev => [...prev, newUser]);
+        logAction('User Created', `New user "${newUser.name}" added with role ${newUser.role}.`, {});
+        toast({ title: "User Added", description: `User "${newUser.name}" has been created.` });
+    } catch (error) {
+        console.error(error);
+        toast({ title: "Error", description: "Could not create user.", variant: "destructive" });
+    }
   };
 
-  const updateUser = (userId: string, userData: Partial<Omit<User, 'id' | 'avatar' | 'lastLogin' | 'status'>>) => {
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...userData } : u));
-    logAction('User Updated', `Details for user "${userData.name}" updated.`, {});
-    // Toast is handled in the component for better user feedback
+  const updateUser = async (userId: string, userData: Partial<UserFormValues>) => {
+    try {
+        const response = await fetch(`/api/users/${userId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(userData),
+        });
+        if (!response.ok) {
+            throw new Error('Failed to update user');
+        }
+        const updatedUser = await response.json();
+        setUsers(prev => prev.map(u => (u.id === userId ? updatedUser : u)));
+        logAction('User Updated', `Details for user "${updatedUser.name}" updated.`, {});
+        toast({ title: "User Updated" });
+    } catch (error) {
+        console.error(error);
+        toast({ title: "Error", description: "Could not update user.", variant: "destructive" });
+    }
   };
   
-  const toggleUserStatus = (userId: string) => {
+  const toggleUserStatus = async (userId: string) => {
     const user = users.find(u => u.id === userId);
-    if (!user || user.role === 'System') return; // Cannot disable system user
+    if (!user || user.role === 'System') return;
 
     const newStatus = user.status === 'active' ? 'disabled' : 'active';
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: newStatus } : u));
-    logAction(
-      'User Status Changed', 
-      `User "${user.name}" was ${newStatus === 'active' ? 'enabled' : 'disabled'}.`, 
-      {}
-    );
-    toast({ title: `User ${newStatus === 'active' ? 'Enabled' : 'Disabled'}` });
+    try {
+        const response = await fetch(`/api/users/${userId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus }),
+        });
+        if (!response.ok) throw new Error('Failed to toggle user status');
+        
+        const updatedUser = await response.json();
+        setUsers(prev => prev.map(u => (u.id === userId ? updatedUser : u)));
+        logAction('User Status Changed', `User "${user.name}" was ${newStatus}.`, {});
+        toast({ title: `User ${newStatus === 'active' ? 'Enabled' : 'Disabled'}` });
+    } catch (error) {
+        console.error(error);
+        toast({ title: "Error", description: "Could not update user status.", variant: "destructive" });
+    }
   };
 
-  const deleteUser = (userId: string) => {
+  const deleteUser = async (userId: string) => {
     const userToDelete = users.find(u => u.id === userId);
     if (!userToDelete || userToDelete.role === 'System') return;
-    setUsers(prev => prev.filter(u => u.id !== userId));
-    logAction('User Deleted', `User "${userToDelete?.name}" was deleted.`, {});
-    toast({ title: "User Deleted", description: "The user has been deleted.", variant: "destructive" });
+    try {
+        const response = await fetch(`/api/users/${userId}`, {
+            method: 'DELETE',
+        });
+        if (!response.ok) {
+            throw new Error('Failed to delete user');
+        }
+        setUsers(prev => prev.filter(u => u.id !== userId));
+        logAction('User Deleted', `User "${userToDelete?.name}" was deleted.`, {});
+        toast({ title: "User Deleted", description: "The user has been deleted.", variant: "destructive" });
+    } catch (error) {
+        console.error(error);
+        toast({ title: "Error", description: "Could not delete user.", variant: "destructive" });
+    }
   };
   
   const updateUserDefaultProject = (userId: string, projectId: string | null) => {
