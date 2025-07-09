@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import {
@@ -35,13 +34,15 @@ import {
   UserCog,
   Star,
   Globe,
+  LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { useAppContext } from "@/context/workflow-context";
-import { MANDATORY_STAGES, allMenuItems } from "@/lib/menu-config";
+import { allMenuItems } from "@/lib/menu-config";
+import { MANDATORY_STAGES } from "@/lib/workflow-config";
 import { GlobalProjectFilter } from "./global-project-filter";
 
 export function MainNav() {
@@ -122,7 +123,7 @@ export function MainNav() {
       // 3. Project Workflow filter
       if (item.href.startsWith('/workflow/')) {
           const stage = item.href.split('/').pop() || '';
-          if (!MANDATORY_STAGES.includes(stage) && !projectWorkflow.includes(stage)) {
+          if (!MANDATORY_STAGES.includes(stage) && !projectWorkflows.includes(stage)) {
             return false;
           }
       }
