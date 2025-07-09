@@ -260,10 +260,10 @@ export function UserForm({ user, roles, clients, projects, onSave, onCancel }: U
                         role="combobox"
                         className={cn(
                           "w-full justify-between",
-                          !field.value?.length && "text-muted-foreground"
+                          !field.value || field.value.length === 0 && "text-muted-foreground"
                         )}
                       >
-                        {field.value?.length > 0
+                        {field.value && field.value.length > 0
                           ? `${field.value.length} project(s) selected`
                           : "Select projects"}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
