@@ -367,12 +367,6 @@ function ProjectDashboard() {
                                 <Progress value={project.progress} className="mt-2 h-2" />
                             </div>
                         </div>
-                        {project.info && (
-                        <>
-                        <Separator className="my-4"/>
-                        <DetailItem label="Additional Info" value={<p className="text-sm font-normal text-foreground whitespace-pre-wrap">{project.info}</p>} />
-                        </>
-                        )}
                     </CardContent>
                     <CardFooter className="justify-end">
                         <Button asChild variant="outline"><Link href={`/projects/${project.id}`}>View Full Project Details</Link></Button>
@@ -628,3 +622,5 @@ export default function DashboardClient() {
         </div>
     )
 }
+
+    
