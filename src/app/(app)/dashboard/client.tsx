@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, LineChart, AreaChart, Line, Area } from "recharts"
@@ -52,6 +53,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { Separator } from "@/components/ui/separator";
 
 const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -61,13 +63,6 @@ const getStatusBadgeVariant = (status: string) => {
         default: return 'outline';
     }
 }
-
-const DetailItem = ({ label, value }: { label: React.ReactNode; value: React.ReactNode }) => (
-  <div className="flex flex-col space-y-1">
-    <p className="text-sm text-muted-foreground">{label}</p>
-    <div className="font-medium text-sm">{value}</div>
-  </div>
-);
 
 function ProjectDashboard() {
     const { projects, selectedProjectId, auditLogs, documents } = useAppContext();
@@ -351,18 +346,27 @@ function ProjectDashboard() {
             <div className="space-y-6">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Project Details</CardTitle>
-                        <CardDescription>At-a-glance project information.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                       <div className="grid grid-cols-2 gap-4 items-start">
-                            <DetailItem label="Client" value={<Link href={`/clients`} className="hover:underline">{project.clientName}</Link>} />
-                            <DetailItem label="Status" value={<Badge variant={getStatusBadgeVariant(project.status)}>{project.status}</Badge>} />
+                        <div className="flex items-start justify-between">
+                            <div>
+                                <CardTitle>Project Details</CardTitle>
+                                <CardDescription>At-a-glance project information.</CardDescription>
+                            </div>
+                            <Button asChild variant="outline" size="sm">
+                                <Link href={`/projects/${project.id}`}>View Full Project Details</Link>
+                            </Button>
                         </div>
-                    </CardContent>
-                    <CardFooter className="justify-end">
-                        <Button asChild variant="outline"><Link href={`/projects/${project.id}`}>View Full Project Details</Link></Button>
-                    </CardFooter>
+                         <Separator className="my-4" />
+                        <div className="flex justify-between items-center text-sm">
+                            <div>
+                                <span className="text-muted-foreground">Client: </span>
+                                <Link href={`/clients`} className="font-semibold hover:underline">{project.clientName}</Link>
+                            </div>
+                             <div className="flex items-center gap-2">
+                                <span className="text-muted-foreground">Status: </span>
+                                <Badge variant={getStatusBadgeVariant(project.status)}>{project.status}</Badge>
+                            </div>
+                        </div>
+                    </CardHeader>
                 </Card>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
