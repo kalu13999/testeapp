@@ -50,7 +50,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { type User, type Client } from "@/lib/data"
-import { UserForm } from "./user-form"
+import { UserForm, type UserFormValues } from "./user-form"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAppContext } from "@/context/workflow-context"
 import { Input } from "@/components/ui/input"
@@ -273,9 +273,9 @@ export default function UsersClient() {
     setDialogState({ open: false, type: null, data: undefined })
   }
 
-  const handleSave = (values: Omit<User, 'id' | 'avatar' | 'lastLogin'>) => {
+  const handleSave = (values: UserFormValues) => {
     if (dialogState.type === 'new') {
-      addUser(values)
+      addUser(values);
     } else if (dialogState.type === 'edit' && dialogState.data) {
       updateUser(dialogState.data.id, values);
     }

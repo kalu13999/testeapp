@@ -48,14 +48,14 @@ const formSchema = z.object({
     path: ["clientId"],
 });
 
-type UserFormValues = z.infer<typeof formSchema>
+export type UserFormValues = z.infer<typeof formSchema>
 
 interface UserFormProps {
   user?: Partial<User> | null
   roles: string[]
   clients: Client[]
   projects: Project[]
-  onSave: (values: Partial<UserFormValues>) => void
+  onSave: (values: UserFormValues) => void
   onCancel: () => void
 }
 
@@ -109,7 +109,7 @@ export function UserForm({ user, roles, clients, projects, onSave, onCancel }: U
     if (!dataToSave.password) {
         delete dataToSave.password;
     }
-    onSave(dataToSave)
+    onSave(dataToSave as UserFormValues)
   }
 
   const isOperatorRole = role && !['Admin', 'Client', 'System'].includes(role);

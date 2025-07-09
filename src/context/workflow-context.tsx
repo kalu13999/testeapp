@@ -67,8 +67,8 @@ type AppContextType = {
   deleteClient: (clientId: string) => void;
 
   // User Actions
-  addUser: (userData: Omit<User, 'id' | 'avatar' | 'lastLogin'>) => void;
-  updateUser: (userId: string, userData: Partial<Omit<User, 'id' | 'avatar' | 'lastLogin'>>) => void;
+  addUser: (userData: Omit<User, 'id' | 'avatar' | 'lastLogin' | 'status'>) => void;
+  updateUser: (userId: string, userData: Partial<Omit<User, 'id' | 'avatar' | 'lastLogin' | 'status'>>) => void;
   deleteUser: (userId: string) => void;
   toggleUserStatus: (userId: string) => void;
   updateUserDefaultProject: (userId: string, projectId: string | null) => void;
@@ -319,15 +319,19 @@ export function AppProvider({
     toast({ title: "Client Deleted", description: "Client and all associated projects/data have been deleted.", variant: "destructive" });
   };
   
-  const addUser = (userData: Omit<User, 'id' | 'avatar' | 'lastLogin'>) => {
-   
-    const newUser: User = { id: `u_${Date.now()}`, avatar: 'https://placehold.co/100x100.png', status: 'active', ...userData };
+  const addUser = (userData: Omit<User, 'id' | 'avatar' | 'lastLogin' | 'status'>) => {
+    const newUser: User = { 
+        id: `u_${Date.now()}`, 
+        avatar: 'https://placehold.co/100x100.png', 
+        status: 'active', 
+        ...userData 
+    };
     setUsers(prev => [...prev, newUser]);
     logAction('User Created', `New user "${newUser.name}" added with role ${newUser.role}.`, {});
     toast({ title: "User Added", description: `User "${newUser.name}" has been created.` });
   };
 
-  const updateUser = (userId: string, userData: Partial<Omit<User, 'id' | 'avatar' | 'lastLogin'>>) => {
+  const updateUser = (userId: string, userData: Partial<Omit<User, 'id' | 'avatar' | 'lastLogin' | 'status'>>) => {
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...userData } : u));
     logAction('User Updated', `Details for user "${userData.name}" updated.`, {});
     // Toast is handled in the component for better user feedback
