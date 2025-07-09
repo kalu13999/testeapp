@@ -200,6 +200,7 @@ export async function getEnrichedProjects(): Promise<EnrichedProject[]> {
   
     return projects.map(project => {
       const client = clients.find(c => c.id === project.clientId);
+      
       const projectBooks = books.filter(b => b.projectId === project.id).map(book => {
         const bookDocuments = documents.filter(d => d.bookId === book.id);
         const bookProgress = book.expectedDocuments > 0 ? (bookDocuments.length / book.expectedDocuments) * 100 : 0;

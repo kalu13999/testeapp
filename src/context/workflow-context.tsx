@@ -3,7 +3,7 @@
 "use client"
 
 import * as React from 'react';
-import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions, ProjectWorkflows, RejectionTag } from '@/lib/data';
+import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions, ProjectWorkflows, RejectionTag, DocumentStatus } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { WORKFLOW_SEQUENCE, STAGE_CONFIG, findStageKeyFromStatus } from '@/lib/workflow-config';
 import * as dataApi from '@/lib/data';
@@ -81,8 +81,8 @@ type AppContextType = {
   updateProjectWorkflow: (projectId: string, workflow: string[]) => void;
 
   // Book Actions
-  addBook: (projectId: string, bookData: Omit<RawBook, 'id' | 'projectId' | 'status'>) => Promise<void>;
-  updateBook: (bookId: string, bookData: Partial<Omit<RawBook, 'id' | 'projectId' | 'status'>>) => Promise<void>;
+  addBook: (projectId: string, bookData: Omit<RawBook, 'id' | 'projectId' | 'statusId'>) => Promise<void>;
+  updateBook: (bookId: string, bookData: Partial<Omit<RawBook, 'id' | 'projectId' | 'statusId'>>) => Promise<void>;
   deleteBook: (bookId: string) => Promise<void>;
   importBooks: (projectId: string, newBooks: BookImport[]) => Promise<void>;
   
@@ -104,7 +104,7 @@ type AppContextType = {
   reassignUser: (bookId: string, newUserId: string, role: 'scanner' | 'indexer' | 'qc') => void;
   handleStartTask: (bookId: string, role: 'scanner' | 'indexing' | 'qc') => void;
   handleCancelTask: (bookId: string, currentStatus: string) => void;
-  handleAdminStatusOverride: (bookId: string, newStatus: string, reason: string) => void;
+  handleAdminStatusOverride: (bookId: string, newStatusId: string, reason: string) => void;
   handleStartProcessing: (bookId: string) => void;
   handleCompleteProcessing: (bookId: string) => void;
   handleClientAction: (bookId: string, action: 'approve' | 'reject', reason?: string) => void;
@@ -305,12 +305,12 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             const bookProgress = book.expectedDocuments > 0 ? (bookDocuments.length / book.expectedDocuments) * 100 : 0;
             return {
                 ...book,
+                status: statuses.find(s => s.id === book.statusId)?.name || 'Unknown',
                 clientId: project.clientId,
                 projectName: project.name,
                 clientName: client?.name || 'Unknown Client',
                 documentCount: bookDocuments.length,
                 progress: Math.min(100, bookProgress),
-                status: statuses.find(s => s.id === book.statusId)?.name || 'Unknown',
             };
         });
 
@@ -594,7 +594,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       }
   };
 
-  const addBook = async (projectId: string, bookData: Omit<RawBook, 'id' | 'projectId' | 'status'>) => {
+  const addBook = async (projectId: string, bookData: Omit<RawBook, 'id' | 'projectId' | 'statusId'>) => {
       try {
           const statusId = statuses.find(s => s.name === 'Pending Shipment')?.id;
           if (!statusId) throw new Error("Could not find 'Pending Shipment' status.");
@@ -615,7 +615,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       }
   };
   
-  const updateBook = async (bookId: string, bookData: Partial<Omit<RawBook, 'id' | 'projectId' | 'status'>>) => {
+  const updateBook = async (bookId: string, bookData: Partial<Omit<RawBook, 'id' | 'projectId' | 'statusId'>>) => {
       try {
           const response = await fetch(`/api/books/${bookId}`, {
               method: 'PUT',
@@ -832,6 +832,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       projectId: book.projectId, 
       bookId: book.id, 
       flag: 'info',
+      flagComment: 'This page was manually added during the correction phase.',
       imageUrl: `https://dummyimage.com/400x550/e0e0e0/5c5c5c.png&text=${encodeURIComponent(newPageName)}`
     };
 
@@ -1006,7 +1007,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
       setDocuments(prev => [...prev.filter(d => d.bookId !== bookId), ...finalEnrichedDocs]);
       
-      const logMessage = findStageKeyFromStatus(book.status) === 'already-received' ? 'Reception & Scan Skipped' : 'Scanning Finished';
+      const currentStatusName = statuses.find(s => s.id === book.statusId)?.name || 'Unknown';
+      const logMessage = findStageKeyFromStatus(currentStatusName) === 'already-received' ? 'Reception & Scan Skipped' : 'Scanning Finished';
       logAction(logMessage, `${payload.actualPageCount} pages created. Book "${book.name}" moved to Storage.`, { bookId });
       toast({ title: "Task Complete", description: `Book moved to Storage.` });
 
@@ -1409,4 +1411,3 @@ export function useAppContext() {
   }
   return context;
 }
-
