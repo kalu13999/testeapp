@@ -939,6 +939,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                     <div className="flex items-center gap-2 text-sm font-medium">
                         {isScanFolderMatch ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-destructive" />}
                         <span>{scanState.folderName}</span>
+                         {scanState.fileCount !== null && <span className="text-muted-foreground">({scanState.fileCount} .tif files)</span>}
                     </div>
                 )}
               </div>
@@ -961,7 +962,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={closeScanningDialog}>Cancel</Button>
-          <Button onClick={stage === 'already-received' ? handleConfirmScanBypass : handleConfirmScan} disabled={!isScanFolderMatch}>
+          <Button onClick={stage === 'already-received' ? handleConfirmScanBypass : handleConfirmScan} disabled={!isScanFolderMatch || scanState.fileCount === 0}>
             Confirm Scan
           </Button>
         </DialogFooter>
