@@ -16,7 +16,6 @@ import {
 import { useAppContext } from '@/context/workflow-context';
 import { type User as UserData } from '@/lib/data';
 import { CreditCard, LogOut, Settings, User } from 'lucide-react';
-import { GlobalProjectFilter } from '../layout/global-project-filter';
 
 interface UserNavProps {
   user?: UserData;
@@ -56,10 +55,6 @@ export function UserNav({ user }: UserNavProps) {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <div className="sm:hidden p-2">
-            <GlobalProjectFilter />
-        </div>
-        <DropdownMenuSeparator className="sm:hidden" />
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
             <Link href="/profile">

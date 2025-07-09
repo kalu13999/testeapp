@@ -143,11 +143,14 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
     <>
       <Sidebar>
         <SidebarHeader>
-          <div className="flex items-center gap-3 p-4">
-             <div className="bg-primary rounded-lg p-2 flex items-center justify-center">
-               <FileLock2 className="h-6 w-6 text-primary-foreground" />
+           <div className="flex flex-col gap-3 p-3">
+             <div className="flex items-center gap-2">
+               <div className="bg-primary rounded-lg p-2 flex items-center justify-center">
+                 <FileLock2 className="h-6 w-6 text-primary-foreground" />
+               </div>
+               <h1 className="font-headline text-2xl font-bold text-foreground">FlowVault</h1>
              </div>
-             <h1 className="font-headline text-2xl font-bold text-foreground">FlowVault</h1>
+             <GlobalProjectFilter />
           </div>
         </SidebarHeader>
         <SidebarContent>
@@ -165,9 +168,6 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
             </div>
         </header>
         <main className="flex-1 p-4 md:p-6">
-          <div className="sm:hidden mb-4">
-            <GlobalProjectFilter />
-          </div>
           {isChecking ? (
             <div className="flex h-full items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />

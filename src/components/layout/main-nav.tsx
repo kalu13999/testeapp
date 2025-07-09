@@ -43,7 +43,6 @@ import { Button } from "@/components/ui/button";
 import { useAppContext } from "@/context/workflow-context";
 import { allMenuItems } from "@/lib/menu-config";
 import { MANDATORY_STAGES } from "@/lib/workflow-config";
-import { GlobalProjectFilter } from "./global-project-filter";
 
 export function MainNav() {
   const pathname = usePathname();
@@ -149,10 +148,7 @@ export function MainNav() {
 
 
   return (
-    <nav className="flex flex-col p-2 gap-4">
-      <div className="px-2">
-        <GlobalProjectFilter />
-      </div>
+    <nav className="flex flex-col p-2 gap-2">
       <ul className="space-y-4">
         {menuItems.map((menu) => (
           menu && <li key={menu.id}>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useAppContext } from '@/context/workflow-context';
@@ -10,10 +11,10 @@ export const GlobalProjectFilter = () => {
     return null;
   }
   
-  if (accessibleProjectsForUser.length < 2) {
+  if (accessibleProjectsForUser.length < 1) {
     return (
-      <div className="flex items-center h-9 px-3 w-full max-w-xs text-sm font-medium border rounded-md bg-muted text-muted-foreground truncate">
-        {accessibleProjectsForUser[0]?.name || "No Project Assigned"}
+      <div className="flex items-center h-9 px-3 w-full text-sm font-medium border rounded-md bg-muted text-muted-foreground truncate">
+        No Project Assigned
       </div>
     )
   }
@@ -21,15 +22,12 @@ export const GlobalProjectFilter = () => {
   return (
     <Select
       value={selectedProjectId || ''}
-      onValueChange={(value) => setSelectedProjectId(value === 'all' ? null : value)}
+      onValueChange={(value) => setSelectedProjectId(value)}
     >
-      <SelectTrigger className="w-full max-w-xs h-9">
+      <SelectTrigger className="w-full h-9">
         <SelectValue placeholder="Select a project..." />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="all">
-            All Projects
-        </SelectItem>
         {accessibleProjectsForUser.map(project => (
           <SelectItem key={project.id} value={project.id}>
             {project.name}
