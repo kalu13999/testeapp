@@ -33,7 +33,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { WORKFLOW_PHASES, MANDATORY_STAGES, STAGE_CONFIG } from "@/lib/workflow-config";
 import { cn } from "@/lib/utils";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Pie, PieChart, Cell, Legend } from "recharts"
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Pie, PieChart, Cell, Legend, Tooltip } from "recharts"
 import {
   ChartContainer,
   ChartTooltip,
@@ -282,7 +282,6 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
         <Card>
             <CardHeader>
                 <CardTitle>Project Summary</CardTitle>
-                <CardDescription>At-a-glance project information.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
                 <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -575,3 +574,5 @@ function WorkflowConfigDialog({ open, onOpenChange, projectName, currentWorkflow
     </Dialog>
   )
 }
+
+    
