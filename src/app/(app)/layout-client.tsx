@@ -180,6 +180,10 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
             </div>
         </header>
         <main className="flex-1 p-4 md:p-6">
+          {/* Mobile-only project filter */}
+          <div className="sm:hidden mb-4">
+            {showProjectFilter && <GlobalProjectFilter />}
+          </div>
           {isChecking ? (
             <div className="flex h-full items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
