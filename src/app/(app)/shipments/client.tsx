@@ -21,7 +21,8 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Send, PackageSearch, ChevronsUpDown, ArrowUp, ArrowDown, Download } from "lucide-react"
-import { useAppContext, EnrichedBook } from "@/context/workflow-context"
+import { useAppContext } from "@/context/workflow-context"
+import type { EnrichedBook } from "@/lib/data"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   AlertDialog,
