@@ -120,6 +120,8 @@ const AppContext = React.createContext<AppContextType | undefined>(undefined);
 
 const OPERATOR_ROLES = ["Operator", "QC Specialist", "Reception", "Scanning", "Indexing", "Processing", "Delivery", "Correction Specialist", "Multi-Operator", "Supervisor"];
 
+const getDbSafeDate = () => new Date().toISOString().slice(0, 19).replace('T', ' ');
+
 export function AppProvider({ children }: { children: React.ReactNode; }) {
   const [loading, setLoading] = React.useState(true);
   const [currentUser, setCurrentUser] = React.useState<User | null>(null);
@@ -255,8 +257,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     const actorId = currentUser?.id;
     if (!actorId) return;
 
-    // Format date for MySQL DATETIME compatibility
-    const mysqlDate = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    const mysqlDate = getDbSafeDate();
 
     try {
         const logData: Omit<AuditLog, 'id'> = {
@@ -802,7 +803,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       id: newPageId,
       name: newPageName,
       clientId: book.clientId, statusId: 'ds_13', // Client Rejected
-      type: 'Added Page', lastUpdated: new Date().toISOString(), tags: ['added', 'corrected'] as any,
+      type: 'Added Page', lastUpdated: getDbSafeDate(), tags: ['added', 'corrected'] as any,
       folderId: null, projectId: book.projectId, bookId: book.id, flag: 'info',
       imageUrl: `https://dummyimage.com/400x550/e0e0e0/5c5c5c.png&text=${encodeURIComponent(newPageName)}`
     };
@@ -920,7 +921,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     if (!book || !book.projectId) return;
     
     // This logic now largely happens on the backend. We just need to update the book's status.
-    updateBook(book.id, { scanEndTime: new Date().toISOString() })
+    updateBook(bookId, { scanEndTime: getDbSafeDate() })
     
     // And then move it to the next stage.
     handleMoveBookToNextStage(bookId, 'Storage');
@@ -958,7 +959,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     
     const additionalUpdates: Partial<RawBook> = {};
     if (currentStatusName === 'Checking Started') {
-        additionalUpdates.qcEndTime = new Date().toISOString();
+        additionalUpdates.qcEndTime = getDbSafeDate();
     }
     
     updateBookStatus(bookId, newStatusName, additionalUpdates);
@@ -996,8 +997,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'to-checking']?.dataStatus || 'To Checking';
         updates.qcUserId = userId;
-        updates.indexingEndTime = new Date().toISOString();
-        if(!book.indexingStartTime) updates.indexingStartTime = new Date().toISOString();
+        updates.indexingEndTime = getDbSafeDate();
+        if(!book.indexingStartTime) updates.indexingStartTime = getDbSafeDate();
         logMsg = 'Assigned for QC';
     }
     
@@ -1044,19 +1045,19 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         currentStageKey = 'to-scan';
         nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'scanning-started']?.dataStatus || 'Scanning Started';
-        updates.scanStartTime = new Date().toISOString();
+        updates.scanStartTime = getDbSafeDate();
         logMsg = 'Scanning Started';
     } else if (role === 'indexing') {
         currentStageKey = 'to-indexing';
         nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'indexing-started']?.dataStatus || 'Indexing Started';
-        updates.indexingStartTime = new Date().toISOString();
+        updates.indexingStartTime = getDbSafeDate();
         logMsg = 'Indexing Started';
     } else if (role === 'qc') {
         currentStageKey = 'to-checking';
         nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'checking-started']?.dataStatus || 'Checking Started';
-        updates.qcStartTime = new Date().toISOString();
+        updates.qcStartTime = getDbSafeDate();
         logMsg = 'Checking Started';
     }
     
@@ -1101,7 +1102,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         updates.indexerUserId = undefined; updates.indexingStartTime = undefined; updates.indexingEndTime = undefined;
     }
     if (newStageConfig?.assigneeRole !== 'qc') {
-        updates.qcUserId = undefined; updates.qcStartTime = undefined;
+        updates.qcUserId = undefined; updates.qcStartTime = undefined; updates.qcEndTime = undefined;
     }
 
     updateBookStatus(bookId, newStatus, updates);
@@ -1153,7 +1154,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             status: 'Complete', 
             progress: 100, 
             log: `${log.log}\n[${new Date().toLocaleTimeString()}] Processing complete.`,
-            lastUpdate: new Date().toISOString(),
+            lastUpdate: getDbSafeDate(),
         };
         const response = await fetch(`/api/processing-logs/${log.id}`, {
             method: 'PUT',
