@@ -275,6 +275,10 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                     <CardDescription className="text-base">{project.clientName}</CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
+                     <Button variant="outline" size="sm" onClick={() => setIsWorkflowDialogOpen(true)}>
+                      <Settings2 className="mr-2 h-4 w-4"/>
+                      Edit Workflow
+                    </Button>
                     <Button variant="outline" onClick={() => setIsEditDialogOpen(true)}>
                       <Edit className="mr-2 h-4 w-4"/>
                       Edit Project
@@ -402,48 +406,6 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
             </CardContent>
             {totalPages > 1 && <CardFooter className="justify-between"><div className="text-xs text-muted-foreground">{selection.length} of {sortedBooks.length} selected</div><PaginationNav /></CardFooter>}
         </Card>
-
-        <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Workflow Configuration</CardTitle>
-                <Button variant="outline" size="sm" onClick={() => setIsWorkflowDialogOpen(true)}>
-                  <Settings2 className="mr-2 h-4 w-4"/>
-                  Edit Workflow
-                </Button>
-              </div>
-              <CardDescription>
-                Customize the sequence of steps for this project. Disabled phases will be skipped, moving books to the next enabled stage.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-80">
-                <div className="space-y-4">
-                  {WORKFLOW_PHASES.map(group => (
-                    <div key={group.name}>
-                      <h4 className="font-semibold text-sm mb-2">{group.name}</h4>
-                      <div className="space-y-2 pl-2 border-l">
-                        {group.stages.map(stageKey => {
-                            const stageConfig = STAGE_CONFIG[stageKey as keyof typeof STAGE_CONFIG];
-                            if (!stageConfig) return null;
-                            const isMandatory = !group.toggleable;
-                            const isEnabled = isMandatory || projectWorkflow.includes(stageKey);
-                            return (
-                              <div key={stageKey} className="flex items-center gap-3 text-sm">
-                                  <div className={cn('w-2 h-2 rounded-full', isEnabled ? 'bg-primary' : 'bg-muted-foreground')} />
-                                  <span className={cn(!isEnabled && 'text-muted-foreground line-through')}>
-                                    {stageConfig.title}
-                                  </span>
-                              </div>
-                            )
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-            </CardContent>
-        </Card>
       </div>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -549,9 +511,11 @@ function WorkflowConfigDialog({ open, onOpenChange, projectName, currentWorkflow
                   ) : (
                     group.stages.map(stageKey => {
                       const stageConfig = STAGE_CONFIG[stageKey as keyof typeof STAGE_CONFIG];
+                      const isMandatory = !WORKFLOW_PHASES.find(g => g.stages.includes(stageKey))?.toggleable;
+                      const isEnabled = isMandatory || currentWorkflow.includes(stageKey);
                       return (
                          <div key={stageKey} className="flex items-center space-x-3 opacity-70">
-                            <Switch checked={true} disabled={true} />
+                            <Switch checked={isEnabled} disabled={true} />
                             <Label htmlFor={stageKey} className="flex flex-col">
                               <span>{stageConfig.title}</span>
                               <span className="text-xs text-muted-foreground">Mandatory</span>
