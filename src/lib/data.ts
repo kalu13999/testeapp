@@ -109,7 +109,7 @@ export interface Project {
     startDate: string;
     endDate: string;
     budget: number;
-    status: string; // "Planning", "In Progress", "Complete", "On Hold"
+    status: "Planning" | "In Progress" | "Complete" | "On Hold";
     info?: string;
 }
 
@@ -148,7 +148,6 @@ export interface EnrichedBook extends RawBook {
     clientName: string;
     documentCount: number;
     progress: number;
-    rejectionReason?: string | null;
 }
 
 
