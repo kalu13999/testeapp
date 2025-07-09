@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import * as React from 'react';
@@ -278,6 +279,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             try {
                 errorBody = await response.json();
             } catch (e) {
+                // If response is not JSON, use text.
                 errorBody = await response.text();
             }
            console.error("Audit log API error:", errorBody);
@@ -946,6 +948,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     const nextStageKey = getNextEnabledStage(currentStageKey, workflow);
     if (!nextStageKey) {
       toast({title: "Workflow Complete", description: "This is the final step for this project."});
+      updateBookStatus(bookId, 'Complete', {});
+      logAction('Workflow End', `Book "${book.name}" has completed the workflow.`, { bookId });
       return;
     }
     
@@ -958,6 +962,13 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     }
     
     const additionalUpdates: Partial<RawBook> = {};
+    if (currentStatusName === 'Scanning Started') {
+        additionalUpdates.scanEndTime = getDbSafeDate();
+    }
+    if (currentStatusName === 'Indexing Started') {
+        additionalUpdates.indexingEndTime = getDbSafeDate();
+        if(!book.indexingStartTime) additionalUpdates.indexingStartTime = getDbSafeDate(); // Defensive
+    }
     if (currentStatusName === 'Checking Started') {
         additionalUpdates.qcEndTime = getDbSafeDate();
     }

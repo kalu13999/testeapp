@@ -120,7 +120,7 @@ const SIMPLE_BULK_ACTION_STAGES = [
 
 export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const { 
-    books, documents, handleBookAction, handleMoveBookToNextStage, 
+    books, documents, handleMoveBookToNextStage, 
     updateDocumentStatus, currentUser, users, permissions,
     handleStartTask, handleAssignUser, handleStartProcessing, handleCancelTask,
     selectedProjectId, projectWorkflows, handleConfirmReception, getNextEnabledStage,
@@ -374,7 +374,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
   const handleConfirmScan = () => {
     if (scanState.book) {
-      handleBookAction(scanState.book.id, { actualPageCount: scanState.fileCount ?? 0 });
+      handleMoveBookToNextStage(scanState.book.id, 'Scanning Started');
       closeScanningDialog();
     }
   };
