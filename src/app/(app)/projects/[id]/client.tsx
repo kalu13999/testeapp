@@ -33,7 +33,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { WORKFLOW_PHASES, MANDATORY_STAGES, STAGE_CONFIG } from "@/lib/workflow-config";
 import { cn } from "@/lib/utils";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Pie, PieChart, Cell, Legend } from "recharts"
 import {
   ChartContainer,
   ChartTooltip,
@@ -163,7 +163,11 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
           acc[stage] = (acc[stage] || 0) + 1;
           return acc;
       }, {} as { [key: string]: number });
-      return Object.entries(booksByStage).map(([name, count]) => ({ name, count }));
+      return Object.entries(booksByStage).map(([name, count], index) => ({ 
+        name, 
+        count,
+        fill: `hsl(var(--chart-${(index % 5) + 1}))`
+      }));
   }, [project]);
   
   const chartConfig: ChartConfig = { count: { label: "Books", color: "hsl(var(--chart-1))" } };
@@ -275,123 +279,131 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
             </div>
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {kpiData.map(kpi => (
-                    <Card key={kpi.title}>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
-                            <kpi.icon className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent><div className="text-2xl font-bold">{kpi.value}</div></CardContent>
-                    </Card>
-                ))}
-            </div>
-            <div className="lg:col-span-1">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Project Summary</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                        <DetailItem label="Status" value={<Badge variant={getStatusBadgeVariant(project.status)}>{project.status}</Badge>} />
-                        <Separator/>
-                        <DetailItem label="Budget" value={`$${project.budget.toLocaleString()}`} />
-                        <DetailItem label="Timeline" value={`${project.startDate} to ${project.endDate}`} />
-                        <Separator/>
-                        <div className="space-y-2">
-                           <DetailItem label="Total Pages" value={`${project.documentCount.toLocaleString()} / ${project.totalExpected.toLocaleString()}`} />
-                           <Progress value={project.progress} />
-                        </div>
-                        {project.description && (
-                            <>
-                            <Separator/>
-                            <div className="pt-2">
-                                <p className="text-sm text-muted-foreground">Description</p>
-                                <p className="text-sm font-medium whitespace-pre-wrap">{project.description}</p>
-                            </div>
-                            </>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-            <Card className="lg:col-span-2">
-                <CardHeader>
-                    <CardTitle>Project Status</CardTitle>
-                    <CardDescription>Distribution of books by workflow stage.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                     <ChartContainer config={chartConfig} className="h-64 w-full">
-                        <BarChart data={chartData} layout="vertical" margin={{ left: 20, right: 20 }}>
-                            <XAxis type="number" hide />
-                            <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} width={120}/>
-                            <ChartTooltip cursor={{ fill: "hsl(var(--muted))" }} content={<ChartTooltipContent />} />
-                            <Bar dataKey="count" fill="var(--color-count)" radius={4} />
-                        </BarChart>
-                    </ChartContainer>
-                </CardContent>
-            </Card>
-            <Card className="lg:col-span-3">
-                 <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <div>
-                          <CardTitle className="flex items-center gap-2"><Book className="h-5 w-5" /> Book Manifest</CardTitle>
-                          <CardDescription>Detailed breakdown of each book within the project.</CardDescription>
-                        </div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button size="sm" variant="outline" className="h-9 gap-1"><Download className="h-3.5 w-3.5" /><span>Export</span></Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Export Selected ({selection.length})</DropdownMenuLabel>
-                            <DropdownMenuItem onSelect={() => exportXLSX(selectedBooks)} disabled={selection.length === 0}>Export as XLSX</DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => exportJSON(selectedBooks)} disabled={selection.length === 0}>Export as JSON</DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => exportCSV(selectedBooks)} disabled={selection.length === 0}>Export as CSV</DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuLabel>Export All ({sortedBooks.length})</DropdownMenuLabel>
-                            <DropdownMenuItem onSelect={() => exportXLSX(sortedBooks)} disabled={sortedBooks.length === 0}>Export as XLSX</DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => exportJSON(sortedBooks)} disabled={sortedBooks.length === 0}>Export as JSON</DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => exportCSV(sortedBooks)} disabled={sortedBooks.length === 0}>Export as CSV</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+        <Card>
+            <CardHeader>
+                <CardTitle>Project Summary</CardTitle>
+                <CardDescription>At-a-glance project information.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <DetailItem label="Status" value={<Badge variant={getStatusBadgeVariant(project.status)}>{project.status}</Badge>} />
+                  <DetailItem label="Budget" value={`$${project.budget.toLocaleString()}`} />
+                  <DetailItem label="Timeline" value={`${project.startDate} to ${project.endDate}`} />
+                   <div className="space-y-2">
+                       <DetailItem label="Total Pages" value={`${project.documentCount.toLocaleString()} / ${project.totalExpected.toLocaleString()}`} />
+                       <Progress value={project.progress} />
                     </div>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="w-[40px]"><Checkbox onCheckedChange={(checked) => setSelection(checked ? paginatedBooks.map(b => b.id) : [])} checked={paginatedBooks.length > 0 && selection.length === paginatedBooks.length} /></TableHead>
-                                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>Book Name {getSortIndicator('name')}</div></TableHead>
-                                <TableHead className="w-[150px]"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Status {getSortIndicator('status')}</div></TableHead>
-                                <TableHead className="w-[150px] text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('documentCount', e.shiftKey)}>Documents {getSortIndicator('documentCount')}</div></TableHead>
-                                <TableHead className="w-[200px]"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('progress', e.shiftKey)}>Progress {getSortIndicator('progress')}</div></TableHead>
-                            </TableRow>
-                             <TableRow>
-                                <TableHead />
-                                <TableHead><Input placeholder="Filter by name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8" /></TableHead>
-                                <TableHead><Input placeholder="Filter by status..." value={columnFilters['status'] || ''} onChange={(e) => handleColumnFilterChange('status', e.target.value)} className="h-8" /></TableHead>
-                                <TableHead><Input placeholder="Filter by docs..." value={columnFilters['documentCount'] || ''} onChange={(e) => handleColumnFilterChange('documentCount', e.target.value)} className="h-8" /></TableHead>
-                                <TableHead><Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Clear</Button></TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {paginatedBooks.length > 0 ? paginatedBooks.map(book => (
-                                <TableRow key={book.id} data-state={selection.includes(book.id) && "selected"}>
-                                    <TableCell><Checkbox checked={selection.includes(book.id)} onCheckedChange={(checked) => setSelection(prev => checked ? [...prev, book.id] : prev.filter(id => id !== book.id))} /></TableCell>
-                                    <TableCell className="font-medium"><Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link></TableCell>
-                                    <TableCell><Badge variant="outline">{book.status}</Badge></TableCell>
-                                    <TableCell className="text-center">{book.documentCount} / {book.expectedDocuments}</TableCell>
-                                    <TableCell><Progress value={book.progress} className="h-2" /></TableCell>
-                                </TableRow>
-                            )) : <TableRow><TableCell colSpan={5} className="h-24 text-center">No books found for this project.</TableCell></TableRow>}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-                {totalPages > 1 && <CardFooter className="justify-between"><div className="text-xs text-muted-foreground">{selection.length} of {sortedBooks.length} selected</div><PaginationNav /></CardFooter>}
-            </Card>
+                </div>
+                {project.description && (
+                    <>
+                    <Separator className="my-4" />
+                    <div className="pt-2">
+                        <p className="text-sm text-muted-foreground">Description</p>
+                        <p className="text-sm font-medium whitespace-pre-wrap">{project.description}</p>
+                    </div>
+                    </>
+                )}
+            </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            {kpiData.map(kpi => (
+                <Card key={kpi.title}>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
+                        <kpi.icon className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent><div className="text-2xl font-bold">{kpi.value}</div></CardContent>
+                </Card>
+            ))}
         </div>
+        
+        <Card>
+            <CardHeader>
+                <CardTitle>Project Status</CardTitle>
+                <CardDescription>Distribution of books by workflow stage.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <ChartContainer config={chartConfig} className="h-64 w-full">
+                    <BarChart data={chartData} layout="vertical" margin={{ left: 20, right: 20 }}>
+                        <XAxis type="number" hide />
+                        <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} width={120}/>
+                        <ChartTooltip cursor={{ fill: "hsl(var(--muted))" }} content={<ChartTooltipContent />} />
+                        <Bar dataKey="count" fill="var(--color-count)" radius={4} />
+                    </BarChart>
+                </ChartContainer>
+                <ChartContainer config={chartConfig} className="h-64 w-full">
+                    <PieChart>
+                        <Tooltip content={<ChartTooltipContent hideLabel />} />
+                        <Pie data={chartData} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
+                          {chartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                          ))}
+                        </Pie>
+                        <Legend />
+                    </PieChart>
+                </ChartContainer>
+            </CardContent>
+        </Card>
+
+        <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2"><Book className="h-5 w-5" /> Book Manifest</CardTitle>
+                    <CardDescription>Detailed breakdown of each book within the project.</CardDescription>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="sm" variant="outline" className="h-9 gap-1"><Download className="h-3.5 w-3.5" /><span>Export</span></Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Export Selected ({selection.length})</DropdownMenuLabel>
+                      <DropdownMenuItem onSelect={() => exportXLSX(selectedBooks)} disabled={selection.length === 0}>Export as XLSX</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => exportJSON(selectedBooks)} disabled={selection.length === 0}>Export as JSON</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => exportCSV(selectedBooks)} disabled={selection.length === 0}>Export as CSV</DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel>Export All ({sortedBooks.length})</DropdownMenuLabel>
+                      <DropdownMenuItem onSelect={() => exportXLSX(sortedBooks)} disabled={sortedBooks.length === 0}>Export as XLSX</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => exportJSON(sortedBooks)} disabled={sortedBooks.length === 0}>Export as JSON</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => exportCSV(sortedBooks)} disabled={sortedBooks.length === 0}>Export as CSV</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+              </div>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="w-[40px]"><Checkbox onCheckedChange={(checked) => setSelection(checked ? paginatedBooks.map(b => b.id) : [])} checked={paginatedBooks.length > 0 && selection.length === paginatedBooks.length} /></TableHead>
+                            <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>Book Name {getSortIndicator('name')}</div></TableHead>
+                            <TableHead className="w-[150px]"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Status {getSortIndicator('status')}</div></TableHead>
+                            <TableHead className="w-[150px] text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('documentCount', e.shiftKey)}>Documents {getSortIndicator('documentCount')}</div></TableHead>
+                            <TableHead className="w-[200px]"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('progress', e.shiftKey)}>Progress {getSortIndicator('progress')}</div></TableHead>
+                        </TableRow>
+                          <TableRow>
+                            <TableHead />
+                            <TableHead><Input placeholder="Filter by name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8" /></TableHead>
+                            <TableHead><Input placeholder="Filter by status..." value={columnFilters['status'] || ''} onChange={(e) => handleColumnFilterChange('status', e.target.value)} className="h-8" /></TableHead>
+                            <TableHead><Input placeholder="Filter by docs..." value={columnFilters['documentCount'] || ''} onChange={(e) => handleColumnFilterChange('documentCount', e.target.value)} className="h-8" /></TableHead>
+                            <TableHead><Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Clear</Button></TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {paginatedBooks.length > 0 ? paginatedBooks.map(book => (
+                            <TableRow key={book.id} data-state={selection.includes(book.id) && "selected"}>
+                                <TableCell><Checkbox checked={selection.includes(book.id)} onCheckedChange={(checked) => setSelection(prev => checked ? [...prev, book.id] : prev.filter(id => id !== book.id))} /></TableCell>
+                                <TableCell className="font-medium"><Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link></TableCell>
+                                <TableCell><Badge variant="outline">{book.status}</Badge></TableCell>
+                                <TableCell className="text-center">{book.documentCount} / {book.expectedDocuments}</TableCell>
+                                <TableCell><Progress value={book.progress} className="h-2" /></TableCell>
+                            </TableRow>
+                        )) : <TableRow><TableCell colSpan={5} className="h-24 text-center">No books found for this project.</TableCell></TableRow>}
+                    </TableBody>
+                </Table>
+            </CardContent>
+            {totalPages > 1 && <CardFooter className="justify-between"><div className="text-xs text-muted-foreground">{selection.length} of {sortedBooks.length} selected</div><PaginationNav /></CardFooter>}
+        </Card>
 
         <Card>
             <CardHeader>
