@@ -91,14 +91,14 @@ function SystemOverviewTab() {
         const slaWarningProjects = allProjects.filter(p => p.status === 'In Progress' && new Date(p.endDate) < new Date());
         const slaWarningBooks = slaWarningProjects.flatMap(p => p.books.filter(book => book.status === 'In Progress'));
         const today = new Date().toISOString().slice(0, 10);
-        const processedTodayLogs = auditLogs.filter(d => d.date.startsWith(today));
+        const actionsTodayLogs = auditLogs.filter(d => d.date.startsWith(today));
 
         const kpiData: KpiData[] = [
             { title: "Books in Workflow", value: booksInWorkflowBooks.length.toLocaleString(), icon: BookCopy, description: "All active books being processed", items: booksInWorkflowBooks, type: 'books' },
             { title: "Finalized Books", value: finalizedBooks.length.toLocaleString(), icon: CheckCircle2, description: "Books that are approved", items: finalizedBooks, type: 'books' },
             { title: "Pending Client Action", value: pendingClientActionBooks.length.toLocaleString(), icon: UserCheck, description: "Batches awaiting client approval", items: pendingClientActionBooks, type: 'books' },
             { title: "SLA Warnings", value: slaWarningProjects.length.toLocaleString(), icon: AlertTriangle, description: "Projects past their due date", items: slaWarningBooks, type: 'books' },
-            { title: "Actions Today", value: actionsTodayLogs.length.toLocaleString(), icon: Activity, description: "Any action performed today", items: processedTodayLogs, type: 'activities' },
+            { title: "Actions Today", value: actionsTodayLogs.length.toLocaleString(), icon: Activity, description: "Any action performed today", items: actionsTodayLogs, type: 'activities' },
         ];
 
         const orderedStageNames = [
