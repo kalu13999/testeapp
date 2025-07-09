@@ -27,9 +27,19 @@ export async function POST(request: Request) {
         const query = 'INSERT INTO documents (id, name, clientId, statusId, type, lastUpdated, tags, folderId, projectId, bookId, flag, flagComment, imageUrl) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
         
         const values = [
-            docData.id, docData.name, docData.clientId, docData.statusId, docData.type,
-            docData.lastUpdated, JSON.stringify(docData.tags || []), docData.folderId, docData.projectId, docData.bookId,
-            docData.flag, docData.flagComment, docData.imageUrl
+            docData.id, 
+            docData.name, 
+            docData.clientId, 
+            docData.statusId, 
+            docData.type,
+            docData.lastUpdated, 
+            JSON.stringify(docData.tags || []), 
+            docData.folderId ?? null, 
+            docData.projectId, 
+            docData.bookId,
+            docData.flag ?? null, 
+            docData.flagComment ?? null, 
+            docData.imageUrl ?? null
         ];
         
         await connection.execute(query, values);
