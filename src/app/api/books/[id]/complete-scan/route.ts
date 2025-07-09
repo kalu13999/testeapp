@@ -27,7 +27,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
         const documentsToInsert = [];
         const documentIds = [];
         for (let i = 1; i <= actualPageCount; i++) {
-            const docId = `doc_${bookId}_${i}`;
+            // Generate a shorter, unique ID to prevent overflow
+            const docId = `doc_${Date.now()}_${Math.random().toString(36).substring(2, 9)}_${i}`;
             documentIds.push(docId);
             documentsToInsert.push([
                 docId,
