@@ -4,6 +4,7 @@
 import Link from "next/link";
 import * as React from "react"
 import * as XLSX from 'xlsx';
+import { format } from "date-fns";
 
 import {
   Table,
@@ -136,15 +137,15 @@ export default function ProjectsClient() {
     let filtered = projects;
 
     Object.entries(columnFilters).forEach(([columnId, value]) => {
-      if (value) {
-        filtered = filtered.filter(project => {
-          const projectValue = project[columnId as keyof EnrichedProject];
-          return String(projectValue).toLowerCase().includes(value.toLowerCase());
-        });
-      }
+        if (value) {
+            filtered = filtered.filter(project => {
+                const projectValue = project[columnId as keyof EnrichedProject];
+                return String(projectValue).toLowerCase().includes(value.toLowerCase());
+            });
+        }
     });
 
-    if (sorting.length > 0) {
+     if (sorting.length > 0) {
         filtered.sort((a, b) => {
             for (const s of sorting) {
                 const key = s.id as keyof EnrichedProject;
@@ -171,7 +172,7 @@ export default function ProjectsClient() {
     return filtered;
 
   }, [projects, columnFilters, sorting]);
-
+  
   const selectedProjects = React.useMemo(() => {
     return sortedAndFilteredProjects.filter(project => selection.includes(project.id));
   }, [sortedAndFilteredProjects, selection]);
@@ -185,7 +186,7 @@ export default function ProjectsClient() {
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
-
+  
   const downloadFile = (content: string, fileName: string, mimeType: string) => {
     const blob = new Blob([content], { type: mimeType });
     const link = document.createElement("a");
@@ -422,7 +423,7 @@ export default function ProjectsClient() {
                                   {project.status}
                               </Badge>
                           </TableCell>
-                           <TableCell>{project.endDate}</TableCell>
+                           <TableCell>{format(new Date(project.endDate), "yyyy-MM-dd")}</TableCell>
                           <TableCell>
                               <Progress value={project.progress} className="h-2" />
                           </TableCell>
@@ -518,11 +519,11 @@ export default function ProjectsClient() {
             </div>
              <div className="grid grid-cols-3 items-center gap-x-4">
               <p className="text-muted-foreground">Start Date</p>
-              <p className="col-span-2 font-medium">{dialogState.data?.startDate}</p>
+              <p className="col-span-2 font-medium">{dialogState.data?.startDate ? format(new Date(dialogState.data.startDate), "LLL d, yyyy") : '—'}</p>
             </div>
              <div className="grid grid-cols-3 items-center gap-x-4">
               <p className="text-muted-foreground">End Date</p>
-              <p className="col-span-2 font-medium">{dialogState.data?.endDate}</p>
+              <p className="col-span-2 font-medium">{dialogState.data?.endDate ? format(new Date(dialogState.data.endDate), "LLL d, yyyy") : '—'}</p>
             </div>
              <div className="grid grid-cols-3 items-center gap-x-4">
               <p className="text-muted-foreground">Budget</p>
