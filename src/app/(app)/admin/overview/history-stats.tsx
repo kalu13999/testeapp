@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -34,6 +35,7 @@ export function HistoryStatsTab() {
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([{ id: 'date', desc: true }])
   const [currentPage, setCurrentPage] = React.useState(1);
   const [dialogState, setDialogState] = React.useState<{ open: boolean, title: string, items: EnrichedAuditLog[] }>({ open: false, title: '', items: [] });
+  const [dialogFilter, setDialogFilter] = React.useState('');
   const { toast } = useToast();
 
   const kpiData = React.useMemo(() => {
@@ -107,6 +109,16 @@ export function HistoryStatsTab() {
     }
     return filtered
   }, [auditLogs, columnFilters, sorting])
+
+  const filteredDialogItems = React.useMemo(() => {
+    if (!dialogFilter) return dialogState.items;
+    const query = dialogFilter.toLowerCase();
+    return dialogState.items.filter(l => 
+        l.action.toLowerCase().includes(query) ||
+        l.user.toLowerCase().includes(query) ||
+        (l.details || '').toLowerCase().includes(query)
+    );
+  }, [dialogState.items, dialogFilter]);
   
   const downloadFile = (content: string, fileName: string, mimeType: string) => {
       const blob = new Blob([content], { type: mimeType });
@@ -137,6 +149,7 @@ export function HistoryStatsTab() {
   };
 
   const handleKpiClick = (title: string, items: EnrichedAuditLog[]) => {
+    setDialogFilter('');
     setDialogState({ open: true, title, items });
   }
 
@@ -287,17 +300,24 @@ export function HistoryStatsTab() {
         </CardFooter>
       </Card>
       
-        <Dialog open={dialogState.open} onOpenChange={() => setDialogState(prev => ({ ...prev, open: false }))}>
+        <Dialog open={dialogState.open} onOpenChange={(open) => { if (!open) setDialogFilter(''); setDialogState(prev => ({ ...prev, open })); }}>
             <DialogContent className="max-w-4xl">
                 <DialogHeader>
                     <DialogTitle>{dialogState.title}</DialogTitle>
-                    <DialogDescription>Showing {dialogState.items.length} log entries.</DialogDescription>
+                    <DialogDescription>Showing {filteredDialogItems.length} of {dialogState.items.length} log entries.</DialogDescription>
                 </DialogHeader>
+                <div className="py-2">
+                    <Input 
+                        placeholder="Filter logs..."
+                        value={dialogFilter}
+                        onChange={(e) => setDialogFilter(e.target.value)}
+                    />
+                </div>
                 <div className="max-h-[60vh] overflow-y-auto pr-4">
                      <Table>
                         <TableHeader><TableRow><TableHead>Action</TableHead><TableHead>User</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
                         <TableBody>
-                            {dialogState.items.map(log => (
+                            {filteredDialogItems.map(log => (
                                 <TableRow key={log.id}>
                                     <TableCell className="font-medium">{log.action}</TableCell>
                                     <TableCell>{log.user}</TableCell>
@@ -312,3 +332,5 @@ export function HistoryStatsTab() {
     </div>
   )
 }
+
+    

@@ -42,6 +42,7 @@ export function ProjectStatsTab() {
   const [columnFilters, setColumnFilters] = React.useState<{ [key: string]: string }>({})
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([{ id: 'name', desc: false }])
   const [dialogState, setDialogState] = React.useState<{ open: boolean, title: string, items: EnrichedProject[] }>({ open: false, title: '', items: [] });
+  const [dialogFilter, setDialogFilter] = React.useState('');
   const { toast } = useToast();
 
   const projectStats = React.useMemo(() => {
@@ -120,6 +121,16 @@ export function ProjectStatsTab() {
     return filtered
   }, [projectStats, columnFilters, sorting])
 
+  const filteredDialogItems = React.useMemo(() => {
+    if (!dialogFilter) return dialogState.items;
+    const query = dialogFilter.toLowerCase();
+    return dialogState.items.filter(p => 
+      p.name.toLowerCase().includes(query) ||
+      p.clientName.toLowerCase().includes(query) ||
+      p.status.toLowerCase().includes(query)
+    );
+  }, [dialogState.items, dialogFilter]);
+
   const downloadFile = (content: string, fileName: string, mimeType: string) => {
       const blob = new Blob([content], { type: mimeType });
       const link = document.createElement("a");
@@ -149,6 +160,7 @@ export function ProjectStatsTab() {
   };
   
   const handleKpiClick = (title: string, items: EnrichedProject[]) => {
+    setDialogFilter('');
     setDialogState({ open: true, title, items });
   }
 
@@ -260,17 +272,24 @@ export function ProjectStatsTab() {
         </CardContent>
       </Card>
       
-       <Dialog open={dialogState.open} onOpenChange={() => setDialogState(prev => ({ ...prev, open: false }))}>
+       <Dialog open={dialogState.open} onOpenChange={(open) => { if (!open) setDialogFilter(''); setDialogState(prev => ({ ...prev, open })); }}>
             <DialogContent className="max-w-4xl">
                 <DialogHeader>
                     <DialogTitle>{dialogState.title}</DialogTitle>
-                    <DialogDescription>Showing {dialogState.items.length} projects.</DialogDescription>
+                    <DialogDescription>Showing {filteredDialogItems.length} of {dialogState.items.length} projects.</DialogDescription>
                 </DialogHeader>
+                <div className="py-2">
+                    <Input 
+                        placeholder="Filter projects..."
+                        value={dialogFilter}
+                        onChange={(e) => setDialogFilter(e.target.value)}
+                    />
+                </div>
                 <div className="max-h-[60vh] overflow-y-auto pr-4">
                      <Table>
                         <TableHeader><TableRow><TableHead>Project</TableHead><TableHead>Client</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
                         <TableBody>
-                            {dialogState.items.map(project => (
+                            {filteredDialogItems.map(project => (
                                 <TableRow key={project.id}>
                                     <TableCell><Link href={`/projects/${project.id}`} className="hover:underline font-medium">{project.name}</Link></TableCell>
                                     <TableCell>{project.clientName}</TableCell>
@@ -285,3 +304,5 @@ export function ProjectStatsTab() {
     </div>
   )
 }
+
+    

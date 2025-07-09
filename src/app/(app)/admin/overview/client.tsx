@@ -133,7 +133,7 @@ function SystemOverviewTab() {
             dailyActivity[date][actionName]++;
         });
 
-        auditLogs.filter(log => new Date(log.date) >= sevenDaysAgo && log.action === 'Workflow Step' && log.details.includes('to Delivery')).forEach(log => {
+        auditLogs.filter(log => new Date(log.date) >= sevenDaysAgo && log.action === 'Workflow Step' && log.details?.includes('to Delivery')).forEach(log => {
             const date = log.date.slice(0, 10);
             if (!dailyActivity[date]) dailyActivity[date] = {};
             if (!dailyActivity[date]['Delivered']) dailyActivity[date]['Delivered'] = 0;
@@ -184,8 +184,8 @@ function SystemOverviewTab() {
     };
 
     const handleCloseDetailDialog = () => {
-      setDetailState({ open: false, title: '', items: [], type: null });
       setDetailFilter('');
+      setDetailState({ open: false, title: '', items: [], type: null });
     }
 
     const handleWorkflowChartClick = (data: any) => {
@@ -212,7 +212,7 @@ function SystemOverviewTab() {
             return (detailState.items as EnrichedBook[]).filter(book => book.name.toLowerCase().includes(query) || book.projectName.toLowerCase().includes(query) || book.clientName.toLowerCase().includes(query));
         }
         if (detailState.type === 'activities') {
-            return (detailState.items as EnrichedAuditLog[]).filter(log => log.action.toLowerCase().includes(query) || log.details.toLowerCase().includes(query) || log.user.toLowerCase().includes(query));
+            return (detailState.items as EnrichedAuditLog[]).filter(log => log.action.toLowerCase().includes(query) || (log.details || '').toLowerCase().includes(query) || log.user.toLowerCase().includes(query));
         }
         return detailState.items;
     }, [detailState.items, detailState.type, detailFilter, detailState.open]);
@@ -331,3 +331,5 @@ export default function GlobalOverviewClient() {
     </div>
   )
 }
+
+    

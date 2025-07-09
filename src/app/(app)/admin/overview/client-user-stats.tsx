@@ -45,6 +45,7 @@ export function ClientUserStatsTab() {
   const [columnFilters, setColumnFilters] = React.useState<{ [key: string]: string }>({})
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([{ id: 'name', desc: false }])
   const [dialogState, setDialogState] = React.useState<{ open: boolean, title: string, items: UserData[] }>({ open: false, title: '', items: [] });
+  const [dialogFilter, setDialogFilter] = React.useState('');
   const { toast } = useToast();
 
   const clientUsers = React.useMemo(() => users.filter(u => u.role === 'Client'), [users]);
@@ -120,6 +121,16 @@ export function ClientUserStatsTab() {
     return filtered
   }, [clientUserStats, columnFilters, sorting])
 
+  const filteredDialogItems = React.useMemo(() => {
+    if (!dialogFilter) return dialogState.items;
+    const query = dialogFilter.toLowerCase();
+    return dialogState.items.filter(u => 
+        u.name.toLowerCase().includes(query) ||
+        u.role.toLowerCase().includes(query) ||
+        u.status.toLowerCase().includes(query)
+    );
+  }, [dialogState.items, dialogFilter]);
+
   const downloadFile = (content: string, fileName: string, mimeType: string) => {
       const blob = new Blob([content], { type: mimeType });
       const link = document.createElement("a");
@@ -149,6 +160,7 @@ export function ClientUserStatsTab() {
   };
   
   const handleKpiClick = (title: string, items: UserData[]) => {
+    setDialogFilter('');
     setDialogState({ open: true, title, items });
   }
 
@@ -257,17 +269,24 @@ export function ClientUserStatsTab() {
         </CardContent>
       </Card>
 
-      <Dialog open={dialogState.open} onOpenChange={() => setDialogState(prev => ({ ...prev, open: false }))}>
+      <Dialog open={dialogState.open} onOpenChange={(open) => { if (!open) setDialogFilter(''); setDialogState(prev => ({ ...prev, open })); }}>
             <DialogContent className="max-w-2xl">
                 <DialogHeader>
                     <DialogTitle>{dialogState.title}</DialogTitle>
-                    <DialogDescription>Showing {dialogState.items.length} users.</DialogDescription>
+                    <DialogDescription>Showing {filteredDialogItems.length} of {dialogState.items.length} users.</DialogDescription>
                 </DialogHeader>
+                 <div className="py-2">
+                    <Input 
+                        placeholder="Filter users..."
+                        value={dialogFilter}
+                        onChange={(e) => setDialogFilter(e.target.value)}
+                    />
+                </div>
                 <div className="max-h-[60vh] overflow-y-auto pr-4">
                      <Table>
                         <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Role</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
                         <TableBody>
-                            {dialogState.items.map(user => (
+                            {filteredDialogItems.map(user => (
                                 <TableRow key={user.id}>
                                     <TableCell>
                                       <div className="flex items-center gap-3"><Avatar className="h-9 w-9">{user.avatar && <AvatarImage src={user.avatar} alt="User avatar" />}{!user.avatar && <AvatarFallback>{getInitials(user.name)}</AvatarFallback>}</Avatar>
@@ -285,3 +304,5 @@ export function ClientUserStatsTab() {
     </div>
   )
 }
+
+    
