@@ -49,7 +49,7 @@ export function ClientStatsTab() {
       const onHoldProjects = projectsForClient.filter(p => p.status === 'On Hold').length
       const totalBooks = projectsForClient.reduce((sum, p) => sum + p.books.length, 0)
       const finalizedBooks = projectsForClient.reduce((sum, p) => sum + p.books.filter(b => b.status === 'Finalized').length, 0)
-      const totalBudget = projectsForClient.reduce((sum, p) => sum + p.budget, 0)
+      const totalBudget = projectsForClient.reduce((sum, p) => sum + Number(p.budget), 0)
       const avgBudget = projectsForClient.length > 0 ? totalBudget / projectsForClient.length : 0
 
       return {
@@ -68,7 +68,7 @@ export function ClientStatsTab() {
 
   const kpiData = React.useMemo(() => ({
     totalClients: clients.length,
-    totalBudget: allProjects.reduce((sum, p) => sum + p.budget, 0),
+    totalBudget: allProjects.reduce((sum, p) => sum + Number(p.budget), 0),
     avgProjects: clients.length > 0 ? (allProjects.length / clients.length).toFixed(1) : 0,
   }), [clients, allProjects]);
 
@@ -300,5 +300,3 @@ export function ClientStatsTab() {
     </div>
   )
 }
-
-    
