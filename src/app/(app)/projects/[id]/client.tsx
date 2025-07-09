@@ -78,6 +78,13 @@ const getStatusBadgeVariant = (status: string) => {
     }
 }
 
+const DetailItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
+  <div className="flex justify-between items-center text-sm">
+    <p className="text-muted-foreground">{label}</p>
+    <div className="font-medium text-right">{value}</div>
+  </div>
+);
+
 export default function ProjectDetailClient({ projectId }: ProjectDetailClientProps) {
   const { allProjects, clients, updateProject, projectWorkflows, updateProjectWorkflow, documents } = useAppContext();
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
@@ -255,8 +262,7 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
   return (
     <>
       <div className="space-y-6">
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between">
+        <div className="flex items-start justify-between">
             <div>
               <CardTitle className="font-headline text-3xl tracking-tight">{project.name}</CardTitle>
               <CardDescription className="text-base">{project.clientName}</CardDescription>
@@ -267,24 +273,49 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                 Edit Project
               </Button>
             </div>
-          </CardHeader>
-          <CardContent>
-              <p className="text-muted-foreground max-w-4xl">{project.description}</p>
-          </CardContent>
-        </Card>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {kpiData.map(kpi => (
-                <Card key={kpi.title}>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
-                        <kpi.icon className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent><div className="text-2xl font-bold">{kpi.value}</div></CardContent>
-                </Card>
-            ))}
         </div>
         
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {kpiData.map(kpi => (
+                    <Card key={kpi.title}>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
+                            <kpi.icon className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent><div className="text-2xl font-bold">{kpi.value}</div></CardContent>
+                    </Card>
+                ))}
+            </div>
+            <div className="lg:col-span-1">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Project Summary</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                        <DetailItem label="Status" value={<Badge variant={getStatusBadgeVariant(project.status)}>{project.status}</Badge>} />
+                        <Separator/>
+                        <DetailItem label="Budget" value={`$${project.budget.toLocaleString()}`} />
+                        <DetailItem label="Timeline" value={`${project.startDate} to ${project.endDate}`} />
+                        <Separator/>
+                        <div className="space-y-2">
+                           <DetailItem label="Total Pages" value={`${project.documentCount.toLocaleString()} / ${project.totalExpected.toLocaleString()}`} />
+                           <Progress value={project.progress} />
+                        </div>
+                        {project.description && (
+                            <>
+                            <Separator/>
+                            <div className="pt-2">
+                                <p className="text-sm text-muted-foreground">Description</p>
+                                <p className="text-sm font-medium whitespace-pre-wrap">{project.description}</p>
+                            </div>
+                            </>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
             <Card className="lg:col-span-2">
                 <CardHeader>
@@ -372,7 +403,7 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                 </Button>
               </div>
               <CardDescription>
-                Customize the sequence of steps for this project. Disabled phases will be skipped.
+                Customize the sequence of steps for this project. Disabled phases will be skipped, moving books to the next enabled stage.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -385,7 +416,8 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                         {group.stages.map(stageKey => {
                             const stageConfig = STAGE_CONFIG[stageKey as keyof typeof STAGE_CONFIG];
                             if (!stageConfig) return null;
-                            const isEnabled = !group.toggleable || projectWorkflow.includes(stageKey);
+                            const isMandatory = !group.toggleable;
+                            const isEnabled = isMandatory || projectWorkflow.includes(stageKey);
                             return (
                               <div key={stageKey} className="flex items-center gap-3 text-sm">
                                   <div className={cn('w-2 h-2 rounded-full', isEnabled ? 'bg-primary' : 'bg-muted-foreground')} />
