@@ -1017,7 +1017,7 @@ export function AppProvider({
       return [...otherPages, ...updatedPages];
     });
 
-    setRawBooks(prev => prev.map(b => b.id === bookId ? { ...b, documentCount: (b.documentCount || 0) + 1, expectedDocuments: (b.expectedDocuments || 0) + 1 } : b));
+    setRawBooks(prev => prev.map(b => b.id === bookId ? { ...b, expectedDocuments: (b.expectedDocuments || 0) + 1 } : b));
     logAction('Page Added', `New page added to "${book.name}" at position ${position}.`, { bookId, documentId: newPageId });
     toast({ title: "Page Added" });
   }
@@ -1025,7 +1025,7 @@ export function AppProvider({
   const deletePageFromBook = (pageId: string, bookId: string) => {
     const page = documents.find(p => p.id === pageId);
     setDocuments(prev => prev.filter(p => p.id !== pageId));
-    setRawBooks(prev => prev.map(b => b.id === bookId ? {...b, documentCount: (b.documentCount || 1) - 1, expectedDocuments: (b.expectedDocuments || 1) - 1 } : b));
+    setRawBooks(prev => prev.map(b => b.id === bookId ? {...b, expectedDocuments: (b.expectedDocuments || 1) - 1 } : b));
     logAction('Page Deleted', `Page "${page?.name}" was deleted from book.`, { bookId, documentId: pageId });
   }
 
@@ -1133,5 +1133,3 @@ export function useAppContext() {
   }
   return context;
 }
-
-    
