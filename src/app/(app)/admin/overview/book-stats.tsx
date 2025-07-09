@@ -263,23 +263,19 @@ export function BookStatsTab() {
                         <PieChart>
                         <ChartTooltip
                             cursor={false}
-                            content={<ChartTooltipContent hideLabel />}
+                            content={<ChartTooltipContent />}
                         />
                         <Pie
                             data={booksByStatusChartData}
                             dataKey="value"
                             nameKey="name"
-                            labelLine={false}
-                            label={({ percent, name }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                            innerRadius={0}
+                            strokeWidth={0}
                         >
                             {booksByStatusChartData.map((entry) => (
                                 <Cell key={entry.name} fill={statusChartConfig[entry.name]?.color} />
                             ))}
                         </Pie>
-                        <ChartLegend
-                            content={<ChartLegendContent nameKey="name" />}
-                            className="-translate-y-2 flex-wrap gap-2 [&>*]:basis-1/4 [&>*]:justify-center"
-                        />
                         </PieChart>
                     </ChartContainer>
                 </CardContent>
