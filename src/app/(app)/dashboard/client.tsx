@@ -351,50 +351,47 @@ function ProjectDashboard() {
     return (
         <>
             <div className="space-y-6">
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                     <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                        {kpiData.map((kpi) => (
-                            <Card key={kpi.title} onClick={() => handleKpiClick(kpi)} className={kpi.items && kpi.items.length > 0 ? "cursor-pointer transition-colors hover:bg-muted/50" : ""}>
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
-                                    <kpi.icon className="h-4 w-4 text-muted-foreground" />
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="text-2xl font-bold">{kpi.value}</div>
-                                    <p className="text-xs text-muted-foreground">{kpi.description}</p>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
-                    <div className="lg:col-span-1">
-                       <Card>
-                            <CardHeader>
-                                <CardTitle>Project Details</CardTitle>
-                                <CardDescription>At-a-glance project information.</CardDescription>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Project Details</CardTitle>
+                        <CardDescription>At-a-glance project information.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 items-start">
+                            <DetailItem label="Client" value={<Link href={`/clients`} className="hover:underline">{project.clientName}</Link>} />
+                            <DetailItem label="Status" value={<Badge variant={getStatusBadgeVariant(project.status)}>{project.status}</Badge>} />
+                            <DetailItem label="Budget" value={`$${project.budget.toLocaleString()}`} />
+                            <DetailItem label="Timeline" value={`${format(new Date(project.startDate), "LLL d, y")} - ${format(new Date(project.endDate), "LLL d, y")}`} />
+                            <div className="col-span-2 md:col-span-1">
+                                <DetailItem label="Overall Progress" value={`${project.documentCount.toLocaleString()} / ${project.totalExpected.toLocaleString()} pages`} />
+                                <Progress value={project.progress} className="mt-2 h-2" />
+                            </div>
+                        </div>
+                        {project.info && (
+                        <>
+                        <Separator className="my-4"/>
+                        <DetailItem label="Additional Info" value={<p className="text-sm font-normal text-foreground whitespace-pre-wrap">{project.info}</p>} />
+                        </>
+                        )}
+                    </CardContent>
+                    <CardFooter className="justify-end">
+                        <Button asChild variant="outline"><Link href={`/projects/${project.id}`}>View Full Project Details</Link></Button>
+                    </CardFooter>
+                </Card>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    {kpiData.map((kpi) => (
+                        <Card key={kpi.title} onClick={() => handleKpiClick(kpi)} className={kpi.items && kpi.items.length > 0 ? "cursor-pointer transition-colors hover:bg-muted/50" : ""}>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
+                                <kpi.icon className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
-                                <div className="grid grid-cols-2 gap-x-4 gap-y-6">
-                                    <DetailItem label="Client" value={<Link href={`/clients`} className="hover:underline">{project.clientName}</Link>} />
-                                    <DetailItem label="Status" value={<Badge variant={getStatusBadgeVariant(project.status)}>{project.status}</Badge>} />
-                                    <DetailItem label="Budget" value={`$${project.budget.toLocaleString()}`} />
-                                    <DetailItem label="Timeline" value={`${format(new Date(project.startDate), "LLL d, y")} - ${format(new Date(project.endDate), "LLL d, y")}`} />
-                                    <div className="col-span-2">
-                                        <DetailItem label="Overall Progress" value={`${project.documentCount.toLocaleString()} / ${project.totalExpected.toLocaleString()} pages`} />
-                                        <Progress value={project.progress} className="mt-2 h-2" />
-                                    </div>
-                                </div>
-                                {project.info && (
-                                <>
-                                <Separator className="my-4"/>
-                                <DetailItem label="Additional Info" value={<p className="text-sm font-normal text-foreground whitespace-pre-wrap">{project.info}</p>} />
-                                </>
-                                )}
+                                <div className="text-2xl font-bold">{kpi.value}</div>
+                                <p className="text-xs text-muted-foreground">{kpi.description}</p>
                             </CardContent>
-                            <CardFooter>
-                                <Button asChild variant="outline" className="w-full"><Link href={`/projects/${project.id}`}>View Full Project Details</Link></Button>
-                            </CardFooter>
                         </Card>
-                    </div>
+                    ))}
                 </div>
 
                 <Card>
