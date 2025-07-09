@@ -24,6 +24,7 @@ export interface BookImport {
 // Client-side representation of a document
 export type AppDocument = RawDocument & { client: string; status: string; };
 export type EnrichedAuditLog = AuditLog & { user: string; };
+export type NavigationHistoryItem = { href: string, label: string };
 
 type AppContextType = {
   // Loading state
@@ -34,6 +35,10 @@ type AppContextType = {
   login: (username: string, password: string) => User | null;
   logout: () => void;
   changePassword: (userId: string, currentPassword: string, newPassword: string) => Promise<boolean>;
+
+  // Navigation History
+  navigationHistory: NavigationHistoryItem[];
+  addNavigationHistoryItem: (item: NavigationHistoryItem) => void;
 
   // State (filtered by project or based on user)
   clients: Client[];
@@ -139,6 +144,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const [rejectionTags, setRejectionTags] = React.useState<RejectionTag[]>([]);
   const [statuses, setStatuses] = React.useState<DocumentStatus[]>([]);
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
+  const [navigationHistory, setNavigationHistory] = React.useState<NavigationHistoryItem[]>([]);
   const { toast } = useToast();
   
   React.useEffect(() => {
@@ -184,7 +190,13 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             const storedUserId = localStorage.getItem('flowvault_userid');
             if (storedUserId) {
                 const user = usersData.find(u => u.id === storedUserId);
-                if (user) setCurrentUser(user);
+                if (user) {
+                  setCurrentUser(user);
+                  const storedHistory = localStorage.getItem(`nav_history_${user.id}`);
+                  if(storedHistory) {
+                    setNavigationHistory(JSON.parse(storedHistory));
+                  }
+                }
             }
         } catch (error) {
             console.error("Failed to load initial data", error);
@@ -214,6 +226,12 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       }
       setCurrentUser(user);
       localStorage.setItem('flowvault_userid', user.id);
+      const storedHistory = localStorage.getItem(`nav_history_${user.id}`);
+      if(storedHistory) {
+        setNavigationHistory(JSON.parse(storedHistory));
+      } else {
+        setNavigationHistory([]);
+      }
       return user;
     }
     return null;
@@ -221,6 +239,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
   const logout = () => {
     setCurrentUser(null);
+    setNavigationHistory([]);
     localStorage.removeItem('flowvault_userid');
   };
   
@@ -250,6 +269,15 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         return false;
     }
   };
+  
+  const addNavigationHistoryItem = React.useCallback((item: NavigationHistoryItem) => {
+    if(!currentUser) return;
+    setNavigationHistory(prev => {
+        const newHistory = [item, ...prev.filter(p => p.href !== item.href)].slice(0, 5);
+        localStorage.setItem(`nav_history_${currentUser.id}`, JSON.stringify(newHistory));
+        return newHistory;
+    });
+  }, [currentUser]);
 
   // --- Centralized Action Logger ---
   const logAction = React.useCallback(async (
@@ -1334,26 +1362,26 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
   // --- Contextual Data Filtering ---
   const projectsForContext = React.useMemo(() => {
-    if (!selectedProjectId) return [];
+    if (!selectedProjectId) return accessibleProjectsForUser;
     return allEnrichedProjects.filter(p => p.id === selectedProjectId);
-  }, [allEnrichedProjects, selectedProjectId]);
+  }, [allEnrichedProjects, accessibleProjectsForUser, selectedProjectId]);
   
   const booksForContext = React.useMemo(() => {
-    if (!selectedProjectId) return [];
+    if (!selectedProjectId) return enrichedBooks.filter(book => accessibleProjectsForUser.some(p => p.id === book.projectId));
     const project = allEnrichedProjects.find(p => p.id === selectedProjectId);
     return project ? project.books : [];
-  }, [allEnrichedProjects, selectedProjectId]);
+  }, [allEnrichedProjects, enrichedBooks, accessibleProjectsForUser, selectedProjectId]);
 
   const documentsForContext = React.useMemo(() => {
-    if (!selectedProjectId) return [];
-    const booksForContextIds = new Set(booksForContext.map(b => b.id));
-    return documents.filter(d => d.bookId && booksForContextIds.has(d.bookId));
-  }, [documents, booksForContext, selectedProjectId]);
+    const bookIdsInScope = new Set(booksForContext.map(b => b.id));
+    return documents.filter(d => d.bookId && bookIdsInScope.has(d.bookId));
+  }, [documents, booksForContext]);
 
 
   const value: AppContextType = { 
     loading,
     currentUser, login, logout, changePassword,
+    navigationHistory, addNavigationHistoryItem,
     clients, users, scannerUsers, indexerUsers, qcUsers,
     projects: projectsForContext, 
     books: booksForContext, 

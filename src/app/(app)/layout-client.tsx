@@ -5,13 +5,16 @@ import React, { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Sidebar, SidebarHeader, SidebarContent, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
 import { MainNav } from '@/components/layout/main-nav';
-import { UserNav } from '@/components/layout/user-nav';
+import { UserNav } from '@/components/ui/user-nav';
 import { FileLock2, Loader2 } from 'lucide-react';
 import { useAppContext } from '@/context/workflow-context';
 import { useToast } from '@/hooks/use-toast';
+import { GlobalProjectFilter } from '@/components/layout/global-project-filter';
+import { allMenuItems } from '@/lib/menu-config';
+import { RecentPagesNav } from '@/components/layout/recent-pages-nav';
 
 export const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
-  const { currentUser, permissions, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loading } = useAppContext();
+  const { currentUser, permissions, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loading, addNavigationHistoryItem } = useAppContext();
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
@@ -96,6 +99,26 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
     setSelectedProjectId(newDefaultProjectId);
 
   }, [currentUser, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loading]);
+  
+  useEffect(() => {
+    if (!pathname || !currentUser) return;
+    
+    for (const section of allMenuItems) {
+        const item = section.items.find(i => {
+            if (i.href.includes('[')) {
+                const regex = new RegExp(`^${i.href.replace(/\[.*?\]/g, '[^/]+')}$`);
+                return regex.test(pathname);
+            }
+            return i.href === pathname;
+        });
+
+        if (item) {
+            addNavigationHistoryItem({ href: pathname, label: item.label });
+            break; 
+        }
+    }
+  }, [pathname, currentUser, addNavigationHistoryItem]);
+
 
   if (loading) {
     return (
@@ -134,12 +157,17 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
       <SidebarInset>
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm sm:px-6">
             <SidebarTrigger className="sm:hidden" />
-            <div className="flex-1" /> 
+            <div className="hidden sm:flex flex-1 items-center gap-2">
+              <RecentPagesNav />
+            </div> 
             <div className="flex items-center gap-4">
               <UserNav user={currentUser} />
             </div>
         </header>
         <main className="flex-1 p-4 md:p-6">
+          <div className="sm:hidden mb-4">
+            <GlobalProjectFilter />
+          </div>
           {isChecking ? (
             <div className="flex h-full items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
