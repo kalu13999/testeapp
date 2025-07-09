@@ -28,7 +28,7 @@ type AppContextType = {
   currentUser: User | null;
   login: (username: string, password: string) => User | null;
   logout: () => void;
-  changePassword: (userId: string, currentPassword: string, newPassword: string) => boolean;
+  changePassword: (userId: string, currentPassword: string, newPassword: string) => Promise<boolean>;
 
   // State (filtered by project or based on user)
   clients: Client[];
@@ -61,7 +61,7 @@ type AppContextType = {
   addUser: (userData: UserFormValues) => Promise<void>;
   updateUser: (userId: string, userData: Partial<UserFormValues>) => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
-  toggleUserStatus: (userId: string) => void;
+  toggleUserStatus: (userId: string) => Promise<void>;
   updateUserDefaultProject: (userId: string, projectId: string | null) => void;
   
   // Role Actions
@@ -82,11 +82,11 @@ type AppContextType = {
   importBooks: (projectId: string, newBooks: BookImport[]) => Promise<void>;
   
   // Rejection Tag Actions
-  addRejectionTag: (tagData: Omit<RejectionTag, 'id' | 'clientId'>, clientId: string) => void;
-  updateRejectionTag: (tagId: string, tagData: Partial<Omit<RejectionTag, 'id' | 'clientId'>>) => void;
-  deleteRejectionTag: (tagId: string) => void;
-  tagPageForRejection: (pageId: string, tags: string[]) => void;
-  clearPageRejectionTags: (pageId: string, tagsToKeep?: string[]) => void;
+  addRejectionTag: (tagData: Omit<RejectionTag, 'id' | 'clientId'>, clientId: string) => Promise<void>;
+  updateRejectionTag: (tagId: string, tagData: Partial<Omit<RejectionTag, 'id' | 'clientId'>>) => Promise<void>;
+  deleteRejectionTag: (tagId: string) => Promise<void>;
+  tagPageForRejection: (pageId: string, tags: string[]) => Promise<void>;
+  clearPageRejectionTags: (pageId: string, tagsToKeep?: string[]) => Promise<void>;
 
 
   // Workflow Actions
@@ -107,10 +107,10 @@ type AppContextType = {
   handleFinalize: (bookId: string) => void;
   handleMarkAsCorrected: (bookId: string) => void;
   handleResubmit: (bookId: string, targetStage: string) => void;
-  addPageToBook: (bookId: string, position: number) => void;
-  deletePageFromBook: (pageId: string, bookId: string) => void;
-  updateDocumentStatus: (docId: string, newStatus: string) => void;
-  updateDocumentFlag: (docId: string, flag: AppDocument['flag'], comment?: string) => void;
+  addPageToBook: (bookId: string, position: number) => Promise<void>;
+  deletePageFromBook: (pageId: string, bookId: string) => Promise<void>;
+  updateDocumentStatus: (docId: string, newStatus: string) => Promise<void>;
+  updateDocumentFlag: (docId: string, flag: AppDocument['flag'], comment?: string) => Promise<void>;
 };
 
 const AppContext = React.createContext<AppContextType | undefined>(undefined);
@@ -162,7 +162,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             const enrichedDocs = docsData.map(doc => ({
                 ...doc,
                 client: clientsData.find(c => c.id === doc.clientId)?.name || 'Unknown',
-                status: statusesData.find(s => s.id === doc.statusId)?.name || 'Unknown'
+                status: statusesData.find(s => s.id === doc.statusId)?.name || 'Unknown',
+                tags: doc.tags ? JSON.parse(doc.tags as any) : [],
             }));
             setDocuments(enrichedDocs);
 
@@ -215,34 +216,46 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     localStorage.removeItem('flowvault_userid');
   };
   
-  const changePassword = (userId: string, currentPassword: string, newPassword: string): boolean => {
-    const user = users.find(u => u.id === userId);
-    if (!user || user.password !== currentPassword) {
-      toast({ title: "Password Change Failed", description: "The current password you entered is incorrect.", variant: "destructive" });
-      return false;
+  const changePassword = async (userId: string, currentPassword: string, newPassword: string): Promise<boolean> => {
+    try {
+        const response = await fetch(`/api/users/${userId}/change-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ currentPassword, newPassword }),
+        });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || "Failed to change password.");
+        }
+        
+        // Optimistically update the user password in local state for subsequent logins
+        // in the same session, although it's not strictly necessary.
+        setUsers(prev => prev.map(u => 
+            u.id === userId ? { ...u, password: newPassword } : u
+        ));
+
+        logAction('Password Changed', `User changed their password.`, { userId: userId });
+        toast({ title: "Password Changed Successfully" });
+        return true;
+    } catch (error: any) {
+        toast({ title: "Password Change Failed", description: error.message, variant: "destructive" });
+        return false;
     }
-
-    setUsers(prev => prev.map(u => 
-      u.id === userId ? { ...u, password: newPassword } : u
-    ));
-
-    logAction('Password Changed', `User "${user.name}" changed their password.`, {});
-    toast({ title: "Password Changed Successfully" });
-    return true;
   };
 
   // --- Centralized Action Logger ---
   const logAction = React.useCallback(async (
     action: string, 
     details: string, 
-    ids: { bookId?: string, documentId?: string }
+    ids: { bookId?: string, documentId?: string, userId?: string }
   ) => {
-    if (!currentUser) return;
+    const actorId = currentUser?.id;
+    if (!actorId) return;
     try {
         const logData: Omit<AuditLog, 'id'> = {
             action,
             details,
-            userId: currentUser.id,
+            userId: actorId,
             date: new Date().toISOString(),
             ...ids,
         };
@@ -672,65 +685,154 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   // --- REJECTION TAG ACTIONS ---
-  const addRejectionTag = (tagData: Omit<RejectionTag, 'id' | 'clientId'>, clientId: string) => {
+  const addRejectionTag = async (tagData: Omit<RejectionTag, 'id' | 'clientId'>, clientId: string) => {
     if (!clientId) {
       toast({ title: "Client ID is missing", variant: "destructive" });
       return;
     }
-    const newTag: RejectionTag = { id: `rt_${Date.now()}`, clientId: clientId, ...tagData };
-    setRejectionTags(prev => [...prev, newTag]);
-    const client = clients.find(c => c.id === clientId);
-    const actor = currentUser?.role === 'Admin' ? 'Admin' : `Client "${currentUser?.name}"`;
-    logAction('Rejection Tag Created', `${actor} created tag: "${newTag.label}" for client "${client?.name}".`, {});
-    toast({ title: "Rejection Reason Added" });
+    try {
+        const response = await fetch('/api/rejection-tags', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...tagData, clientId }),
+        });
+        if (!response.ok) throw new Error('Failed to create rejection tag');
+        const newTag = await response.json();
+        setRejectionTags(prev => [...prev, newTag]);
+        const client = clients.find(c => c.id === clientId);
+        logAction('Rejection Tag Created', `Tag "${newTag.label}" created for client "${client?.name}".`, {});
+        toast({ title: "Rejection Reason Added" });
+    } catch (error) {
+        console.error(error);
+        toast({ title: "Error", description: "Could not create rejection reason.", variant: "destructive" });
+    }
   };
 
-  const updateRejectionTag = (tagId: string, tagData: Partial<Omit<RejectionTag, 'id' | 'clientId'>>) => {
-    setRejectionTags(prev => prev.map(t => t.id === tagId ? { ...t, ...tagData } : t));
-    logAction('Rejection Tag Updated', `Tag "${tagData.label}" updated.`, {});
-    toast({ title: "Rejection Reason Updated" });
+  const updateRejectionTag = async (tagId: string, tagData: Partial<Omit<RejectionTag, 'id' | 'clientId'>>) => {
+     try {
+        const response = await fetch(`/api/rejection-tags/${tagId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(tagData),
+        });
+        if (!response.ok) throw new Error('Failed to update rejection tag');
+        const updatedTag = await response.json();
+        setRejectionTags(prev => prev.map(t => t.id === tagId ? updatedTag : t));
+        logAction('Rejection Tag Updated', `Tag "${updatedTag.label}" updated.`, {});
+        toast({ title: "Rejection Reason Updated" });
+    } catch (error) {
+        console.error(error);
+        toast({ title: "Error", description: "Could not update rejection reason.", variant: "destructive" });
+    }
   };
 
-  const deleteRejectionTag = (tagId: string) => {
+  const deleteRejectionTag = async (tagId: string) => {
     const tag = rejectionTags.find(t => t.id === tagId);
-    setRejectionTags(prev => prev.filter(t => t.id !== tagId));
-    logAction('Rejection Tag Deleted', `Tag "${tag?.label}" deleted.`, {});
-    toast({ title: "Rejection Reason Deleted", variant: 'destructive' });
+    try {
+        const response = await fetch(`/api/rejection-tags/${tagId}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to delete rejection tag');
+        setRejectionTags(prev => prev.filter(t => t.id !== tagId));
+        logAction('Rejection Tag Deleted', `Tag "${tag?.label}" deleted.`, {});
+        toast({ title: "Rejection Reason Deleted", variant: 'destructive' });
+    } catch (error) {
+        console.error(error);
+        toast({ title: "Error", description: "Could not delete rejection reason.", variant: "destructive" });
+    }
   };
 
-  const tagPageForRejection = (pageId: string, tags: string[]) => {
-    const page = documents.find(d => d.id === pageId);
-    if (!page) return;
-    
-    setDocuments(prevDocs => 
-      prevDocs.map(doc => 
-        doc.id === pageId ? { ...doc, tags: tags } : doc
-      )
-    );
-    
-    logAction(
-      'Rejection Tags Updated',
-      `Tags for page "${page.name}" set to: ${tags.join(', ') || 'None'}.`,
-      { documentId: pageId, bookId: page.bookId ?? undefined}
-    );
-    toast({ title: "Tags Updated", description: "The rejection tags for the page have been updated." });
+  const tagPageForRejection = async (pageId: string, tags: string[]) => {
+    await updateDocument(pageId, { tags });
   };
   
-  const clearPageRejectionTags = (pageId: string, tagsToKeep: string[] = []) => {
-    const page = documents.find(d => d.id === pageId);
-    if (!page) return;
-
-    setDocuments(prevDocs => 
-      prevDocs.map(doc => doc.id === pageId ? { ...doc, tags: tagsToKeep } : doc)
-    );
-
-    logAction(
-        'Rejection Tags Modified', 
-        `Tags updated for page "${page.name}". Kept: ${tagsToKeep.join(', ')}.`, 
-        { documentId: pageId, bookId: page.bookId ?? undefined}
-    );
-    toast({ title: "Tags Updated" });
+  const clearPageRejectionTags = async (pageId: string, tagsToKeep: string[] = []) => {
+    await updateDocument(pageId, { tags: tagsToKeep });
   }
+  
+  const updateDocument = async (docId: string, data: Partial<AppDocument>) => {
+    const doc = documents.find(d => d.id === docId);
+    if (!doc) return;
+    try {
+        const response = await fetch(`/api/documents/${docId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        if (!response.ok) throw new Error('Failed to update document');
+        const updatedDoc = await response.json();
+        
+        setDocuments(prev => prev.map(d => (d.id === docId ? { ...d, ...updatedDoc, tags: JSON.parse(updatedDoc.tags || '[]') } : d)));
+        
+        let logDetails = `Document "${doc.name}" updated.`;
+        if (data.tags) logDetails = `Tags for document "${doc.name}" updated to: ${data.tags.join(', ') || 'None'}.`;
+        if (data.flag !== undefined) logDetails = `Flag for document "${doc.name}" set to ${data.flag || 'None'}.`;
+
+        logAction('Document Updated', logDetails, { documentId: docId, bookId: doc.bookId ?? undefined });
+        toast({ title: "Document Updated" });
+    } catch (error) {
+        console.error(error);
+        toast({ title: "Error", description: "Could not update document.", variant: "destructive" });
+    }
+  };
+
+  const updateDocumentFlag = async (docId: string, flag: AppDocument['flag'], comment?: string) => {
+    await updateDocument(docId, { flag, flagComment: flag ? comment : undefined });
+  };
+  
+  const addPageToBook = async (bookId: string, position: number) => {
+    const book = enrichedBooks.find(b => b.id === bookId);
+    if (!book) return;
+
+    const newPageName = `${book.name} - Page ${position} (Added)`;
+    const newPageId = `doc_${book.id}_new_${Date.now()}`;
+    const newPage: Partial<RawDocument> = {
+      id: newPageId,
+      name: newPageName,
+      clientId: book.clientId, statusId: 'ds_13', // Client Rejected
+      type: 'Added Page', lastUpdated: new Date().toISOString(), tags: ['added', 'corrected'] as any,
+      folderId: null, projectId: book.projectId, bookId: book.id, flag: 'info',
+      imageUrl: `https://dummyimage.com/400x550/e0e0e0/5c5c5c.png&text=${encodeURIComponent(newPageName)}`
+    };
+
+    try {
+        const response = await fetch('/api/documents', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newPage),
+        });
+        if (!response.ok) throw new Error('Failed to add page');
+        const createdPage = await response.json();
+
+        setDocuments(prevDocs => {
+          const otherPages = prevDocs.filter(p => p.bookId !== bookId);
+          const bookPages = prevDocs.filter(p => p.bookId === bookId);
+          bookPages.splice(position - 1, 0, { ...createdPage, client: book.clientName, status: 'Client Rejected' });
+          return [...otherPages, ...bookPages];
+        });
+        setRawBooks(prev => prev.map(b => b.id === bookId ? { ...b, expectedDocuments: (b.expectedDocuments || 0) + 1 } : b));
+        logAction('Page Added', `New page added to "${book.name}" at position ${position}.`, { bookId, documentId: newPageId });
+        toast({ title: "Page Added" });
+    } catch (error) {
+        console.error(error);
+        toast({ title: "Error", description: "Could not add page.", variant: "destructive" });
+    }
+  }
+
+  const deletePageFromBook = async (pageId: string, bookId: string) => {
+      const page = documents.find(p => p.id === pageId);
+      try {
+          const response = await fetch(`/api/documents/${pageId}`, { method: 'DELETE' });
+          if (!response.ok) throw new Error('Failed to delete page');
+
+          setDocuments(prev => prev.filter(p => p.id !== pageId));
+          setRawBooks(prev => prev.map(b => b.id === bookId ? {...b, expectedDocuments: (b.expectedDocuments || 1) - 1 } : b));
+          logAction('Page Deleted', `Page "${page?.name}" was deleted from book.`, { bookId, documentId: pageId });
+          toast({ title: "Page Deleted", variant: "destructive" });
+      } catch (error) {
+          console.error(error);
+          toast({ title: "Error", description: "Could not delete page.", variant: "destructive" });
+      }
+  };
+
 
   // --- WORKFLOW ACTIONS ---
   const getNextEnabledStage = (currentStageKey: string, workflow: string[]): string | null => {
@@ -746,31 +848,45 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     return null; // Reached end of workflow
   };
 
-  const updateBookStatus = React.useCallback((bookId: string, newStatusName: string, updateFn?: (book: RawBook) => Partial<RawBook>) => {
-    setRawBooks(prevBooks =>
-      prevBooks.map(book =>
-        book.id === bookId ? { ...book, status: newStatusName, ...(updateFn ? updateFn(book) : {}) } : book
-      )
-    );
-  }, []);
+  const updateBookStatus = React.useCallback(async (bookId: string, newStatusName: string, additionalUpdates: Partial<RawBook> = {}) => {
+    try {
+        const response = await fetch(`/api/books/${bookId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatusName, ...additionalUpdates }),
+        });
+        if (!response.ok) throw new Error('Failed to update book status');
+        const updatedBook = await response.json();
+        setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
+        return true;
+    } catch (error) {
+        console.error(error);
+        toast({ title: "Error", description: "Could not update book status.", variant: "destructive" });
+        return false;
+    }
+  }, [toast]);
   
-  const moveBookDocuments = React.useCallback((bookId: string, newStatus: string) => {
+  const moveBookDocuments = React.useCallback(async (bookId: string, newStatusName: string) => {
+    // This action is now handled by backend triggers or logic when book status changes.
+    // For client-side consistency, we update the state optimistically.
+    const statusMapping = await dataApi.getDocumentStatuses();
+    const newStatusId = statusMapping.find(s => s.name === newStatusName)?.id;
+    if(!newStatusId) return;
+
     setDocuments(prevDocs =>
         prevDocs.map(doc =>
-            doc.bookId === bookId ? { ...doc, status: newStatus } : doc
+            doc.bookId === bookId ? { ...doc, status: newStatusName, statusId: newStatusId } : doc
         )
     );
   }, []);
 
   const handleMarkAsShipped = (bookIds: string[]) => {
-    setRawBooks(prevBooks =>
-      prevBooks.map(book =>
-        bookIds.includes(book.id) && book.status === 'Pending Shipment' ? { ...book, status: 'In Transit' } : book
-      )
-    );
-    bookIds.forEach(bookId => {
-      const book = rawBooks.find(b => b.id === bookId);
-      logAction('Book Shipped', `Client marked book "${book?.name}" as shipped.`, { bookId });
+    bookIds.forEach(async bookId => {
+      const success = await updateBookStatus(bookId, 'In Transit');
+      if (success) {
+        const book = rawBooks.find(b => b.id === bookId);
+        logAction('Book Shipped', `Client marked book "${book?.name}" as shipped.`, { bookId });
+      }
     });
     toast({ title: `${bookIds.length} Book(s) Marked as Shipped` });
   };
@@ -788,41 +904,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const handleSendToStorage = (bookId: string, payload: { actualPageCount: number }) => {
     const book = rawBooks.find(b => b.id === bookId);
     if (!book || !book.projectId) return;
-
-    const project = rawProjects.find(p => p.id === book.projectId);
-    const client = clients.find(c => c.id === project?.clientId);
-    if (!project || !client) return;
-
-    const pagesToCreate = payload.actualPageCount;
-
-    const newDocs: AppDocument[] = Array.from({ length: pagesToCreate }).map((_, i) => {
-        const pageName = `${book.name} - Page ${i + 1}`;
-        return {
-            id: `doc_${book.id}_${i + 1}`, name: pageName, clientId: client.id, client: client.name,
-            status: 'Storage', statusId: 'ds_4', type: 'Scanned Page',
-            lastUpdated: new Date().toISOString().slice(0, 10), tags: [], folderId: null,
-            projectId: book.projectId, bookId: book.id, flag: null,
-            imageUrl: `https://dummyimage.com/400x550/e0e0e0/5c5c5c.png&text=${encodeURIComponent(pageName)}`
-        };
-    });
-
-    setDocuments(prevDocs => [...prevDocs.filter(d => d.bookId !== bookId), ...newDocs]);
     
-    const workflow = projectWorkflows[project.id] || [];
-    const nextStageKey = getNextEnabledStage('storage', workflow);
-    if (!nextStageKey) {
-      toast({title: "Workflow End", description: "No further steps configured after Storage."});
-      return;
-    }
+    // This logic now largely happens on the backend. We just need to update the book's status.
+    updateBook(book.id, { scanEndTime: new Date().toISOString() })
     
-    const newBookStatus = STAGE_CONFIG[nextStageKey]?.dataStatus;
-    if (!newBookStatus) {
-      toast({ title: "Workflow Config Error", description: `Next stage ${nextStageKey} has no configured book status.`, variant: "destructive"});
-      return;
-    }
-    
-    updateBookStatus(bookId, newBookStatus, () => ({ scanEndTime: new Date().toISOString() }));
-    logAction('Reception & Scan Skipped', `${pagesToCreate} pages created. Book "${book.name}" moved directly to ${newBookStatus}.`, { bookId });
+    // And then move it to the next stage.
+    handleMoveBookToNextStage(bookId, 'Storage');
+
+    logAction('Reception & Scan Skipped', `${payload.actualPageCount} pages created. Book "${book.name}" moved.`, { bookId });
     toast({ title: "Reception Confirmed & Scanning Bypassed" });
   };
 
@@ -832,41 +921,11 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     if (!book || !book.projectId) return;
 
     if (book.status === 'Scanning Started') {
-      const project = rawProjects.find(p => p.id === book.projectId);
-      const client = clients.find(c => c.id === project?.clientId);
-      if (!project || !client) return;
-
-      const pagesToCreate = payload?.actualPageCount ?? book.expectedDocuments;
-
-      const newDocs: AppDocument[] = Array.from({ length: pagesToCreate }).map((_, i) => {
-        const pageName = `${book.name} - Page ${i + 1}`;
-        return {
-          id: `doc_${book.id}_${i + 1}`, name: pageName, clientId: client.id, client: client.name,
-          status: 'Storage', statusId: 'ds_4', type: 'Scanned Page',
-          lastUpdated: new Date().toISOString().slice(0, 10), tags: [], folderId: null,
-          projectId: book.projectId, bookId: book.id, flag: null,
-          imageUrl: `https://dummyimage.com/400x550/e0e0e0/5c5c5c.png&text=${encodeURIComponent(pageName)}`
-        };
-      });
-
-      setDocuments(prevDocs => [...prevDocs.filter(d => d.bookId !== bookId), ...newDocs]);
-      
-      const workflow = projectWorkflows[project.id] || [];
-      const nextStageKey = getNextEnabledStage('storage', workflow);
-      if (!nextStageKey) {
-        toast({title: "Workflow End", description: "No further steps configured after Storage."});
-        return;
-      }
-      
-      const newBookStatus = STAGE_CONFIG[nextStageKey]?.dataStatus;
-       if (!newBookStatus) {
-        toast({ title: "Workflow Config Error", description: `Next stage ${nextStageKey} has no configured book status.`, variant: "destructive"});
-        return;
-      }
-
-      updateBookStatus(bookId, newBookStatus, () => ({ scanEndTime: new Date().toISOString() }));
-      logAction('Scanning Finished', `${pagesToCreate} pages created. Book moved to ${newBookStatus}.`, { bookId });
-      toast({ title: "Scanning Complete", description: `${pagesToCreate} pages created.` });
+        const pagesToCreate = payload?.actualPageCount ?? book.expectedDocuments;
+        updateBook(bookId, { scanEndTime: new Date().toISOString() });
+        handleMoveBookToNextStage(bookId, 'Storage');
+        logAction('Scanning Finished', `${pagesToCreate} pages created. Book moved to next stage.`, { bookId });
+        toast({ title: "Scanning Complete", description: `${pagesToCreate} pages created.` });
     }
   };
   
@@ -896,21 +955,18 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         toast({title: "Workflow Error", description: `Next stage "${nextStageKey}" has no configured status.`, variant: "destructive"});
         return;
     }
-
-    const updateFn = (book: RawBook): Partial<RawBook> => {
-        if (currentStatusName === 'Checking Started') {
-            return { qcStartTime: book.qcStartTime || new Date().toISOString(), qcEndTime: new Date().toISOString() };
-        }
-        return {};
-    };
-
-    moveBookDocuments(bookId, newStatusName);
-    updateBookStatus(bookId, newStatusName, updateFn);
+    
+    const additionalUpdates: Partial<RawBook> = {};
+    if (currentStatusName === 'Checking Started') {
+        additionalUpdates.qcEndTime = new Date().toISOString();
+    }
+    
+    updateBookStatus(bookId, newStatusName, additionalUpdates);
     logAction('Workflow Step', `Book "${book.name}" moved from ${currentStatusName} to ${newStatusName}.`, { bookId });
     toast({ title: "Workflow Action", description: `Book moved to ${newStatusName}.` });
   };
 
-  const handleAssignUser = (bookId: string, userId: string, role: 'scanner' | 'indexer' | 'qc') => {
+  const handleAssignUser = async (bookId: string, userId: string, role: 'scanner' | 'indexer' | 'qc') => {
     const user = users.find(u => u.id === userId);
     const book = rawBooks.find(b => b.id === bookId);
     if (!user || !book || !book.projectId) return;
@@ -921,29 +977,32 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     let nextStatusKey: string | null = null;
     let newStatusName: string = '';
     let logMsg = '';
+    let updates: Partial<RawBook> = {};
     
     if (role === 'scanner') {
         currentStageKey = 'already-received';
         nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'to-scan']?.dataStatus || 'To Scan';
-        updateBookStatus(bookId, newStatusName, () => ({ scannerUserId: userId }));
+        updates.scannerUserId = userId;
         logMsg = 'Assigned to Scanner';
     } else if (role === 'indexer') {
         currentStageKey = 'storage';
         nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'to-indexing']?.dataStatus || 'To Indexing';
-        updateBookStatus(bookId, newStatusName, () => ({ indexerUserId: userId }));
+        updates.indexerUserId = userId;
         logMsg = 'Assigned to Indexer';
     } else if (role === 'qc') {
         currentStageKey = 'indexing-started';
         nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'to-checking']?.dataStatus || 'To Checking';
-        updateBookStatus(bookId, newStatusName, (b) => ({ qcUserId: userId, indexingStartTime: b.indexingStartTime || new Date().toISOString(), indexingEndTime: new Date().toISOString() }));
+        updates.qcUserId = userId;
+        updates.indexingEndTime = new Date().toISOString();
+        if(!book.indexingStartTime) updates.indexingStartTime = new Date().toISOString();
         logMsg = 'Assigned for QC';
     }
     
     if (newStatusName) {
-      moveBookDocuments(bookId, newStatusName);
+      await updateBookStatus(bookId, newStatusName, updates);
       logAction(logMsg, `Book "${book.name}" assigned to ${user.name}.`, { bookId });
       toast({ title: "Book Assigned", description: `Assigned to ${user.name} for ${role}.` });
     }
@@ -956,9 +1015,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
     let updateField: 'scannerUserId' | 'indexerUserId' | 'qcUserId' = `${role}UserId`;
     
-    setRawBooks(prev => prev.map(b => 
-      b.id === bookId ? { ...b, [updateField]: newUserId } : b
-    ));
+    updateBook(bookId, { [updateField]: newUserId });
     
     const oldUser = users.find(u => u.id === book[updateField]);
     
@@ -981,29 +1038,30 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     let nextStatusKey: string | null = null;
     let newStatusName: string = '';
     let logMsg = '';
+    let updates: Partial<RawBook> = {};
     
     if (role === 'scanner') {
         currentStageKey = 'to-scan';
         nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'scanning-started']?.dataStatus || 'Scanning Started';
-        updateBookStatus(bookId, newStatusName, () => ({ scanStartTime: new Date().toISOString() }));
+        updates.scanStartTime = new Date().toISOString();
         logMsg = 'Scanning Started';
     } else if (role === 'indexing') {
         currentStageKey = 'to-indexing';
         nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'indexing-started']?.dataStatus || 'Indexing Started';
-        updateBookStatus(bookId, newStatusName, () => ({ indexingStartTime: new Date().toISOString() }));
+        updates.indexingStartTime = new Date().toISOString();
         logMsg = 'Indexing Started';
     } else if (role === 'qc') {
         currentStageKey = 'to-checking';
         nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'checking-started']?.dataStatus || 'Checking Started';
-        updateBookStatus(bookId, newStatusName, () => ({ qcStartTime: new Date().toISOString() }));
+        updates.qcStartTime = new Date().toISOString();
         logMsg = 'Checking Started';
     }
     
     if (newStatusName) {
-      moveBookDocuments(bookId, newStatusName);
+      updateBookStatus(bookId, newStatusName, updates);
       logAction(logMsg, `${logMsg} process initiated for book.`, { bookId });
       toast({ title: logMsg });
     }
@@ -1013,26 +1071,17 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     const book = rawBooks.find(b => b.id === bookId);
     if (!book) return;
 
-    const updates: { [key: string]: { bookStatus: string, docStatus: string, logMsg: string, clearTime: 'scan' | 'index' | 'qc' } } = {
-      'Scanning Started': { bookStatus: 'To Scan', docStatus: 'To Scan', logMsg: 'Scanning', clearTime: 'scan' },
-      'Indexing Started': { bookStatus: 'To Indexing', docStatus: 'To Indexing', logMsg: 'Indexing', clearTime: 'index' },
-      'Checking Started': { bookStatus: 'To Checking', docStatus: 'To Checking', logMsg: 'Checking', clearTime: 'qc' },
+    const updates: { [key: string]: { bookStatus: string, logMsg: string, clearFields: Partial<RawBook> } } = {
+      'Scanning Started': { bookStatus: 'To Scan', logMsg: 'Scanning', clearFields: { scanStartTime: undefined } },
+      'Indexing Started': { bookStatus: 'To Indexing', logMsg: 'Indexing', clearFields: { indexingStartTime: undefined } },
+      'Checking Started': { bookStatus: 'To Checking', logMsg: 'Checking', clearFields: { qcStartTime: undefined } },
     };
 
     const updateKey = Object.keys(updates).find(key => currentStatus.startsWith(key));
     if (!updateKey) return;
     const update = updates[updateKey];
     
-    setRawBooks(prev => prev.map(b => {
-      if (b.id !== bookId) return b;
-      const newBook: RawBook = { ...b, status: update.bookStatus };
-      if (update.clearTime === 'scan') newBook.scanStartTime = undefined;
-      if (update.clearTime === 'index') newBook.indexingStartTime = undefined;
-      if (update.clearTime === 'qc') newBook.qcStartTime = undefined;
-      return newBook;
-    }));
-
-    moveBookDocuments(bookId, update.docStatus);
+    updateBookStatus(bookId, update.bookStatus, update.clearFields);
     logAction('Task Cancelled', `${update.logMsg} for book "${book.name}" was cancelled.`, { bookId });
     toast({ title: 'Task Cancelled', description: `Book returned to ${update.bookStatus} Queue.`, variant: 'destructive' });
   };
@@ -1044,30 +1093,18 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     const newStageKey = findStageKeyFromStatus(newStatus);
     const newStageConfig = newStageKey ? STAGE_CONFIG[newStageKey] : null;
 
-    const updateFn = (book: RawBook): Partial<RawBook> => {
-      const updates: Partial<RawBook> = {};
-      // If the new stage is NOT a scanner stage, clear scanner info.
-      if (newStageConfig?.assigneeRole !== 'scanner') {
-        updates.scannerUserId = undefined;
-        updates.scanStartTime = undefined;
-        updates.scanEndTime = undefined;
-      }
-      // If the new stage is NOT an indexer stage, clear indexer info.
-      if (newStageConfig?.assigneeRole !== 'indexer') {
-        updates.indexerUserId = undefined;
-        updates.indexingStartTime = undefined;
-        updates.indexingEndTime = undefined;
-      }
-      // If the new stage is NOT a QC stage, clear QC info.
-      if (newStageConfig?.assigneeRole !== 'qc') {
-        updates.qcUserId = undefined;
-        updates.qcStartTime = undefined;
-      }
-      return updates;
-    };
+    const updates: Partial<RawBook> = {};
+    if (newStageConfig?.assigneeRole !== 'scanner') {
+        updates.scannerUserId = undefined; updates.scanStartTime = undefined; updates.scanEndTime = undefined;
+    }
+    if (newStageConfig?.assigneeRole !== 'indexer') {
+        updates.indexerUserId = undefined; updates.indexingStartTime = undefined; updates.indexingEndTime = undefined;
+    }
+    if (newStageConfig?.assigneeRole !== 'qc') {
+        updates.qcUserId = undefined; updates.qcStartTime = undefined;
+    }
 
-    updateBookStatus(bookId, newStatus, updateFn);
-    moveBookDocuments(bookId, newStatus);
+    updateBookStatus(bookId, newStatus, updates);
 
     logAction(
         'Admin Status Override', 
@@ -1085,7 +1122,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     const nextStage = getNextEnabledStage('ready-for-processing', workflow) || 'in-processing';
     const newStatus = STAGE_CONFIG[nextStage]?.dataStatus || STAGE_CONFIG[nextStage]?.dataStage || 'In Processing';
 
-    moveBookDocuments(bookId, newStatus);
     updateBookStatus(bookId, newStatus);
     setProcessingLogs(prev => {
         const otherLogs = prev.filter(log => log.bookId !== bookId);
@@ -1107,7 +1143,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     const nextStage = getNextEnabledStage('in-processing', workflow) || 'processed';
     const newStatus = STAGE_CONFIG[nextStage]?.dataStatus || STAGE_CONFIG[nextStage]?.dataStage || 'Processed';
 
-    moveBookDocuments(bookId, newStatus);
     updateBookStatus(bookId, newStatus);
     setProcessingLogs(prev => prev.map(log => 
         log.bookId === bookId 
@@ -1125,9 +1160,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     const isApproval = action === 'approve';
     const newStatus = isApproval ? 'Finalized' : 'Client Rejected';
     
-    moveBookDocuments(bookId, newStatus);
-    
-    setRawBooks(prev => prev.map(b => b.id !== bookId ? b : { ...b, status: newStatus, rejectionReason: isApproval ? undefined : reason }));
+    updateBookStatus(bookId, newStatus, { rejectionReason: isApproval ? undefined : reason });
     
     logAction(
       `Client ${isApproval ? 'Approval' : 'Rejection'}`, 
@@ -1145,7 +1178,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     const nextStageKey = getNextEnabledStage('finalized', workflow) || 'archive';
     const newStatus = STAGE_CONFIG[nextStageKey]?.dataStatus || STAGE_CONFIG[nextStageKey]?.dataStage || 'Archived';
     
-    moveBookDocuments(bookId, newStatus);
     updateBookStatus(bookId, newStatus);
     logAction('Book Archived', `Book "${book?.name}" was finalized and moved to ${newStatus}.`, { bookId });
     toast({ title: "Book Archived" });
@@ -1158,7 +1190,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     const nextStageKey = getNextEnabledStage('client-rejections', workflow) || 'corrected';
     const newStatus = STAGE_CONFIG[nextStageKey]?.dataStatus || STAGE_CONFIG[nextStageKey]?.dataStage || 'Corrected';
 
-    moveBookDocuments(bookId, newStatus);
     updateBookStatus(bookId, newStatus);
     logAction('Marked as Corrected', `Book "${book.name}" marked as corrected after client rejection.`, { bookId });
     toast({ title: "Book Corrected" });
@@ -1167,91 +1198,19 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const handleResubmit = (bookId: string, targetStage: string) => {
     const book = rawBooks.find(b => b.id === bookId);
     if (!book) return;
-    moveBookDocuments(bookId, targetStage);
     updateBookStatus(bookId, targetStage);
     logAction('Book Resubmitted', `Book "${book?.name}" resubmitted to ${targetStage}.`, { bookId });
     toast({ title: "Book Resubmitted" });
   };
   
-  const addPageToBook = (bookId: string, position: number) => {
-    const book = enrichedBooks.find(b => b.id === bookId);
-    if (!book) return;
-
-    const newPageName = `${book.name} - Page ${position} (Added)`;
-    const newPageId = `doc_${book.id}_new_${Date.now()}`;
-    const newPage: AppDocument = {
-      id: newPageId,
-      name: newPageName,
-      clientId: book.clientId, client: book.clientName, status: 'Client Rejected', statusId: 'ds_13',
-      type: 'Added Page', lastUpdated: new Date().toISOString().slice(0, 10), tags: ['added', 'corrected'],
-      folderId: null, projectId: book.projectId, bookId: book.id, flag: 'info',
-      imageUrl: `https://dummyimage.com/400x550/e0e0e0/5c5c5c.png&text=${encodeURIComponent(newPageName)}`
-    };
-
-    setDocuments(prevDocs => {
-      const otherPages = prevDocs.filter(p => p.bookId !== bookId);
-      const bookPages = prevDocs.filter(p => p.bookId === bookId);
-
-      const getPageNum = (name: string): number | null => {
-        const match = name.match(/ - Page (\d+)/);
-        return match ? parseInt(match[1], 10) : null;
-      };
-
-      const updatedPages = bookPages.map(page => {
-        const pageNum = getPageNum(page.name);
-        if (pageNum !== null && pageNum >= position) {
-          const newPageNum = pageNum + 1;
-          return { ...page, name: page.name.replace(/ - Page \d+/, ` - Page ${newPageNum}`) };
-        }
-        return page;
-      });
-      
-      updatedPages.splice(position - 1, 0, newPage);
-      return [...otherPages, ...updatedPages];
-    });
-
-    setRawBooks(prev => prev.map(b => b.id === bookId ? { ...b, expectedDocuments: (b.expectedDocuments || 0) + 1 } : b));
-    logAction('Page Added', `New page added to "${book.name}" at position ${position}.`, { bookId, documentId: newPageId });
-    toast({ title: "Page Added" });
-  }
-
-  const deletePageFromBook = (pageId: string, bookId: string) => {
-    const page = documents.find(p => p.id === pageId);
-    setDocuments(prev => prev.filter(p => p.id !== pageId));
-    setRawBooks(prev => prev.map(b => b.id === bookId ? {...b, expectedDocuments: (b.expectedDocuments || 1) - 1 } : b));
-    logAction('Page Deleted', `Page "${page?.name}" was deleted from book.`, { bookId, documentId: pageId });
-  }
-
-  const updateDocumentStatus = (docId: string, newStatus: string) => {
+  const updateDocumentStatus = async (docId: string, newStatus: string) => {
     let docName = '';
-    setDocuments(prevDocs =>
-        prevDocs.map(doc => {
-          if (doc.id === docId) {
-            docName = doc.name;
-            return { ...doc, status: newStatus };
-          }
-          return doc;
-        })
-    );
-    logAction('Document Status Changed', `Status of "${docName}" changed to ${newStatus}.`, { documentId: docId });
+    const statusMap = await dataApi.getDocumentStatuses();
+    const statusId = statusMap.find(s => s.name === newStatus)?.id;
+    if (!statusId) return;
+    
+    await updateDocument(docId, { statusId: statusId });
   };
-
-  const updateDocumentFlag = (docId: string, flag: AppDocument['flag'], comment?: string) => {
-    const doc = documents.find(d => d.id === docId);
-    if (!doc) return;
-    setDocuments(prevDocs =>
-      prevDocs.map(d =>
-        d.id === docId ? { ...d, flag, flagComment: flag ? comment : undefined } : d
-      )
-    );
-    const flagLabel = flag ? flag.charAt(0).toUpperCase() + flag.slice(1) : 'Cleared';
-    logAction(
-      `Flag ${flag ? 'Set' : 'Cleared'}`, 
-      `Document "${doc?.name}" marked with ${flagLabel}. Comment: ${comment || 'N/A'}`, 
-      { documentId: docId, bookId: doc?.bookId ?? undefined}
-    );
-    toast({ title: `Flag ${flag ? 'Set' : 'Cleared'}`});
-  }
 
   const scannerUsers = React.useMemo(() => users.filter(user => user.role === 'Scanning'), [users]);
   const indexerUsers = React.useMemo(() => users.filter(user => user.role === 'Indexing'), [users]);

@@ -17,3 +17,32 @@ export async function GET() {
     }
   }
 }
+
+export async function POST(request: Request) {
+    let connection: PoolConnection | null = null;
+    try {
+        const tagData = await request.json();
+        const { label, description, clientId } = tagData;
+
+        if (!label || !description || !clientId) {
+            return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+        }
+        
+        const newId = `rt_${Date.now()}`;
+        const newTag = { id: newId, ...tagData };
+        
+        connection = await getConnection();
+        const query = 'INSERT INTO rejection_tags (id, label, description, clientId) VALUES (?, ?, ?, ?)';
+        const values = [newId, label, description, clientId];
+        
+        await connection.execute(query, values);
+        
+        releaseConnection(connection);
+        return NextResponse.json(newTag, { status: 201 });
+    } catch (error) {
+        console.error("Error creating rejection_tag:", error);
+        return NextResponse.json({ error: 'Failed to create rejection_tag' }, { status: 500 });
+    } finally {
+        if (connection && connection.connection) releaseConnection(connection);
+    }
+}
