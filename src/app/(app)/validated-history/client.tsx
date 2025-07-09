@@ -54,10 +54,9 @@ export default function ValidatedHistoryClient() {
 
     const handleSort = (columnId: string, isShift: boolean) => {
         setSorting(currentSorting => {
-            const existingSortIndex = currentSorting.findIndex(s => s.id === columnId);
-
             if (isShift) {
-                let newSorting = [...currentSorting];
+                const newSorting = [...currentSorting];
+                const existingSortIndex = newSorting.findIndex(s => s.id === columnId);
                 if (existingSortIndex > -1) {
                     if (newSorting[existingSortIndex].desc) {
                         newSorting.splice(existingSortIndex, 1);
@@ -67,15 +66,18 @@ export default function ValidatedHistoryClient() {
                 } else {
                     newSorting.push({ id: columnId, desc: false });
                 }
-            } else {
-                if (currentSorting.length === 1 && currentSorting[0].id === columnId) {
-                    if (currentSorting[0].desc) {
-                        return [];
-                    }
+                return newSorting;
+            } 
+            
+            if (currentSorting.length === 1 && currentSorting[0].id === columnId) {
+                if (currentSorting[0].desc) {
+                    return [];
+                } else {
                     return [{ id: columnId, desc: true }];
                 }
-                return [{ id: columnId, desc: false }];
-            }
+            } 
+            
+            return [{ id: columnId, desc: false }];
         });
     };
 
