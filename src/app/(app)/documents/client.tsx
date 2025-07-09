@@ -43,7 +43,8 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { useAppContext, EnrichedBook } from "@/context/workflow-context";
+import { useAppContext } from "@/context/workflow-context";
+import type { EnrichedBook } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
 
 const ITEMS_PER_PAGE = 10;
@@ -243,8 +244,7 @@ export default function DocumentsClient() {
 
   const PaginationNav = () => {
     if (totalPages <= 1) return null;
-    
-    const pageNumbers = [];
+    const pageNumbers: number[] = [];
     const maxPagesToShow = 5;
 
     if (totalPages <= maxPagesToShow) {
@@ -490,3 +490,5 @@ export default function DocumentsClient() {
     </div>
   )
 }
+
+    
