@@ -104,7 +104,7 @@ type AppContextType = {
   reassignUser: (bookId: string, newUserId: string, role: 'scanner' | 'indexer' | 'qc') => void;
   handleStartTask: (bookId: string, role: 'scanner' | 'indexing' | 'qc') => void;
   handleCancelTask: (bookId: string, currentStatus: string) => void;
-  handleAdminStatusOverride: (bookId: string, newStatusId: string, reason: string) => void;
+  handleAdminStatusOverride: (bookId: string, newStatusName: string, reason: string) => void;
   handleStartProcessing: (bookId: string) => void;
   handleCompleteProcessing: (bookId: string) => void;
   handleClientAction: (bookId: string, action: 'approve' | 'reject', reason?: string) => void;
@@ -1081,21 +1081,20 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
     if (!currentStatusName) return;
 
+    currentStageKey = findStageKeyFromStatus(currentStatusName);
+    if (!currentStageKey) return;
+
+    nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
+    
     if (role === 'scanner') {
-        currentStageKey = findStageKeyFromStatus(currentStatusName) || 'already-received';
-        nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'to-scan']?.dataStatus || 'To Scan';
         updates.scannerUserId = userId;
         logMsg = 'Assigned to Scanner';
     } else if (role === 'indexer') {
-        currentStageKey = findStageKeyFromStatus(currentStatusName) || 'storage';
-        nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'to-indexing']?.dataStatus || 'To Indexing';
         updates.indexerUserId = userId;
         logMsg = 'Assigned to Indexer';
     } else if (role === 'qc') {
-        currentStageKey = findStageKeyFromStatus(currentStatusName) || 'indexing-started';
-        nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'to-checking']?.dataStatus || 'To Checking';
         updates.qcUserId = userId;
         updates.indexingEndTime = getDbSafeDate();
@@ -1192,9 +1191,9 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     toast({ title: 'Task Cancelled', description: `Book returned to ${update.bookStatus} Queue.`, variant: 'destructive' });
   };
   
-  const handleAdminStatusOverride = (bookId: string, newStatusId: string, reason: string) => {
+  const handleAdminStatusOverride = (bookId: string, newStatusName: string, reason: string) => {
     const book = rawBooks.find(b => b.id === bookId);
-    const newStatus = statuses.find(s => s.id === newStatusId);
+    const newStatus = statuses.find(s => s.name === newStatusName);
     if (!book || !newStatus) return;
 
     const newStageKey = findStageKeyFromStatus(newStatus.name);

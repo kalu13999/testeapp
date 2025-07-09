@@ -67,7 +67,7 @@ export async function POST(request: Request) {
             const { projectId, book } = body;
             const newBook: Omit<RawBook, 'id'> & {id: string} = {
                 id: `book_${Date.now()}`,
-                statusId: 'ds_1', // Pending Shipment
+                statusId: book.statusId || 'ds_1', // Pending Shipment
                 projectId,
                 ...book
             };

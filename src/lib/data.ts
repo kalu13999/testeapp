@@ -1,4 +1,5 @@
 
+
 // Define types for our data structures
 export interface Client {
     id: string;
@@ -78,7 +79,7 @@ export interface User {
 export interface RawBook {
     id: string;
     name: string;
-    statusId: string;
+    statusId: string; // Changed from status
     expectedDocuments: number;
     projectId: string;
     author?: string;
@@ -138,8 +139,9 @@ export interface EnrichedProject extends Project {
     books: EnrichedBook[];
 }
 
+// status is added during enrichment
 export interface EnrichedBook extends RawBook {
-    status: string;
+    status: string; 
     projectId: string;
     clientId: string;
     projectName: string;
