@@ -98,7 +98,7 @@ export interface RawBook {
     qcUserId?: string;
     qcStartTime?: string;
     qcEndTime?: string;
-    rejectionReason?: string;
+    rejectionReason?: string | null;
 }
 
 export interface Project {
