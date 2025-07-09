@@ -23,7 +23,7 @@ import { EnrichedBook, Project } from "@/lib/data";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { WORKFLOW_PHASES, MANDATORY_STAGES } from "@/lib/workflow-config";
+import { WORKFLOW_PHASES, MANDATORY_STAGES, STAGE_CONFIG } from "@/lib/workflow-config";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 
@@ -223,7 +223,7 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                       <h4 className="font-semibold text-sm mb-2">{group.name}</h4>
                       <div className="space-y-2 pl-2 border-l">
                         {group.stages.map(stageKey => {
-                            const stageConfig = group.config[stageKey];
+                            const stageConfig = STAGE_CONFIG[stageKey as keyof typeof STAGE_CONFIG];
                             if (!stageConfig) return null;
                             const isEnabled = projectWorkflow.includes(stageKey);
                             return (
@@ -346,7 +346,7 @@ function WorkflowConfigDialog({ open, onOpenChange, projectName, currentWorkflow
                       </div>
                   ) : (
                     group.stages.map(stageKey => {
-                      const stageConfig = group.config[stageKey];
+                      const stageConfig = STAGE_CONFIG[stageKey as keyof typeof STAGE_CONFIG];
                       return (
                          <div key={stageKey} className="flex items-center space-x-3 opacity-70">
                             <Switch checked={true} disabled={true} />
