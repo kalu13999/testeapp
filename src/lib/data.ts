@@ -79,7 +79,7 @@ export interface User {
 export interface RawBook {
     id: string;
     name: string;
-    statusId: string; // Changed from status
+    statusId: string;
     expectedDocuments: number;
     projectId: string;
     author?: string;
