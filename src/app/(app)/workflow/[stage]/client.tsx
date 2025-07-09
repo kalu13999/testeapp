@@ -34,7 +34,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
@@ -374,7 +374,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
   const handleConfirmScan = () => {
     if (scanState.book) {
-      handleMoveBookToNextStage(scanState.book.id, 'Scanning Started');
+      handleSendToStorage(scanState.book.id, { actualPageCount: scanState.fileCount ?? scanState.book.expectedDocuments });
       closeScanningDialog();
     }
   };

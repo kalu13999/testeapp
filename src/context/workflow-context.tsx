@@ -918,18 +918,49 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     toast({ title: "Reception Confirmed" });
   };
   
-  const handleSendToStorage = (bookId: string, payload: { actualPageCount: number }) => {
+  const handleSendToStorage = async (bookId: string, payload: { actualPageCount: number }) => {
     const book = rawBooks.find(b => b.id === bookId);
-    if (!book || !book.projectId) return;
-    
-    // This logic now largely happens on the backend. We just need to update the book's status.
-    updateBook(bookId, { scanEndTime: getDbSafeDate() })
-    
-    // And then move it to the next stage.
-    handleMoveBookToNextStage(bookId, 'Storage');
+    if (!book) return;
 
-    logAction('Reception & Scan Skipped', `${payload.actualPageCount} pages created. Book "${book.name}" moved.`, { bookId });
-    toast({ title: "Reception Confirmed & Scanning Bypassed" });
+    try {
+      const response = await fetch(`/api/books/${bookId}/complete-scan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          actualPageCount: payload.actualPageCount,
+          bookName: book.name,
+          clientId: book.clientId,
+          projectId: book.projectId
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to complete scan via API');
+      }
+
+      const { book: updatedBook, documents: newDocuments } = await response.json();
+
+      setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
+      
+      const statusesData = await dataApi.getDocumentStatuses();
+      const finalEnrichedDocs = newDocuments.map((doc: any) => ({
+          ...doc,
+          client: clients.find(c => c.id === doc.clientId)?.name || 'Unknown',
+          status: statusesData.find(s => s.id === doc.statusId)?.name || 'Unknown',
+          tags: doc.tags ? JSON.parse(doc.tags as any) : [],
+      }));
+
+      setDocuments(prev => [...prev.filter(d => d.bookId !== bookId), ...finalEnrichedDocs]);
+      
+      const logMessage = book.status === 'Received' ? 'Reception & Scan Skipped' : 'Scanning Finished';
+      logAction(logMessage, `${payload.actualPageCount} pages created. Book "${book.name}" moved to Storage.`, { bookId });
+      toast({ title: "Task Complete", description: `Book moved to Storage.` });
+
+    } catch (error) {
+      console.error(error);
+      toast({ title: "Error", description: "Could not complete the process.", variant: "destructive" });
+    }
   };
 
 
