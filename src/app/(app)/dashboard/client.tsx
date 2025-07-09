@@ -30,9 +30,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-import { Separator } from "@/components/ui/separator"
-import { AlertTriangle, BookCopy, BarChart2, ListTodo, Package, Send, FileClock, ArrowDownToLine, CheckCheck, TrendingUp, Activity, UserCheck, ShieldAlert, Download, ChevronsUpDown, ArrowUp, ArrowDown, Calendar as CalendarIcon } from "lucide-react"
+import { AlertTriangle, BookCopy, BarChart2, ListTodo, Package, Send, FileClock, ArrowDownToLine, CheckCheck, TrendingUp, Activity, UserCheck, ShieldAlert, Download, ChevronsUpDown, ArrowUp, ArrowDown } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import { useMemo } from "react"
 import type { EnrichedProject, EnrichedBook } from "@/lib/data";
@@ -357,15 +355,9 @@ function ProjectDashboard() {
                         <CardDescription>At-a-glance project information.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 items-start">
+                       <div className="grid grid-cols-2 gap-4 items-start">
                             <DetailItem label="Client" value={<Link href={`/clients`} className="hover:underline">{project.clientName}</Link>} />
                             <DetailItem label="Status" value={<Badge variant={getStatusBadgeVariant(project.status)}>{project.status}</Badge>} />
-                            <DetailItem label="Budget" value={`$${project.budget.toLocaleString()}`} />
-                            <DetailItem label="Timeline" value={`${format(new Date(project.startDate), "LLL d, y")} - ${format(new Date(project.endDate), "LLL d, y")}`} />
-                            <div className="col-span-2 md:col-span-1">
-                                <DetailItem label="Overall Progress" value={`${project.documentCount.toLocaleString()} / ${project.totalExpected.toLocaleString()} pages`} />
-                                <Progress value={project.progress} className="mt-2 h-2" />
-                            </div>
                         </div>
                     </CardContent>
                     <CardFooter className="justify-end">
@@ -439,7 +431,7 @@ function ProjectDashboard() {
                                     <TableRow><TableHead><Input placeholder="Filter name..." value={bookColumnFilters['name'] || ''} onChange={e => setBookColumnFilters(p => ({...p, name: e.target.value}))} className="h-8"/></TableHead><TableHead><Input placeholder="Filter status..." value={bookColumnFilters['status'] || ''} onChange={e => setBookColumnFilters(p => ({...p, status: e.target.value}))} className="h-8"/></TableHead><TableHead/></TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {paginatedBooks.length > 0 ? paginatedBooks.map(book => (<TableRow key={book.id}><TableCell className="font-medium"><Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link></TableCell><TableCell><Badge variant="outline">{book.status}</Badge></TableCell><TableCell><Progress value={book.progress} className="h-2"/></TableCell></TableRow>)) : <TableRow><TableCell colSpan={3} className="h-24 text-center">No books match your filters.</TableCell></TableRow>}
+                                    {paginatedBooks.length > 0 ? paginatedBooks.map(book => (<TableRow key={book.id}><TableCell className="font-medium"><Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link></TableCell><TableCell><Badge variant="outline">{book.status}</Badge></TableCell><TableCell>{/* Progress bar removed as it's redundant */}</TableCell></TableRow>)) : <TableRow><TableCell colSpan={3} className="h-24 text-center">No books match your filters.</TableCell></TableRow>}
                                 </TableBody>
                             </Table>
                         </CardContent>
@@ -622,5 +614,3 @@ export default function DashboardClient() {
         </div>
     )
 }
-
-    
