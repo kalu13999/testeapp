@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getConnection, releaseConnection } from '@/lib/db';
 import type { PoolConnection } from 'mysql2/promise';
+import type { RawBook } from '@/lib/data';
 
 export async function GET() {
   let connection: PoolConnection | null = null;
@@ -16,4 +17,85 @@ export async function GET() {
       releaseConnection(connection);
     }
   }
+}
+
+export async function POST(request: Request) {
+    const body = await request.json();
+    let connection: PoolConnection | null = null;
+    
+    try {
+        connection = await getConnection();
+        await connection.beginTransaction();
+
+        // Handle bulk import
+        if (body.books && Array.isArray(body.books) && body.projectId) {
+            const { projectId, books } = body;
+            const newBooks: RawBook[] = [];
+
+            const bookInsertQuery = `
+              INSERT INTO books (id, name, status, expectedDocuments, projectId, priority, info, author, isbn, publicationYear)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `;
+
+            for (const book of books) {
+                const newBook: Omit<RawBook, 'id'> & {id: string} = {
+                    id: `book_imp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+                    name: book.name,
+                    status: 'Pending Shipment',
+                    expectedDocuments: book.expectedDocuments,
+                    projectId: projectId,
+                    priority: book.priority || 'Medium',
+                    info: book.info || '',
+                    author: book.author || null,
+                    isbn: book.isbn || null,
+                    publicationYear: book.publicationYear || null,
+                };
+                await connection.execute(bookInsertQuery, [
+                    newBook.id, newBook.name, newBook.status, newBook.expectedDocuments, newBook.projectId,
+                    newBook.priority, newBook.info, newBook.author, newBook.isbn, newBook.publicationYear
+                ]);
+                newBooks.push(newBook as RawBook);
+            }
+            
+            await connection.commit();
+            releaseConnection(connection);
+            return NextResponse.json(newBooks, { status: 201 });
+        }
+
+        // Handle single book creation
+        if (body.book && body.projectId) {
+            const { projectId, book } = body;
+            const newBook: Omit<RawBook, 'id'> & {id: string} = {
+                id: `book_${Date.now()}`,
+                status: 'Pending Shipment',
+                projectId,
+                ...book
+            };
+            
+            const bookInsertQuery = `
+              INSERT INTO books (id, name, status, expectedDocuments, projectId, priority, info, author, isbn, publicationYear)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `;
+
+            await connection.execute(bookInsertQuery, [
+                newBook.id, newBook.name, newBook.status, newBook.expectedDocuments, newBook.projectId,
+                newBook.priority, newBook.info, newBook.author, newBook.isbn, newBook.publicationYear
+            ]);
+            
+            await connection.commit();
+            releaseConnection(connection);
+            return NextResponse.json(newBook, { status: 201 });
+        }
+        
+        await connection.rollback();
+        releaseConnection(connection);
+        return NextResponse.json({ error: 'Invalid request payload' }, { status: 400 });
+
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error("Error creating book(s):", error);
+        return NextResponse.json({ error: 'Failed to create book(s)' }, { status: 500 });
+    } finally {
+        if (connection && connection.connection) releaseConnection(connection);
+    }
 }

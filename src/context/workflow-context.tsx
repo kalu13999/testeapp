@@ -76,10 +76,10 @@ type AppContextType = {
   updateProjectWorkflow: (projectId: string, workflow: string[]) => void;
 
   // Book Actions
-  addBook: (projectId: string, bookData: Omit<RawBook, 'id' | 'projectId' | 'status'>) => void;
-  updateBook: (bookId: string, bookData: Partial<Omit<RawBook, 'id' | 'projectId' | 'status'>>) => void;
-  deleteBook: (bookId: string) => void;
-  importBooks: (projectId: string, newBooks: BookImport[]) => void;
+  addBook: (projectId: string, bookData: Omit<RawBook, 'id' | 'projectId' | 'status'>) => Promise<void>;
+  updateBook: (bookId: string, bookData: Partial<Omit<RawBook, 'id' | 'projectId' | 'status'>>) => Promise<void>;
+  deleteBook: (bookId: string) => Promise<void>;
+  importBooks: (projectId: string, newBooks: BookImport[]) => Promise<void>;
   
   // Rejection Tag Actions
   addRejectionTag: (tagData: Omit<RejectionTag, 'id' | 'clientId'>, clientId: string) => void;
@@ -561,48 +561,78 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       }
   };
 
-  const addBook = (projectId: string, bookData: Omit<RawBook, 'id' | 'projectId' | 'status'>) => {
-      const newRawBook: RawBook = {
-          id: `book_${Date.now()}`,
-          status: 'Pending Shipment',
-          projectId,
-          ...bookData,
-      };
-      setRawBooks(prev => [...prev, newRawBook]);
-      logAction('Book Added', `Book "${newRawBook.name}" was added to project.`, { bookId: newRawBook.id });
-      toast({ title: "Book Added", description: `Book "${newRawBook.name}" has been added.` });
+  const addBook = async (projectId: string, bookData: Omit<RawBook, 'id' | 'projectId' | 'status'>) => {
+      try {
+          const response = await fetch('/api/books', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ projectId, book: bookData }),
+          });
+          if (!response.ok) throw new Error('Failed to create book');
+          const newRawBook = await response.json();
+          setRawBooks(prev => [...prev, newRawBook]);
+          logAction('Book Added', `Book "${newRawBook.name}" was added to project.`, { bookId: newRawBook.id });
+          toast({ title: "Book Added", description: `Book "${newRawBook.name}" has been added.` });
+      } catch (error) {
+          console.error(error);
+          toast({ title: "Error", description: "Could not create book.", variant: "destructive" });
+      }
   };
   
-  const updateBook = (bookId: string, bookData: Partial<Omit<RawBook, 'id' | 'projectId' | 'status'>>) => {
-      setRawBooks(prev => prev.map(b => b.id === bookId ? { ...b, ...bookData } : b));
-      logAction('Book Updated', `Details for book "${bookData.name}" were updated.`, { bookId });
-      toast({ title: "Book Updated" });
+  const updateBook = async (bookId: string, bookData: Partial<Omit<RawBook, 'id' | 'projectId' | 'status'>>) => {
+      try {
+          const response = await fetch(`/api/books/${bookId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(bookData),
+          });
+          if (!response.ok) throw new Error('Failed to update book');
+          const updatedRawBook = await response.json();
+          setRawBooks(prev => prev.map(b => b.id === bookId ? updatedRawBook : b));
+          logAction('Book Updated', `Details for book "${updatedRawBook.name}" were updated.`, { bookId });
+          toast({ title: "Book Updated" });
+      } catch (error) {
+          console.error(error);
+          toast({ title: "Error", description: "Could not update book.", variant: "destructive" });
+      }
   };
 
-  const deleteBook = (bookId: string) => {
+  const deleteBook = async (bookId: string) => {
       const bookToDelete = rawBooks.find(b => b.id === bookId);
-      setRawBooks(prev => prev.filter(b => b.id !== bookId));
-      setDocuments(prev => prev.filter(d => d.bookId !== bookId));
-      logAction('Book Deleted', `Book "${bookToDelete?.name}" and its pages were deleted.`, { bookId });
-      toast({ title: "Book Deleted", variant: "destructive" });
+      try {
+          const response = await fetch(`/api/books/${bookId}`, {
+              method: 'DELETE',
+          });
+          if (!response.ok) throw new Error('Failed to delete book');
+          setRawBooks(prev => prev.filter(b => b.id !== bookId));
+          setDocuments(prev => prev.filter(d => d.bookId !== bookId));
+          logAction('Book Deleted', `Book "${bookToDelete?.name}" and its pages were deleted.`, { bookId });
+          toast({ title: "Book Deleted", variant: "destructive" });
+      } catch (error) {
+          console.error(error);
+          toast({ title: "Error", description: "Could not delete book.", variant: "destructive" });
+      }
   };
 
-  const importBooks = (projectId: string, newBooks: BookImport[]) => {
-    const booksToAdd = newBooks.map((book, i) => {
-        const newRawBook: RawBook = {
-            id: `book_imp_${Date.now()}_${i}`,
-            status: 'Pending Shipment',
-            projectId,
-            ...book
-        };
-        return newRawBook;
-    });
-    setRawBooks(prev => [...prev, ...booksToAdd]);
-    logAction('Books Imported', `${booksToAdd.length} books imported for project.`, {});
-    toast({
-        title: "Import Successful",
-        description: `${booksToAdd.length} books have been added to the project.`
-    });
+  const importBooks = async (projectId: string, newBooks: BookImport[]) => {
+      try {
+          const response = await fetch('/api/books', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ projectId, books: newBooks }),
+          });
+          if (!response.ok) throw new Error('Failed to import books');
+          const createdBooks = await response.json();
+          setRawBooks(prev => [...prev, ...createdBooks]);
+          logAction('Books Imported', `${createdBooks.length} books imported for project.`, {});
+          toast({
+              title: "Import Successful",
+              description: `${createdBooks.length} books have been added to the project.`
+          });
+      } catch (error) {
+          console.error(error);
+          toast({ title: "Import Failed", description: "Could not import books.", variant: "destructive" });
+      }
   };
 
   // --- ROLE ACTIONS ---
