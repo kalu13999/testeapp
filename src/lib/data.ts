@@ -97,6 +97,7 @@ export interface RawBook {
     indexingEndTime?: string;
     qcUserId?: string;
     qcStartTime?: string;
+    qcEndTime?: string;
     rejectionReason?: string;
 }
 
