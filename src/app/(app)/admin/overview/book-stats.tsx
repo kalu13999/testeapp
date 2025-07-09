@@ -20,8 +20,8 @@ import { useAppContext } from "@/context/workflow-context"
 import Link from "next/link"
 import type { EnrichedBook } from "@/lib/data"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, Pie, PieChart, Cell, Legend } from "recharts"
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, Pie, PieChart, Cell } from "recharts"
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig, ChartLegend, ChartLegendContent } from "@/components/ui/chart"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
@@ -75,10 +75,19 @@ export function BookStatsTab() {
         acc[status] = (acc[status] || 0) + 1;
         return acc;
     }, {} as {[key: string]: number});
+    
+    const sortedData = Object.entries(statusCounts)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a,b) => b.value - a.value);
+    
+    const topN = 5;
+    if (sortedData.length > topN) {
+      const topData = sortedData.slice(0, topN);
+      const otherValue = sortedData.slice(topN).reduce((sum, item) => sum + item.value, 0);
+      return [...topData, { name: 'Other', value: otherValue }];
+    }
 
-    return Object.entries(statusCounts)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value);
+    return sortedData;
   }, [books]);
   
   const booksByProjectChartData = React.useMemo(() => (
@@ -87,10 +96,22 @@ export function BookStatsTab() {
       .slice(0, 10)
   ), [allProjects]);
   
-  const chartConfig: ChartConfig = { 
+  const chartConfig = { 
     books: { label: "Books", color: "hsl(var(--chart-1))" },
-    value: { label: "Books", color: "hsl(var(--chart-2))" }
-  };
+    value: { label: "Books" }
+  } satisfies ChartConfig;
+  
+  // Dynamically create chart config for pie chart
+  const statusChartConfig = React.useMemo(() => {
+    const config: ChartConfig = {};
+    booksByStatusChartData.forEach((item, index) => {
+      config[item.name] = {
+        label: item.name,
+        color: `hsl(var(--chart-${(index % 5) + 1}))`
+      }
+    })
+    return config;
+  }, [booksByStatusChartData]);
 
   const handleSort = (columnId: string) => {
     setSorting(currentSorting => {
@@ -197,16 +218,36 @@ export function BookStatsTab() {
         
         <div className="grid gap-6 md:grid-cols-2">
             <Card>
-                <CardHeader><CardTitle>Books by Status</CardTitle></CardHeader>
+                <CardHeader>
+                    <CardTitle>Books by Status</CardTitle>
+                    <CardDescription>Top 5 statuses shown, with others grouped.</CardDescription>
+                </CardHeader>
                 <CardContent>
-                    <ChartContainer config={chartConfig} className="h-[250px] w-full">
-                        <BarChart data={booksByStatusChartData} layout="vertical" margin={{ left: 50 }}>
-                            <CartesianGrid horizontal={false} />
-                            <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} width={120} />
-                            <XAxis dataKey="value" type="number" hide />
-                            <Tooltip cursor={{ fill: "hsl(var(--muted))" }} content={<ChartTooltipContent />} />
-                            <Bar dataKey="value" radius={4} fill="var(--color-value)" />
-                        </BarChart>
+                    <ChartContainer
+                        config={statusChartConfig}
+                        className="mx-auto aspect-square h-[250px]"
+                    >
+                        <PieChart>
+                        <ChartTooltip
+                            cursor={false}
+                            content={<ChartTooltipContent hideLabel />}
+                        />
+                        <Pie
+                            data={booksByStatusChartData}
+                            dataKey="value"
+                            nameKey="name"
+                            innerRadius={60}
+                            strokeWidth={5}
+                        >
+                            {booksByStatusChartData.map((entry) => (
+                                <Cell key={entry.name} fill={statusChartConfig[entry.name]?.color} />
+                            ))}
+                        </Pie>
+                        <ChartLegend
+                            content={<ChartLegendContent nameKey="name" />}
+                            className="-translate-y-2 flex-wrap gap-2 [&>*]:basis-1/4 [&>*]:justify-center"
+                        />
+                        </PieChart>
                     </ChartContainer>
                 </CardContent>
             </Card>
