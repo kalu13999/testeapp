@@ -19,14 +19,17 @@ import { ArrowUp, ArrowDown, ChevronsUpDown, Download, Briefcase, BookCopy, Chec
 import { useAppContext } from "@/context/workflow-context"
 import Link from "next/link"
 import type { EnrichedBook } from "@/lib/data"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, Pie, PieChart, Cell } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig, ChartLegend, ChartLegendContent } from "@/components/ui/chart"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { STAGE_CONFIG, WORKFLOW_SEQUENCE } from "@/lib/workflow-config";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
+const ITEMS_PER_PAGE = 15;
 
 const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -46,6 +49,9 @@ export function BookStatsTab() {
   const [dialogState, setDialogState] = React.useState<{ open: boolean, title: string, items: EnrichedBook[] }>({ open: false, title: '', items: [] });
   const [dialogFilter, setDialogFilter] = React.useState('');
   const { toast } = useToast();
+  
+  const [selection, setSelection] = React.useState<string[]>([]);
+  const [currentPage, setCurrentPage] = React.useState(1);
 
   const bookStats = React.useMemo(() => {
     return books.map(book => {
@@ -152,6 +158,16 @@ export function BookStatsTab() {
     return filtered
   }, [bookStats, columnFilters, sorting])
 
+  const paginatedBooks = sortedAndFilteredBooks.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+  const selectedBooks = React.useMemo(() => {
+    return sortedAndFilteredBooks.filter(book => selection.includes(book.id));
+  }, [sortedAndFilteredBooks, selection]);
+
+  React.useEffect(() => {
+    setSelection([]);
+  }, [columnFilters, sorting]);
+
   const filteredDialogItems = React.useMemo(() => {
     if (!dialogFilter) return dialogState.items;
     const query = dialogFilter.toLowerCase();
@@ -173,26 +189,43 @@ export function BookStatsTab() {
       document.body.removeChild(link);
   };
 
-  const exportData = (format: 'xlsx' | 'json' | 'csv') => {
-    const data = sortedAndFilteredBooks;
+  const exportData = (format: 'xlsx' | 'json' | 'csv', dataToExport: EnrichedBook[]) => {
+    if (dataToExport.length === 0) {
+        toast({ title: 'No Data to Export', description: 'There are no items to export.' });
+        return;
+    }
     if (format === 'json') {
-        downloadFile(JSON.stringify(data, null, 2), 'books.json', 'application/json');
+        downloadFile(JSON.stringify(dataToExport, null, 2), 'books.json', 'application/json');
     } else if (format === 'csv') {
         const headers = ['id', 'name', 'clientName', 'projectName', 'status', 'progress', 'documentCount', 'totalExpected', 'priority'];
-        const csvContent = [headers.join(','), ...data.map(d => headers.map(h => JSON.stringify(d[h as keyof typeof d])).join(','))].join('\n');
+        const csvContent = [headers.join(','), ...dataToExport.map(d => headers.map(h => JSON.stringify(d[h as keyof typeof d])).join(','))].join('\n');
         downloadFile(csvContent, 'books.csv', 'text/csv');
     } else if (format === 'xlsx') {
-        const worksheet = XLSX.utils.json_to_sheet(data);
+        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Books');
         XLSX.writeFile(workbook, 'books.xlsx');
     }
-    toast({ title: 'Export Complete', description: `${data.length} books exported.` });
+    toast({ title: 'Export Complete', description: `${dataToExport.length} books exported.` });
   };
   
   const handleKpiClick = (title: string, items: EnrichedBook[]) => {
     setDialogFilter('');
     setDialogState({ open: true, title, items });
+  }
+
+  const totalPages = Math.ceil(sortedAndFilteredBooks.length / ITEMS_PER_PAGE);
+  const PaginationNav = () => {
+    if (totalPages <= 1) return null;
+    return (
+      <Pagination>
+        <PaginationContent>
+          <PaginationItem><PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }} className={currentPage === 1 ? "pointer-events-none opacity-50" : undefined}/></PaginationItem>
+          <PaginationItem><PaginationLink href="#">Page {currentPage} of {totalPages}</PaginationLink></PaginationItem>
+          <PaginationItem><PaginationNext href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }} className={currentPage === totalPages ? "pointer-events-none opacity-50" : undefined}/></PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    );
   }
 
   return (
@@ -216,7 +249,7 @@ export function BookStatsTab() {
             </Card>
         </div>
         
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6">
             <Card>
                 <CardHeader>
                     <CardTitle>Books by Status</CardTitle>
@@ -225,7 +258,7 @@ export function BookStatsTab() {
                 <CardContent>
                     <ChartContainer
                         config={statusChartConfig}
-                        className="mx-auto aspect-square h-[250px]"
+                        className="mx-auto aspect-video h-[300px]"
                     >
                         <PieChart>
                         <ChartTooltip
@@ -236,6 +269,8 @@ export function BookStatsTab() {
                             data={booksByStatusChartData}
                             dataKey="value"
                             nameKey="name"
+                            labelLine={false}
+                            label={({ percent, name }) => `${name} (${(percent * 100).toFixed(0)}%)`}
                         >
                             {booksByStatusChartData.map((entry) => (
                                 <Cell key={entry.name} fill={statusChartConfig[entry.name]?.color} />
@@ -252,8 +287,8 @@ export function BookStatsTab() {
             <Card>
                 <CardHeader><CardTitle>Top 10 Projects by Book Count</CardTitle></CardHeader>
                 <CardContent>
-                    <ChartContainer config={chartConfig} className="h-[250px] w-full">
-                        <BarChart data={booksByProjectChartData} layout="vertical" margin={{ left: 50 }}>
+                    <ChartContainer config={chartConfig} className="h-[300px] w-full">
+                        <BarChart data={booksByProjectChartData} layout="vertical" margin={{ left: 100 }}>
                             <CartesianGrid horizontal={false} />
                             <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} width={120} />
                             <XAxis dataKey="books" type="number" hide />
@@ -275,11 +310,15 @@ export function BookStatsTab() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild><Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" /> Export</Button></DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuLabel>Export Data</DropdownMenuLabel>
+                <DropdownMenuLabel>Export Selected ({selection.length})</DropdownMenuLabel>
+                <DropdownMenuItem onSelect={() => exportData('xlsx', selectedBooks)} disabled={selection.length === 0}>Export as XLSX</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => exportData('json', selectedBooks)} disabled={selection.length === 0}>Export as JSON</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => exportData('csv', selectedBooks)} disabled={selection.length === 0}>Export as CSV</DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => exportData('xlsx')}>Export as XLSX</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => exportData('json')}>Export as JSON</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => exportData('csv')}>Export as CSV</DropdownMenuItem>
+                <DropdownMenuLabel>Export All ({sortedAndFilteredBooks.length})</DropdownMenuLabel>
+                <DropdownMenuItem onSelect={() => exportData('xlsx', sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Export as XLSX</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => exportData('json', sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Export as JSON</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => exportData('csv', sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Export as CSV</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -288,6 +327,13 @@ export function BookStatsTab() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[40px]">
+                    <Checkbox
+                        onCheckedChange={(checked) => setSelection(checked ? paginatedBooks.map(b => b.id) : [])}
+                        checked={paginatedBooks.length > 0 && paginatedBooks.every(b => selection.includes(b.id))}
+                        aria-label="Select all on this page"
+                    />
+                </TableHead>
                 <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name')}>Book Name {getSortIndicator('name')}</div></TableHead>
                 <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('projectName')}>Project {getSortIndicator('projectName')}</div></TableHead>
                 <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('clientName')}>Client {getSortIndicator('clientName')}</div></TableHead>
@@ -297,6 +343,7 @@ export function BookStatsTab() {
                 <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('documentCount')}>Pages {getSortIndicator('documentCount')}</div></TableHead>
               </TableRow>
               <TableRow>
+                <TableHead />
                 <TableHead><Input placeholder="Filter name..." value={columnFilters['name'] || ''} onChange={e => setColumnFilters(p => ({...p, name: e.target.value}))} className="h-8"/></TableHead>
                 <TableHead><Input placeholder="Filter project..." value={columnFilters['projectName'] || ''} onChange={e => setColumnFilters(p => ({...p, projectName: e.target.value}))} className="h-8"/></TableHead>
                 <TableHead><Input placeholder="Filter client..." value={columnFilters['clientName'] || ''} onChange={e => setColumnFilters(p => ({...p, clientName: e.target.value}))} className="h-8"/></TableHead>
@@ -306,8 +353,21 @@ export function BookStatsTab() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedAndFilteredBooks.map(book => (
-                <TableRow key={book.id}>
+              {paginatedBooks.map(book => (
+                <TableRow key={book.id} data-state={selection.includes(book.id) && "selected"}>
+                  <TableCell>
+                      <Checkbox
+                          checked={selection.includes(book.id)}
+                          onCheckedChange={(checked) => {
+                              setSelection(
+                                  checked
+                                      ? [...selection, book.id]
+                                      : selection.filter((id) => id !== book.id)
+                              )
+                          }}
+                          aria-label={`Select book ${book.name}`}
+                      />
+                  </TableCell>
                   <TableCell className="font-medium"><Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link></TableCell>
                   <TableCell>{book.projectName}</TableCell>
                   <TableCell>{book.clientName}</TableCell>
@@ -320,6 +380,12 @@ export function BookStatsTab() {
             </TableBody>
           </Table>
         </CardContent>
+        <CardFooter className="flex items-center justify-between">
+            <div className="text-xs text-muted-foreground">
+              {selection.length > 0 ? `${selection.length} of ${sortedAndFilteredBooks.length} book(s) selected.` : `Showing ${paginatedBooks.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedBooks.length} of ${sortedAndFilteredBooks.length} books`}
+            </div>
+            <PaginationNav />
+        </CardFooter>
       </Card>
       
        <Dialog open={dialogState.open} onOpenChange={(open) => { if (!open) setDialogFilter(''); setDialogState(prev => ({ ...prev, open })); }}>
