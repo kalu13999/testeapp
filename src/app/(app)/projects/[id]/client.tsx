@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import * as React from "react"
@@ -61,7 +62,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"
 import { useToast } from "@/hooks/use-toast";
-import { Book, Edit, DollarSign, Calendar, Info, ArrowUp, ArrowDown, ChevronsUpDown, Settings2, Package, LucideIcon, BookCopy, AlertTriangle, CheckCircle, Download, Loader2 } from "lucide-react";
+import { Book, Edit, DollarSign, Calendar, Info, ArrowUp, ArrowDown, ChevronsUpDown, Settings2, Package, LucideIcon, BookCopy, AlertTriangle, CheckCircle, Download, Loader2, XCircle } from "lucide-react";
 
 
 interface ProjectDetailClientProps {
@@ -317,24 +318,29 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
         <Card>
             <CardHeader>
                 <CardTitle>Project Summary</CardTitle>
-                <CardDescription>{project.description}</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-8">
                     <DetailItem label="Status" value={<Badge variant={getStatusBadgeVariant(project.status)}>{project.status}</Badge>} />
                     <DetailItem label="Budget" value={`$${project.budget.toLocaleString()}`} />
-                    <DetailItem label="Timeline" value={`${format(new Date(project.startDate), "LLL d, y")} to ${format(new Date(project.endDate), "LLL d, y")}`} />
-                    <div className="lg:col-span-2 lg:row-start-2">
+                    <DetailItem label="Timeline" value={`${format(new Date(project.startDate), "LLL d, yyyy")} to ${format(new Date(project.endDate), "LLL d, yyyy")}`} />
+                    <div className="lg:col-span-4">
                         <DetailItem label="Overall Progress" value={`${project.documentCount.toLocaleString()} / ${project.totalExpected.toLocaleString()} pages`} />
                         <Progress value={project.progress} className="mt-2 h-2" />
                     </div>
-                    {project.info && (
-                        <div className="md:col-span-2 lg:col-span-4 lg:row-start-3 pt-4 border-t">
-                            <p className="text-sm font-medium">Additional Info</p>
-                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{project.info}</p>
-                        </div>
-                    )}
                 </div>
+                 {project.description && (
+                  <>
+                    <Separator className="my-4"/>
+                    <DetailItem label="Description" value={<p className="text-sm font-normal text-foreground">{project.description}</p>} />
+                  </>
+                )}
+                 {project.info && (
+                  <>
+                    <Separator className="my-4"/>
+                    <DetailItem label="Additional Info" value={<p className="text-sm font-normal text-foreground whitespace-pre-wrap">{project.info}</p>} />
+                  </>
+                )}
             </CardContent>
         </Card>
 
@@ -446,12 +452,7 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
             </CardHeader>
             <CardContent>
                 <div className="space-y-6">
-                {WORKFLOW_PHASES.map(group => {
-                    const isGroupRelevant = group.stages.some(stage => MANDATORY_STAGES.includes(stage) || projectWorkflow.includes(stage));
-                    
-                    if (!isGroupRelevant) return null;
-
-                    return (
+                {WORKFLOW_PHASES.map(group => (
                     <div key={group.name}>
                         <h4 className="font-semibold text-base mb-3 border-b pb-2">{group.name}</h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
@@ -462,22 +463,31 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                             const isMandatory = MANDATORY_STAGES.includes(stageKey);
                             const isEnabled = isMandatory || projectWorkflow.includes(stageKey);
 
-                            if (!isEnabled) return null;
-
                             return (
-                                <div key={stageKey} className="flex items-center space-x-3">
-                                <CheckCircle className="h-5 w-5 text-green-600" />
-                                <div className="flex flex-col">
-                                    <span className="font-medium text-sm">{stageConfig.title}</span>
-                                    <span className="text-xs text-muted-foreground">{stageConfig.description}</span>
-                                </div>
+                                <div key={stageKey} className={cn(
+                                    "flex items-center space-x-3",
+                                    !isEnabled && !isMandatory && "opacity-60"
+                                )}>
+                                    {isEnabled ? (
+                                        <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                                    ) : (
+                                        <XCircle className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                                    )}
+                                    <div className="flex flex-col">
+                                        <span className={cn(
+                                            "font-medium text-sm",
+                                            !isEnabled && !isMandatory && "line-through"
+                                        )}>
+                                            {stageConfig.title}
+                                        </span>
+                                        <span className="text-xs text-muted-foreground">{stageConfig.description}</span>
+                                    </div>
                                 </div>
                             );
                         })}
                         </div>
                     </div>
-                    )
-                })}
+                ))}
                 </div>
             </CardContent>
              <CardFooter>
