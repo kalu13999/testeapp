@@ -320,6 +320,7 @@ export function AppProvider({
   };
   
   const addUser = (userData: Omit<User, 'id' | 'avatar' | 'lastLogin'>) => {
+   
     const newUser: User = { id: `u_${Date.now()}`, avatar: 'https://placehold.co/100x100.png', status: 'active', ...userData };
     setUsers(prev => [...prev, newUser]);
     logAction('User Created', `New user "${newUser.name}" added with role ${newUser.role}.`, {});
@@ -518,7 +519,7 @@ export function AppProvider({
     logAction(
       'Rejection Tags Updated',
       `Tags for page "${page.name}" set to: ${tags.join(', ') || 'None'}.`,
-      { documentId: pageId, bookId: page.bookId }
+      { documentId: pageId, bookId: page.bookId ?? undefined}
     );
     toast({ title: "Tags Updated", description: "The rejection tags for the page have been updated." });
   };
@@ -534,7 +535,7 @@ export function AppProvider({
     logAction(
         'Rejection Tags Modified', 
         `Tags updated for page "${page.name}". Kept: ${tagsToKeep.join(', ')}.`, 
-        { documentId: pageId, bookId: page.bookId }
+        { documentId: pageId, bookId: page.bookId ?? undefined}
     );
     toast({ title: "Tags Updated" });
   }
@@ -1055,7 +1056,7 @@ export function AppProvider({
     logAction(
       `Flag ${flag ? 'Set' : 'Cleared'}`, 
       `Document "${doc?.name}" marked with ${flagLabel}. Comment: ${comment || 'N/A'}`, 
-      { documentId: docId, bookId: doc?.bookId }
+      { documentId: docId, bookId: doc?.bookId ?? undefined}
     );
     toast({ title: `Flag ${flag ? 'Set' : 'Cleared'}`});
   }

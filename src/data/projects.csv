@@ -1,0 +1,7 @@
+"id","name","clientId","description","startDate","endDate","budget","status","info"
+"proj_1","Innovate Corp Q4 Scanning","cl_1","Digitization of all Q4 2023 financial documents for Innovate Corp.","2024-07-01","2024-09-30",50000,"In Progress","High priority project with tight deadlines."
+"proj_11","Innovate Corp 2024 Planning","cl_1","Scanning of strategic planning documents for 2024.","2024-07-15","2024-08-15",15000,"In Progress",""
+"proj_21","Innovate Corp HR Onboarding Batch A","cl_1","HR records for new hires.","2024-07-10","2024-10-10",45000,"Planning",""
+"proj_2","Future Tech Onboarding","cl_2","Scanning and archiving all onboarding paperwork for new client Future Tech.","2024-07-01","2024-09-01",25000,"In Progress",""
+"proj_12","Future Tech Patent Filings","cl_2","Digitization of all patent documentation.","2024-06-01","2024-08-31",40000,"In Progress",""
+"proj_22","Future Tech R&D Notebooks 2024","cl_2","Scanning researcher lab notes.","2024-08-01","2024-11-30",80000,"Planning",""
