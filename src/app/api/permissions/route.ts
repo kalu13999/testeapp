@@ -7,7 +7,17 @@ export async function GET() {
   try {
     connection = await getConnection();
     const [rows] = await connection.execute('SELECT * FROM permissions');
-    return NextResponse.json(rows);
+    // We need to group permissions by role
+    const permissionsByRole: { [key: string]: string[] } = {};
+    if (Array.isArray(rows)) {
+      rows.forEach((row: any) => {
+        if (!permissionsByRole[row.role]) {
+          permissionsByRole[row.role] = [];
+        }
+        permissionsByRole[row.role].push(row.route);
+      });
+    }
+    return NextResponse.json(permissionsByRole);
   } catch (error) {
     console.error("Error fetching permissions:", error);
     return NextResponse.json({ error: 'Failed to fetch permissions' }, { status: 500 });

@@ -3,32 +3,17 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { AppProvider } from "@/context/workflow-context";
-import { getClients, getEnrichedAuditLogs, getRawBooks, getEnrichedDocuments, getRawProjects, getPermissions, getProcessingLogs, getRoles, getUsers, getProjectWorkflows, getRejectionTags } from "@/lib/data";
 
 export const metadata: Metadata = {
   title: "FlowVault",
   description: "Document management and workflow automation.",
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [clients, users, projects, books, documents, auditLogs, processingLogs, permissions, roles, projectWorkflows, rejectionTags] = await Promise.all([
-    getClients(),
-    getUsers(),
-    getRawProjects(),
-    getRawBooks(),
-    getEnrichedDocuments(),
-    getEnrichedAuditLogs(),
-    getProcessingLogs(),
-    getPermissions(),
-    getRoles(),
-    getProjectWorkflows(),
-    getRejectionTags(),
-  ]);
-
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -44,19 +29,7 @@ export default async function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <AppProvider
-          initialClients={clients}
-          initialUsers={users}
-          initialProjects={projects}
-          initialBooks={books}
-          initialDocuments={documents}
-          initialAuditLogs={auditLogs}
-          initialProcessingLogs={processingLogs}
-          initialPermissions={permissions}
-          initialRoles={roles}
-          initialProjectWorkflows={projectWorkflows}
-          initialRejectionTags={rejectionTags}
-        >
+        <AppProvider>
           {children}
           <Toaster />
         </AppProvider>

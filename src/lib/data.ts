@@ -1,7 +1,4 @@
 
-import fs from 'fs/promises';
-import path from 'path';
-
 // Define types for our data structures
 export interface Client {
     id: string;
@@ -151,194 +148,99 @@ export interface EnrichedBook extends RawBook {
 }
 
 
-// Helper to read and parse JSON files
-async function readJsonFile<T>(filename: string): Promise<T> {
-    const filePath = path.join(process.cwd(), 'src', 'data', filename);
-    const data = await fs.readFile(filePath, 'utf-8');
-    return JSON.parse(data);
+// Helper to fetch data from the API
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+
+async function fetchData<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const url = `${API_BASE_URL}/api${endpoint}`;
+  try {
+    const response = await fetch(url, { ...options, cache: 'no-store' });
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error(`API Error for ${endpoint}: ${response.status} ${response.statusText}`, errorBody);
+      throw new Error(`Failed to fetch ${endpoint}`);
+    }
+    return response.json();
+  } catch (error) {
+    console.error(`Network or fetch error for ${endpoint}:`, error);
+    throw error;
+  }
 }
 
 // Data fetching functions
-export const getClients = () => readJsonFile<Client[]>('clients.json');
-export const getFolders = () => readJsonFile<Folder[]>('folders.json');
-export const getDocumentStatuses = () => readJsonFile<DocumentStatus[]>('document_statuses.json');
-export const getRawDocuments = () => readJsonFile<Document[]>('documents.json');
-export const getUsers = () => readJsonFile<User[]>('users.json');
-export const getAuditLogs = () => readJsonFile<AuditLog[]>('audit_logs.json');
-export const getRawProjects = () => readJsonFile<Project[]>('projects.json');
-export const getRawBooks = () => readJsonFile<RawBook[]>('books.json');
-export const getProcessingLogs = () => readJsonFile<ProcessingLog[]>('processing_logs.json');
-export const getPermissions = () => readJsonFile<Permissions>('permissions.json');
-export const getRoles = () => readJsonFile<string[]>('roles.json');
-export const getProjectWorkflows = () => readJsonFile<ProjectWorkflows>('project_workflows.json');
-export const getRejectionTags = () => readJsonFile<RejectionTag[]>('rejection_tags.json');
+export const getClients = () => fetchData<Client[]>('/clients');
+export const getClientById = (id: string) => fetchData<Client>(`/clients/${id}`);
+export const getUsers = () => fetchData<User[]>('/users');
+export const getUserById = (id: string) => fetchData<User>(`/users/${id}`);
+export const getRawProjects = () => fetchData<Project[]>('/projects');
+export const getProjectById = (id: string) => fetchData<Project>(`/projects/${id}`);
+export const getRawBooks = () => fetchData<RawBook[]>('/books');
+export const getBookById = (id: string) => fetchData<RawBook>(`/books/${id}`);
+export const getRawDocuments = () => fetchData<Document[]>('/documents');
+export const getDocumentById = (id: string) => fetchData<Document>(`/documents/${id}`);
+export const getAuditLogs = () => fetchData<AuditLog[]>('/audit-logs');
+export const getProcessingLogs = () => fetchData<ProcessingLog[]>('/processing-logs');
+export const getPermissions = () => fetchData<Permissions>('/permissions');
+export const getRoles = () => fetchData<string[]>('/roles');
+export const getProjectWorkflows = () => fetchData<ProjectWorkflows>('/project-workflows');
+export const getRejectionTags = () => fetchData<RejectionTag[]>('/rejection-tags');
+export const getDocumentStatuses = () => fetchData<DocumentStatus[]>('/document-statuses');
+export const getFolders = () => fetchData<Folder[]>('/folders');
 
-
-export async function getUserById(id: string): Promise<User | undefined> {
-    const users = await getUsers();
-    return users.find(user => user.id === id);
-}
-
-export async function getEnrichedAuditLogs() {
-    const [logs, users] = await Promise.all([
-        getAuditLogs(),
-        getUsers()
-    ]);
-
-    return logs
-        .map(log => {
-            const user = users.find(u => u.id === log.userId);
-            return {
-                ...log,
-                user: user?.name || 'Unknown User',
-            };
-        })
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-}
-
+// Enriched data fetching functions
 export async function getEnrichedProjects(): Promise<EnrichedProject[]> {
     const [projects, clients, books, documents] = await Promise.all([
-        getRawProjects(),
-        getClients(),
-        getEnrichedBooks(),
-        getEnrichedDocuments()
+      getRawProjects(),
+      getClients(),
+      getRawBooks(),
+      getRawDocuments(),
     ]);
-
-    return projects.map(proj => {
-        const client = clients.find(c => c.id === proj.clientId);
-        const projectBooks = books.filter(b => b.projectId === proj.id);
-        const projectDocuments = documents.filter(d => d.projectId === proj.id);
-        
-        const totalExpected = projectBooks.reduce((sum, book) => sum + book.expectedDocuments, 0);
-        const progress = totalExpected > 0 ? (projectDocuments.length / totalExpected) * 100 : 0;
-        
+  
+    return projects.map(project => {
+      const client = clients.find(c => c.id === project.clientId);
+      const projectBooks = books.filter(b => b.projectId === project.id).map(book => {
+        const bookDocuments = documents.filter(d => d.bookId === book.id);
+        const bookProgress = book.expectedDocuments > 0 ? (bookDocuments.length / book.expectedDocuments) * 100 : 0;
         return {
-            ...proj,
-            clientName: client?.name || 'Unknown Client',
-            documentCount: projectDocuments.length,
-            totalExpected,
-            progress: Math.min(100, progress),
-            books: projectBooks
+          ...book,
+          clientId: project.clientId,
+          projectName: project.name,
+          clientName: client?.name || 'Unknown Client',
+          documentCount: bookDocuments.length,
+          progress: Math.min(100, bookProgress),
         };
+      });
+  
+      const totalExpected = projectBooks.reduce((sum, book) => sum + book.expectedDocuments, 0);
+      const documentCount = projectBooks.reduce((sum, book) => sum + book.documentCount, 0);
+      const progress = totalExpected > 0 ? (documentCount / totalExpected) * 100 : 0;
+  
+      return {
+        ...project,
+        clientName: client?.name || 'Unknown Client',
+        documentCount,
+        totalExpected,
+        progress: Math.min(100, progress),
+        books: projectBooks,
+      };
     });
 }
-
+  
 export async function getEnrichedProjectById(id: string): Promise<EnrichedProject | null> {
     const projects = await getEnrichedProjects();
     return projects.find(p => p.id === id) || null;
 }
 
-
-export async function getEnrichedDocuments() {
-    const [documents, clients, statuses] = await Promise.all([
-        getRawDocuments(),
-        getClients(),
-        getDocumentStatuses()
-    ]);
-
-    return documents.map(doc => {
-        const client = clients.find(c => c.id === doc.clientId);
-        const status = statuses.find(s => s.id === doc.statusId);
-        return {
-            ...doc,
-            client: client?.name || 'Unknown Client',
-            status: status?.name || 'Unknown Status',
-            flag: doc.flag || null,
-        };
-    });
+export async function getEnrichedBookById(id: string): Promise<EnrichedBook | null> {
+    const projects = await getEnrichedProjects();
+    for (const project of projects) {
+        const book = project.books.find(b => b.id === id);
+        if (book) return book;
+    }
+    return null;
 }
 
-export async function getEnrichedBooks(): Promise<EnrichedBook[]> {
-    const [books, projects, clients, documents] = await Promise.all([
-        getRawBooks(),
-        getRawProjects(),
-        getClients(),
-        getRawDocuments()
-    ]);
-    
-    return books.map(book => {
-        const project = projects.find(p => p.id === book.projectId);
-        const client = clients.find(c => c.id === project?.clientId);
-        const bookDocuments = documents.filter(d => d.bookId === book.id);
-        const bookProgress = book.expectedDocuments > 0 ? (bookDocuments.length / book.expectedDocuments) * 100 : 0;
-        
-        return {
-            ...book,
-            clientId: project?.clientId || 'Unknown',
-            projectName: project?.name || 'Unknown Project',
-            clientName: client?.name || 'Unknown Client',
-            documentCount: bookDocuments.length,
-            progress: Math.min(100, bookProgress),
-        }
-    })
-}
-
-export async function getEnrichedBookById(id: string): Promise<EnrichedBook | undefined> {
-    const books = await getEnrichedBooks();
-    return books.find(b => b.id === id);
-}
-
-export async function getPagesByBookId(bookId: string) {
-    const allDocs = await getEnrichedDocuments();
-    return allDocs.filter(doc => doc.bookId === bookId);
-}
-
-export async function getDashboardData() {
-    const [documents, projects] = await Promise.all([
-        getEnrichedDocuments(),
-        getEnrichedProjects()
-    ]);
-    
-    const pendingCount = documents.filter(d => ['Quality Control', 'Processing', 'Indexing'].includes(d.status)).length;
-    
-    // Example: count projects with progress < 50% as having SLA warnings
-    const slaWarningsCount = projects.filter(p => p.progress < 50 && p.status === 'In Progress').length;
-    
-    const processedTodayCount = documents.filter(d => d.lastUpdated === new Date().toISOString().slice(0, 10)).length;
-    const totalCount = documents.length;
-
-    const kpiData = [
-        { title: "Pending Documents", value: pendingCount.toLocaleString(), description: "Awaiting processing" },
-        { title: "SLA Warnings", value: slaWarningsCount.toLocaleString(), description: "Projects with low progress" },
-        { title: "Processed Today", value: processedTodayCount.toLocaleString(), description: "Docs updated today" },
-        { title: "Total in Workflow", value: totalCount.toLocaleString(), description: "Across all stages" },
-    ];
-    
-    const recentActivities = documents
-        .sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())
-        .slice(0, 5)
-        .map(doc => ({
-            id: doc.id,
-            client: doc.client,
-            status: doc.status
-        }));
-        
-    // Generate more dynamic chart data
-    const monthlyStats: {[key: string]: { approved: number, rejected: number }} = {};
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-    documents.forEach(doc => {
-        const date = new Date(doc.lastUpdated);
-        const monthKey = monthNames[date.getMonth()];
-        if (!monthKey) return;
-
-        if (!monthlyStats[monthKey]) {
-            monthlyStats[monthKey] = { approved: 0, rejected: 0 };
-        }
-
-        if (doc.status === 'Finalized' || doc.status === 'Archived') {
-            monthlyStats[monthKey].approved += 1;
-        } else if (doc.status === 'Client Rejected') {
-            monthlyStats[monthKey].rejected += 1;
-        }
-    });
-
-    const chartData = monthNames.map(name => ({
-        name,
-        approved: monthlyStats[name]?.approved || 0,
-        rejected: monthlyStats[name]?.rejected || 0,
-    })).slice(0, 6); // Show first 6 months for example
-
-
-    return { kpiData, chartData, recentActivities };
+export async function getPagesByBookId(bookId: string): Promise<Document[]> {
+    const documents = await getRawDocuments();
+    return documents.filter(d => d.bookId === bookId);
 }

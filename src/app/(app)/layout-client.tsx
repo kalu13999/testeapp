@@ -44,19 +44,18 @@ const GlobalProjectFilter = () => {
 }
 
 export const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
-  const { currentUser, permissions, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId } = useAppContext();
+  const { currentUser, permissions, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loading } = useAppContext();
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
   const [isChecking, setIsChecking] = React.useState(true);
   const [isAllowed, setIsAllowed] = React.useState(false);
-
+  
   useEffect(() => {
-    setIsChecking(true);
-    setIsAllowed(false);
-  }, [pathname]);
-
-  useEffect(() => {
+    if (loading) {
+      setIsChecking(true);
+      return;
+    }
     // Route guarding logic
     if (!currentUser) {
       router.push('/');
@@ -106,14 +105,11 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
         setIsAllowed(true);
     }
     setIsChecking(false);
-  }, [currentUser, pathname, permissions, router, toast, accessibleProjectsForUser]);
+  }, [currentUser, pathname, permissions, router, toast, accessibleProjectsForUser, loading]);
   
    // Effect to manage the selected project ID automatically
   useEffect(() => {
-    if (!currentUser) {
-        if (selectedProjectId !== null) {
-            setSelectedProjectId(null);
-        }
+    if (loading || !currentUser) {
         return;
     }
 
@@ -132,7 +128,21 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
 
     setSelectedProjectId(newDefaultProjectId);
 
-  }, [currentUser, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId]);
+  }, [currentUser, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loading]);
+
+  if (loading) {
+    return (
+        <div className="flex h-screen w-screen items-center justify-center">
+            <div className="flex flex-col items-center gap-4">
+                <div className="bg-primary rounded-lg p-3 flex items-center justify-center">
+                    <FileLock2 className="h-8 w-8 text-primary-foreground" />
+                </div>
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <p className="text-muted-foreground">Loading application data...</p>
+            </div>
+        </div>
+    );
+  }
 
   if (!currentUser) {
     // Render nothing or a loading spinner while redirecting

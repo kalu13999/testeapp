@@ -7,7 +7,16 @@ export async function GET() {
   try {
     connection = await getConnection();
     const [rows] = await connection.execute('SELECT * FROM project_workflows');
-    return NextResponse.json(rows);
+    const workflowsByProject: { [key: string]: string[] } = {};
+    if (Array.isArray(rows)) {
+      rows.forEach((row: any) => {
+        if (!workflowsByProject[row.projectId]) {
+          workflowsByProject[row.projectId] = [];
+        }
+        workflowsByProject[row.projectId].push(row.stage);
+      });
+    }
+    return NextResponse.json(workflowsByProject);
   } catch (error) {
     console.error("Error fetching project_workflows:", error);
     return NextResponse.json({ error: 'Failed to fetch project_workflows' }, { status: 500 });

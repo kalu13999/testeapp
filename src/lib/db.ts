@@ -1,4 +1,5 @@
 import mysql from 'mysql2/promise';
+import type { PoolConnection } from 'mysql2/promise';
 
 const dbConfig = {
   host: process.env.DB_HOST,
@@ -23,7 +24,7 @@ export async function getConnection() {
   }
 }
 
-export function releaseConnection(connection: mysql.PoolConnection) {
+export function releaseConnection(connection: PoolConnection) {
   connection.release();
 }
 

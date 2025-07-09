@@ -6,12 +6,11 @@ export async function GET() {
   let connection: PoolConnection | null = null;
   try {
     connection = await getConnection();
-    const [rows] = await connection.execute('SELECT name FROM roles');
-    const roleNames = Array.isArray(rows) ? rows.map((row: any) => row.name) : [];
-    return NextResponse.json(roleNames);
-  } catch (error) {
-    console.error("Error fetching roles:", error);
-    return NextResponse.json({ error: 'Failed to fetch roles' }, { status: 500 });
+    const [rows] = await connection.execute('SELECT 1 + 1 AS result');
+    return NextResponse.json({ success: true, data: rows });
+  } catch (error: any) {
+    console.error("Database connection test failed:", error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   } finally {
     if (connection) {
       releaseConnection(connection);

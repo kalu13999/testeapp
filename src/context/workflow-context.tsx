@@ -5,6 +5,7 @@ import * as React from 'react';
 import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions, ProjectWorkflows, RejectionTag } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { WORKFLOW_SEQUENCE, STAGE_CONFIG, findStageKeyFromStatus } from '@/lib/workflow-config';
+import * as dataApi from '@/lib/data';
 
 // Define the shape of the book data when importing
 export interface BookImport {
@@ -33,6 +34,9 @@ export type AppDocument = RawDocument & { client: string; status: string; };
 export type EnrichedAuditLog = AuditLog & { user: string; };
 
 type AppContextType = {
+  // Loading state
+  loading: boolean;
+  
   // Auth state
   currentUser: User | null;
   login: (username: string, password: string) => User | null;
@@ -126,58 +130,80 @@ const AppContext = React.createContext<AppContextType | undefined>(undefined);
 
 const OPERATOR_ROLES = ["Operator", "QC Specialist", "Reception", "Scanning", "Indexing", "Processing", "Delivery", "Correction Specialist", "Multi-Operator", "Supervisor"];
 
-export function AppProvider({
-  initialClients,
-  initialUsers,
-  initialProjects,
-  initialBooks,
-  initialDocuments,
-  initialAuditLogs,
-  initialProcessingLogs,
-  initialPermissions,
-  initialRoles,
-  initialProjectWorkflows,
-  initialRejectionTags,
-  children,
-}: {
-  initialClients: Client[];
-  initialUsers: User[];
-  initialProjects: Project[];
-  initialBooks: RawBook[];
-  initialDocuments: AppDocument[];
-  initialAuditLogs: EnrichedAuditLog[];
-  initialProcessingLogs: ProcessingLog[];
-  initialPermissions: Permissions;
-  initialRoles: string[];
-  initialProjectWorkflows: ProjectWorkflows;
-  initialRejectionTags: RejectionTag[];
-  children: React.ReactNode;
-}) {
+export function AppProvider({ children }: { children: React.ReactNode; }) {
+  const [loading, setLoading] = React.useState(true);
   const [currentUser, setCurrentUser] = React.useState<User | null>(null);
-  const [clients, setClients] = React.useState<Client[]>(initialClients);
-  const [users, setUsers] = React.useState<User[]>(initialUsers);
-  const [rawProjects, setRawProjects] = React.useState<Project[]>(initialProjects);
-  const [rawBooks, setRawBooks] = React.useState<RawBook[]>(initialBooks);
-  const [documents, setDocuments] = React.useState<AppDocument[]>(initialDocuments);
-  const [auditLogs, setAuditLogs] = React.useState<EnrichedAuditLog[]>(initialAuditLogs);
-  const [processingLogs, setProcessingLogs] = React.useState<ProcessingLog[]>(initialProcessingLogs);
-  const [roles, setRoles] = React.useState<string[]>(initialRoles);
-  const [permissions, setPermissions] = React.useState<Permissions>(initialPermissions);
-  const [projectWorkflows, setProjectWorkflows] = React.useState<ProjectWorkflows>(initialProjectWorkflows);
-  const [rejectionTags, setRejectionTags] = React.useState<RejectionTag[]>(initialRejectionTags);
+  const [clients, setClients] = React.useState<Client[]>([]);
+  const [users, setUsers] = React.useState<User[]>([]);
+  const [rawProjects, setRawProjects] = React.useState<Project[]>([]);
+  const [rawBooks, setRawBooks] = React.useState<RawBook[]>([]);
+  const [documents, setDocuments] = React.useState<AppDocument[]>([]);
+  const [auditLogs, setAuditLogs] = React.useState<EnrichedAuditLog[]>([]);
+  const [processingLogs, setProcessingLogs] = React.useState<ProcessingLog[]>([]);
+  const [roles, setRoles] = React.useState<string[]>([]);
+  const [permissions, setPermissions] = React.useState<Permissions>({});
+  const [projectWorkflows, setProjectWorkflows] = React.useState<ProjectWorkflows>({});
+  const [rejectionTags, setRejectionTags] = React.useState<RejectionTag[]>([]);
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
   const { toast } = useToast();
   
-  // Auto-login on mount
   React.useEffect(() => {
-    const storedUserId = localStorage.getItem('flowvault_userid');
-    if (storedUserId) {
-      const user = initialUsers.find(u => u.id === storedUserId);
-      if (user) {
-        setCurrentUser(user);
-      }
-    }
-  }, [initialUsers]);
+    const loadData = async () => {
+        try {
+            setLoading(true);
+            const [
+                clientsData, usersData, projectsData, booksData, 
+                docsData, auditData, processingData, permissionsData, 
+                rolesData, workflowsData, rejectionData, statusesData
+            ] = await Promise.all([
+                dataApi.getClients(), dataApi.getUsers(), dataApi.getRawProjects(),
+                dataApi.getRawBooks(), dataApi.getRawDocuments(), dataApi.getAuditLogs(),
+                dataApi.getProcessingLogs(), dataApi.getPermissions(), dataApi.getRoles(),
+                dataApi.getProjectWorkflows(), dataApi.getRejectionTags(), dataApi.getDocumentStatuses()
+            ]);
+
+            setClients(clientsData);
+            setUsers(usersData);
+            setRawProjects(projectsData);
+            setRawBooks(booksData);
+
+            const enrichedAuditLogs = auditData
+                .map(log => ({ ...log, user: usersData.find(u => u.id === log.userId)?.name || 'Unknown' }))
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            setAuditLogs(enrichedAuditLogs);
+
+            const enrichedDocs = docsData.map(doc => ({
+                ...doc,
+                client: clientsData.find(c => c.id === doc.clientId)?.name || 'Unknown',
+                status: statusesData.find(s => s.id === doc.statusId)?.name || 'Unknown'
+            }));
+            setDocuments(enrichedDocs);
+
+            setProcessingLogs(processingData);
+            setPermissions(permissionsData);
+            setRoles(rolesData);
+            setProjectWorkflows(workflowsData);
+            setRejectionTags(rejectionData);
+
+            const storedUserId = localStorage.getItem('flowvault_userid');
+            if (storedUserId) {
+                const user = usersData.find(u => u.id === storedUserId);
+                if (user) setCurrentUser(user);
+            }
+        } catch (error) {
+            console.error("Failed to load initial data", error);
+            toast({
+                title: "Error Loading Data",
+                description: "Could not connect to the server. Please check your connection and refresh.",
+                variant: "destructive"
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+    loadData();
+  }, [toast]);
+
 
   const login = (username: string, password: string): User | null => {
     const user = users.find(u => u.username === username && u.password === password);
@@ -1088,7 +1114,8 @@ export function AppProvider({
   }, [documents, booksForContext, selectedProjectId]);
 
 
-  const value = { 
+  const value: AppContextType = { 
+    loading,
     currentUser, login, logout, changePassword,
     clients, users, scannerUsers, indexerUsers, qcUsers,
     projects: projectsForContext, 
