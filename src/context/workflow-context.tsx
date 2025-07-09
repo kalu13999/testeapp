@@ -921,6 +921,12 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const handleSendToStorage = async (bookId: string, payload: { actualPageCount: number }) => {
     const book = rawBooks.find(b => b.id === bookId);
     if (!book) return;
+    
+    const project = rawProjects.find(p => p.id === book.projectId);
+    if (!project) {
+        toast({ title: "Error", description: `Could not find project for book "${book.name}".`, variant: "destructive" });
+        return;
+    }
 
     try {
       const response = await fetch(`/api/books/${bookId}/complete-scan`, {
@@ -929,7 +935,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         body: JSON.stringify({ 
           actualPageCount: payload.actualPageCount,
           bookName: book.name,
-          clientId: book.clientId,
+          clientId: project.clientId,
           projectId: book.projectId
         }),
       });
