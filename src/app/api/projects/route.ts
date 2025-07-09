@@ -32,14 +32,23 @@ export async function POST(request: Request) {
         }
         
         const newProjectId = `proj_${Date.now()}`;
-        const newProject = { id: newProjectId, ...projectData };
-
+        
         connection = await getConnection();
         await connection.beginTransaction();
 
         // Insert into projects table
         const projectQuery = 'INSERT INTO projects (id, name, clientId, description, startDate, endDate, budget, status, info) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
-        const projectValues = [newProjectId, name, clientId, description, startDate, endDate, budget, status, info];
+        const projectValues = [
+            newProjectId, 
+            name, 
+            clientId, 
+            description, 
+            startDate, 
+            endDate, 
+            budget, 
+            status, 
+            info || null
+        ];
         await connection.execute(projectQuery, projectValues);
         
         // Insert default workflow
@@ -48,6 +57,9 @@ export async function POST(request: Request) {
         
         await connection.commit();
         
+        const [rows] = await connection.execute('SELECT * FROM projects WHERE id = ?', [newProjectId]);
+        const newProject = Array.isArray(rows) ? rows[0] : null;
+
         releaseConnection(connection);
         return NextResponse.json(newProject, { status: 201 });
     } catch (error) {
