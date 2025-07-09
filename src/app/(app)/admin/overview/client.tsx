@@ -37,7 +37,8 @@ import {
 import { AlertTriangle, BookCopy, UserCheck, BarChart2, Activity, TrendingUp, CheckCircle2 } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import { useMemo } from "react"
-import type { EnrichedBook, EnrichedAuditLog } from "@/context/workflow-context"
+import type { EnrichedAuditLog } from "@/context/workflow-context"
+import type { EnrichedBook } from "@/lib/data"
 import Link from "next/link"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { subDays, format } from "date-fns"
@@ -96,7 +97,7 @@ function SystemOverviewTab() {
             { title: "Finalized Books", value: finalizedBooks.length.toLocaleString(), icon: CheckCircle2, description: "Books that are approved", items: finalizedBooks, type: 'books' },
             { title: "Pending Client Action", value: pendingClientActionBooks.length.toLocaleString(), icon: UserCheck, description: "Batches awaiting client approval", items: pendingClientActionBooks, type: 'books' },
             { title: "SLA Warnings", value: slaWarningProjects.length.toLocaleString(), icon: AlertTriangle, description: "Projects past their due date", items: slaWarningBooks, type: 'books' },
-            { title: "Actions Today", value: processedTodayLogs.length.toLocaleString(), icon: Activity, description: "Any action performed today", items: processedTodayLogs, type: 'activities' },
+            { title: "Actions Today", value: actionsTodayLogs.length.toLocaleString(), icon: Activity, description: "Any action performed today", items: processedTodayLogs, type: 'activities' },
         ];
 
         const orderedStageNames = [
