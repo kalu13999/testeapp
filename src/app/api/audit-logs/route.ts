@@ -6,7 +6,7 @@ export async function GET() {
   let connection: PoolConnection | null = null;
   try {
     connection = await getConnection();
-    const [rows] = await connection.execute('SELECT * FROM audit_logs');
+    const [rows] = await connection.execute('SELECT * FROM audit_logs ORDER BY date DESC');
     return NextResponse.json(rows);
   } catch (error) {
     console.error("Error fetching audit_logs:", error);
@@ -16,4 +16,29 @@ export async function GET() {
       releaseConnection(connection);
     }
   }
+}
+
+export async function POST(request: Request) {
+    let connection: PoolConnection | null = null;
+    try {
+        const logData = await request.json();
+        const { action, details, userId, date, bookId, documentId } = logData;
+        
+        const newId = `al_${Date.now()}`;
+        const newLog = { id: newId, ...logData };
+        
+        connection = await getConnection();
+        const query = 'INSERT INTO audit_logs (id, action, details, userId, date, bookId, documentId) VALUES (?, ?, ?, ?, ?, ?, ?)';
+        const values = [newId, action, details, userId, date, bookId, documentId];
+        
+        await connection.execute(query, values);
+        
+        releaseConnection(connection);
+        return NextResponse.json(newLog, { status: 201 });
+    } catch (error) {
+        console.error("Error creating audit log:", error);
+        return NextResponse.json({ error: 'Failed to create audit log' }, { status: 500 });
+    } finally {
+        if (connection && connection.connection) releaseConnection(connection);
+    }
 }

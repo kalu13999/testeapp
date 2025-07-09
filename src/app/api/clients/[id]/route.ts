@@ -21,3 +21,55 @@ export async function GET(request: Request, { params }: { params: { id: string }
     }
   }
 }
+
+export async function PUT(request: Request, { params }: { params: { id: string } }) {
+    const { id } = params;
+    let connection: PoolConnection | null = null;
+    try {
+        const clientData = await request.json();
+        
+        connection = await getConnection();
+        const query = 'UPDATE clients SET name = ?, contactEmail = ?, contactPhone = ?, address = ?, website = ?, since = ?, info = ? WHERE id = ?';
+        const values = [
+            clientData.name, 
+            clientData.contactEmail, 
+            clientData.contactPhone, 
+            clientData.address, 
+            clientData.website, 
+            clientData.since, 
+            clientData.info, 
+            id
+        ];
+        
+        await connection.execute(query, values);
+        
+        releaseConnection(connection);
+        return NextResponse.json({ id, ...clientData });
+    } catch (error) {
+        console.error(`Error updating client ${id}:`, error);
+        return NextResponse.json({ error: 'Failed to update client' }, { status: 500 });
+    } finally {
+        if (connection && connection.connection) releaseConnection(connection);
+    }
+}
+
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+    const { id } = params;
+    let connection: PoolConnection | null = null;
+    try {
+        connection = await getConnection();
+        await connection.execute('DELETE FROM clients WHERE id = ?', [id]);
+        
+        releaseConnection(connection);
+        return new Response(null, { status: 204 });
+    } catch (error: any) {
+        console.error(`Error deleting client ${id}:`, error);
+        // Check for foreign key constraint error (code for MariaDB/MySQL)
+        if (error.code === 'ER_ROW_IS_REFERENCED_2') {
+             return NextResponse.json({ error: 'Cannot delete client with associated projects.' }, { status: 409 });
+        }
+        return NextResponse.json({ error: 'Failed to delete client' }, { status: 500 });
+    } finally {
+        if (connection && connection.connection) releaseConnection(connection);
+    }
+}

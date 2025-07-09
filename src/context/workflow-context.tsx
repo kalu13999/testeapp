@@ -52,14 +52,14 @@ type AppContextType = {
   setSelectedProjectId: (projectId: string | null) => void;
 
   // Client Actions
-  addClient: (clientData: Omit<Client, 'id'>) => void;
-  updateClient: (clientId: string, clientData: Partial<Omit<Client, 'id'>>) => void;
-  deleteClient: (clientId: string) => void;
+  addClient: (clientData: Omit<Client, 'id'>) => Promise<void>;
+  updateClient: (clientId: string, clientData: Partial<Omit<Client, 'id'>>) => Promise<void>;
+  deleteClient: (clientId: string) => Promise<void>;
 
   // User Actions
-  addUser: (userData: UserFormValues) => void;
-  updateUser: (userId: string, userData: Partial<UserFormValues>) => void;
-  deleteUser: (userId: string) => void;
+  addUser: (userData: UserFormValues) => Promise<void>;
+  updateUser: (userId: string, userData: Partial<UserFormValues>) => Promise<void>;
+  deleteUser: (userId: string) => Promise<void>;
   toggleUserStatus: (userId: string) => void;
   updateUserDefaultProject: (userId: string, projectId: string | null) => void;
   
@@ -237,16 +237,25 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     ids: { bookId?: string, documentId?: string }
   ) => {
     if (!currentUser) return;
-    const newLogEntry: Omit<AuditLog, 'id'> = {
-      action,
-      details,
-      userId: currentUser.id,
-      date: new Date().toISOString(),
-      ...ids,
-    };
-    // This part should be an API call in the future
-    // For now, we update local state
-    setAuditLogs(prev => [{ ...newLogEntry, id: `al_${Date.now()}`, user: currentUser.name }, ...prev]);
+    try {
+        const logData: Omit<AuditLog, 'id'> = {
+            action,
+            details,
+            userId: currentUser.id,
+            date: new Date().toISOString(),
+            ...ids,
+        };
+        const response = await fetch('/api/audit-logs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(logData),
+        });
+        if (!response.ok) throw new Error('Failed to create audit log');
+        const newLog = await response.json();
+        setAuditLogs(prev => [{ ...newLog, user: currentUser.name }, ...prev]);
+    } catch (error) {
+        console.error("Failed to save audit log:", error);
+    }
   }, [currentUser]);
 
   // --- Memoized Data Enrichment ---
@@ -301,34 +310,79 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
   // --- CRUD ACTIONS ---
 
-  const addClient = (clientData: Omit<Client, 'id'>) => {
-    const newClient: Client = { id: `cl_${Date.now()}`, ...clientData };
-    setClients(prev => [...prev, newClient]);
-    logAction('Client Created', `New client "${newClient.name}" added.`, {});
-    toast({ title: "Client Added", description: `Client "${newClient.name}" has been created.` });
-  };
-
-  const updateClient = (clientId: string, clientData: Partial<Omit<Client, 'id'>>) => {
-    setClients(prev => prev.map(c => c.id === clientId ? { ...c, ...clientData } : c));
-    logAction('Client Updated', `Details for "${clientData.name}" updated.`, {});
-    toast({ title: "Client Updated", description: "Client details have been saved." });
-  };
-
-  const deleteClient = (clientId: string) => {
-    const clientToDelete = clients.find(c => c.id === clientId);
-    const associatedProjectIds = rawProjects.filter(p => p.clientId === clientId).map(p => p.id);
-    
-    setClients(prev => prev.filter(c => c.id !== clientId));
-    setRawProjects(prev => prev.filter(p => p.clientId !== clientId));
-    setRawBooks(prev => prev.filter(b => !associatedProjectIds.includes(b.projectId)));
-    setDocuments(prev => prev.filter(d => d.clientId !== clientId));
-    setRejectionTags(prev => prev.filter(t => t.clientId !== clientId));
-
-    if (associatedProjectIds.includes(selectedProjectId!)) {
-        setSelectedProjectId(null);
+  const addClient = async (clientData: Omit<Client, 'id'>) => {
+    try {
+        const response = await fetch('/api/clients', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(clientData),
+        });
+        if (!response.ok) throw new Error('Failed to create client');
+        
+        const newClient = await response.json();
+        
+        setClients(prev => [...prev, newClient].sort((a, b) => a.name.localeCompare(b.name)));
+        logAction('Client Created', `New client "${newClient.name}" added.`, {});
+        toast({ title: "Client Added", description: `Client "${newClient.name}" has been created.` });
+    } catch (error) {
+        console.error(error);
+        toast({ title: "Error", description: "Could not create client.", variant: "destructive" });
     }
-    logAction('Client Deleted', `Client "${clientToDelete?.name}" and all data deleted.`, {});
-    toast({ title: "Client Deleted", description: "Client and all associated projects/data have been deleted.", variant: "destructive" });
+  };
+
+  const updateClient = async (clientId: string, clientData: Partial<Omit<Client, 'id'>>) => {
+    try {
+        const originalClient = clients.find(c => c.id === clientId);
+        const updatedClient = { ...originalClient, ...clientData };
+
+        const response = await fetch(`/api/clients/${clientId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedClient),
+        });
+        if (!response.ok) throw new Error('Failed to update client');
+        
+        setClients(prev => prev.map(c => c.id === clientId ? updatedClient as Client : c));
+        logAction('Client Updated', `Details for "${clientData.name}" updated.`, {});
+        toast({ title: "Client Updated", description: "Client details have been saved." });
+    } catch (error) {
+        console.error(error);
+        toast({ title: "Error", description: "Could not update client.", variant: "destructive" });
+    }
+  };
+
+  const deleteClient = async (clientId: string) => {
+    const clientToDelete = clients.find(c => c.id === clientId);
+    try {
+        const response = await fetch(`/api/clients/${clientId}`, {
+            method: 'DELETE',
+        });
+        
+        if (!response.ok) {
+            if (response.status === 409) { // Conflict
+                 toast({ title: "Deletion Failed", description: "Cannot delete client with associated projects. Please reassign or delete projects first.", variant: "destructive" });
+                 return;
+            }
+            throw new Error('Failed to delete client');
+        }
+        
+        const associatedProjectIds = rawProjects.filter(p => p.clientId === clientId).map(p => p.id);
+        
+        setClients(prev => prev.filter(c => c.id !== clientId));
+        setRawProjects(prev => prev.filter(p => p.clientId !== clientId));
+        setRawBooks(prev => prev.filter(b => !associatedProjectIds.includes(b.projectId)));
+        setDocuments(prev => prev.filter(d => d.clientId !== clientId));
+        setRejectionTags(prev => prev.filter(t => t.clientId !== clientId));
+
+        if (associatedProjectIds.includes(selectedProjectId!)) {
+            setSelectedProjectId(null);
+        }
+        logAction('Client Deleted', `Client "${clientToDelete?.name}" was deleted.`, {});
+        toast({ title: "Client Deleted", description: "The client has been deleted.", variant: "destructive" });
+    } catch (error) {
+        console.error(error);
+        toast({ title: "Error", description: "Could not delete client.", variant: "destructive" });
+    }
   };
   
   const addUser = async (userData: UserFormValues) => {
@@ -787,32 +841,32 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     let currentStageKey: string | null = null;
     let nextStatusKey: string | null = null;
     let newStatusName: string = '';
+    let logMsg = '';
     
     if (role === 'scanner') {
         currentStageKey = 'already-received';
         nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'to-scan']?.dataStatus || 'To Scan';
         updateBookStatus(bookId, newStatusName, () => ({ scannerUserId: userId }));
-        logAction('Assigned to Scanner', `Book "${book.name}" assigned to ${user.name}.`, { bookId });
-        toast({ title: "Book Assigned", description: `Assigned to ${user.name} for scanning.` });
+        logMsg = 'Assigned to Scanner';
     } else if (role === 'indexer') {
         currentStageKey = 'storage';
         nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'to-indexing']?.dataStatus || 'To Indexing';
         updateBookStatus(bookId, newStatusName, () => ({ indexerUserId: userId }));
-        logAction('Assigned to Indexer', `Book "${book.name}" assigned to ${user.name}.`, { bookId });
-        toast({ title: "Book Assigned", description: `Assigned to ${user.name} for indexing.` });
+        logMsg = 'Assigned to Indexer';
     } else if (role === 'qc') {
         currentStageKey = 'indexing-started';
         nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'to-checking']?.dataStatus || 'To Checking';
         updateBookStatus(bookId, newStatusName, (b) => ({ qcUserId: userId, indexingStartTime: b.indexingStartTime || new Date().toISOString(), indexingEndTime: new Date().toISOString() }));
-        logAction('Assigned for QC', `Book "${book.name}" assigned to ${user.name}.`, { bookId });
-        toast({ title: "Book Assigned", description: `Assigned to ${user.name} for checking.` });
+        logMsg = 'Assigned for QC';
     }
     
     if (newStatusName) {
       moveBookDocuments(bookId, newStatusName);
+      logAction(logMsg, `Book "${book.name}" assigned to ${user.name}.`, { bookId });
+      toast({ title: "Book Assigned", description: `Assigned to ${user.name} for ${role}.` });
     }
   };
 
