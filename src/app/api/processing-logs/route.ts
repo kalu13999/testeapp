@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import { getConnection, releaseConnection } from '@/lib/db';
 import type { PoolConnection } from 'mysql2/promise';
@@ -23,14 +24,17 @@ export async function POST(request: Request) {
     try {
         const { bookId } = await request.json();
         
+        const now = new Date();
+        const dbSafeDate = now.toISOString().slice(0, 19).replace('T', ' ');
+
         const newLog = {
             id: `pl_${Date.now()}`,
             bookId,
             status: 'In Progress',
             progress: 0,
-            log: `[${new Date().toLocaleTimeString()}] Processing initiated.`,
-            startTime: new Date().toISOString(),
-            lastUpdate: new Date().toISOString(),
+            log: `[${now.toLocaleTimeString()}] Processing initiated.`,
+            startTime: dbSafeDate,
+            lastUpdate: dbSafeDate,
         };
         
         connection = await getConnection();
