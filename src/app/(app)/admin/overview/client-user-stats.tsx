@@ -15,11 +15,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { ArrowUp, ArrowDown, ChevronsUpDown, Download, User, UserCheck, UserX, Activity } from "lucide-react"
+import { ArrowUp, ArrowDown, ChevronsUpDown, Download, User, UserCheck, UserX, Users } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import { cn } from "@/lib/utils"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, Pie, PieChart, Cell } from "recharts"
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, Pie, PieChart } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast";
@@ -31,73 +31,55 @@ const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase()
 }
 
-type UserStat = {
+type ClientUserStat = {
   id: string;
   name: string;
   avatar?: string | null;
-  role: string;
+  clientName: string;
   status: "active" | "disabled";
-  totalActions: number;
-  scannedCount: number;
-  indexedCount: number;
-  checkedCount: number;
+  lastLogin?: string;
 };
 
-export function OperationalUserStatsTab() {
-  const { users, auditLogs } = useAppContext()
+export function ClientUserStatsTab() {
+  const { users, clients } = useAppContext()
   const [columnFilters, setColumnFilters] = React.useState<{ [key: string]: string }>({})
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([{ id: 'name', desc: false }])
   const [dialogState, setDialogState] = React.useState<{ open: boolean, title: string, items: UserData[] }>({ open: false, title: '', items: [] });
   const { toast } = useToast();
 
-  const operationalUsers = React.useMemo(() => users.filter(u => u.role !== 'System' && u.role !== 'Client'), [users]);
-
-  const userStats = React.useMemo((): UserStat[] => {
-    return operationalUsers.map(user => {
-      const userLogs = auditLogs.filter(log => log.userId === user.id)
-      const scannedCount = userLogs.filter(log => log.action === 'Scanning Finished').length
-      const indexedCount = userLogs.filter(log => log.action === 'Assigned for QC').length
-      const checkedCount = userLogs.filter(log => log.action === 'Initial QC Complete').length
-      
+  const clientUsers = React.useMemo(() => users.filter(u => u.role === 'Client'), [users]);
+  
+  const clientUserStats = React.useMemo((): ClientUserStat[] => {
+    return clientUsers.map(user => {
+      const clientName = clients.find(c => c.id === user.clientId)?.name || 'N/A';
       return {
         id: user.id,
         name: user.name,
         avatar: user.avatar,
-        role: user.role,
+        clientName: clientName,
         status: user.status,
-        totalActions: userLogs.length,
-        scannedCount,
-        indexedCount,
-        checkedCount
+        lastLogin: user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never',
       }
     })
-  }, [operationalUsers, auditLogs])
+  }, [clientUsers, clients]);
   
   const kpiData = React.useMemo(() => {
-    const mostActive = userStats.sort((a,b) => b.totalActions - a.totalActions)[0];
     return {
-        totalUsers: { value: operationalUsers.length, items: operationalUsers },
-        activeUsers: { value: operationalUsers.filter(u => u.status === 'active').length, items: operationalUsers.filter(u => u.status === 'active') },
-        disabledUsers: { value: operationalUsers.filter(u => u.status === 'disabled').length, items: operationalUsers.filter(u => u.status === 'disabled') },
-        mostActiveUser: { value: mostActive?.name || 'N/A', actions: mostActive?.totalActions || 0 }
+        totalUsers: { value: clientUsers.length, items: clientUsers },
+        activeUsers: { value: clientUsers.filter(u => u.status === 'active').length, items: clientUsers.filter(u => u.status === 'active') },
+        disabledUsers: { value: clientUsers.filter(u => u.status === 'disabled').length, items: clientUsers.filter(u => u.status === 'disabled') },
+        clientsWithUsers: { value: new Set(clientUsers.map(u => u.clientId)).size },
     };
-  }, [operationalUsers, userStats]);
+  }, [clientUsers]);
 
-  const usersByRoleChartData = React.useMemo(() => {
-    const byRole = operationalUsers.reduce((acc, user) => {
-        acc[user.role] = (acc[user.role] || 0) + 1;
+  const usersByClientChartData = React.useMemo(() => {
+    const byClient = clientUsers.reduce((acc, user) => {
+        const clientName = clients.find(c => c.id === user.clientId)?.name || 'Unknown';
+        acc[clientName] = (acc[clientName] || 0) + 1;
         return acc;
     }, {} as {[key: string]: number});
-    return Object.entries(byRole).map(([name, value]) => ({ name, value, fill: `hsl(${Math.random() * 360}, 70%, 50%)` }));
-  }, [operationalUsers]);
-  
-  const actionsPerUserChartData = React.useMemo(() => (
-    userStats.map(u => ({ name: u.name, actions: u.totalActions })).sort((a,b) => b.actions - a.actions).slice(0, 10)
-  ), [userStats]);
-  
-  const chartConfig: ChartConfig = {
-    actions: { label: "Actions", color: "hsl(var(--chart-1))" },
-  };
+    return Object.entries(byClient).map(([name, value]) => ({ name, value, fill: `hsl(${Math.random() * 360}, 70%, 50%)` }));
+  }, [clientUsers, clients]);
 
   const handleSort = (columnId: string) => {
     setSorting(currentSorting => {
@@ -115,7 +97,7 @@ export function OperationalUserStatsTab() {
   }
 
   const sortedAndFilteredUsers = React.useMemo(() => {
-    let filtered = userStats;
+    let filtered = clientUserStats;
     Object.entries(columnFilters).forEach(([columnId, value]) => {
       if (value) {
         filtered = filtered.filter(user => {
@@ -136,7 +118,7 @@ export function OperationalUserStatsTab() {
       })
     }
     return filtered
-  }, [userStats, columnFilters, sorting])
+  }, [clientUserStats, columnFilters, sorting])
 
   const downloadFile = (content: string, fileName: string, mimeType: string) => {
       const blob = new Blob([content], { type: mimeType });
@@ -152,18 +134,18 @@ export function OperationalUserStatsTab() {
   const exportData = (format: 'xlsx' | 'json' | 'csv') => {
     const data = sortedAndFilteredUsers;
     if (format === 'json') {
-        downloadFile(JSON.stringify(data, null, 2), 'operator_stats.json', 'application/json');
+        downloadFile(JSON.stringify(data, null, 2), 'client_users_stats.json', 'application/json');
     } else if (format === 'csv') {
         const headers = Object.keys(data[0] || {});
         const csvContent = [headers.join(','), ...data.map(d => headers.map(h => JSON.stringify(d[h as keyof typeof d])).join(','))].join('\n');
-        downloadFile(csvContent, 'operator_stats.csv', 'text/csv');
+        downloadFile(csvContent, 'client_users_stats.csv', 'text/csv');
     } else if (format === 'xlsx') {
         const worksheet = XLSX.utils.json_to_sheet(data);
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Operators');
-        XLSX.writeFile(workbook, 'operator_stats.xlsx');
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Client Users');
+        XLSX.writeFile(workbook, 'client_users_stats.xlsx');
     }
-    toast({ title: 'Export Complete', description: `${data.length} operators exported.` });
+    toast({ title: 'Export Complete', description: `${data.length} client users exported.` });
   };
   
   const handleKpiClick = (title: string, items: UserData[]) => {
@@ -173,47 +155,46 @@ export function OperationalUserStatsTab() {
   return (
     <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('All Operators', kpiData.totalUsers.items)}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Operators</CardTitle><User className="h-4 w-4 text-muted-foreground" /></CardHeader>
+            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('All Client Users', kpiData.totalUsers.items)}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Client Users</CardTitle><User className="h-4 w-4 text-muted-foreground" /></CardHeader>
                 <CardContent><div className="text-2xl font-bold">{kpiData.totalUsers.value}</div></CardContent>
             </Card>
-            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Active Operators', kpiData.activeUsers.items)}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Active Operators</CardTitle><UserCheck className="h-4 w-4 text-muted-foreground" /></CardHeader>
+            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Active Client Users', kpiData.activeUsers.items)}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Active Users</CardTitle><UserCheck className="h-4 w-4 text-muted-foreground" /></CardHeader>
                 <CardContent><div className="text-2xl font-bold">{kpiData.activeUsers.value}</div></CardContent>
             </Card>
-             <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Disabled Operators', kpiData.disabledUsers.items)}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Disabled Operators</CardTitle><UserX className="h-4 w-4 text-muted-foreground" /></CardHeader>
+             <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Disabled Client Users', kpiData.disabledUsers.items)}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Disabled Users</CardTitle><UserX className="h-4 w-4 text-muted-foreground" /></CardHeader>
                 <CardContent><div className="text-2xl font-bold">{kpiData.disabledUsers.value}</div></CardContent>
             </Card>
             <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Most Active Operator</CardTitle><Activity className="h-4 w-4 text-muted-foreground" /></CardHeader>
-                <CardContent><div className="text-2xl font-bold">{kpiData.mostActiveUser.value}</div><p className="text-xs text-muted-foreground">{kpiData.mostActiveUser.actions} actions recorded</p></CardContent>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Clients with Users</CardTitle><Users className="h-4 w-4 text-muted-foreground" /></CardHeader>
+                <CardContent><div className="text-2xl font-bold">{kpiData.clientsWithUsers.value}</div></CardContent>
             </Card>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
             <Card>
-                <CardHeader><CardTitle>Operators by Role</CardTitle></CardHeader>
+                <CardHeader><CardTitle>Client Users by Company</CardTitle></CardHeader>
                 <CardContent>
                      <ChartContainer config={{}} className="h-[250px] w-full">
                         <PieChart>
                             <Tooltip content={<ChartTooltipContent hideLabel />} />
-                            <Pie data={usersByRoleChartData} dataKey="value" nameKey="name" innerRadius={50} />
+                            <Pie data={usersByClientChartData} dataKey="value" nameKey="name" innerRadius={50} />
                         </PieChart>
                      </ChartContainer>
                 </CardContent>
             </Card>
             <Card>
-                <CardHeader><CardTitle>Top 10 Operators by Actions</CardTitle></CardHeader>
+                <CardHeader><CardTitle>Users by Status</CardTitle></CardHeader>
                 <CardContent>
-                    <ChartContainer config={chartConfig} className="h-[250px] w-full">
-                        <BarChart data={actionsPerUserChartData} layout="vertical" margin={{ left: 20 }}>
-                            <CartesianGrid horizontal={false} />
-                            <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} width={100} />
-                            <XAxis dataKey="actions" type="number" hide />
-                            <Tooltip cursor={{ fill: "hsl(var(--muted))" }} content={<ChartTooltipContent />} />
-                            <Bar dataKey="actions" radius={4} fill="var(--color-actions)" />
-                        </BarChart>
+                    <ChartContainer config={{}} className="h-[250px] w-full">
+                       <BarChart data={[{name: 'Active', value: kpiData.activeUsers.value, fill: 'hsl(var(--chart-1))'}, {name: 'Disabled', value: kpiData.disabledUsers.value, fill: 'hsl(var(--destructive))'}]} layout="vertical">
+                         <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} />
+                         <XAxis type="number" hide />
+                         <Tooltip cursor={{ fill: "hsl(var(--muted))" }} content={<ChartTooltipContent />} />
+                         <Bar dataKey="value" radius={4} />
+                       </BarChart>
                     </ChartContainer>
                 </CardContent>
             </Card>
@@ -223,8 +204,8 @@ export function OperationalUserStatsTab() {
         <CardHeader>
             <div className="flex justify-between items-center">
                 <div>
-                    <CardTitle>Operator Productivity</CardTitle>
-                    <CardDescription>An overview of key productivity metrics for each operator.</CardDescription>
+                    <CardTitle>Client User Accounts</CardTitle>
+                    <CardDescription>A list of all external client user accounts.</CardDescription>
                 </div>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" /> Export</Button></DropdownMenuTrigger>
@@ -243,18 +224,15 @@ export function OperationalUserStatsTab() {
             <TableHeader>
             <TableRow>
                 <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name')}>User {getSortIndicator('name')}</div></TableHead>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('role')}>Role {getSortIndicator('role')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('clientName')}>Client Company {getSortIndicator('clientName')}</div></TableHead>
                 <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('status')}>Status {getSortIndicator('status')}</div></TableHead>
-                <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('totalActions')}>Total Actions {getSortIndicator('totalActions')}</div></TableHead>
-                <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('scannedCount')}>Books Scanned {getSortIndicator('scannedCount')}</div></TableHead>
-                <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('indexedCount')}>Books Indexed {getSortIndicator('indexedCount')}</div></TableHead>
-                <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('checkedCount')}>Books Checked {getSortIndicator('checkedCount')}</div></TableHead>
+                <TableHead className="text-right"><div className="flex items-center justify-end gap-2 cursor-pointer select-none group" onClick={() => handleSort('lastLogin')}>Last Login {getSortIndicator('lastLogin')}</div></TableHead>
             </TableRow>
             <TableRow>
                 <TableHead><Input placeholder="Filter user..." value={columnFilters['name'] || ''} onChange={e => setColumnFilters(p => ({...p, name: e.target.value}))} className="h-8"/></TableHead>
-                <TableHead><Input placeholder="Filter role..." value={columnFilters['role'] || ''} onChange={e => setColumnFilters(p => ({...p, role: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filter company..." value={columnFilters['clientName'] || ''} onChange={e => setColumnFilters(p => ({...p, clientName: e.target.value}))} className="h-8"/></TableHead>
                 <TableHead><Input placeholder="Filter status..." value={columnFilters['status'] || ''} onChange={e => setColumnFilters(p => ({...p, status: e.target.value}))} className="h-8"/></TableHead>
-                <TableHead colSpan={4}><Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Clear Filters</Button></TableHead>
+                <TableHead><div className="flex items-center justify-between"><Input placeholder="Filter login..." value={columnFilters['lastLogin'] || ''} onChange={e => setColumnFilters(p => ({...p, lastLogin: e.target.value}))} className="h-8"/><Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Clear Filters</Button></div></TableHead>
             </TableRow>
             </TableHeader>
             <TableBody>
@@ -269,12 +247,9 @@ export function OperationalUserStatsTab() {
                         <span className="font-medium">{user.name}</span>
                     </div>
                 </TableCell>
-                <TableCell><Badge variant="secondary">{user.role}</Badge></TableCell>
+                <TableCell>{user.clientName}</TableCell>
                 <TableCell><Badge variant={user.status === 'active' ? 'default' : 'destructive'} className={cn("capitalize", user.status === 'active' && "bg-green-600")}>{user.status}</Badge></TableCell>
-                <TableCell className="text-center">{user.totalActions}</TableCell>
-                <TableCell className="text-center">{user.scannedCount}</TableCell>
-                <TableCell className="text-center">{user.indexedCount}</TableCell>
-                <TableCell className="text-center">{user.checkedCount}</TableCell>
+                <TableCell className="text-right">{user.lastLogin}</TableCell>
                 </TableRow>
             ))}
             </TableBody>

@@ -44,7 +44,8 @@ import { subDays, format } from "date-fns"
 import { Input } from "@/components/ui/input"
 import { ProjectStatsTab } from "./project-stats"
 import { ClientStatsTab } from "./client-stats"
-import { UserStatsTab } from "./user-stats"
+import { OperationalUserStatsTab } from "./user-stats"
+import { ClientUserStatsTab } from "./client-user-stats"
 import { HistoryStatsTab } from "./history-stats"
 
 const kpiIconMap: { [key: string]: React.ElementType } = {
@@ -299,11 +300,12 @@ export default function GlobalOverviewClient() {
     <div className="flex flex-col gap-6">
         <h1 className="font-headline text-3xl font-bold tracking-tight">Global Overview</h1>
         <Tabs defaultValue="system">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
                 <TabsTrigger value="system">System Health</TabsTrigger>
                 <TabsTrigger value="projects">By Project</TabsTrigger>
                 <TabsTrigger value="clients">By Client</TabsTrigger>
-                <TabsTrigger value="users">By User</TabsTrigger>
+                <TabsTrigger value="operators">By Operator</TabsTrigger>
+                <TabsTrigger value="client-users">By Client User</TabsTrigger>
                 <TabsTrigger value="history">History</TabsTrigger>
             </TabsList>
             <TabsContent value="system" className="pt-4">
@@ -315,8 +317,11 @@ export default function GlobalOverviewClient() {
             <TabsContent value="clients" className="pt-4">
                 <ClientStatsTab />
             </TabsContent>
-            <TabsContent value="users" className="pt-4">
-                <UserStatsTab />
+            <TabsContent value="operators" className="pt-4">
+                <OperationalUserStatsTab />
+            </TabsContent>
+            <TabsContent value="client-users" className="pt-4">
+                <ClientUserStatsTab />
             </TabsContent>
             <TabsContent value="history" className="pt-4">
                 <HistoryStatsTab />
