@@ -34,8 +34,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Progress } from "@/components/ui/progress"
-import { AlertTriangle, BookCopy, CheckCircle2, UserCheck, BarChart2, ListTodo, Activity, TrendingUp, ScanLine, Clock, ThumbsUp, Package, Send, FileClock, CheckCheck, ArrowDownToLine } from "lucide-react"
+import { AlertTriangle, BookCopy, UserCheck, BarChart2, ListTodo, Activity, TrendingUp, ScanLine, Clock, ThumbsUp, Package, Send, FileClock, CheckCheck, ArrowDownToLine } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import { useMemo } from "react"
 import type { EnrichedBook, AppDocument, EnrichedProject, EnrichedAuditLog, User } from "@/context/workflow-context"
@@ -43,6 +42,9 @@ import Link from "next/link"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { subDays, format } from "date-fns"
 import { Input } from "@/components/ui/input"
+import { ProjectStatsTab } from "./project-stats"
+import { ClientStatsTab } from "./client-stats"
+import { UserStatsTab } from "./user-stats"
 
 const kpiIconMap: { [key: string]: React.ElementType } = {
     "Books in Workflow": BookCopy,
@@ -65,14 +67,6 @@ type ChartData = {
     count: number;
 }
 
-type ProjectProgressData = {
-    id: string;
-    name: string;
-    client: string;
-    progress: number;
-    status: string;
-}
-
 const getStatusBadgeVariant = (status: string) => {
     switch (status) {
         case 'Complete': return 'default';
@@ -82,8 +76,8 @@ const getStatusBadgeVariant = (status: string) => {
     }
 }
 
-export default function GlobalOverviewClient() {
-    const { allProjects, auditLogs } = useAppContext();
+function SystemOverviewTab() {
+  const { allProjects, auditLogs } = useAppContext();
     const [chartType, setChartType] = React.useState<'bar' | 'line' | 'area'>('bar');
     const [detailState, setDetailState] = React.useState<{
       open: boolean;
@@ -180,15 +174,10 @@ export default function GlobalOverviewClient() {
             };
         });
 
-        const recentActivities = auditLogs.slice(0, 7);
-        const projectProgressData: ProjectProgressData[] = allProjects.map(p => ({
-            id: p.id, name: p.name, client: p.clientName, progress: p.progress, status: p.status
-        }));
-
-        return { kpiData, chartData, dailyChartData, recentActivities, projectProgressData, booksByStage, allRelevantAuditLogs: auditLogs };
+        return { kpiData, chartData, dailyChartData, booksByStage, allRelevantAuditLogs: auditLogs };
     }, [allProjects, auditLogs]);
 
-    const { kpiData, chartData, dailyChartData, recentActivities, projectProgressData, booksByStage, allRelevantAuditLogs } = dashboardData;
+    const { kpiData, chartData, dailyChartData, booksByStage, allRelevantAuditLogs } = dashboardData;
     
     const workflowChartConfig = { count: { label: "Books", color: "hsl(var(--primary))" } } satisfies ChartConfig;
     const ChartComponent = { bar: BarChart, line: LineChart, area: AreaChart }[chartType];
@@ -253,7 +242,6 @@ export default function GlobalOverviewClient() {
     return (
       <>
         <div className="flex flex-col gap-6">
-            <h1 className="font-headline text-3xl font-bold tracking-tight">Global Overview</h1>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {kpiData.map((kpi) => (
                     <Card key={kpi.title} onClick={() => handleKpiClick(kpi)} className={kpi.items && kpi.items.length > 0 ? "cursor-pointer transition-colors hover:bg-muted/50" : ""}>
@@ -306,31 +294,6 @@ export default function GlobalOverviewClient() {
                         </ChartContainer>
                     </CardContent>
                 </Card>
-                {projectProgressData.length > 0 && (
-                    <Card>
-                        <CardHeader><CardTitle className="font-headline flex items-center gap-2"><ListTodo className="h-5 w-5" /> Project Health</CardTitle><CardDescription>Overview of all active and recently completed projects.</CardDescription></CardHeader>
-                        <CardContent>
-                            <Table><TableHeader><TableRow><TableHead>Project Name</TableHead><TableHead>Client</TableHead><TableHead>Status</TableHead><TableHead className="w-[200px]">Progress</TableHead></TableRow></TableHeader>
-                                <TableBody>
-                                    {projectProgressData.map(project => (<TableRow key={project.id}><TableCell className="font-medium"><Link href={`/projects/${project.id}`} className="hover:underline">{project.name}</Link></TableCell><TableCell>{project.client}</TableCell><TableCell><Badge variant={getStatusBadgeVariant(project.status)}>{project.status}</Badge></TableCell><TableCell><Progress value={project.progress} className="h-2"/></TableCell></TableRow>))}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
-                )}
-                <Card>
-                    <CardHeader><CardTitle className="font-headline flex items-center gap-2"><Activity className="h-5 w-5" /> Recent Activity</CardTitle><CardDescription>Latest actions performed across the system.</CardDescription></CardHeader>
-                    <CardContent>
-                        <Table><TableHeader><TableRow><TableHead>Details</TableHead><TableHead>User</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
-                            <TableBody>
-                                {recentActivities.length > 0 ? recentActivities.map(activity => {
-                                    const targetLink = activity.documentId ? `/documents/${activity.documentId}` : (activity.bookId ? `/books/${activity.bookId}` : '#');
-                                    return (<TableRow key={activity.id}><TableCell><Link href={targetLink} className="font-medium truncate hover:underline">{activity.action}</Link><div className="text-xs text-muted-foreground truncate">{activity.details}</div></TableCell><TableCell>{activity.user}</TableCell><TableCell className="text-xs">{new Date(activity.date).toLocaleString()}</TableCell></TableRow>)
-                                }) : (<TableRow><TableCell colSpan={3} className="h-24 text-center">No recent activity.</TableCell></TableRow>)}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
             </div>
         </div>
 
@@ -353,4 +316,56 @@ export default function GlobalOverviewClient() {
         </Dialog>
       </>
     )
+}
+
+export default function GlobalOverviewClient() {
+  return (
+    <div className="flex flex-col gap-6">
+        <h1 className="font-headline text-3xl font-bold tracking-tight">Global Overview</h1>
+        <Tabs defaultValue="system">
+            <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="system">System Health</TabsTrigger>
+                <TabsTrigger value="projects">By Project</TabsTrigger>
+                <TabsTrigger value="clients">By Client</TabsTrigger>
+                <TabsTrigger value="users">By User</TabsTrigger>
+            </TabsList>
+            <TabsContent value="system" className="pt-4">
+                <SystemOverviewTab />
+            </TabsContent>
+            <TabsContent value="projects" className="pt-4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Project Statistics</CardTitle>
+                        <CardDescription>An overview of metrics for each project across the system.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ProjectStatsTab />
+                    </CardContent>
+                </Card>
+            </TabsContent>
+            <TabsContent value="clients" className="pt-4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Client Statistics</CardTitle>
+                        <CardDescription>An aggregated overview of metrics for each client.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ClientStatsTab />
+                    </CardContent>
+                </Card>
+            </TabsContent>
+            <TabsContent value="users" className="pt-4">
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>User Productivity</CardTitle>
+                        <CardDescription>An overview of key productivity metrics for each user.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <UserStatsTab />
+                    </CardContent>
+                </Card>
+            </TabsContent>
+        </Tabs>
+    </div>
+  )
 }
