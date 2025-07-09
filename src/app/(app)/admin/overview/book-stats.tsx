@@ -236,8 +236,6 @@ export function BookStatsTab() {
                             data={booksByStatusChartData}
                             dataKey="value"
                             nameKey="name"
-                            innerRadius={60}
-                            strokeWidth={5}
                         >
                             {booksByStatusChartData.map((entry) => (
                                 <Cell key={entry.name} fill={statusChartConfig[entry.name]?.color} />
