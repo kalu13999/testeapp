@@ -4,6 +4,7 @@
 import * as React from "react"
 import * as XLSX from 'xlsx';
 import Link from "next/link";
+import { format } from "date-fns";
 import {
   Card,
   CardContent,
@@ -266,28 +267,26 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
   return (
     <>
       <div className="space-y-6">
-        <div className="flex items-start justify-between">
-            <div>
-              <CardTitle className="font-headline text-3xl tracking-tight">{project.name}</CardTitle>
-              <CardDescription className="text-base">{project.clientName}</CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => setIsEditDialogOpen(true)}>
-                <Edit className="mr-2 h-4 w-4"/>
-                Edit Project
-              </Button>
-            </div>
-        </div>
-        
         <Card>
             <CardHeader>
-                <CardTitle>Project Summary</CardTitle>
+              <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle className="font-headline text-3xl tracking-tight">{project.name}</CardTitle>
+                    <CardDescription className="text-base">{project.clientName}</CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" onClick={() => setIsEditDialogOpen(true)}>
+                      <Edit className="mr-2 h-4 w-4"/>
+                      Edit Project
+                    </Button>
+                  </div>
+              </div>
             </CardHeader>
             <CardContent className="space-y-3">
                 <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <DetailItem label="Status" value={<Badge variant={getStatusBadgeVariant(project.status)}>{project.status}</Badge>} />
                   <DetailItem label="Budget" value={`$${project.budget.toLocaleString()}`} />
-                  <DetailItem label="Timeline" value={`${project.startDate} to ${project.endDate}`} />
+                  <DetailItem label="Timeline" value={`${format(new Date(project.startDate), "LLL d, y")} to ${format(new Date(project.endDate), "LLL d, y")}`} />
                    <div className="space-y-2">
                        <DetailItem label="Total Pages" value={`${project.documentCount.toLocaleString()} / ${project.totalExpected.toLocaleString()}`} />
                        <Progress value={project.progress} />
@@ -574,5 +573,3 @@ function WorkflowConfigDialog({ open, onOpenChange, projectName, currentWorkflow
     </Dialog>
   )
 }
-
-    
