@@ -1,3 +1,4 @@
+
 "use client"
 
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, LineChart, AreaChart, Line, Area } from "recharts"
@@ -33,10 +34,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { AlertTriangle, BookCopy, UserCheck, BarChart2, ListTodo, Activity, TrendingUp, ScanLine, Clock, ThumbsUp, Package, Send, FileClock, CheckCheck, ArrowDownToLine, CheckCircle2, History } from "lucide-react"
+import { AlertTriangle, BookCopy, UserCheck, BarChart2, Activity, TrendingUp, CheckCircle2 } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import { useMemo } from "react"
-import type { EnrichedBook, AppDocument, EnrichedProject, EnrichedAuditLog, User } from "@/context/workflow-context"
+import type { EnrichedBook, EnrichedAuditLog } from "@/context/workflow-context"
 import Link from "next/link"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { subDays, format } from "date-fns"
@@ -67,15 +68,6 @@ type ChartData = {
     count: number;
 }
 
-const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-        case 'Complete': return 'default';
-        case 'In Progress': return 'secondary';
-        case 'On Hold': return 'outline';
-        default: return 'outline';
-    }
-}
-
 function SystemOverviewTab() {
   const { allProjects, auditLogs } = useAppContext();
     const [chartType, setChartType] = React.useState<'bar' | 'line' | 'area'>('bar');
@@ -90,38 +82,24 @@ function SystemOverviewTab() {
     const dashboardData = useMemo(() => {
         const books = allProjects.flatMap(p => p.books);
         
-        // --- KPI CALCULATIONS ---
-        const pendingShippingBooks = books.filter(b => b.status === 'Pending Shipment');
-        const inTransitBooks = books.filter(b => b.status === 'In Transit');
-        const receivedAtFacilityBooks = books.filter(b => b.status === 'Received');
         const pendingClientActionBooks = books.filter(book => book.status === 'Pending Validation');
-        const booksInWorkflowBooks = books.filter(b => !['Archived', 'Pending Shipment'].includes(b.status));
+        const booksInWorkflowBooks = books.filter(b => !['Archived', 'Pending Shipment', 'Finalized', 'Complete'].includes(b.status));
         const finalizedBooks = books.filter(b => b.status === 'Finalized');
-
         const slaWarningProjects = allProjects.filter(p => p.status === 'In Progress' && new Date(p.endDate) < new Date());
         const slaWarningBooks = slaWarningProjects.flatMap(p => p.books.filter(book => book.status === 'In Progress'));
-
         const today = new Date().toISOString().slice(0, 10);
         const processedTodayLogs = auditLogs.filter(d => d.date.startsWith(today));
 
         const kpiData: KpiData[] = [
-            { title: "Pending Shipping", value: pendingShippingBooks.length.toLocaleString(), icon: Package, description: "Batches awaiting client shipment", items: pendingShippingBooks, type: 'books' },
-            { title: "In Transit", value: inTransitBooks.length.toLocaleString(), icon: Send, description: "Batches shipped by clients", items: inTransitBooks, type: 'books' },
-            { title: "Received by Us", value: receivedAtFacilityBooks.length.toLocaleString(), icon: ArrowDownToLine, description: "Batches confirmed at our facility", items: receivedAtFacilityBooks, type: 'books' },
+            { title: "Books in Workflow", value: booksInWorkflowBooks.length.toLocaleString(), icon: BookCopy, description: "All active books being processed", items: booksInWorkflowBooks, type: 'books' },
+            { title: "Finalized Books", value: finalizedBooks.length.toLocaleString(), icon: CheckCircle2, description: "Books that are approved", items: finalizedBooks, type: 'books' },
             { title: "Pending Client Action", value: pendingClientActionBooks.length.toLocaleString(), icon: UserCheck, description: "Batches awaiting client approval", items: pendingClientActionBooks, type: 'books' },
-            { title: "Total Books in Workflow", value: booksInWorkflowBooks.length.toLocaleString(), icon: BookCopy, description: "All active books being processed", items: booksInWorkflowBooks, type: 'books' },
-            { title: "Finalized Books", value: finalizedBooks.length.toLocaleString(), icon: CheckCheck, description: "Books that are approved", items: finalizedBooks, type: 'books' },
             { title: "SLA Warnings", value: slaWarningProjects.length.toLocaleString(), icon: AlertTriangle, description: "Projects past their due date", items: slaWarningBooks, type: 'books' },
             { title: "Actions Today", value: processedTodayLogs.length.toLocaleString(), icon: Activity, description: "Any action performed today", items: processedTodayLogs, type: 'activities' },
         ];
 
-        // --- WORKFLOW OVERVIEW CHART ---
         const orderedStageNames = [
-          'In Transit', 'Received', 'To Scan', 'Scanning Started', 'Storage', 
-          'To Indexing', 'Indexing Started', 'To Checking', 'Checking Started', 
-          'Ready for Processing', 'In Processing', 'Processed', 'Final Quality Control', 
-          'Delivery', 'Pending Validation', 'Client Rejected', 'Corrected', 
-          'Finalized'
+          'In Transit', 'Received', 'To Scan', 'Scanning Started', 'Storage', 'To Indexing', 'Indexing Started', 'To Checking', 'Checking Started', 'Ready for Processing', 'In Processing', 'Processed', 'Final Quality Control', 'Delivery', 'Pending Validation', 'Client Rejected', 'Corrected', 'Finalized'
         ];
         
         const booksByStage: { [key: string]: EnrichedBook[] } = {};
@@ -135,7 +113,6 @@ function SystemOverviewTab() {
 
         const chartData: ChartData[] = orderedStageNames.map(name => ({ name, count: booksByStage[name]?.length || 0 }));
         
-        // --- DAILY THROUGHPUT CHART ---
         const dailyActivity: { [date: string]: { [action: string]: number } } = {};
         const sevenDaysAgo = subDays(new Date(), 6);
 
@@ -154,7 +131,6 @@ function SystemOverviewTab() {
             dailyActivity[date][actionName]++;
         });
 
-        // Track Delivery specifically
         auditLogs.filter(log => new Date(log.date) >= sevenDaysAgo && log.action === 'Workflow Step' && log.details.includes('to Delivery')).forEach(log => {
             const date = log.date.slice(0, 10);
             if (!dailyActivity[date]) dailyActivity[date] = {};
@@ -242,7 +218,7 @@ function SystemOverviewTab() {
     return (
       <>
         <div className="flex flex-col gap-6">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                 {kpiData.map((kpi) => (
                     <Card key={kpi.title} onClick={() => handleKpiClick(kpi)} className={kpi.items && kpi.items.length > 0 ? "cursor-pointer transition-colors hover:bg-muted/50" : ""}>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -334,48 +310,16 @@ export default function GlobalOverviewClient() {
                 <SystemOverviewTab />
             </TabsContent>
             <TabsContent value="projects" className="pt-4">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Project Statistics</CardTitle>
-                        <CardDescription>An overview of metrics for each project across the system.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <ProjectStatsTab />
-                    </CardContent>
-                </Card>
+                <ProjectStatsTab />
             </TabsContent>
             <TabsContent value="clients" className="pt-4">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Client Statistics</CardTitle>
-                        <CardDescription>An aggregated overview of metrics for each client.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <ClientStatsTab />
-                    </CardContent>
-                </Card>
+                <ClientStatsTab />
             </TabsContent>
             <TabsContent value="users" className="pt-4">
-                 <Card>
-                    <CardHeader>
-                        <CardTitle>User Productivity</CardTitle>
-                        <CardDescription>An overview of key productivity metrics for each user.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <UserStatsTab />
-                    </CardContent>
-                </Card>
+                <UserStatsTab />
             </TabsContent>
             <TabsContent value="history" className="pt-4">
-                 <Card>
-                    <CardHeader>
-                        <CardTitle>System Audit Log</CardTitle>
-                        <CardDescription>A complete log of all actions performed across the application.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <HistoryStatsTab />
-                    </CardContent>
-                </Card>
+                <HistoryStatsTab />
             </TabsContent>
         </Tabs>
     </div>
