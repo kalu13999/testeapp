@@ -436,6 +436,15 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     setSelection([]);
   };
 
+  const handleBulkAction = () => {
+    if (stage === 'confirm-reception') {
+        selection.forEach(handleConfirmReception);
+    }
+    // Other simple bulk actions can go here.
+    // Complex actions like assignment are handled separately.
+    setSelection([]);
+  };
+
   const isScanFolderMatch = scanState.book?.name === scanState.folderName;
 
   const tableColSpan = React.useMemo(() => {
@@ -729,7 +738,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                         <Button size="sm" onClick={() => openConfirmationDialog({
                             title: `Are you sure?`,
                             description: `This will perform the action "${actionButtonLabel}" on ${selection.length} selected items.`,
-                            onConfirm: () => {}
+                            onConfirm: handleBulkAction
                         })}>
                             {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
                             {actionButtonLabel} Selected
