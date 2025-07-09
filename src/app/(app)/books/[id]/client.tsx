@@ -12,7 +12,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import type { EnrichedBook, AppDocument, EnrichedAuditLog } from "@/context/workflow-context";
+import type { EnrichedBook } from "@/lib/data";
+import type { AppDocument, EnrichedAuditLog } from "@/context/workflow-context";
 import { useAppContext } from "@/context/workflow-context";
 import { Info, BookOpen, History, InfoIcon, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
