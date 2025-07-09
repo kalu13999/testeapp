@@ -135,9 +135,12 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   }>({ open: false, docId: null, docName: null, selectedTags: [], availableTags: [] });
 
   const groupedByBook = React.useMemo(() => {
-    if (!config.dataStatus || !selectedProjectId) return {};
+    if (!config.dataStatus) return {};
+    let booksInStage = books.filter(book => book.status === config.dataStatus);
 
-    let booksInStage = books.filter(book => book.status === config.dataStatus && book.projectId === selectedProjectId);
+    if (selectedProjectId) {
+      booksInStage = booksInStage.filter(book => book.projectId === selectedProjectId);
+    }
 
     if (currentUser?.role === 'Client' && currentUser.clientId) {
       booksInStage = booksInStage.filter(b => b.clientId === currentUser.clientId);
@@ -279,11 +282,17 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
 
 
   const getDynamicActionButtonLabel = React.useCallback((book: EnrichedBook) => {
-    if (!config.actionButtonLabel || !book.projectId) return config.actionButtonLabel;
+    // If the config for the CURRENT stage has a specific label, ALWAYS use it.
+    if (config.actionButtonLabel) {
+      return config.actionButtonLabel;
+    }
+    
+    // If not, THEN generate a dynamic label for the NEXT stage.
+    if (!book.projectId) return "Next Step";
     
     const workflow = projectWorkflows[book.projectId] || [];
     const currentStageKey = findStageKeyFromStatus(book.status);
-    if (!currentStageKey) return config.actionButtonLabel;
+    if (!currentStageKey) return "Next Step";
     
     const nextStageKey = getNextEnabledStage(currentStageKey, workflow);
     if (!nextStageKey) return "End of Workflow";
@@ -293,7 +302,6 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
         return `Assign for ${nextStageConfig.title}`;
     }
     return `Move to ${nextStageConfig.title}`;
-
   }, [config.actionButtonLabel, projectWorkflows, getNextEnabledStage]);
 
 
@@ -502,7 +510,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
 
   return (
     <>
-      <AlertDialog>
+     <AlertDialog>
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
