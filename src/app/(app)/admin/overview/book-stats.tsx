@@ -25,6 +25,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig, Ch
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { STAGE_CONFIG, WORKFLOW_SEQUENCE } from "@/lib/workflow-config";
 
 
 const getStatusBadgeVariant = (status: string) => {
@@ -76,18 +77,17 @@ export function BookStatsTab() {
         return acc;
     }, {} as {[key: string]: number});
     
-    const sortedData = Object.entries(statusCounts)
-        .map(([name, value]) => ({ name, value }))
-        .sort((a,b) => b.value - a.value);
-    
-    const topN = 5;
-    if (sortedData.length > topN) {
-      const topData = sortedData.slice(0, topN);
-      const otherValue = sortedData.slice(topN).reduce((sum, item) => sum + item.value, 0);
-      return [...topData, { name: 'Other', value: otherValue }];
-    }
+    const orderedChartData = WORKFLOW_SEQUENCE
+      .map(stageKey => {
+        const statusName = STAGE_CONFIG[stageKey]?.dataStatus;
+        if (statusName && statusCounts[statusName]) {
+          return { name: statusName, value: statusCounts[statusName] };
+        }
+        return null;
+      })
+      .filter((item): item is { name: string; value: number } => item !== null && item.value > 0);
 
-    return sortedData;
+    return orderedChartData;
   }, [books]);
   
   const booksByProjectChartData = React.useMemo(() => (
@@ -220,7 +220,7 @@ export function BookStatsTab() {
             <Card>
                 <CardHeader>
                     <CardTitle>Books by Status</CardTitle>
-                    <CardDescription>Top 5 statuses shown, with others grouped.</CardDescription>
+                    <CardDescription>Distribution of all books by their current workflow stage.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <ChartContainer
