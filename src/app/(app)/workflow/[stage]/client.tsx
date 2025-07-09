@@ -105,6 +105,17 @@ const DetailItem = ({ label, value }: { label: string; value: React.ReactNode })
   </div>
 );
 
+const SIMPLE_BULK_ACTION_STAGES = [
+    'confirm-reception',
+    'to-scan',
+    'to-indexing',
+    'to-checking',
+    'ready-for-processing',
+    'processed',
+    'final-quality-control',
+    'delivery',
+];
+
 
 export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const { 
@@ -438,11 +449,31 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   };
 
   const handleBulkAction = () => {
-    if (stage === 'confirm-reception') {
-        selection.forEach(handleConfirmReception);
+    const stageToRoleMap = {
+      'to-scan': 'scanner',
+      'to-indexing': 'indexing',
+      'to-checking': 'qc',
+    } as const;
+
+    if (stage in stageToRoleMap) {
+      const role = stageToRoleMap[stage as keyof typeof stageToRoleMap];
+      selection.forEach(bookId => {
+        const book = books.find(b => b.id === bookId);
+        if (book) {
+          handleStartTask(bookId, role);
+        }
+      });
+    } else if (['processed', 'final-quality-control', 'delivery'].includes(stage)) {
+      selection.forEach(bookId => {
+        const book = books.find(b => b.id === bookId);
+        if (book) handleMoveBookToNextStage(bookId, book.status);
+      });
+    } else if (stage === 'confirm-reception') {
+      selection.forEach(handleConfirmReception);
+    } else if (stage === 'ready-for-processing') {
+      selection.forEach(handleStartProcessing);
     }
-    // Other simple bulk actions can go here.
-    // Complex actions like assignment are handled separately.
+    
     setSelection([]);
   };
 
@@ -735,7 +766,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                                 Cancel Selected
                             </Button>
                         )}
-                        {actionButtonLabel && (
+                        {actionButtonLabel && SIMPLE_BULK_ACTION_STAGES.includes(stage) && (
                         <Button size="sm" onClick={() => openConfirmationDialog({
                             title: `Are you sure?`,
                             description: `This will perform the action "${actionButtonLabel}" on ${selection.length} selected items.`,
