@@ -1,0 +1,4 @@
+"id","bookId","status","progress","log","startTime","lastUpdate"
+"pl_book_19","book_19","In Progress",45,"[09:00:00 AM] Processing initiated for book Innovate-FIN-Q1-Archive.
+[09:05:00 AM] OCR engine started.
+[09:30:00 AM] Processing page 225 of 500.","2025-07-03T09:00:00Z","2025-07-03T09:30:00Z"
