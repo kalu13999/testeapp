@@ -137,6 +137,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const [permissions, setPermissions] = React.useState<Permissions>({});
   const [projectWorkflows, setProjectWorkflows] = React.useState<ProjectWorkflows>({});
   const [rejectionTags, setRejectionTags] = React.useState<RejectionTag[]>([]);
+  const [statuses, setStatuses] = React.useState<DocumentStatus[]>([]);
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
   const { toast } = useToast();
   
@@ -159,6 +160,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             setUsers(usersData);
             setRawProjects(projectsData);
             setRawBooks(booksData);
+            setStatuses(statusesData);
 
             const enrichedAuditLogs = auditData
                 .map(log => ({ ...log, user: usersData.find(u => u.id === log.userId)?.name || 'Unknown' }))
@@ -264,9 +266,10 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         const logData: Omit<AuditLog, 'id'> = {
             action,
             details,
-            userId: actorId,
+            userId: actorId, // Always use the actor's ID for the log entry
             date: mysqlDate,
-            ...ids,
+            bookId: ids.bookId,
+            documentId: ids.documentId,
         };
         const response = await fetch('/api/audit-logs', {
             method: 'POST',
@@ -279,7 +282,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             try {
                 errorBody = await response.json();
             } catch (e) {
-                // If response is not JSON, use text.
                 errorBody = await response.text();
             }
            console.error("Audit log API error:", errorBody);
@@ -308,6 +310,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
                 clientName: client?.name || 'Unknown Client',
                 documentCount: bookDocuments.length,
                 progress: Math.min(100, bookProgress),
+                status: statuses.find(s => s.id === book.statusId)?.name || 'Unknown',
             };
         });
 
@@ -324,7 +327,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         books: projectBooks,
       };
     });
-  }, [rawProjects, clients, rawBooks, documents]);
+  }, [rawProjects, clients, rawBooks, documents, statuses]);
   
   const enrichedBooks: EnrichedBook[] = React.useMemo(() => {
       return allEnrichedProjects.flatMap(p => p.books);
@@ -593,10 +596,13 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
   const addBook = async (projectId: string, bookData: Omit<RawBook, 'id' | 'projectId' | 'status'>) => {
       try {
+          const statusId = statuses.find(s => s.name === 'Pending Shipment')?.id;
+          if (!statusId) throw new Error("Could not find 'Pending Shipment' status.");
+
           const response = await fetch('/api/books', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ projectId, book: bookData }),
+              body: JSON.stringify({ projectId, book: {...bookData, statusId } }),
           });
           if (!response.ok) throw new Error('Failed to create book');
           const newRawBook = await response.json();
@@ -769,15 +775,26 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     const doc = documents.find(d => d.id === docId);
     if (!doc) return;
     try {
+        const payload: { [key: string]: any } = { ...data };
+        if (payload.status) {
+            payload.statusId = statuses.find(s => s.name === payload.status)?.id;
+            delete payload.status;
+        }
+
         const response = await fetch(`/api/documents/${docId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data),
+            body: JSON.stringify(payload),
         });
         if (!response.ok) throw new Error('Failed to update document');
-        const updatedDoc = await response.json();
+        const updatedDocData = await response.json();
         
-        setDocuments(prev => prev.map(d => (d.id === docId ? { ...d, ...updatedDoc, tags: JSON.parse(updatedDoc.tags || '[]') } : d)));
+        setDocuments(prev => prev.map(d => (d.id === docId ? { 
+            ...d, 
+            ...data, 
+            statusId: updatedDocData.statusId,
+            status: statuses.find(s => s.id === updatedDocData.statusId)?.name || d.status
+        } : d)));
         
         let logDetails = `Document "${doc.name}" updated.`;
         if (data.tags) logDetails = `Tags for document "${doc.name}" updated to: ${data.tags.join(', ') || 'None'}.`;
@@ -801,12 +818,20 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
     const newPageName = `${book.name} - Page ${position} (Added)`;
     const newPageId = `doc_${book.id}_new_${Date.now()}`;
+    const statusId = statuses.find(s => s.name === 'Client Rejected')?.id;
+    if (!statusId) return;
+
     const newPage: Partial<RawDocument> = {
       id: newPageId,
       name: newPageName,
-      clientId: book.clientId, statusId: 'ds_13', // Client Rejected
-      type: 'Added Page', lastUpdated: getDbSafeDate(), tags: ['added', 'corrected'] as any,
-      folderId: null, projectId: book.projectId, bookId: book.id, flag: 'info',
+      clientId: book.clientId, 
+      statusId: statusId,
+      type: 'Added Page', 
+      lastUpdated: getDbSafeDate(), 
+      tags: ['added', 'corrected'] as any,
+      projectId: book.projectId, 
+      bookId: book.id, 
+      flag: 'info',
       imageUrl: `https://dummyimage.com/400x550/e0e0e0/5c5c5c.png&text=${encodeURIComponent(newPageName)}`
     };
 
@@ -867,9 +892,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
   const moveBookDocuments = React.useCallback(async (bookId: string, newStatusName: string) => {
     try {
-      const statusMapping = await dataApi.getDocumentStatuses();
-      const newStatusId = statusMapping.find(s => s.name === newStatusName)?.id;
-
+      const newStatusId = statuses.find(s => s.name === newStatusName)?.id;
       if (!newStatusId) {
         console.error(`Status '${newStatusName}' not found in status mapping.`);
         return;
@@ -895,28 +918,30 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       console.error(error);
       toast({ title: "Document Update Error", description: "Could not update the status of associated documents.", variant: "destructive" });
     }
-  }, [toast]);
+  }, [toast, statuses]);
 
   const updateBookStatus = React.useCallback(async (bookId: string, newStatusName: string, additionalUpdates: Partial<RawBook> = {}) => {
     try {
+        const statusId = statuses.find(s => s.name === newStatusName)?.id;
+        if (!statusId) throw new Error(`Status ${newStatusName} not found.`);
+
         const response = await fetch(`/api/books/${bookId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: newStatusName, ...additionalUpdates }),
+            body: JSON.stringify({ statusId, ...additionalUpdates }),
         });
         if (!response.ok) throw new Error('Failed to update book status');
         const updatedBook = await response.json();
         
-        await moveBookDocuments(bookId, newStatusName);
-
         setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
+        await moveBookDocuments(bookId, newStatusName);
         return true;
     } catch (error) {
         console.error(error);
         toast({ title: "Error", description: "Could not update book status.", variant: "destructive" });
         return false;
     }
-  }, [toast, moveBookDocuments]);
+  }, [toast, moveBookDocuments, statuses]);
   
   const handleMarkAsShipped = (bookIds: string[]) => {
     bookIds.forEach(async bookId => {
@@ -967,20 +992,21 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       }
 
       const { book: updatedBook, documents: newDocuments } = await response.json();
-
-      setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
       
-      const statusesData = await dataApi.getDocumentStatuses();
+      const statusId = statuses.find(s => s.name === 'Storage')?.id;
+      
+      setRawBooks(prev => prev.map(b => b.id === bookId ? {...updatedBook, statusId} : b));
+      
       const finalEnrichedDocs = newDocuments.map((doc: any) => ({
           ...doc,
           client: clients.find(c => c.id === doc.clientId)?.name || 'Unknown',
-          status: statusesData.find(s => s.id === doc.statusId)?.name || 'Unknown',
+          status: 'Storage',
           tags: doc.tags ? JSON.parse(doc.tags as any) : [],
       }));
 
       setDocuments(prev => [...prev.filter(d => d.bookId !== bookId), ...finalEnrichedDocs]);
       
-      const logMessage = book.status === 'Received' ? 'Reception & Scan Skipped' : 'Scanning Finished';
+      const logMessage = findStageKeyFromStatus(book.status) === 'already-received' ? 'Reception & Scan Skipped' : 'Scanning Finished';
       logAction(logMessage, `${payload.actualPageCount} pages created. Book "${book.name}" moved to Storage.`, { bookId });
       toast({ title: "Task Complete", description: `Book moved to Storage.` });
 
@@ -1029,6 +1055,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     }
     if (currentStatusName === 'Checking Started') {
         additionalUpdates.qcEndTime = getDbSafeDate();
+        if(!book.qcStartTime) additionalUpdates.qcStartTime = getDbSafeDate();
     }
     
     updateBookStatus(bookId, newStatusName, additionalUpdates);
@@ -1049,20 +1076,23 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     let logMsg = '';
     let updates: Partial<RawBook> = {};
     
+    const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
+    if (!currentStatusName) return;
+
     if (role === 'scanner') {
-        currentStageKey = 'already-received';
+        currentStageKey = findStageKeyFromStatus(currentStatusName) || 'already-received';
         nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'to-scan']?.dataStatus || 'To Scan';
         updates.scannerUserId = userId;
         logMsg = 'Assigned to Scanner';
     } else if (role === 'indexer') {
-        currentStageKey = 'storage';
+        currentStageKey = findStageKeyFromStatus(currentStatusName) || 'storage';
         nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'to-indexing']?.dataStatus || 'To Indexing';
         updates.indexerUserId = userId;
         logMsg = 'Assigned to Indexer';
     } else if (role === 'qc') {
-        currentStageKey = 'indexing-started';
+        currentStageKey = findStageKeyFromStatus(currentStatusName) || 'indexing-started';
         nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'to-checking']?.dataStatus || 'To Checking';
         updates.qcUserId = userId;
@@ -1110,21 +1140,23 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     let logMsg = '';
     let updates: Partial<RawBook> = {};
     
+    const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
+    if (!currentStatusName) return;
+    
+    currentStageKey = findStageKeyFromStatus(currentStatusName);
+    if (!currentStageKey) return;
+
+    nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
+    
     if (role === 'scanner') {
-        currentStageKey = 'to-scan';
-        nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'scanning-started']?.dataStatus || 'Scanning Started';
         updates.scanStartTime = getDbSafeDate();
         logMsg = 'Scanning Started';
     } else if (role === 'indexing') {
-        currentStageKey = 'to-indexing';
-        nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'indexing-started']?.dataStatus || 'Indexing Started';
         updates.indexingStartTime = getDbSafeDate();
         logMsg = 'Indexing Started';
     } else if (role === 'qc') {
-        currentStageKey = 'to-checking';
-        nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
         newStatusName = STAGE_CONFIG[nextStatusKey || 'checking-started']?.dataStatus || 'Checking Started';
         updates.qcStartTime = getDbSafeDate();
         logMsg = 'Checking Started';
@@ -1137,9 +1169,11 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     }
   };
 
-  const handleCancelTask = (bookId: string, currentStatus: string) => {
+  const handleCancelTask = (bookId: string, currentStatusId: string) => {
     const book = rawBooks.find(b => b.id === bookId);
     if (!book) return;
+    const currentStatusName = statuses.find(s => s.id === currentStatusId)?.name;
+    if (!currentStatusName) return;
 
     const updates: { [key: string]: { bookStatus: string, logMsg: string, clearFields: Partial<RawBook> } } = {
       'Scanning Started': { bookStatus: 'To Scan', logMsg: 'Scanning', clearFields: { scanStartTime: undefined } },
@@ -1147,7 +1181,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       'Checking Started': { bookStatus: 'To Checking', logMsg: 'Checking', clearFields: { qcStartTime: undefined } },
     };
 
-    const updateKey = Object.keys(updates).find(key => currentStatus.startsWith(key));
+    const updateKey = Object.keys(updates).find(key => currentStatusName.startsWith(key));
     if (!updateKey) return;
     const update = updates[updateKey];
     
@@ -1156,11 +1190,12 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     toast({ title: 'Task Cancelled', description: `Book returned to ${update.bookStatus} Queue.`, variant: 'destructive' });
   };
   
-  const handleAdminStatusOverride = (bookId: string, newStatus: string, reason: string) => {
+  const handleAdminStatusOverride = (bookId: string, newStatusId: string, reason: string) => {
     const book = rawBooks.find(b => b.id === bookId);
-    if (!book) return;
+    const newStatus = statuses.find(s => s.id === newStatusId);
+    if (!book || !newStatus) return;
 
-    const newStageKey = findStageKeyFromStatus(newStatus);
+    const newStageKey = findStageKeyFromStatus(newStatus.name);
     const newStageConfig = newStageKey ? STAGE_CONFIG[newStageKey] : null;
 
     const updates: Partial<RawBook> = {};
@@ -1174,14 +1209,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         updates.qcUserId = undefined; updates.qcStartTime = undefined; updates.qcEndTime = undefined;
     }
 
-    updateBookStatus(bookId, newStatus, updates);
+    updateBookStatus(bookId, newStatus.name, updates);
 
     logAction(
         'Admin Status Override', 
-        `Status of "${book.name}" manually changed to "${newStatus}". Reason: ${reason}`,
+        `Status of "${book.name}" manually changed to "${newStatus.name}". Reason: ${reason}`,
         { bookId }
     );
-    toast({ title: "Status Overridden", description: `Book is now in status: ${newStatus}` });
+    toast({ title: "Status Overridden", description: `Book is now in status: ${newStatus.name}` });
   };
 
 
@@ -1294,9 +1329,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
   
   const updateDocumentStatus = async (docId: string, newStatus: string) => {
-    let docName = '';
-    const statusMap = await dataApi.getDocumentStatuses();
-    const statusId = statusMap.find(s => s.name === newStatus)?.id;
+    const statusId = statuses.find(s => s.name === newStatus)?.id;
     if (!statusId) return;
     
     await updateDocument(docId, { statusId: statusId });
@@ -1376,3 +1409,4 @@ export function useAppContext() {
   }
   return context;
 }
+
