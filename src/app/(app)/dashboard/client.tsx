@@ -179,7 +179,7 @@ function ProjectDashboard() {
                     dailyActivity[date][actionName]++;
                 }
                 
-                if (log.action === 'Workflow Step' && log.details.includes('to Delivery')) {
+                if (log.action === 'Workflow Step' && log.details && log.details.includes('to Delivery')) {
                     if (!dailyActivity[date]['Delivered']) dailyActivity[date]['Delivered'] = 0;
                     dailyActivity[date]['Delivered']++;
                 }
@@ -632,5 +632,3 @@ export default function DashboardClient() {
         </div>
     )
 }
-
-    
