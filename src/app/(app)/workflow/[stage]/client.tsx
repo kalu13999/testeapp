@@ -2,7 +2,7 @@
 
 "use client"
 
-import * as React from "react";
+import * as React from "react"
 import * as XLSX from 'xlsx';
 import {
   Table,
@@ -451,21 +451,21 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   };
 
   const handleBulkAction = () => {
-    if (['indexing-started', 'checking-started'].includes(stage)) {
-        openConfirmationDialog({
-            title: `Complete ${selection.length} tasks?`,
-            description: "This will move all selected books to the next step in their workflow.",
-            onConfirm: () => {
-                selection.forEach(bookId => {
-                    const book = (allDisplayItems.find(b => b.id === bookId) as EnrichedBook);
-                    if (book) {
-                        handleMoveBookToNextStage(book.id, book.status);
-                    }
-                });
-                setSelection([]);
-            }
-        });
-        return;
+    if (stage === 'checking-started') {
+      openConfirmationDialog({
+          title: `Complete ${selection.length} tasks?`,
+          description: "This will move all selected books to the next step in their workflow.",
+          onConfirm: () => {
+              selection.forEach(bookId => {
+                  const book = (allDisplayItems.find(b => b.id === bookId) as EnrichedBook);
+                  if (book) {
+                      handleMoveBookToNextStage(book.id, book.status);
+                  }
+              });
+              setSelection([]);
+          }
+      });
+      return;
     }
     
     const stageToRoleMap = {
@@ -752,7 +752,19 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const renderBulkActions = () => {
     if (selection.length === 0) return null;
 
-    if (['indexing-started', 'checking-started'].includes(stage)) {
+    if (stage === 'indexing-started') {
+        return (
+            <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">{selection.length} selected</span>
+                <Button size="sm" onClick={() => openBulkAssignmentDialog('qc')}>
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Assign Selected for QC
+                </Button>
+            </div>
+        );
+    }
+    
+    if (stage === 'checking-started') {
         return (
             <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">{selection.length} selected</span>
