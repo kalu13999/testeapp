@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import * as React from "react"
@@ -445,7 +446,12 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   }
   
   const handleBulkResubmit = (targetStage: string) => {
-    const stageConfig = STAGE_CONFIG[targetStage as keyof typeof STAGE_CONFIG];
+    const stageKey = findStageKeyFromStatus(targetStage);
+    if (!stageKey) {
+      toast({ title: "Workflow Error", description: `Could not find configuration for stage: ${targetStage}`, variant: "destructive" });
+      return;
+    }
+    const stageConfig = STAGE_CONFIG[stageKey];
     openConfirmationDialog({
       title: `Resubmit ${selection.length} books?`,
       description: `This will resubmit all selected books to the "${stageConfig.title}" stage.`,
