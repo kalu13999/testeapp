@@ -1,7 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import { getConnection, releaseConnection } from '@/lib/db';
-import type { PoolConnection } from 'mysql2/promise';
+import type { PoolConnection, RowDataPacket } from 'mysql2/promise';
 
 const getDbSafeDate = () => new Date().toISOString().slice(0, 19).replace('T', ' ');
 
@@ -27,7 +27,6 @@ export async function POST(request: Request, { params }: { params: { id: string 
         const documentsToInsert = [];
         const documentIds = [];
         for (let i = 1; i <= actualPageCount; i++) {
-            // Generate a shorter, unique ID to prevent overflow
             const docId = `doc_${Date.now()}_${Math.random().toString(36).substring(2, 9)}_${i}`;
             documentIds.push(docId);
             documentsToInsert.push([
@@ -50,19 +49,25 @@ export async function POST(request: Request, { params }: { params: { id: string 
         if (documentsToInsert.length > 0) {
             await connection.query('INSERT INTO documents (id, name, clientId, statusId, type, lastUpdated, tags, folderId, projectId, bookId, flag, flagComment, imageUrl) VALUES ?', [documentsToInsert]);
         }
-
-        const nextStageStatus = 'Storage';
-        await connection.execute('UPDATE books SET status = ?, scanEndTime = ?, expectedDocuments = ? WHERE id = ?', [nextStageStatus, getDbSafeDate(), actualPageCount, bookId]);
+        
+        // Correctly update the books table using statusId
+        await connection.execute('UPDATE books SET statusId = ?, scanEndTime = ?, expectedDocuments = ? WHERE id = ?', [storageStatusId, getDbSafeDate(), actualPageCount, bookId]);
 
         await connection.commit();
         
-        const [updatedBookRows] = await connection.execute('SELECT * FROM books WHERE id = ?', [bookId]);
-        const [createdDocsRows] = await connection.execute('SELECT * FROM documents WHERE id IN (?)', [documentIds]);
+        const [updatedBookRows] = await connection.execute<RowDataPacket[]>('SELECT * FROM books WHERE id = ?', [bookId]);
+        
+        let createdDocsRows: RowDataPacket[] = [];
+        // Add a guard to prevent SQL error on empty array
+        if (documentIds.length > 0) {
+            const [rows] = await connection.execute<RowDataPacket[]>('SELECT * FROM documents WHERE id IN (?)', [documentIds]);
+            createdDocsRows = rows;
+        }
 
         releaseConnection(connection);
 
         return NextResponse.json({
-            book: (updatedBookRows as any)[0],
+            book: updatedBookRows[0],
             documents: createdDocsRows
         }, { status: 200 });
 
