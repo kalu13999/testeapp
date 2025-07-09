@@ -68,7 +68,10 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
 
         // Delete associated documents first
         await connection.execute('DELETE FROM documents WHERE bookId = ?', [id]);
-
+        // Delete associated audit logs
+        await connection.execute('DELETE FROM audit_logs WHERE bookId = ?', [id]);
+        // Delete associated processing logs
+        await connection.execute('DELETE FROM processing_logs WHERE bookId = ?', [id]);
         // Then delete the book
         await connection.execute('DELETE FROM books WHERE id = ?', [id]);
 

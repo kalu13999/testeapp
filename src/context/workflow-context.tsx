@@ -13,6 +13,11 @@ import { UserFormValues } from '@/app/(app)/users/user-form';
 export interface BookImport {
   name: string;
   expectedDocuments: number;
+  priority?: 'Low' | 'Medium' | 'High';
+  info?: string;
+  author?: string;
+  isbn?: string;
+  publicationYear?: number;
 }
 
 
@@ -94,7 +99,6 @@ type AppContextType = {
   handleMarkAsShipped: (bookIds: string[]) => void;
   handleConfirmReception: (bookId: string) => void;
   handleSendToStorage: (bookId: string, payload: { actualPageCount: number }) => void;
-  handleBookAction: (bookId: string, payload?: { actualPageCount?: number }) => void;
   handleMoveBookToNextStage: (bookId: string, currentStatus: string) => void;
   handleAssignUser: (bookId: string, userId: string, role: 'scanner' | 'indexer' | 'qc') => void;
   reassignUser: (bookId: string, newUserId: string, role: 'scanner' | 'indexer' | 'qc') => void;
@@ -916,20 +920,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
 
-  const handleBookAction = (bookId: string, payload?: { actualPageCount?: number }) => {
-    const book = rawBooks.find(b => b.id === bookId);
-    if (!book || !book.projectId) return;
-
-    if (book.status === 'Scanning Started') {
-        const pagesToCreate = payload?.actualPageCount ?? book.expectedDocuments;
-        updateBook(bookId, { scanEndTime: new Date().toISOString() });
-        handleMoveBookToNextStage(bookId, 'Storage');
-        logAction('Scanning Finished', `${pagesToCreate} pages created. Book moved to next stage.`, { bookId });
-        toast({ title: "Scanning Complete", description: `${pagesToCreate} pages created.` });
-    }
-  };
-  
-
   const handleMoveBookToNextStage = (bookId: string, currentStatusName: string) => {
     const book = rawBooks.find(b => b.id === bookId);
     if (!book || !book.projectId) return;
@@ -1115,42 +1105,62 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
 
-  const handleStartProcessing = (bookId: string) => {
+  const handleStartProcessing = async (bookId: string) => {
     const book = rawBooks.find(b => b.id === bookId);
     if (!book || !book.projectId) return;
     const workflow = projectWorkflows[book.projectId] || [];
     const nextStage = getNextEnabledStage('ready-for-processing', workflow) || 'in-processing';
     const newStatus = STAGE_CONFIG[nextStage]?.dataStatus || STAGE_CONFIG[nextStage]?.dataStage || 'In Processing';
 
-    updateBookStatus(bookId, newStatus);
-    setProcessingLogs(prev => {
-        const otherLogs = prev.filter(log => log.bookId !== bookId);
-        const newLog: ProcessingLog = {
-            id: `pl_${Date.now()}`, bookId: bookId, status: 'In Progress', progress: 0,
-            log: `[${new Date().toLocaleTimeString()}] Processing initiated.`,
-            startTime: new Date().toISOString(), lastUpdate: new Date().toISOString(),
-        };
-        return [...otherLogs, newLog];
-    });
-    logAction('Processing Started', `Automated processing started for book "${book?.name}".`, { bookId });
-    toast({ title: 'Processing Started' });
+    try {
+        const response = await fetch('/api/processing-logs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bookId }),
+        });
+        if (!response.ok) throw new Error('Failed to start processing log');
+        const newLog = await response.json();
+        setProcessingLogs(prev => [...prev.filter(l => l.bookId !== bookId), newLog]);
+        await updateBookStatus(bookId, newStatus);
+        logAction('Processing Started', `Automated processing started for book "${book?.name}".`, { bookId });
+        toast({ title: 'Processing Started' });
+    } catch (error) {
+        console.error(error);
+        toast({ title: "Error", description: "Could not start processing.", variant: "destructive" });
+    }
   };
   
-  const handleCompleteProcessing = (bookId: string) => {
+  const handleCompleteProcessing = async (bookId: string) => {
     const book = rawBooks.find(b => b.id === bookId);
-    if (!book || !book.projectId) return;
+    const log = processingLogs.find(l => l.bookId === bookId);
+    if (!book || !book.projectId || !log) return;
     const workflow = projectWorkflows[book.projectId] || [];
     const nextStage = getNextEnabledStage('in-processing', workflow) || 'processed';
     const newStatus = STAGE_CONFIG[nextStage]?.dataStatus || STAGE_CONFIG[nextStage]?.dataStage || 'Processed';
+    
+    try {
+        const updatedLogData = { 
+            status: 'Complete', 
+            progress: 100, 
+            log: `${log.log}\n[${new Date().toLocaleTimeString()}] Processing complete.`,
+            lastUpdate: new Date().toISOString(),
+        };
+        const response = await fetch(`/api/processing-logs/${log.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedLogData),
+        });
+        if (!response.ok) throw new Error('Failed to update processing log');
 
-    updateBookStatus(bookId, newStatus);
-    setProcessingLogs(prev => prev.map(log => 
-        log.bookId === bookId 
-            ? { ...log, status: 'Complete', progress: 100, log: `${log.log}\n[${new Date().toLocaleTimeString()}] Processing complete.` } 
-            : log
-    ));
-    logAction('Processing Completed', `Automated processing finished for book "${book?.name}".`, { bookId });
-    toast({ title: 'Processing Complete' });
+        setProcessingLogs(prev => prev.map(l => l.id === log.id ? { ...l, ...updatedLogData } : l));
+        await updateBookStatus(bookId, newStatus);
+        logAction('Processing Completed', `Automated processing finished for book "${book?.name}".`, { bookId });
+        toast({ title: 'Processing Complete' });
+
+    } catch (error) {
+         console.error(error);
+        toast({ title: "Error", description: "Could not complete processing.", variant: "destructive" });
+    }
   };
 
   const handleClientAction = (bookId: string, action: 'approve' | 'reject', reason?: string) => {
@@ -1264,7 +1274,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     handleMarkAsShipped,
     handleConfirmReception,
     handleSendToStorage,
-    handleBookAction, handleMoveBookToNextStage, handleClientAction,
+    handleMoveBookToNextStage, handleClientAction,
     handleFinalize, handleMarkAsCorrected, handleResubmit,
     addPageToBook, deletePageFromBook, updateDocumentStatus,
     updateDocumentFlag, handleStartProcessing, handleCompleteProcessing,

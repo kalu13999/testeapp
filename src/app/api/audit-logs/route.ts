@@ -24,12 +24,12 @@ export async function POST(request: Request) {
         const logData = await request.json();
         const { action, details, userId, date, bookId, documentId } = logData;
         
-        const newId = `al_${Date.now()}`;
+        const newId = `al_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
         const newLog = { id: newId, ...logData };
         
         connection = await getConnection();
         const query = 'INSERT INTO audit_logs (id, action, details, userId, date, bookId, documentId) VALUES (?, ?, ?, ?, ?, ?, ?)';
-        const values = [newId, action, details, userId, date, bookId, documentId];
+        const values = [newId, action, details, userId, date, bookId || null, documentId || null];
         
         await connection.execute(query, values);
         
@@ -37,8 +37,7 @@ export async function POST(request: Request) {
         return NextResponse.json(newLog, { status: 201 });
     } catch (error) {
         console.error("Error creating audit log:", error);
+        if (connection) releaseConnection(connection);
         return NextResponse.json({ error: 'Failed to create audit log' }, { status: 500 });
-    } finally {
-        if (connection && connection.connection) releaseConnection(connection);
     }
 }
