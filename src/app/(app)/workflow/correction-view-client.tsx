@@ -62,6 +62,7 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
   } = useAppContext();
   const { toast } = useToast();
   
+  const [selection, setSelection] = React.useState<string[]>([]);
   const [addPageState, setAddPageState] = React.useState({ open: false, bookId: '', bookName: '', maxPages: 0 });
   const [newPagePosition, setNewPagePosition] = React.useState<number | string>('');
   const [confirmationState, setConfirmationState] = React.useState({ open: false, title: '', description: '', onConfirm: () => {} });
@@ -80,6 +81,10 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
     }
     return baseBooks;
   }, [books, config.dataStage, selectedProjectId]);
+  
+  React.useEffect(() => {
+    setSelection([]);
+  }, [selectedProjectId]);
 
   const getPagesForBook = (bookId: string) => {
     const getPageNum = (name: string): number => {
@@ -153,12 +158,36 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
     closeTaggingDialog();
   };
 
+  const handleBulkCorrect = () => {
+    openConfirmationDialog({
+      title: `Mark ${selection.length} books as corrected?`,
+      description: "This will move all selected books to the next stage.",
+      onConfirm: () => {
+        selection.forEach(bookId => handleMarkAsCorrected(bookId));
+        setSelection([]);
+      }
+    });
+  }
+
   return (
     <>
      <Card>
       <CardHeader>
-        <CardTitle className="font-headline">{config.title}</CardTitle>
-        <CardDescription>{config.description}</CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="font-headline">{config.title}</CardTitle>
+            <CardDescription>{config.description}</CardDescription>
+          </div>
+          {selection.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">{selection.length} selected</span>
+              <Button size="sm" onClick={handleBulkCorrect}>
+                <Undo2 className="mr-2 h-4 w-4" />
+                Mark Selected as Corrected
+              </Button>
+            </div>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         {rejectedBooks.length > 0 ? (
@@ -168,6 +197,19 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
               return (
               <AccordionItem value={book.id} key={book.id}>
                 <div className="flex items-center justify-between hover:bg-muted/50 rounded-md">
+                    <div className="pl-4">
+                      <Checkbox
+                        checked={selection.includes(book.id)}
+                        onCheckedChange={(checked) => {
+                          setSelection(prev =>
+                            checked
+                              ? [...prev, book.id]
+                              : prev.filter(id => id !== book.id)
+                          );
+                        }}
+                        aria-label={`Select book ${book.name}`}
+                      />
+                    </div>
                     <AccordionTrigger className="flex-1 px-4 py-2">
                         <div className="flex items-center gap-3 text-left">
                             <FolderSync className="h-5 w-5 text-destructive" />

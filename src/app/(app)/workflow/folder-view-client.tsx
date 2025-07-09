@@ -102,6 +102,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   const { toast } = useToast();
   const ActionIcon = config.actionButtonIcon ? iconMap[config.actionButtonIcon] : FolderSync;
 
+  const [selection, setSelection] = React.useState<string[]>([]);
   const [rejectionComment, setRejectionComment] = React.useState("");
   const [currentBook, setCurrentBook] = React.useState<{id: string, name: string} | null>(null);
 
@@ -244,7 +245,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     const nextStage = getNextEnabledStage(currentStageKey, workflow);
     
     if (!nextStage) {
-      toast({ title: "Workflow End", description: "This is the last configured step for this project.", variant: "default" });
+      toast({ title: "Workflow End", description: "This is the final step for this project.", variant: "default" });
       return;
     }
     
@@ -401,13 +402,120 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     }
   }
 
+  const handleBulkAction = () => {
+    switch (stage) {
+      case 'pending-deliveries':
+        openConfirmationDialog({
+          title: `Approve ${selection.length} books?`,
+          description: "This will approve all documents for the selected books.",
+          onConfirm: () => {
+            selection.forEach(bookId => handleClientAction(bookId, 'approve'));
+            setSelection([]);
+          }
+        });
+        break;
+      case 'finalized':
+        openConfirmationDialog({
+          title: `Archive ${selection.length} books?`,
+          description: "This is a final action and cannot be undone.",
+          onConfirm: () => {
+            selection.forEach(bookId => handleFinalize(bookId));
+            setSelection([]);
+          }
+        });
+        break;
+      default:
+        const firstBook = groupedByBook[selection[0]]?.book;
+        if (!firstBook) return;
+
+        const actionLabel = getDynamicActionButtonLabel(firstBook);
+        openConfirmationDialog({
+          title: `Perform action on ${selection.length} books?`,
+          description: `This will perform "${actionLabel}" for all selected books.`,
+          onConfirm: () => {
+            selection.forEach(bookId => {
+              const book = groupedByBook[bookId]?.book;
+              if (book) handleMainAction(book);
+            });
+            setSelection([]);
+          }
+        });
+        break;
+    }
+  }
+  
+  const handleBulkResubmit = (targetStage: string) => {
+    const stageConfig = STAGE_CONFIG[targetStage as keyof typeof STAGE_CONFIG];
+    openConfirmationDialog({
+      title: `Resubmit ${selection.length} books?`,
+      description: `This will resubmit all selected books to the "${stageConfig.title}" stage.`,
+      onConfirm: () => {
+        selection.forEach(bookId => handleResubmit(bookId, targetStage));
+        setSelection([]);
+      }
+    });
+  }
+
+  const renderBulkActions = () => {
+    if (selection.length === 0) return null;
+    
+    const disabled = selection.some(bookId => groupedByBook[bookId]?.hasError);
+
+    let actionButton = null;
+
+    if (stage === 'pending-deliveries') {
+      actionButton = (
+        <Button size="sm" onClick={handleBulkAction}>
+          <ThumbsUp className="mr-2 h-4 w-4" /> Approve Selected
+        </Button>
+      );
+    } else if (stage === 'corrected') {
+      actionButton = (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm">
+              <Send className="mr-2 h-4 w-4" /> Resubmit Selected To...
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem onSelect={() => handleBulkResubmit('To Indexing')}>Indexing</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => handleBulkResubmit('To Checking')}>Quality Control</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => handleBulkResubmit('Delivery')}>Delivery</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    } else if (config.actionButtonLabel && stage !== 'archive') {
+      const firstBook = groupedByBook[selection[0]]?.book;
+      if (!firstBook) return null;
+      const label = getDynamicActionButtonLabel(firstBook);
+      actionButton = (
+         <Button size="sm" onClick={handleBulkAction} disabled={disabled || label === "End of Workflow"}>
+          <ActionIcon className="mr-2 h-4 w-4" />
+          {label} ({selection.length})
+        </Button>
+      );
+    }
+
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-muted-foreground">{selection.length} selected</span>
+        {actionButton}
+      </div>
+    );
+  }
+
   return (
     <>
       <AlertDialog>
         <Card>
           <CardHeader>
-            <CardTitle className="font-headline">{config.title}</CardTitle>
-            <CardDescription>{config.description}</CardDescription>
+            <div className="flex items-center justify-between">
+                <div>
+                    <CardTitle className="font-headline">{config.title}</CardTitle>
+                    <CardDescription>{config.description}</CardDescription>
+                </div>
+                {renderBulkActions()}
+            </div>
           </CardHeader>
           <CardContent>
             {Object.keys(groupedByBook).length > 0 ? (
@@ -417,6 +525,19 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                   return (
                   <AccordionItem value={book.id} key={book.id}>
                     <div className="flex items-center justify-between hover:bg-muted/50 rounded-md">
+                        <div className="pl-4">
+                            <Checkbox
+                                checked={selection.includes(book.id)}
+                                onCheckedChange={(checked) => {
+                                    setSelection(prev =>
+                                        checked
+                                            ? [...prev, book.id]
+                                            : prev.filter(id => id !== book.id)
+                                    );
+                                }}
+                                aria-label={`Select book ${book.name}`}
+                            />
+                        </div>
                         <AccordionTrigger className="flex-1 px-4 py-2">
                             <div className="flex items-center gap-3 text-left">
                                 <FolderSync className="h-5 w-5 text-primary" />
