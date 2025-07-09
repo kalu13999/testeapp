@@ -485,129 +485,120 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     if (config.assigneeRole && canViewAll) count++;
     return count;
   }, [dataType, stage, config.assigneeRole, canViewAll]);
-    
+
   const handleActionClick = (book: EnrichedBook) => {
-      if (stage === 'confirm-reception') {
-          handleConfirmReception(book.id);
-          return;
+    if (stage === 'confirm-reception') {
+      handleConfirmReception(book.id);
+      return;
+    }
+
+    if (stage === 'already-received') {
+      const projectWorkflow = projectWorkflows[book.projectId!] || [];
+      const isScanningEnabled = projectWorkflow.includes('to-scan');
+      if (isScanningEnabled) {
+        openAssignmentDialog(book, 'scanner');
+      } else {
+        setScanState({ open: true, book, folderName: null, fileCount: null });
       }
-      
-      if (stage === 'already-received') {
-        const projectWorkflow = projectWorkflows[book.projectId!] || [];
-        const isScanningEnabled = projectWorkflow.includes('to-scan');
-        if (isScanningEnabled) {
-          openAssignmentDialog(book, 'scanner');
-        } else {
-          setScanState({ open: true, book, folderName: null, fileCount: null });
-        }
+      return;
+    }
+    
+    if (['to-scan', 'to-indexing', 'to-checking'].includes(stage)) {
+      let label = 'Start Task';
+      if (stage === 'to-scan') label = 'Start Scanning';
+      if (stage === 'to-indexing') label = 'Start Indexing';
+      if (stage === 'to-checking') label = 'Start Checking';
+
+      openConfirmationDialog({
+          title: `Confirm: ${label}?`,
+          description: `This will perform the action for "${book.name}".`,
+          onConfirm: () => {
+              if (stage === 'to-scan') handleStartTask(book.id, 'scanner');
+              else if (stage === 'to-indexing') handleStartTask(book.id, 'indexing');
+              else if (stage === 'to-checking') handleStartTask(book.id, 'qc');
+          }
+      });
+      return;
+    }
+
+    if (stage === 'scanning-started') {
+        setScanState({ open: true, book: book, folderName: null, fileCount: null });
         return;
+    }
+    
+    if (['indexing-started', 'checking-started'].includes(stage)) {
+        const onConfirm = () => {
+            if (!book.projectId) return;
+            const workflow = projectWorkflows[book.projectId] || [];
+            const currentStageKey = findStageKeyFromStatus(book.status);
+            if (!currentStageKey) return;
+            
+            const nextStageKey = getNextEnabledStage(currentStageKey, workflow);
+            if (!nextStageKey) {
+                toast({ title: "Workflow End", description: "This is the last configured step for this project." });
+                handleMoveBookToNextStage(book.id, book.status);
+                return;
+            }
+
+            const nextStageConfig = STAGE_CONFIG[nextStageKey];
+            if (nextStageConfig.assigneeRole) {
+                openAssignmentDialog(book, nextStageConfig.assigneeRole);
+            } else {
+                handleMoveBookToNextStage(book.id, book.status);
+            }
+        };
+
+        openConfirmationDialog({
+            title: `Confirm: Mark as Complete?`,
+            description: `This will complete the task for "${book.name}" and move it to the next step.`,
+            onConfirm: onConfirm
+        });
+        return;
+    }
+    
+    if (stage === 'ready-for-processing') {
+         openConfirmationDialog({
+            title: `Confirm: Start Processing?`,
+            description: `This will begin automated processing for "${book.name}".`,
+            onConfirm: () => handleStartProcessing(book.id)
+        });
+        return;
+    }
+
+    // Default action for other stages like 'processed'
+    if (actionButtonLabel) {
+       openConfirmationDialog({
+          title: `Confirm: ${actionButtonLabel}?`,
+          description: `This will perform the action for "${book.name}".`,
+          onConfirm: () => handleMoveBookToNextStage(book.id, book.status)
+      });
+    }
+};
+
+  const getDynamicActionButton = (book: EnrichedBook): { label: string, icon: LucideIcon, disabled: boolean } | null => {
+      if (stage === 'confirm-reception') {
+          return { label: 'Confirm Arrival', icon: Check, disabled: false };
       }
 
-      if (['to-scan', 'to-indexing', 'to-checking'].includes(stage)) {
-          openConfirmationDialog({
-              title: `Confirm: ${actionButtonLabel}?`,
-              description: `This will perform the action for "${book.name}".`,
-              onConfirm: () => {
-                  if (stage === 'to-scan') handleStartTask(book.id, 'scanner');
-                  else if (stage === 'to-indexing') handleStartTask(book.id, 'indexing');
-                  else if (stage === 'to-checking') handleStartTask(book.id, 'qc');
-              }
-          });
-          return;
-      }
-
-      if (stage === 'scanning-started') {
-          setScanState({ open: true, book: book, folderName: null, fileCount: null });
-          return;
+      if (stage === 'already-received') {
+          const projectWorkflow = projectWorkflows[book.projectId!] || [];
+          const isScanningEnabled = projectWorkflow.includes('to-scan');
+          return isScanningEnabled
+              ? { label: 'Assign Scanner', icon: UserPlus, disabled: false }
+              : { label: 'Send to Storage', icon: FolderSync, disabled: false };
       }
       
-      if (['indexing-started', 'checking-started'].includes(stage)) {
-          const onConfirm = () => {
-              if (!book.projectId) return;
-              const workflow = projectWorkflows[book.projectId] || [];
-              const currentStageKey = findStageKeyFromStatus(book.status);
-              if (!currentStageKey) return;
-              
-              const nextStageKey = getNextEnabledStage(currentStageKey, workflow);
-              if (!nextStageKey) {
-                  toast({ title: "Workflow End", description: "This is the last configured step for this project." });
-                  handleMoveBookToNextStage(book.id, book.status);
-                  return;
-              }
-
-              const nextStageConfig = STAGE_CONFIG[nextStageKey];
-              if (nextStageConfig.assigneeRole) {
-                  openAssignmentDialog(book, nextStageConfig.assigneeRole);
-              } else {
-                  handleMoveBookToNextStage(book.id, book.status);
-              }
-          };
-
-          openConfirmationDialog({
-              title: `Confirm: Mark as Complete?`,
-              description: `This will complete the task for "${book.name}" and move it to the next step.`,
-              onConfirm: onConfirm
-          });
-          return;
+      if (actionButtonLabel && actionButtonIcon) {
+          const Icon = iconMap[actionButtonIcon];
+          return { label: actionButtonLabel, icon: Icon, disabled: false };
       }
       
-      if (stage === 'ready-for-processing') {
-           openConfirmationDialog({
-              title: `Confirm: Start Processing?`,
-              description: `This will begin automated processing for "${book.name}".`,
-              onConfirm: () => handleStartProcessing(book.id)
-          });
-          return;
-      }
-  };
+      return null;
+  }
     
   const renderBookRow = (item: any, index: number) => {
     const isCancelable = ['Scanning Started', 'Indexing Started', 'Checking Started'].includes(item.status);
-
-    const getDynamicActionButton = (book: EnrichedBook) => {
-        if (stage === 'confirm-reception') {
-            return {
-                label: 'Confirm Arrival',
-                icon: Check,
-                action: () => handleConfirmReception(book.id),
-                disabled: false
-            };
-        }
-
-        if (stage === 'already-received') {
-            const projectWorkflow = projectWorkflows[book.projectId!] || [];
-            const isScanningEnabled = projectWorkflow.includes('to-scan');
-            if (isScanningEnabled) {
-                return {
-                    label: 'Assign Scanner',
-                    icon: UserPlus,
-                    action: () => openAssignmentDialog(book, 'scanner'),
-                    disabled: false
-                };
-            } else {
-                return {
-                    label: 'Send to Storage',
-                    icon: FolderSync,
-                    action: () => setScanState({ open: true, book, folderName: null, fileCount: null }),
-                    disabled: false
-                };
-            }
-        }
-        
-        if (actionButtonLabel) {
-            return {
-                label: actionButtonLabel,
-                icon: ActionIcon,
-                action: () => handleActionClick(book),
-                disabled: false
-            };
-        }
-        
-        return null;
-    }
-
-    const currentAction = getDynamicActionButton(item);
-    const CurrentActionIcon = currentAction?.icon;
+    const actionDetails = getDynamicActionButton(item);
 
     return (
         <TableRow key={item.id} data-state={selection.includes(item.id) && "selected"}>
@@ -633,10 +624,10 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         </TableCell>
         <TableCell>
           <div className="flex items-center justify-end gap-2">
-            {currentAction && (
-              <Button size="sm" onClick={currentAction.action} disabled={currentAction.disabled}>
-                  {CurrentActionIcon && <CurrentActionIcon className="mr-2 h-4 w-4" />}
-                  {currentAction.label}
+            {actionDetails && (
+              <Button size="sm" onClick={() => handleActionClick(item)} disabled={actionDetails.disabled}>
+                  {actionDetails.icon && <actionDetails.icon className="mr-2 h-4 w-4" />}
+                  {actionDetails.label}
               </Button>
             )}
             <DropdownMenu>
