@@ -98,6 +98,9 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
   ]);
   const { toast } = useToast();
   
+  const [detailState, setDetailState] = React.useState<{ open: boolean; title: string; items: EnrichedBook[]; }>({ open: false, title: '', items: [] });
+  const [detailFilter, setDetailFilter] = React.useState('');
+
   const project = allProjects.find(p => p.id === projectId);
   const projectWorkflow = projectWorkflows[projectId] || [];
 
@@ -148,14 +151,37 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
   
   const kpiData = React.useMemo(() => {
     if (!project) return [];
+    const books = project.books;
     const errorDocs = documents.filter(d => d.projectId === project.id && d.flag === 'error');
+    const booksWithErrors = Array.from(new Set(errorDocs.map(d => d.bookId))).map(bookId => books.find(b => b.id === bookId)).filter((b): b is EnrichedBook => !!b);
+
     return [
-      { title: "Total Books", value: project.books.length, icon: BookCopy },
-      { title: "Books In Progress", value: project.books.filter(b => !['Complete', 'Archived', 'Pending Shipment'].includes(b.status)).length, icon: Loader2 },
-      { title: "Books Completed", value: project.books.filter(b => ['Complete', 'Archived', 'Finalized'].includes(b.status)).length, icon: CheckCircle },
-      { title: "Docs with Errors", value: errorDocs.length, icon: AlertTriangle }
+      { title: "Total Books", value: books.length, icon: BookCopy, items: books },
+      { title: "Books In Progress", value: books.filter(b => !['Complete', 'Archived', 'Pending Shipment', 'Finalized'].includes(b.status)).length, icon: Loader2, items: books.filter(b => !['Complete', 'Archived', 'Pending Shipment', 'Finalized'].includes(b.status)) },
+      { title: "Books Completed", value: books.filter(b => ['Complete', 'Archived', 'Finalized'].includes(b.status)).length, icon: CheckCircle, items: books.filter(b => ['Complete', 'Archived', 'Finalized'].includes(b.status)) },
+      { title: "Books with Errors", value: booksWithErrors.length, icon: AlertTriangle, items: booksWithErrors }
     ];
   }, [project, documents]);
+  
+  const handleKpiClick = (kpi: (typeof kpiData)[0]) => {
+    if (!kpi.items || kpi.items.length === 0) return;
+    setDetailFilter('');
+    setDetailState({
+        open: true,
+        title: `Details for: ${kpi.title}`,
+        items: kpi.items,
+    });
+  };
+
+  const filteredDialogItems = React.useMemo(() => {
+    if (!detailState.open || !detailFilter) return detailState.items;
+    const query = detailFilter.toLowerCase();
+    return detailState.items.filter(book =>
+      book.name.toLowerCase().includes(query) ||
+      book.status.toLowerCase().includes(query)
+    );
+  }, [detailState.items, detailFilter, detailState.open]);
+
   
   const chartData = React.useMemo(() => {
       if (!project) return [];
@@ -286,38 +312,37 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                   </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-3">
-                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <DetailItem label="Status" value={<Badge variant={getStatusBadgeVariant(project.status)}>{project.status}</Badge>} />
-                  <DetailItem label="Budget" value={`$${project.budget.toLocaleString()}`} />
-                  <DetailItem label="Timeline" value={`${format(new Date(project.startDate), "LLL d, y")} to ${format(new Date(project.endDate), "LLL d, y")}`} />
-                   <div className="space-y-2">
-                       <DetailItem label="Total Pages" value={`${project.documentCount.toLocaleString()} / ${project.totalExpected.toLocaleString()}`} />
-                       <Progress value={project.progress} />
-                    </div>
-                </div>
-                {project.description && (
-                    <>
-                    <Separator className="my-4" />
-                    <div className="pt-2">
-                        <p className="text-sm text-muted-foreground">Description</p>
-                        <p className="text-sm font-medium whitespace-pre-wrap">{project.description}</p>
-                    </div>
-                    </>
-                )}
-            </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            {kpiData.map(kpi => (
-                <Card key={kpi.title}>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
-                        <kpi.icon className="h-4 w-4 text-muted-foreground" />
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {kpiData.map((kpi) => (
+                  <Card key={kpi.title} onClick={() => handleKpiClick(kpi)} className={kpi.items && kpi.items.length > 0 ? "cursor-pointer transition-colors hover:bg-muted/50" : ""}>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
+                          <kpi.icon className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent><div className="text-2xl font-bold">{kpi.value}</div></CardContent>
+                  </Card>
+              ))}
+            </div>
+             <div className="lg:col-span-1">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-base">Project Summary</CardTitle>
                     </CardHeader>
-                    <CardContent><div className="text-2xl font-bold">{kpi.value}</div></CardContent>
+                    <CardContent className="space-y-4">
+                        <DetailItem label="Status" value={<Badge variant={getStatusBadgeVariant(project.status)}>{project.status}</Badge>} />
+                        <DetailItem label="Budget" value={`$${project.budget.toLocaleString()}`} />
+                        <DetailItem label="Timeline" value={`${format(new Date(project.startDate), "LLL d, y")} to ${format(new Date(project.endDate), "LLL d, y")}`} />
+                        <Separator/>
+                        <div className="space-y-2">
+                            <DetailItem label="Total Pages" value={`${project.documentCount.toLocaleString()} / ${project.totalExpected.toLocaleString()}`} />
+                            <Progress value={project.progress} />
+                        </div>
+                    </CardContent>
                 </Card>
-            ))}
+            </div>
         </div>
         
         <Card>
@@ -424,6 +449,55 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
           />
         </DialogContent>
       </Dialog>
+      
+      <Dialog open={detailState.open} onOpenChange={(open) => { if (!open) setDetailFilter(''); setDetailState(prev => ({ ...prev, open })); }}>
+        <DialogContent className="max-w-3xl">
+            <DialogHeader>
+                <DialogTitle>{detailState.title}</DialogTitle>
+                <DialogDescription>Showing {filteredDialogItems.length} of {detailState.items.length} total books.</DialogDescription>
+            </DialogHeader>
+            <div className="py-2">
+                <Input 
+                    placeholder="Filter by name or status..."
+                    value={detailFilter}
+                    onChange={(e) => setDetailFilter(e.target.value)}
+                />
+            </div>
+            <div className="max-h-[60vh] overflow-y-auto pr-4">
+                  {filteredDialogItems.length > 0 ? (
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Book Name</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead className="text-right">Pages</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredDialogItems.map(book => (
+                                <TableRow key={book.id}>
+                                    <TableCell className="font-medium">
+                                        <Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge variant="outline">{book.status}</Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right">{book.documentCount} / {book.expectedDocuments}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="text-center py-10 text-muted-foreground">
+                        <p>No books match your filter.</p>
+                    </div>
+                  )}
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setDetailState({ open: false, title: '', items: [] })}>Close</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <WorkflowConfigDialog 
         open={isWorkflowDialogOpen}
@@ -511,7 +585,7 @@ function WorkflowConfigDialog({ open, onOpenChange, projectName, currentWorkflow
                   ) : (
                     group.stages.map(stageKey => {
                       const stageConfig = STAGE_CONFIG[stageKey as keyof typeof STAGE_CONFIG];
-                      const isMandatory = !WORKFLOW_PHASES.find(g => g.stages.includes(stageKey))?.toggleable;
+                      const isMandatory = MANDATORY_STAGES.includes(stageKey);
                       const isEnabled = isMandatory || currentWorkflow.includes(stageKey);
                       return (
                          <div key={stageKey} className="flex items-center space-x-3 opacity-70">
