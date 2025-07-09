@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import * as React from "react";
@@ -459,8 +460,8 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
           return;
       }
       
-      if (stage === 'assign-scanner') {
-        const projectWorkflow = projectWorkflows[book.projectId] || [];
+      if (stage === 'already-received') {
+        const projectWorkflow = projectWorkflows[book.projectId!] || [];
         const isScanningEnabled = projectWorkflow.includes('to-scan');
         if (isScanningEnabled) {
           openAssignmentDialog(book, 'scanner');
@@ -541,7 +542,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
             };
         }
 
-        if (stage === 'assign-scanner') {
+        if (stage === 'already-received') {
             const projectWorkflow = projectWorkflows[book.projectId!] || [];
             const isScanningEnabled = projectWorkflow.includes('to-scan');
             if (isScanningEnabled) {
@@ -919,7 +920,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={closeScanningDialog}>Cancel</Button>
-          <Button onClick={stage === 'assign-scanner' ? handleConfirmScanBypass : handleConfirmScan} disabled={!isScanFolderMatch}>
+          <Button onClick={stage === 'already-received' ? handleConfirmScanBypass : handleConfirmScan} disabled={!isScanFolderMatch}>
             Confirm Scan
           </Button>
         </DialogFooter>
