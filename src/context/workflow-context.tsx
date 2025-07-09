@@ -255,12 +255,16 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   ) => {
     const actorId = currentUser?.id;
     if (!actorId) return;
+
+    // Format date for MySQL DATETIME compatibility
+    const mysqlDate = new Date().toISOString().slice(0, 19).replace('T', ' ');
+
     try {
         const logData: Omit<AuditLog, 'id'> = {
             action,
             details,
             userId: actorId,
-            date: new Date().toISOString(),
+            date: mysqlDate,
             ...ids,
         };
         const response = await fetch('/api/audit-logs', {
@@ -268,15 +272,23 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(logData),
         });
+
         if (!response.ok) {
-           const errorBody = await response.json();
-           console.error("Audit log API error:", errorBody);
-           throw new Error('Failed to create audit log');
+            let errorBody: any = 'Unknown API error';
+            try {
+                errorBody = await response.json();
+            } catch (e) {
+                errorBody = await response.text();
+            }
+            console.error("Audit log API error:", errorBody);
+            throw new Error(`Failed to create audit log. Status: ${response.status}`);
         }
+
         const newLog = await response.json();
-        setAuditLogs(prev => [{ ...newLog, user: currentUser.name }, ...prev]);
+        setAuditLogs(prev => [{ ...newLog, user: currentUser.name }, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     } catch (error) {
         console.error("Failed to save audit log:", error);
+        // Optionally show a toast to the user here
     }
   }, [currentUser]);
 
@@ -302,14 +314,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         const documentCount = projectBooks.reduce((sum, book) => sum + book.documentCount, 0);
         const progress = totalExpected > 0 ? (documentCount / totalExpected) * 100 : 0;
   
-        return {
-            ...project,
-            clientName: client?.name || 'Unknown Client',
-            documentCount,
-            totalExpected,
-            progress: Math.min(100, progress),
-            books: projectBooks,
-        };
+      return {
+        ...project,
+        clientName: client?.name || 'Unknown Client',
+        documentCount,
+        totalExpected,
+        progress: Math.min(100, progress),
+        books: projectBooks,
+      };
     });
   }, [rawProjects, clients, rawBooks, documents]);
   
@@ -948,7 +960,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     
     const additionalUpdates: Partial<RawBook> = {};
     if (currentStatusName === 'Checking Started') {
-        additionalUpdates.qcEndTime = new Date().toISOString();
+        updates.qcEndTime = new Date().toISOString();
     }
     
     updateBookStatus(bookId, newStatusName, additionalUpdates);

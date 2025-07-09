@@ -22,10 +22,9 @@ export async function POST(request: Request) {
     let connection: PoolConnection | null = null;
     try {
         const logData = await request.json();
-        const { action, details, userId, date, bookId, documentId } = logData;
+        const { action = '', details = '', userId, date, bookId, documentId } = logData;
         
         const newId = `al_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-        const newLog = { id: newId, ...logData };
         
         connection = await getConnection();
         const query = 'INSERT INTO audit_logs (id, action, details, userId, date, bookId, documentId) VALUES (?, ?, ?, ?, ?, ?, ?)';
@@ -34,6 +33,8 @@ export async function POST(request: Request) {
         await connection.execute(query, values);
         
         releaseConnection(connection);
+
+        const newLog = { id: newId, action, details, userId, date, bookId, documentId };
         return NextResponse.json(newLog, { status: 201 });
     } catch (error) {
         console.error("Error creating audit log:", error);
