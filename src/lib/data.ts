@@ -1,5 +1,4 @@
 
-
 // Define types for our data structures
 export interface Client {
     id: string;
@@ -155,7 +154,20 @@ export interface EnrichedBook extends RawBook {
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 async function fetchData<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const url = `${API_BASE_URL}/api${endpoint}`;
+  const isServer = typeof window === 'undefined';
+  let baseUrl = API_BASE_URL;
+
+  if (isServer && !baseUrl) {
+    const vercelUrl = process.env.VERCEL_URL;
+    if (vercelUrl) {
+      baseUrl = `https://${vercelUrl}`;
+    } else {
+      // Default to localhost for development if not on Vercel
+      baseUrl = `http://localhost:${process.env.PORT || 9002}`;
+    }
+  }
+  
+  const url = `${baseUrl}/api${endpoint}`;
   try {
     const response = await fetch(url, { ...options, cache: 'no-store' });
     if (!response.ok) {
