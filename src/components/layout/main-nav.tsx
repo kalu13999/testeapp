@@ -123,7 +123,7 @@ export function MainNav() {
       // 3. Project Workflow filter
       if (item.href.startsWith('/workflow/')) {
           const stage = item.href.split('/').pop() || '';
-          if (!MANDATORY_STAGES.includes(stage) && !projectWorkflows.includes(stage)) {
+          if (!MANDATORY_STAGES.includes(stage) && !projectWorkflow.includes(stage)) {
             return false;
           }
       }
