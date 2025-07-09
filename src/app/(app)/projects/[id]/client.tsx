@@ -320,11 +320,11 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                 <CardTitle>Project Summary</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-8">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-8">
                     <DetailItem label="Status" value={<Badge variant={getStatusBadgeVariant(project.status)}>{project.status}</Badge>} />
                     <DetailItem label="Budget" value={`$${project.budget.toLocaleString()}`} />
                     <DetailItem label="Timeline" value={`${format(new Date(project.startDate), "LLL d, yyyy")} to ${format(new Date(project.endDate), "LLL d, yyyy")}`} />
-                    <div className="lg:col-span-4">
+                    <div className="col-span-full">
                         <DetailItem label="Overall Progress" value={`${project.documentCount.toLocaleString()} / ${project.totalExpected.toLocaleString()} pages`} />
                         <Progress value={project.progress} className="mt-2 h-2" />
                     </div>
@@ -444,11 +444,17 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
         </Card>
 
         <Card>
-            <CardHeader>
-                <CardTitle>Workflow Configuration</CardTitle>
-                <CardDescription>
-                    The sequence of stages enabled for this project. Disabled phases are skipped.
-                </CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between">
+                <div>
+                    <CardTitle>Workflow Configuration</CardTitle>
+                    <CardDescription>
+                        The sequence of stages enabled for this project. Disabled phases are skipped.
+                    </CardDescription>
+                </div>
+                 <Button variant="outline" size="sm" onClick={() => setIsWorkflowDialogOpen(true)}>
+                    <Settings2 className="mr-2 h-4 w-4"/>
+                    Edit Workflow
+                </Button>
             </CardHeader>
             <CardContent>
                 <div className="space-y-6">
@@ -466,7 +472,7 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                             return (
                                 <div key={stageKey} className={cn(
                                     "flex items-center space-x-3",
-                                    !isEnabled && !isMandatory && "opacity-60"
+                                    !isEnabled && !group.toggleable && "opacity-60"
                                 )}>
                                     {isEnabled ? (
                                         <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
@@ -476,7 +482,7 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                                     <div className="flex flex-col">
                                         <span className={cn(
                                             "font-medium text-sm",
-                                            !isEnabled && !isMandatory && "line-through"
+                                            !isEnabled && "line-through"
                                         )}>
                                             {stageConfig.title}
                                         </span>
@@ -490,12 +496,6 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                 ))}
                 </div>
             </CardContent>
-             <CardFooter>
-                <Button variant="outline" onClick={() => setIsWorkflowDialogOpen(true)}>
-                    <Settings2 className="mr-2 h-4 w-4"/>
-                    Edit Workflow
-                </Button>
-            </CardFooter>
         </Card>
       </div>
 
@@ -573,7 +573,7 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
         onSave={handleWorkflowSave}
       />
     </>
-  );
+  )
 }
 
 // --- Workflow Configuration Dialog Component ---

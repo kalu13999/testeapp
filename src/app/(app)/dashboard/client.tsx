@@ -65,9 +65,9 @@ const getStatusBadgeVariant = (status: string) => {
 }
 
 const DetailItem = ({ label, value }: { label: React.ReactNode; value: React.ReactNode }) => (
-  <div className="flex justify-between items-center">
+  <div className="flex flex-col space-y-1">
     <p className="text-sm text-muted-foreground">{label}</p>
-    <div className="font-medium text-sm text-right">{value}</div>
+    <div className="font-medium text-sm">{value}</div>
   </div>
 );
 
@@ -332,7 +332,7 @@ function ProjectDashboard() {
     const ChartComponent = { bar: BarChart, line: LineChart, area: AreaChart }[chartType];
     const ChartElement = {
         bar: <Bar dataKey="count" fill="var(--color-count)" radius={[4, 4, 0, 0]} />,
-        line: <Line type="monotone" dataKey="count" stroke="var(--color-count)" strokeWidth={2} />,
+        line: <Line type="monotone" dataKey="count" stroke="var(--color-count)" strokeWidth={2} dot={false} />,
         area: <Area type="monotone" dataKey="count" stroke="var(--color-count)" fill="var(--color-count)" fillOpacity={0.3} />,
     }[chartType];
     const dailyChartConfig = {
@@ -367,32 +367,31 @@ function ProjectDashboard() {
                         ))}
                     </div>
                     <div className="lg:col-span-1">
-                        <Card>
+                       <Card>
                             <CardHeader>
                                 <CardTitle>Project Details</CardTitle>
                                 <CardDescription>At-a-glance project information.</CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-4">
-                                <DetailItem label="Client" value={<Link href={`/clients`} className="hover:underline">{project.clientName}</Link>} />
-                                <DetailItem label="Status" value={<Badge variant={getStatusBadgeVariant(project.status)}>{project.status}</Badge>} />
-                                <Separator/>
-                                <DetailItem label="Budget" value={`$${project.budget.toLocaleString()}`} />
-                                <DetailItem label="Timeline" value={`${project.startDate} to ${project.endDate}`} />
-                                <Separator/>
-                                <DetailItem label="Total Pages" value={`${project.documentCount.toLocaleString()} / ${project.totalExpected.toLocaleString()}`} />
-                                <Progress value={project.progress} />
-                                {project.info && (
-                                    <>
-                                    <Separator/>
-                                    <div className="pt-2">
-                                        <p className="text-sm text-muted-foreground">Additional Info</p>
-                                        <p className="text-sm font-medium whitespace-pre-wrap">{project.info}</p>
+                            <CardContent>
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-6">
+                                    <DetailItem label="Client" value={<Link href={`/clients`} className="hover:underline">{project.clientName}</Link>} />
+                                    <DetailItem label="Status" value={<Badge variant={getStatusBadgeVariant(project.status)}>{project.status}</Badge>} />
+                                    <DetailItem label="Budget" value={`$${project.budget.toLocaleString()}`} />
+                                    <DetailItem label="Timeline" value={`${format(new Date(project.startDate), "LLL d, y")} - ${format(new Date(project.endDate), "LLL d, y")}`} />
+                                    <div className="col-span-2">
+                                        <DetailItem label="Overall Progress" value={`${project.documentCount.toLocaleString()} / ${project.totalExpected.toLocaleString()} pages`} />
+                                        <Progress value={project.progress} className="mt-2 h-2" />
                                     </div>
-                                    </>
+                                </div>
+                                {project.info && (
+                                <>
+                                <Separator className="my-4"/>
+                                <DetailItem label="Additional Info" value={<p className="text-sm font-normal text-foreground whitespace-pre-wrap">{project.info}</p>} />
+                                </>
                                 )}
                             </CardContent>
                             <CardFooter>
-                                <Button asChild variant="outline" className="w-full"><Link href={`/projects/${project.id}`}>View Project Details</Link></Button>
+                                <Button asChild variant="outline" className="w-full"><Link href={`/projects/${project.id}`}>View Full Project Details</Link></Button>
                             </CardFooter>
                         </Card>
                     </div>
