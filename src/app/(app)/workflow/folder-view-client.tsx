@@ -58,7 +58,7 @@ interface FolderViewClientProps {
     actionButtonLabel?: string;
     actionButtonIcon?: keyof typeof iconMap;
     emptyStateText: string;
-    dataStage?: string;
+    dataStatus?: string;
   };
 }
 
@@ -134,41 +134,31 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     availableTags: RejectionTag[];
   }>({ open: false, docId: null, docName: null, selectedTags: [], availableTags: [] });
 
-  const stageDocuments = React.useMemo(() => {
-    if (!config.dataStage || !selectedProjectId) return []; // Always require a project to be selected
-    
-    let baseDocs = documents.filter(doc => doc.status === config.dataStage && doc.projectId === selectedProjectId);
-    
-    // For client-facing views, filter by their client ID if they are a client user
-    if (currentUser?.role === 'Client' && currentUser.clientId) {
-      const clientBooks = new Set(books.filter(b => b.clientId === currentUser.clientId).map(b => b.id));
-      baseDocs = baseDocs.filter(doc => doc.bookId && clientBooks.has(doc.bookId));
-    }
-
-    return baseDocs;
-  }, [documents, config.dataStage, selectedProjectId, currentUser, books]);
-
   const groupedByBook = React.useMemo(() => {
-    return stageDocuments.reduce<GroupedDocuments>((acc, doc) => {
-      if (!doc.bookId) return acc;
-      const bookInfo = books.find(b => b.id === doc.bookId);
-      if (!bookInfo) return acc;
+    if (!config.dataStatus || !selectedProjectId) return {};
 
-      if (!acc[doc.bookId]) {
-        acc[doc.bookId] = {
-          book: bookInfo,
-          pages: [],
-          hasError: false,
-          hasWarning: false,
+    let booksInStage = books.filter(book => book.status === config.dataStatus && book.projectId === selectedProjectId);
+
+    if (currentUser?.role === 'Client' && currentUser.clientId) {
+      booksInStage = booksInStage.filter(b => b.clientId === currentUser.clientId);
+    }
+    
+    return booksInStage.reduce<GroupedDocuments>((acc, book) => {
+        const pages = documents.filter(doc => doc.bookId === book.id);
+        acc[book.id] = {
+            book,
+            pages,
+            hasError: pages.some(p => p.flag === 'error'),
+            hasWarning: pages.some(p => p.flag === 'warning')
         };
-      }
-      acc[doc.bookId].pages.push(doc);
-      if (doc.flag === 'error') acc[doc.bookId].hasError = true;
-      if (doc.flag === 'warning') acc[doc.bookId].hasWarning = true;
-      return acc;
+        return acc;
     }, {});
-  }, [stageDocuments, books]);
+  }, [books, documents, config.dataStatus, selectedProjectId, currentUser]);
   
+  React.useEffect(() => {
+    setSelection([]);
+  }, [selectedProjectId]);
+
   const handleRejectSubmit = () => {
     if (!currentBook) return;
     handleClientAction(currentBook.id, 'reject', rejectionComment);

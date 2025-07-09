@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import * as React from "react"
@@ -24,13 +25,12 @@ interface ProcessingViewClientProps {
     title: string;
     description: string;
     emptyStateText: string;
-    dataStage?: string;
+    dataStatus?: string;
   };
 }
 
 export default function ProcessingViewClient({ config }: ProcessingViewClientProps) {
   const { 
-    documents, 
     books,
     processingLogs,
     handleCompleteProcessing,
@@ -40,17 +40,15 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
   const [confirmationState, setConfirmationState] = React.useState({ open: false, title: '', description: '', onConfirm: () => {} });
   
   const booksInProcessing = React.useMemo(() => {
-    if (!config.dataStage) return [];
+    if (!config.dataStatus) return [];
     
-    let docsInStage = documents.filter(doc => doc.status === config.dataStage);
-
+    let baseBooks = books.filter(book => book.status === config.dataStatus);
     if (selectedProjectId) {
-      docsInStage = docsInStage.filter(doc => doc.projectId === selectedProjectId);
+      baseBooks = baseBooks.filter(doc => doc.projectId === selectedProjectId);
     }
     
-    const bookIds = new Set(docsInStage.map(doc => doc.bookId));
-    return books.filter(book => bookIds.has(book.id));
-  }, [documents, books, config.dataStage, selectedProjectId]);
+    return baseBooks;
+  }, [books, config.dataStatus, selectedProjectId]);
   
   const openConfirmationDialog = ({ title, description, onConfirm}: Omit<typeof confirmationState, 'open'>) => {
     setConfirmationState({ open: true, title, description, onConfirm });

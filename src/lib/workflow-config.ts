@@ -1,4 +1,5 @@
 
+
 import { LucideIcon } from "lucide-react";
 
 type StageConfigItem = {
@@ -10,7 +11,6 @@ type StageConfigItem = {
   actionButtonLabel?: string;
   actionButtonIcon?: string;
   dataStatus?: string;
-  dataStage?: string;
   assigneeRole?: 'scanner' | 'indexer' | 'qc';
 };
 
@@ -104,8 +104,9 @@ export const WORKFLOW_PHASES = [
         actionButtonLabel: "Assign for Indexing",
         actionButtonIcon: "UserPlus",
         emptyStateText: "No scanned documents are waiting in storage.",
-        dataStage: 'Storage',
+        dataStatus: 'Storage',
         viewType: 'folder',
+        dataType: 'book',
         assigneeRole: 'indexer',
       },
     }
@@ -193,9 +194,9 @@ export const WORKFLOW_PHASES = [
         title: "In Processing",
         description: "Monitoring documents currently being processed by automated scripts.",
         emptyStateText: "No documents are currently being processed.",
-        dataStage: "In Processing",
+        dataStatus: "In Processing",
         viewType: 'processing',
-        dataType: 'document'
+        dataType: 'book'
       },
       'processed': {
         title: "Processed",
@@ -203,8 +204,8 @@ export const WORKFLOW_PHASES = [
         actionButtonLabel: "Send to Final QC",
         actionButtonIcon: "Send",
         emptyStateText: "No documents have been processed.",
-        dataType: 'document',
-        dataStage: "Processed",
+        dataType: 'book',
+        dataStatus: "Processed",
         viewType: 'folder',
       },
     }
@@ -222,8 +223,8 @@ export const WORKFLOW_PHASES = [
         actionButtonLabel: "Approve for Delivery",
         actionButtonIcon: "Check",
         emptyStateText: "No documents for final QC.",
-        dataType: 'document',
-        dataStage: "Final Quality Control",
+        dataType: 'book',
+        dataStatus: "Final Quality Control",
         viewType: 'folder',
       },
     }
@@ -241,8 +242,8 @@ export const WORKFLOW_PHASES = [
         actionButtonLabel: "Send to Client",
         actionButtonIcon: "Send",
         emptyStateText: "No documents to deliver.",
-        dataType: 'document',
-        dataStage: "Delivery",
+        dataType: 'book',
+        dataStatus: "Delivery",
         viewType: 'folder',
       },
       'pending-deliveries': {
@@ -251,8 +252,9 @@ export const WORKFLOW_PHASES = [
         actionButtonLabel: "",
         actionButtonIcon: "ThumbsUp",
         emptyStateText: "There are no pending deliveries.",
-        dataStage: "Pending Validation",
+        dataStatus: "Pending Validation",
         viewType: "folder",
+        dataType: 'book'
       },
       'client-rejections': {
         title: "Client Rejections",
@@ -260,7 +262,7 @@ export const WORKFLOW_PHASES = [
         actionButtonLabel: "Mark as Corrected",
         actionButtonIcon: "Undo2",
         emptyStateText: "No books have been rejected by clients.",
-        dataStage: 'Client Rejected',
+        dataStatus: 'Client Rejected',
         viewType: 'correction',
         dataType: 'book',
       },
@@ -268,8 +270,8 @@ export const WORKFLOW_PHASES = [
         title: "Corrected Books",
         description: "Books that have been corrected and are ready to be re-submitted to the workflow.",
         emptyStateText: "There are no corrected books.",
-        dataType: 'document',
-        dataStage: 'Corrected',
+        dataType: 'book',
+        dataStatus: 'Corrected',
         viewType: 'folder'
       }
     }
@@ -287,8 +289,9 @@ export const WORKFLOW_PHASES = [
         actionButtonLabel: "Archive",
         actionButtonIcon: "Archive",
         emptyStateText: "No documents are currently finalized.",
-        dataStage: "Finalized",
+        dataStatus: "Finalized",
         viewType: "folder",
+        dataType: 'book'
       },
       'archive': {
         title: "Archived Documents",
@@ -296,8 +299,9 @@ export const WORKFLOW_PHASES = [
         actionButtonLabel: "", // No action
         actionButtonIcon: "Archive",
         emptyStateText: "No documents have been archived yet.",
-        dataStage: "Archived",
+        dataStatus: "Archived",
         viewType: "folder",
+        dataType: 'book'
       }
     }
   }
@@ -313,7 +317,7 @@ export const STAGE_CONFIG: StageConfig = WORKFLOW_PHASES.reduce((acc, group) => 
 export const findStageKeyFromStatus = (statusName: string): string | undefined => {
     for (const stageKey in STAGE_CONFIG) {
         const config = STAGE_CONFIG[stageKey as keyof typeof STAGE_CONFIG];
-        if (config.dataStatus === statusName || config.dataStage === statusName) {
+        if (config.dataStatus === statusName) {
             return stageKey;
         }
     }
