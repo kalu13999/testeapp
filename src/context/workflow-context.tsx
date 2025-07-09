@@ -257,7 +257,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     details: string, 
     ids: { bookId?: string, documentId?: string, userId?: string }
   ) => {
-    const actorId = currentUser?.id;
+    const actorId = ids.userId || currentUser?.id;
     if (!actorId) return;
 
     const mysqlDate = getDbSafeDate();
@@ -266,7 +266,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         const logData: Omit<AuditLog, 'id'> = {
             action,
             details,
-            userId: actorId, // Always use the actor's ID for the log entry
+            userId: actorId,
             date: mysqlDate,
             bookId: ids.bookId,
             documentId: ids.documentId,
@@ -288,12 +288,12 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
            throw new Error('Failed to create audit log');
         }
         const newLog = await response.json();
-        setAuditLogs(prev => [{ ...newLog, user: currentUser.name }, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+        setAuditLogs(prev => [{ ...newLog, user: users.find(u => u.id === actorId)?.name || 'Unknown' }, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     } catch (error) {
         console.error("Failed to save audit log:", error);
         // Optionally show a toast to the user here
     }
-  }, [currentUser]);
+  }, [currentUser, users]);
 
   // --- Memoized Data Enrichment ---
   const allEnrichedProjects: EnrichedProject[] = React.useMemo(() => {
@@ -891,58 +891,43 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     return null; // Reached end of workflow
   };
 
-  const moveBookDocuments = React.useCallback(async (bookId: string, newStatusName: string) => {
-    try {
-      const newStatusId = statuses.find(s => s.name === newStatusName)?.id;
-      if (!newStatusId) {
-        console.error(`Status '${newStatusName}' not found in status mapping.`);
-        return;
-      }
-      
-      const response = await fetch('/api/documents/bulk-update-status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookId, newStatusId }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to bulk update document statuses via API');
-      }
-
-      // Optimistically update client state
-      setDocuments(prevDocs =>
-        prevDocs.map(doc =>
-          doc.bookId === bookId ? { ...doc, status: newStatusName, statusId: newStatusId } : doc
-        )
-      );
-    } catch (error) {
-      console.error(error);
-      toast({ title: "Document Update Error", description: "Could not update the status of associated documents.", variant: "destructive" });
-    }
-  }, [toast, statuses]);
-
   const updateBookStatus = React.useCallback(async (bookId: string, newStatusName: string, additionalUpdates: Partial<RawBook> = {}) => {
     try {
         const statusId = statuses.find(s => s.name === newStatusName)?.id;
         if (!statusId) throw new Error(`Status ${newStatusName} not found.`);
 
-        const response = await fetch(`/api/books/${bookId}`, {
+        // Perform API calls first
+        const bookResponse = await fetch(`/api/books/${bookId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ statusId, ...additionalUpdates }),
         });
-        if (!response.ok) throw new Error('Failed to update book status');
-        const updatedBook = await response.json();
+        if (!bookResponse.ok) throw new Error('Failed to update book status');
+
+        const docResponse = await fetch('/api/documents/bulk-update-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bookId, newStatusId: statusId }),
+        });
+        if (!docResponse.ok) throw new Error('Failed to bulk update document statuses');
         
+        const updatedBook = await bookResponse.json();
+        
+        // Batch state updates together
         setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
-        await moveBookDocuments(bookId, newStatusName);
+        setDocuments(prevDocs =>
+          prevDocs.map(doc =>
+            doc.bookId === bookId ? { ...doc, status: newStatusName, statusId } : doc
+          )
+        );
+
         return true;
     } catch (error) {
         console.error(error);
         toast({ title: "Error", description: "Could not update book status.", variant: "destructive" });
         return false;
     }
-  }, [toast, moveBookDocuments, statuses]);
+  }, [toast, statuses]);
   
   const handleMarkAsShipped = (bookIds: string[]) => {
     bookIds.forEach(async bookId => {
