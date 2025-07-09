@@ -249,7 +249,7 @@ export function BookStatsTab() {
             </Card>
         </div>
         
-        <div className="grid grid-cols-1 gap-6">
+        <div className="grid gap-6 md:grid-cols-2">
             <Card>
                 <CardHeader>
                     <CardTitle>Books by Status</CardTitle>
@@ -258,12 +258,12 @@ export function BookStatsTab() {
                 <CardContent>
                     <ChartContainer
                         config={statusChartConfig}
-                        className="mx-auto aspect-video h-[300px]"
+                        className="mx-auto aspect-square h-[250px]"
                     >
                         <PieChart>
                         <ChartTooltip
                             cursor={false}
-                            content={<ChartTooltipContent />}
+                            content={<ChartTooltipContent hideLabel />}
                         />
                         <Pie
                             data={booksByStatusChartData}
