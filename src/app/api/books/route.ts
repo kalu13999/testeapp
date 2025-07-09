@@ -33,7 +33,7 @@ export async function POST(request: Request) {
             const newBooks: RawBook[] = [];
 
             const bookInsertQuery = `
-              INSERT INTO books (id, name, status, expectedDocuments, projectId, priority, info, author, isbn, publicationYear)
+              INSERT INTO books (id, name, statusId, expectedDocuments, projectId, priority, info, author, isbn, publicationYear)
               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `;
 
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
                 const newBook: Omit<RawBook, 'id'> & {id: string} = {
                     id: `book_imp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
                     name: book.name,
-                    status: 'Pending Shipment',
+                    statusId: 'ds_1', // Pending Shipment
                     expectedDocuments: book.expectedDocuments,
                     projectId: projectId,
                     priority: book.priority || 'Medium',
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
                     publicationYear: book.publicationYear || null,
                 };
                 await connection.execute(bookInsertQuery, [
-                    newBook.id, newBook.name, newBook.status, newBook.expectedDocuments, newBook.projectId,
+                    newBook.id, newBook.name, newBook.statusId, newBook.expectedDocuments, newBook.projectId,
                     newBook.priority, newBook.info, newBook.author, newBook.isbn, newBook.publicationYear
                 ]);
                 newBooks.push(newBook as RawBook);
@@ -67,18 +67,18 @@ export async function POST(request: Request) {
             const { projectId, book } = body;
             const newBook: Omit<RawBook, 'id'> & {id: string} = {
                 id: `book_${Date.now()}`,
-                status: 'Pending Shipment',
+                statusId: 'ds_1', // Pending Shipment
                 projectId,
                 ...book
             };
             
             const bookInsertQuery = `
-              INSERT INTO books (id, name, status, expectedDocuments, projectId, priority, info, author, isbn, publicationYear)
+              INSERT INTO books (id, name, statusId, expectedDocuments, projectId, priority, info, author, isbn, publicationYear)
               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `;
 
             await connection.execute(bookInsertQuery, [
-                newBook.id, newBook.name, newBook.status, newBook.expectedDocuments, newBook.projectId,
+                newBook.id, newBook.name, newBook.statusId, newBook.expectedDocuments, newBook.projectId,
                 newBook.priority, newBook.info, newBook.author, newBook.isbn, newBook.publicationYear
             ]);
             

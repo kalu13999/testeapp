@@ -78,11 +78,11 @@ export interface User {
 export interface RawBook {
     id: string;
     name: string;
-    status: string;
+    statusId: string;
     expectedDocuments: number;
     projectId: string;
-    isbn?: string;
     author?: string;
+    isbn?: string;
     publicationYear?: number;
     priority?: 'Low' | 'Medium' | 'High';
     info?: string;
@@ -139,6 +139,7 @@ export interface EnrichedProject extends Project {
 }
 
 export interface EnrichedBook extends RawBook {
+    status: string;
     projectId: string;
     clientId: string;
     projectName: string;
@@ -189,11 +190,12 @@ export const getFolders = () => fetchData<Folder[]>('/folders');
 
 // Enriched data fetching functions
 export async function getEnrichedProjects(): Promise<EnrichedProject[]> {
-    const [projects, clients, books, documents] = await Promise.all([
+    const [projects, clients, books, documents, statuses] = await Promise.all([
       getRawProjects(),
       getClients(),
       getRawBooks(),
       getRawDocuments(),
+      getDocumentStatuses(),
     ]);
   
     return projects.map(project => {
@@ -203,6 +205,7 @@ export async function getEnrichedProjects(): Promise<EnrichedProject[]> {
         const bookProgress = book.expectedDocuments > 0 ? (bookDocuments.length / book.expectedDocuments) * 100 : 0;
         return {
           ...book,
+          status: statuses.find(s => s.id === book.statusId)?.name || 'Unknown',
           clientId: project.clientId,
           projectName: project.name,
           clientName: client?.name || 'Unknown Client',
