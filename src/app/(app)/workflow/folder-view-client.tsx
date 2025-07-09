@@ -58,7 +58,7 @@ interface FolderViewClientProps {
     actionButtonLabel?: string;
     actionButtonIcon?: keyof typeof iconMap;
     emptyStateText: string;
-    dataStage: string;
+    dataStage?: string;
   };
 }
 
@@ -135,7 +135,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   }>({ open: false, docId: null, docName: null, selectedTags: [], availableTags: [] });
 
   const stageDocuments = React.useMemo(() => {
-    if (!selectedProjectId) return []; // Always require a project to be selected
+    if (!config.dataStage || !selectedProjectId) return []; // Always require a project to be selected
     
     let baseDocs = documents.filter(doc => doc.status === config.dataStage && doc.projectId === selectedProjectId);
     

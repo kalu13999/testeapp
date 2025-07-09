@@ -25,8 +25,9 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { AppDocument, RejectionTag } from "@/context/workflow-context";
+import { AppDocument } from "@/context/workflow-context";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import type { RejectionTag } from "@/lib/data";
 
 
 interface CorrectionViewClientProps {
@@ -35,7 +36,7 @@ interface CorrectionViewClientProps {
     title: string;
     description: string;
     emptyStateText: string;
-    dataStage: string;
+    dataStage?: string;
   };
 }
 
@@ -75,6 +76,7 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
   }>({ open: false, docId: null, docName: null, selectedTags: [], availableTags: [] });
 
   const rejectedBooks = React.useMemo(() => {
+    if (!config.dataStage) return [];
     let baseBooks = books.filter(book => book.status === config.dataStage);
     if (selectedProjectId) {
       baseBooks = baseBooks.filter(book => book.projectId === selectedProjectId);

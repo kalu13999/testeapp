@@ -24,7 +24,7 @@ interface ProcessingViewClientProps {
     title: string;
     description: string;
     emptyStateText: string;
-    dataStage: string;
+    dataStage?: string;
   };
 }
 
@@ -40,6 +40,8 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
   const [confirmationState, setConfirmationState] = React.useState({ open: false, title: '', description: '', onConfirm: () => {} });
   
   const booksInProcessing = React.useMemo(() => {
+    if (!config.dataStage) return [];
+    
     let docsInStage = documents.filter(doc => doc.status === config.dataStage);
 
     if (selectedProjectId) {
