@@ -1,4 +1,3 @@
-
 "use client"
 
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, LineChart, AreaChart, Line, Area } from "recharts"
@@ -34,7 +33,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { AlertTriangle, BookCopy, UserCheck, BarChart2, ListTodo, Activity, TrendingUp, ScanLine, Clock, ThumbsUp, Package, Send, FileClock, CheckCheck, ArrowDownToLine } from "lucide-react"
+import { AlertTriangle, BookCopy, UserCheck, BarChart2, ListTodo, Activity, TrendingUp, ScanLine, Clock, ThumbsUp, Package, Send, FileClock, CheckCheck, ArrowDownToLine, CheckCircle2 } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import { useMemo } from "react"
 import type { EnrichedBook, AppDocument, EnrichedProject, EnrichedAuditLog, User } from "@/context/workflow-context"
