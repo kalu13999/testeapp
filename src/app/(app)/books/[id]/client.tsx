@@ -132,7 +132,7 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
                                 />
                             </CardContent>
                              <CardFooter className="p-2">
-                                <p className="text-xs font-medium truncate">{page.name}</p>
+                                <p className="text-xs font-medium break-words">{page.name}</p>
                             </CardFooter>
                         </Card>
                     </Link>
