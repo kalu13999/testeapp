@@ -1,5 +1,4 @@
 
-
 "use client"
 
 import * as React from 'react';
@@ -29,6 +28,7 @@ export type NavigationHistoryItem = { href: string, label: string };
 type AppContextType = {
   // Loading state
   loading: boolean;
+  isMutating: boolean;
   
   // Auth state
   currentUser: User | null;
@@ -130,6 +130,7 @@ const getDbSafeDate = () => new Date().toISOString().slice(0, 19).replace('T', '
 
 export function AppProvider({ children }: { children: React.ReactNode; }) {
   const [loading, setLoading] = React.useState(true);
+  const [isMutating, setIsMutating] = React.useState(false);
   const [currentUser, setCurrentUser] = React.useState<User | null>(null);
   const [clients, setClients] = React.useState<Client[]>([]);
   const [users, setUsers] = React.useState<User[]>([]);
@@ -146,6 +147,19 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
   const [navigationHistory, setNavigationHistory] = React.useState<NavigationHistoryItem[]>([]);
   const { toast } = useToast();
+  
+  const withMutation = async <T,>(action: () => Promise<T>): Promise<T | undefined> => {
+    setIsMutating(true);
+    try {
+        const result = await action();
+        return result;
+    } catch (error) {
+        // Errors are handled and toasted within individual functions
+        console.error("A mutation failed:", error);
+    } finally {
+        setIsMutating(false);
+    }
+  };
   
   React.useEffect(() => {
     const loadData = async () => {
@@ -244,30 +258,30 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
   
   const changePassword = async (userId: string, currentPassword: string, newPassword: string): Promise<boolean> => {
-    try {
-        const response = await fetch(`/api/users/${userId}/change-password`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ currentPassword, newPassword }),
-        });
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || "Failed to change password.");
-        }
-        
-        // Optimistically update the user password in local state for subsequent logins
-        // in the same session, although it's not strictly necessary.
-        setUsers(prev => prev.map(u => 
-            u.id === userId ? { ...u, password: newPassword } : u
-        ));
+    return withMutation(async () => {
+      try {
+          const response = await fetch(`/api/users/${userId}/change-password`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ currentPassword, newPassword }),
+          });
+          if (!response.ok) {
+              const error = await response.json();
+              throw new Error(error.error || "Failed to change password.");
+          }
+          
+          setUsers(prev => prev.map(u => 
+              u.id === userId ? { ...u, password: newPassword } : u
+          ));
 
-        logAction('Password Changed', `User changed their password.`, { userId: userId });
-        toast({ title: "Password Changed Successfully" });
-        return true;
-    } catch (error: any) {
-        toast({ title: "Password Change Failed", description: error.message, variant: "destructive" });
-        return false;
-    }
+          logAction('Password Changed', `User changed their password.`, { userId: userId });
+          toast({ title: "Password Changed Successfully" });
+          return true;
+      } catch (error: any) {
+          toast({ title: "Password Change Failed", description: error.message, variant: "destructive" });
+          return false;
+      }
+    }) ?? false;
   };
   
   const addNavigationHistoryItem = React.useCallback((item: NavigationHistoryItem) => {
@@ -319,7 +333,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         setAuditLogs(prev => [{ ...newLog, user: users.find(u => u.id === actorId)?.name || 'Unknown' }, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     } catch (error) {
         console.error("Failed to save audit log:", error);
-        // Optionally show a toast to the user here
     }
   }, [currentUser, users]);
 
@@ -370,591 +383,545 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       const operatorProjectIds = new Set(currentUser.projectIds);
       return allEnrichedProjects.filter(p => operatorProjectIds.has(p.id));
     }
-    // Admin and other roles without specific project assignments see all
     return allEnrichedProjects;
   }, [allEnrichedProjects, currentUser]);
 
   // --- CRUD ACTIONS ---
 
   const addClient = async (clientData: Omit<Client, 'id'>) => {
-    try {
-        const response = await fetch('/api/clients', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(clientData),
-        });
-        if (!response.ok) throw new Error('Failed to create client');
-        
-        const newClient = await response.json();
-        
-        setClients(prev => [...prev, newClient].sort((a, b) => a.name.localeCompare(b.name)));
-        logAction('Client Created', `New client "${newClient.name}" added.`, {});
-        toast({ title: "Client Added", description: `Client "${newClient.name}" has been created.` });
-    } catch (error) {
-        console.error(error);
-        toast({ title: "Error", description: "Could not create client.", variant: "destructive" });
-    }
+    await withMutation(async () => {
+      try {
+          const response = await fetch('/api/clients', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(clientData),
+          });
+          if (!response.ok) throw new Error('Failed to create client');
+          
+          const newClient = await response.json();
+          
+          setClients(prev => [...prev, newClient].sort((a, b) => a.name.localeCompare(b.name)));
+          logAction('Client Created', `New client "${newClient.name}" added.`, {});
+          toast({ title: "Client Added", description: `Client "${newClient.name}" has been created.` });
+      } catch (error) {
+          console.error(error);
+          toast({ title: "Error", description: "Could not create client.", variant: "destructive" });
+      }
+    });
   };
 
   const updateClient = async (clientId: string, clientData: Partial<Omit<Client, 'id'>>) => {
-    try {
-        const originalClient = clients.find(c => c.id === clientId);
-        const updatedClientData = { ...originalClient, ...clientData };
+    await withMutation(async () => {
+      try {
+          const originalClient = clients.find(c => c.id === clientId);
+          const updatedClientData = { ...originalClient, ...clientData };
 
-        const response = await fetch(`/api/clients/${clientId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updatedClientData),
-        });
-        if (!response.ok) throw new Error('Failed to update client');
-        
-        const updatedClient = await response.json();
-        setClients(prev => prev.map(c => c.id === clientId ? updatedClient as Client : c));
-        logAction('Client Updated', `Details for "${updatedClient.name}" updated.`, {});
-        toast({ title: "Client Updated", description: "Client details have been saved." });
-    } catch (error) {
-        console.error(error);
-        toast({ title: "Error", description: "Could not update client.", variant: "destructive" });
-    }
+          const response = await fetch(`/api/clients/${clientId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(updatedClientData),
+          });
+          if (!response.ok) throw new Error('Failed to update client');
+          
+          const updatedClient = await response.json();
+          setClients(prev => prev.map(c => c.id === clientId ? updatedClient as Client : c));
+          logAction('Client Updated', `Details for "${updatedClient.name}" updated.`, {});
+          toast({ title: "Client Updated", description: "Client details have been saved." });
+      } catch (error) {
+          console.error(error);
+          toast({ title: "Error", description: "Could not update client.", variant: "destructive" });
+      }
+    });
   };
 
   const deleteClient = async (clientId: string) => {
-    const clientToDelete = clients.find(c => c.id === clientId);
-    try {
-        const response = await fetch(`/api/clients/${clientId}`, {
-            method: 'DELETE',
-        });
-        
-        if (!response.ok) {
-            if (response.status === 409) { // Conflict
-                 toast({ title: "Deletion Failed", description: "Cannot delete client with associated projects. Please reassign or delete projects first.", variant: "destructive" });
-                 return;
-            }
-            throw new Error('Failed to delete client');
-        }
-        
-        const associatedProjectIds = rawProjects.filter(p => p.clientId === clientId).map(p => p.id);
-        
-        setClients(prev => prev.filter(c => c.id !== clientId));
-        setRawProjects(prev => prev.filter(p => p.clientId !== clientId));
-        setRawBooks(prev => prev.filter(b => !associatedProjectIds.includes(b.projectId)));
-        setDocuments(prev => prev.filter(d => d.clientId !== clientId));
-        setRejectionTags(prev => prev.filter(t => t.clientId !== clientId));
+    await withMutation(async () => {
+      const clientToDelete = clients.find(c => c.id === clientId);
+      try {
+          const response = await fetch(`/api/clients/${clientId}`, { method: 'DELETE' });
+          if (!response.ok) {
+              if (response.status === 409) {
+                   toast({ title: "Deletion Failed", description: "Cannot delete client with associated projects. Please reassign or delete projects first.", variant: "destructive" });
+                   return;
+              }
+              throw new Error('Failed to delete client');
+          }
+          
+          const associatedProjectIds = rawProjects.filter(p => p.clientId === clientId).map(p => p.id);
+          
+          setClients(prev => prev.filter(c => c.id !== clientId));
+          setRawProjects(prev => prev.filter(p => p.clientId !== clientId));
+          setRawBooks(prev => prev.filter(b => !associatedProjectIds.includes(b.projectId)));
+          setDocuments(prev => prev.filter(d => d.clientId !== clientId));
+          setRejectionTags(prev => prev.filter(t => t.clientId !== clientId));
 
-        if (associatedProjectIds.includes(selectedProjectId!)) {
-            setSelectedProjectId(null);
-        }
-        logAction('Client Deleted', `Client "${clientToDelete?.name}" was deleted.`, {});
-        toast({ title: "Client Deleted", description: "The client has been deleted.", variant: "destructive" });
-    } catch (error) {
-        console.error(error);
-        toast({ title: "Error", description: "Could not delete client.", variant: "destructive" });
-    }
+          if (associatedProjectIds.includes(selectedProjectId!)) setSelectedProjectId(null);
+          logAction('Client Deleted', `Client "${clientToDelete?.name}" was deleted.`, {});
+          toast({ title: "Client Deleted", description: "The client has been deleted.", variant: "destructive" });
+      } catch (error) {
+          console.error(error);
+          toast({ title: "Error", description: "Could not delete client.", variant: "destructive" });
+      }
+    });
   };
   
   const addUser = async (userData: UserFormValues) => {
-    try {
-        const response = await fetch('/api/users', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(userData),
-        });
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Failed to create user');
-        }
-        const newUser: User = await response.json();
-        setUsers(prev => [...prev, newUser]);
-        logAction('User Created', `New user "${newUser.name}" added with role ${newUser.role}.`, {});
-        toast({ title: "User Added", description: `User "${newUser.name}" has been created.` });
-    } catch (error) {
-        console.error(error);
-        toast({ title: "Error", description: "Could not create user.", variant: "destructive" });
-    }
+    await withMutation(async () => {
+      try {
+          const response = await fetch('/api/users', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(userData),
+          });
+          if (!response.ok) {
+              const error = await response.json();
+              throw new Error(error.error || 'Failed to create user');
+          }
+          const newUser: User = await response.json();
+          setUsers(prev => [...prev, newUser]);
+          logAction('User Created', `New user "${newUser.name}" added with role ${newUser.role}.`, {});
+          toast({ title: "User Added", description: `User "${newUser.name}" has been created.` });
+      } catch (error) {
+          console.error(error);
+          toast({ title: "Error", description: "Could not create user.", variant: "destructive" });
+      }
+    });
   };
 
   const updateUser = async (userId: string, userData: Partial<UserFormValues>) => {
-    try {
-        const response = await fetch(`/api/users/${userId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(userData),
-        });
-        if (!response.ok) {
-            throw new Error('Failed to update user');
-        }
-        const updatedUser = await response.json();
-        setUsers(prev => prev.map(u => (u.id === userId ? updatedUser : u)));
-        logAction('User Updated', `Details for user "${updatedUser.name}" updated.`, {});
-        toast({ title: "User Updated" });
-    } catch (error) {
-        console.error(error);
-        toast({ title: "Error", description: "Could not update user.", variant: "destructive" });
-    }
+    await withMutation(async () => {
+      try {
+          const response = await fetch(`/api/users/${userId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(userData),
+          });
+          if (!response.ok) throw new Error('Failed to update user');
+          const updatedUser = await response.json();
+          setUsers(prev => prev.map(u => (u.id === userId ? updatedUser : u)));
+          logAction('User Updated', `Details for user "${updatedUser.name}" updated.`, {});
+          toast({ title: "User Updated" });
+      } catch (error) {
+          console.error(error);
+          toast({ title: "Error", description: "Could not update user.", variant: "destructive" });
+      }
+    });
   };
   
   const toggleUserStatus = async (userId: string) => {
-    const user = users.find(u => u.id === userId);
-    if (!user || user.role === 'System') return;
-
-    const newStatus = user.status === 'active' ? 'disabled' : 'active';
-    try {
-        const response = await fetch(`/api/users/${userId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: newStatus }),
-        });
-        if (!response.ok) throw new Error('Failed to toggle user status');
-        
-        const updatedUser = await response.json();
-        setUsers(prev => prev.map(u => (u.id === userId ? updatedUser : u)));
-        logAction('User Status Changed', `User "${user.name}" was ${newStatus}.`, {});
-        toast({ title: `User ${newStatus === 'active' ? 'Enabled' : 'Disabled'}` });
-    } catch (error) {
-        console.error(error);
-        toast({ title: "Error", description: "Could not update user status.", variant: "destructive" });
-    }
+    await withMutation(async () => {
+      const user = users.find(u => u.id === userId);
+      if (!user || user.role === 'System') return;
+      const newStatus = user.status === 'active' ? 'disabled' : 'active';
+      try {
+          const response = await fetch(`/api/users/${userId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ status: newStatus }),
+          });
+          if (!response.ok) throw new Error('Failed to toggle user status');
+          const updatedUser = await response.json();
+          setUsers(prev => prev.map(u => (u.id === userId ? updatedUser : u)));
+          logAction('User Status Changed', `User "${user.name}" was ${newStatus}.`, {});
+          toast({ title: `User ${newStatus === 'active' ? 'Enabled' : 'Disabled'}` });
+      } catch (error) {
+          console.error(error);
+          toast({ title: "Error", description: "Could not update user status.", variant: "destructive" });
+      }
+    });
   };
 
   const deleteUser = async (userId: string) => {
-    const userToDelete = users.find(u => u.id === userId);
-    if (!userToDelete || userToDelete.role === 'System') return;
-    try {
-        const response = await fetch(`/api/users/${userId}`, {
-            method: 'DELETE',
-        });
-        if (!response.ok) {
-            throw new Error('Failed to delete user');
-        }
-        setUsers(prev => prev.filter(u => u.id !== userId));
-        logAction('User Deleted', `User "${userToDelete?.name}" was deleted.`, {});
-        toast({ title: "User Deleted", description: "The user has been deleted.", variant: "destructive" });
-    } catch (error) {
-        console.error(error);
-        toast({ title: "Error", description: "Could not delete user.", variant: "destructive" });
-    }
+    await withMutation(async () => {
+      const userToDelete = users.find(u => u.id === userId);
+      if (!userToDelete || userToDelete.role === 'System') return;
+      try {
+          const response = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+          if (!response.ok) throw new Error('Failed to delete user');
+          setUsers(prev => prev.filter(u => u.id !== userId));
+          logAction('User Deleted', `User "${userToDelete?.name}" was deleted.`, {});
+          toast({ title: "User Deleted", description: "The user has been deleted.", variant: "destructive" });
+      } catch (error) {
+          console.error(error);
+          toast({ title: "Error", description: "Could not delete user.", variant: "destructive" });
+      }
+    });
   };
   
   const updateUserDefaultProject = (userId: string, projectId: string | null) => {
-    const user = users.find(u => u.id === userId);
-    if (!user) return;
-    
-    setUsers(prev => prev.map(u => 
-        u.id === userId ? { ...u, defaultProjectId: projectId || undefined } : u
-    ));
-    
-    logAction(
-        'User Default Project Set', 
-        `Default project for "${user.name}" set to "${allEnrichedProjects.find(p => p.id === projectId)?.name || 'None'}".`,
-        {}
-    );
-    toast({ title: "Default Project Updated" });
+    withMutation(async () => {
+      const user = users.find(u => u.id === userId);
+      if (!user) return;
+      updateUser(userId, { defaultProjectId: projectId || undefined });
+    });
   };
   
   const addProject = async (projectData: Omit<Project, 'id'>) => {
-    try {
-        const response = await fetch('/api/projects', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(projectData),
-        });
-        if (!response.ok) throw new Error('Failed to create project');
-        
-        const newProject = await response.json();
-        
-        setRawProjects(prev => [...prev, newProject]);
-        setProjectWorkflows(prev => ({ ...prev, [newProject.id]: WORKFLOW_SEQUENCE }));
-
-        logAction('Project Created', `New project "${newProject.name}" added.`, {});
-        toast({ title: "Project Added", description: `Project "${newProject.name}" has been created.` });
-    } catch (error) {
-        console.error(error);
-        toast({ title: "Error", description: "Could not create project.", variant: "destructive" });
-    }
+    await withMutation(async () => {
+      try {
+          const response = await fetch('/api/projects', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(projectData),
+          });
+          if (!response.ok) throw new Error('Failed to create project');
+          const newProject = await response.json();
+          setRawProjects(prev => [...prev, newProject]);
+          setProjectWorkflows(prev => ({ ...prev, [newProject.id]: WORKFLOW_SEQUENCE }));
+          logAction('Project Created', `New project "${newProject.name}" added.`, {});
+          toast({ title: "Project Added", description: `Project "${newProject.name}" has been created.` });
+      } catch (error) {
+          console.error(error);
+          toast({ title: "Error", description: "Could not create project.", variant: "destructive" });
+      }
+    });
   };
   
   const updateProject = async (projectId: string, projectData: Partial<Omit<Project, 'id'>>) => {
-    try {
-        const originalProject = rawProjects.find(p => p.id === projectId);
-        const updatedProjectData = { ...originalProject, ...projectData };
-
-        const response = await fetch(`/api/projects/${projectId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updatedProjectData),
-        });
-        if (!response.ok) throw new Error('Failed to update project');
-        
-        const updatedProject = await response.json();
-        
-        setRawProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...updatedProject } : p));
-        logAction('Project Updated', `Details for project "${updatedProject.name}" updated.`, {});
-        toast({ title: "Project Updated" });
-    } catch (error) {
-        console.error(error);
-        toast({ title: "Error", description: "Could not update project.", variant: "destructive" });
-    }
+    await withMutation(async () => {
+      try {
+          const originalProject = rawProjects.find(p => p.id === projectId);
+          const updatedProjectData = { ...originalProject, ...projectData };
+          const response = await fetch(`/api/projects/${projectId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(updatedProjectData),
+          });
+          if (!response.ok) throw new Error('Failed to update project');
+          const updatedProject = await response.json();
+          setRawProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...updatedProject } : p));
+          logAction('Project Updated', `Details for project "${updatedProject.name}" updated.`, {});
+          toast({ title: "Project Updated" });
+      } catch (error) {
+          console.error(error);
+          toast({ title: "Error", description: "Could not update project.", variant: "destructive" });
+      }
+    });
   };
 
   const deleteProject = async (projectId: string) => {
-      const projectToDelete = rawProjects.find(p => p.id === projectId);
-      try {
-          const response = await fetch(`/api/projects/${projectId}`, { method: 'DELETE' });
-          if (!response.ok) throw new Error('Failed to delete project');
-
-          if (selectedProjectId === projectId) {
-              setSelectedProjectId(null);
-          }
-          setRawProjects(prev => prev.filter(p => p.id !== projectId));
-          setRawBooks(prev => prev.filter(b => b.projectId !== projectId));
-          setDocuments(prev => prev.filter(d => d.projectId !== projectId));
-          setProjectWorkflows(prev => {
-              const newWorkflows = { ...prev };
-              delete newWorkflows[projectId];
-              return newWorkflows;
-          });
-
-          logAction('Project Deleted', `Project "${projectToDelete?.name}" was deleted.`, {});
-          toast({ title: "Project Deleted", variant: "destructive" });
-      } catch (error) {
-          console.error(error);
-          toast({ title: "Error", description: "Could not delete project.", variant: "destructive" });
-      }
+    await withMutation(async () => {
+        const projectToDelete = rawProjects.find(p => p.id === projectId);
+        try {
+            const response = await fetch(`/api/projects/${projectId}`, { method: 'DELETE' });
+            if (!response.ok) throw new Error('Failed to delete project');
+            if (selectedProjectId === projectId) setSelectedProjectId(null);
+            setRawProjects(prev => prev.filter(p => p.id !== projectId));
+            setRawBooks(prev => prev.filter(b => b.projectId !== projectId));
+            setDocuments(prev => prev.filter(d => d.projectId !== projectId));
+            setProjectWorkflows(prev => {
+                const newWorkflows = { ...prev };
+                delete newWorkflows[projectId];
+                return newWorkflows;
+            });
+            logAction('Project Deleted', `Project "${projectToDelete?.name}" was deleted.`, {});
+            toast({ title: "Project Deleted", variant: "destructive" });
+        } catch (error) {
+            console.error(error);
+            toast({ title: "Error", description: "Could not delete project.", variant: "destructive" });
+        }
+    });
   };
 
   const addBook = async (projectId: string, bookData: Omit<RawBook, 'id' | 'projectId' | 'statusId'>) => {
-      try {
-          const statusId = statuses.find(s => s.name === 'Pending Shipment')?.id;
-          if (!statusId) throw new Error("Could not find 'Pending Shipment' status.");
-
-          const response = await fetch('/api/books', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ projectId, book: {...bookData, statusId } }),
-          });
-          if (!response.ok) throw new Error('Failed to create book');
-          const newRawBook = await response.json();
-          setRawBooks(prev => [...prev, newRawBook]);
-          logAction('Book Added', `Book "${newRawBook.name}" was added to project.`, { bookId: newRawBook.id });
-          toast({ title: "Book Added", description: `Book "${newRawBook.name}" has been added.` });
-      } catch (error) {
-          console.error(error);
-          toast({ title: "Error", description: "Could not create book.", variant: "destructive" });
-      }
+      await withMutation(async () => {
+        try {
+            const statusId = statuses.find(s => s.name === 'Pending Shipment')?.id;
+            if (!statusId) throw new Error("Could not find 'Pending Shipment' status.");
+            const response = await fetch('/api/books', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ projectId, book: {...bookData, statusId } }),
+            });
+            if (!response.ok) throw new Error('Failed to create book');
+            const newRawBook = await response.json();
+            setRawBooks(prev => [...prev, newRawBook]);
+            logAction('Book Added', `Book "${newRawBook.name}" was added to project.`, { bookId: newRawBook.id });
+            toast({ title: "Book Added", description: `Book "${newRawBook.name}" has been added.` });
+        } catch (error) {
+            console.error(error);
+            toast({ title: "Error", description: "Could not create book.", variant: "destructive" });
+        }
+      });
   };
   
   const updateBook = async (bookId: string, bookData: Partial<Omit<RawBook, 'id' | 'projectId' | 'statusId'>>) => {
-      try {
-          const response = await fetch(`/api/books/${bookId}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(bookData),
-          });
-          if (!response.ok) throw new Error('Failed to update book');
-          const updatedRawBook = await response.json();
-          setRawBooks(prev => prev.map(b => b.id === bookId ? updatedRawBook : b));
-          logAction('Book Updated', `Details for book "${updatedRawBook.name}" were updated.`, { bookId });
-          toast({ title: "Book Updated" });
-      } catch (error) {
-          console.error(error);
-          toast({ title: "Error", description: "Could not update book.", variant: "destructive" });
-      }
+      await withMutation(async () => {
+        try {
+            const response = await fetch(`/api/books/${bookId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(bookData),
+            });
+            if (!response.ok) throw new Error('Failed to update book');
+            const updatedRawBook = await response.json();
+            setRawBooks(prev => prev.map(b => b.id === bookId ? updatedRawBook : b));
+            logAction('Book Updated', `Details for book "${updatedRawBook.name}" were updated.`, { bookId });
+            toast({ title: "Book Updated" });
+        } catch (error) {
+            console.error(error);
+            toast({ title: "Error", description: "Could not update book.", variant: "destructive" });
+        }
+      });
   };
 
   const deleteBook = async (bookId: string) => {
-      const bookToDelete = rawBooks.find(b => b.id === bookId);
-      try {
-          const response = await fetch(`/api/books/${bookId}`, {
-              method: 'DELETE',
-          });
-          if (!response.ok) throw new Error('Failed to delete book');
-          setRawBooks(prev => prev.filter(b => b.id !== bookId));
-          setDocuments(prev => prev.filter(d => d.bookId !== bookId));
-          logAction('Book Deleted', `Book "${bookToDelete?.name}" and its pages were deleted.`, { bookId });
-          toast({ title: "Book Deleted", variant: "destructive" });
-      } catch (error) {
-          console.error(error);
-          toast({ title: "Error", description: "Could not delete book.", variant: "destructive" });
-      }
+      await withMutation(async () => {
+        const bookToDelete = rawBooks.find(b => b.id === bookId);
+        try {
+            const response = await fetch(`/api/books/${bookId}`, { method: 'DELETE' });
+            if (!response.ok) throw new Error('Failed to delete book');
+            setRawBooks(prev => prev.filter(b => b.id !== bookId));
+            setDocuments(prev => prev.filter(d => d.bookId !== bookId));
+            logAction('Book Deleted', `Book "${bookToDelete?.name}" and its pages were deleted.`, { bookId });
+            toast({ title: "Book Deleted", variant: "destructive" });
+        } catch (error) {
+            console.error(error);
+            toast({ title: "Error", description: "Could not delete book.", variant: "destructive" });
+        }
+      });
   };
 
   const importBooks = async (projectId: string, newBooks: BookImport[]) => {
-      try {
-          const response = await fetch('/api/books', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ projectId, books: newBooks }),
-          });
-          if (!response.ok) throw new Error('Failed to import books');
-          const createdBooks = await response.json();
-          setRawBooks(prev => [...prev, ...createdBooks]);
-          logAction('Books Imported', `${createdBooks.length} books imported for project.`, {});
-          toast({
-              title: "Import Successful",
-              description: `${createdBooks.length} books have been added to the project.`
-          });
-      } catch (error) {
-          console.error(error);
-          toast({ title: "Import Failed", description: "Could not import books.", variant: "destructive" });
-      }
+      await withMutation(async () => {
+        try {
+            const response = await fetch('/api/books', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ projectId, books: newBooks }),
+            });
+            if (!response.ok) throw new Error('Failed to import books');
+            const createdBooks = await response.json();
+            setRawBooks(prev => [...prev, ...createdBooks]);
+            logAction('Books Imported', `${createdBooks.length} books imported for project.`, {});
+            toast({
+                title: "Import Successful",
+                description: `${createdBooks.length} books have been added to the project.`
+            });
+        } catch (error) {
+            console.error(error);
+            toast({ title: "Import Failed", description: "Could not import books.", variant: "destructive" });
+        }
+      });
   };
 
-  // --- ROLE ACTIONS ---
   const addRole = (roleName: string, rolePermissions: string[]) => {
-    if (roles.includes(roleName)) {
-      toast({ title: "Role Exists", description: "A role with this name already exists.", variant: "destructive" });
-      return;
-    }
-    setRoles(prev => [...prev, roleName]);
-    setPermissions(prev => ({...prev, [roleName]: rolePermissions }));
-    logAction('Role Created', `New role "${roleName}" was created.`, {});
-    toast({ title: "Role Created", description: `Role "${roleName}" has been added.` });
+    withMutation(async () => {
+      if (roles.includes(roleName)) {
+        toast({ title: "Role Exists", description: "A role with this name already exists.", variant: "destructive" });
+        return;
+      }
+      setRoles(prev => [...prev, roleName]);
+      setPermissions(prev => ({...prev, [roleName]: rolePermissions }));
+      logAction('Role Created', `New role "${roleName}" was created.`, {});
+      toast({ title: "Role Created", description: `Role "${roleName}" has been added.` });
+    });
   };
 
   const updateRole = (roleName: string, rolePermissions: string[]) => {
-    setPermissions(prev => ({...prev, [roleName]: rolePermissions }));
-    logAction('Role Updated', `Permissions for role "${roleName}" were updated.`, {});
-    toast({ title: "Role Updated", description: `Permissions for "${roleName}" have been saved.` });
+    withMutation(async () => {
+      setPermissions(prev => ({...prev, [roleName]: rolePermissions }));
+      logAction('Role Updated', `Permissions for role "${roleName}" were updated.`, {});
+      toast({ title: "Role Updated", description: `Permissions for "${roleName}" have been saved.` });
+    });
   };
   
   const deleteRole = (roleName: string) => {
-    setRoles(prev => prev.filter(r => r !== roleName));
-    setPermissions(prev => {
-      const newPerms = { ...prev };
-      delete newPerms[roleName];
-      return newPerms;
+    withMutation(async () => {
+      setRoles(prev => prev.filter(r => r !== roleName));
+      setPermissions(prev => {
+        const newPerms = { ...prev };
+        delete newPerms[roleName];
+        return newPerms;
+      });
+      setUsers(prev => prev.map(u => u.role === roleName ? { ...u, role: '' } : u));
+      logAction('Role Deleted', `Role "${roleName}" was deleted.`, {});
+      toast({ title: "Role Deleted", description: `Role "${roleName}" has been deleted.`, variant: "destructive" });
     });
-    setUsers(prev => prev.map(u => u.role === roleName ? { ...u, role: '' } : u)); // Unassign users
-    logAction('Role Deleted', `Role "${roleName}" was deleted.`, {});
-    toast({ title: "Role Deleted", description: `Role "${roleName}" has been deleted.`, variant: "destructive" });
   };
 
   const updateProjectWorkflow = (projectId: string, workflow: string[]) => {
-    setProjectWorkflows(prev => ({ ...prev, [projectId]: workflow }));
-    logAction('Project Workflow Updated', `Workflow for project ID ${projectId} was updated.`, {});
-    toast({ title: "Project Workflow Updated" });
+    withMutation(async () => {
+      setProjectWorkflows(prev => ({ ...prev, [projectId]: workflow }));
+      logAction('Project Workflow Updated', `Workflow for project ID ${projectId} was updated.`, {});
+      toast({ title: "Project Workflow Updated" });
+    });
   };
 
-  // --- REJECTION TAG ACTIONS ---
   const addRejectionTag = async (tagData: Omit<RejectionTag, 'id' | 'clientId'>, clientId: string) => {
-    if (!clientId) {
-      toast({ title: "Client ID is missing", variant: "destructive" });
-      return;
-    }
-    try {
-        const response = await fetch('/api/rejection-tags', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...tagData, clientId }),
-        });
-        if (!response.ok) throw new Error('Failed to create rejection tag');
-        const newTag = await response.json();
-        setRejectionTags(prev => [...prev, newTag]);
-        const client = clients.find(c => c.id === clientId);
-        logAction('Rejection Tag Created', `Tag "${newTag.label}" created for client "${client?.name}".`, {});
-        toast({ title: "Rejection Reason Added" });
-    } catch (error) {
-        console.error(error);
-        toast({ title: "Error", description: "Could not create rejection reason.", variant: "destructive" });
-    }
+    await withMutation(async () => {
+      if (!clientId) {
+        toast({ title: "Client ID is missing", variant: "destructive" });
+        return;
+      }
+      try {
+          const response = await fetch('/api/rejection-tags', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ...tagData, clientId }),
+          });
+          if (!response.ok) throw new Error('Failed to create rejection tag');
+          const newTag = await response.json();
+          setRejectionTags(prev => [...prev, newTag]);
+          const client = clients.find(c => c.id === clientId);
+          logAction('Rejection Tag Created', `Tag "${newTag.label}" created for client "${client?.name}".`, {});
+          toast({ title: "Rejection Reason Added" });
+      } catch (error) {
+          console.error(error);
+          toast({ title: "Error", description: "Could not create rejection reason.", variant: "destructive" });
+      }
+    });
   };
 
   const updateRejectionTag = async (tagId: string, tagData: Partial<Omit<RejectionTag, 'id' | 'clientId'>>) => {
-     try {
-        const response = await fetch(`/api/rejection-tags/${tagId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(tagData),
-        });
-        if (!response.ok) throw new Error('Failed to update rejection tag');
-        const updatedTag = await response.json();
-        setRejectionTags(prev => prev.map(t => t.id === tagId ? updatedTag : t));
-        logAction('Rejection Tag Updated', `Tag "${updatedTag.label}" updated.`, {});
-        toast({ title: "Rejection Reason Updated" });
-    } catch (error) {
-        console.error(error);
-        toast({ title: "Error", description: "Could not update rejection reason.", variant: "destructive" });
-    }
+    await withMutation(async () => {
+      try {
+          const response = await fetch(`/api/rejection-tags/${tagId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(tagData),
+          });
+          if (!response.ok) throw new Error('Failed to update rejection tag');
+          const updatedTag = await response.json();
+          setRejectionTags(prev => prev.map(t => t.id === tagId ? updatedTag : t));
+          logAction('Rejection Tag Updated', `Tag "${updatedTag.label}" updated.`, {});
+          toast({ title: "Rejection Reason Updated" });
+      } catch (error) {
+          console.error(error);
+          toast({ title: "Error", description: "Could not update rejection reason.", variant: "destructive" });
+      }
+    });
   };
 
   const deleteRejectionTag = async (tagId: string) => {
-    const tag = rejectionTags.find(t => t.id === tagId);
-    try {
-        const response = await fetch(`/api/rejection-tags/${tagId}`, { method: 'DELETE' });
-        if (!response.ok) throw new Error('Failed to delete rejection tag');
-        setRejectionTags(prev => prev.filter(t => t.id !== tagId));
-        logAction('Rejection Tag Deleted', `Tag "${tag?.label}" deleted.`, {});
-        toast({ title: "Rejection Reason Deleted", variant: 'destructive' });
-    } catch (error) {
-        console.error(error);
-        toast({ title: "Error", description: "Could not delete rejection reason.", variant: "destructive" });
-    }
+    await withMutation(async () => {
+      const tag = rejectionTags.find(t => t.id === tagId);
+      try {
+          const response = await fetch(`/api/rejection-tags/${tagId}`, { method: 'DELETE' });
+          if (!response.ok) throw new Error('Failed to delete rejection tag');
+          setRejectionTags(prev => prev.filter(t => t.id !== tagId));
+          logAction('Rejection Tag Deleted', `Tag "${tag?.label}" deleted.`, {});
+          toast({ title: "Rejection Reason Deleted", variant: 'destructive' });
+      } catch (error) {
+          console.error(error);
+          toast({ title: "Error", description: "Could not delete rejection reason.", variant: "destructive" });
+      }
+    });
   };
 
-  const tagPageForRejection = async (pageId: string, tags: string[]) => {
-    await updateDocument(pageId, { tags });
-  };
-  
-  const clearPageRejectionTags = async (pageId: string, tagsToKeep: string[] = []) => {
-    await updateDocument(pageId, { tags: tagsToKeep });
-  }
-  
   const updateDocument = async (docId: string, data: Partial<AppDocument>) => {
-    const doc = documents.find(d => d.id === docId);
-    if (!doc) return;
-    try {
-        const payload: { [key: string]: any } = { ...data };
-        if (payload.status) {
-            payload.statusId = statuses.find(s => s.name === payload.status)?.id;
-            delete payload.status;
-        }
-
-        const response = await fetch(`/api/documents/${docId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-        });
-        if (!response.ok) throw new Error('Failed to update document');
-        const updatedDocData = await response.json();
-        
-        setDocuments(prev => prev.map(d => (d.id === docId ? { 
-            ...d, 
-            ...data, 
-            statusId: updatedDocData.statusId,
-            status: statuses.find(s => s.id === updatedDocData.statusId)?.name || d.status
-        } : d)));
-        
-        let logDetails = `Document "${doc.name}" updated.`;
-        if (data.tags) logDetails = `Tags for document "${doc.name}" updated to: ${data.tags.join(', ') || 'None'}.`;
-        if (data.flag !== undefined) logDetails = `Flag for document "${doc.name}" set to ${data.flag || 'None'}.`;
-
-        logAction('Document Updated', logDetails, { documentId: docId, bookId: doc.bookId ?? undefined });
-        toast({ title: "Document Updated" });
-    } catch (error) {
-        console.error(error);
-        toast({ title: "Error", description: "Could not update document.", variant: "destructive" });
-    }
-  };
-
-  const updateDocumentFlag = async (docId: string, flag: AppDocument['flag'], comment?: string) => {
-    await updateDocument(docId, { flag, flagComment: flag ? comment : undefined });
+    return await withMutation(async () => {
+      const doc = documents.find(d => d.id === docId);
+      if (!doc) return;
+      try {
+          const payload: { [key: string]: any } = { ...data };
+          if (payload.status) {
+              payload.statusId = statuses.find(s => s.name === payload.status)?.id;
+              delete payload.status;
+          }
+          const response = await fetch(`/api/documents/${docId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+          });
+          if (!response.ok) throw new Error('Failed to update document');
+          const updatedDocData = await response.json();
+          setDocuments(prev => prev.map(d => (d.id === docId ? { 
+              ...d, ...data, statusId: updatedDocData.statusId,
+              status: statuses.find(s => s.id === updatedDocData.statusId)?.name || d.status
+          } : d)));
+          let logDetails = `Document "${doc.name}" updated.`;
+          if (data.tags) logDetails = `Tags for document "${doc.name}" updated to: ${data.tags.join(', ') || 'None'}.`;
+          if (data.flag !== undefined) logDetails = `Flag for document "${doc.name}" set to ${data.flag || 'None'}.`;
+          logAction('Document Updated', logDetails, { documentId: docId, bookId: doc.bookId ?? undefined });
+          toast({ title: "Document Updated" });
+      } catch (error) {
+          console.error(error);
+          toast({ title: "Error", description: "Could not update document.", variant: "destructive" });
+      }
+    });
   };
   
+  const tagPageForRejection = async (pageId: string, tags: string[]) => await updateDocument(pageId, { tags });
+  const clearPageRejectionTags = async (pageId: string, tagsToKeep: string[] = []) => await updateDocument(pageId, { tags: tagsToKeep });
+  const updateDocumentFlag = async (docId: string, flag: AppDocument['flag'], comment?: string) => await updateDocument(docId, { flag, flagComment: flag ? comment : undefined });
   const addPageToBook = async (bookId: string, position: number) => {
-    const book = enrichedBooks.find(b => b.id === bookId);
-    if (!book) return;
-
-    const newPageName = `${book.name} - Page ${position} (Added)`;
-    const newPageId = `doc_${book.id}_new_${Date.now()}`;
-    const statusId = statuses.find(s => s.name === 'Client Rejected')?.id;
-    if (!statusId) return;
-
-    const newPage: Partial<RawDocument> = {
-      id: newPageId,
-      name: newPageName,
-      clientId: book.clientId, 
-      statusId: statusId,
-      type: 'Added Page', 
-      lastUpdated: getDbSafeDate(), 
-      tags: ['added', 'corrected'] as any,
-      projectId: book.projectId, 
-      bookId: book.id, 
-      flag: 'info',
-      flagComment: 'This page was manually added during the correction phase.',
-      imageUrl: `https://dummyimage.com/400x550/e0e0e0/5c5c5c.png&text=${encodeURIComponent(newPageName)}`
-    };
-
-    try {
-        const response = await fetch('/api/documents', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newPage),
-        });
-        if (!response.ok) throw new Error('Failed to add page');
-        const createdPage = await response.json();
-
-        setDocuments(prevDocs => {
-          const otherPages = prevDocs.filter(p => p.bookId !== bookId);
-          const bookPages = prevDocs.filter(p => p.bookId === bookId);
-          bookPages.splice(position - 1, 0, { ...createdPage, client: book.clientName, status: 'Client Rejected' });
-          return [...otherPages, ...bookPages];
-        });
-        setRawBooks(prev => prev.map(b => b.id === bookId ? { ...b, expectedDocuments: (b.expectedDocuments || 0) + 1 } : b));
-        logAction('Page Added', `New page added to "${book.name}" at position ${position}.`, { bookId, documentId: newPageId });
-        toast({ title: "Page Added" });
-    } catch (error) {
-        console.error(error);
-        toast({ title: "Error", description: "Could not add page.", variant: "destructive" });
-    }
+    await withMutation(async () => {
+      const book = enrichedBooks.find(b => b.id === bookId);
+      if (!book) return;
+      const newPageName = `${book.name} - Page ${position} (Added)`;
+      const newPageId = `doc_${book.id}_new_${Date.now()}`;
+      const statusId = statuses.find(s => s.name === 'Client Rejected')?.id;
+      if (!statusId) return;
+      const newPage: Partial<RawDocument> = {
+        id: newPageId, name: newPageName, clientId: book.clientId, 
+        statusId: statusId, type: 'Added Page', lastUpdated: getDbSafeDate(), 
+        tags: ['added', 'corrected'] as any, projectId: book.projectId, bookId: book.id, 
+        flag: 'info', flagComment: 'This page was manually added during the correction phase.',
+        imageUrl: `https://dummyimage.com/400x550/e0e0e0/5c5c5c.png&text=${encodeURIComponent(newPageName)}`
+      };
+      try {
+          const response = await fetch('/api/documents', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newPage) });
+          if (!response.ok) throw new Error('Failed to add page');
+          const createdPage = await response.json();
+          setDocuments(prevDocs => {
+            const otherPages = prevDocs.filter(p => p.bookId !== bookId);
+            const bookPages = prevDocs.filter(p => p.bookId === bookId);
+            bookPages.splice(position - 1, 0, { ...createdPage, client: book.clientName, status: 'Client Rejected' });
+            return [...otherPages, ...bookPages];
+          });
+          setRawBooks(prev => prev.map(b => b.id === bookId ? { ...b, expectedDocuments: (b.expectedDocuments || 0) + 1 } : b));
+          logAction('Page Added', `New page added to "${book.name}" at position ${position}.`, { bookId, documentId: newPageId });
+          toast({ title: "Page Added" });
+      } catch (error) {
+          console.error(error);
+          toast({ title: "Error", description: "Could not add page.", variant: "destructive" });
+      }
+    });
   }
 
   const deletePageFromBook = async (pageId: string, bookId: string) => {
-      const page = documents.find(p => p.id === pageId);
-      try {
-          const response = await fetch(`/api/documents/${pageId}`, { method: 'DELETE' });
-          if (!response.ok) throw new Error('Failed to delete page');
-
-          setDocuments(prev => prev.filter(p => p.id !== pageId));
-          setRawBooks(prev => prev.map(b => b.id === bookId ? {...b, expectedDocuments: (b.expectedDocuments || 1) - 1 } : b));
-          logAction('Page Deleted', `Page "${page?.name}" was deleted from book.`, { bookId, documentId: pageId });
-          toast({ title: "Page Deleted", variant: "destructive" });
-      } catch (error) {
-          console.error(error);
-          toast({ title: "Error", description: "Could not delete page.", variant: "destructive" });
-      }
+    await withMutation(async () => {
+        const page = documents.find(p => p.id === pageId);
+        try {
+            const response = await fetch(`/api/documents/${pageId}`, { method: 'DELETE' });
+            if (!response.ok) throw new Error('Failed to delete page');
+            setDocuments(prev => prev.filter(p => p.id !== pageId));
+            setRawBooks(prev => prev.map(b => b.id === bookId ? {...b, expectedDocuments: (b.expectedDocuments || 1) - 1 } : b));
+            logAction('Page Deleted', `Page "${page?.name}" was deleted from book.`, { bookId, documentId: pageId });
+            toast({ title: "Page Deleted", variant: "destructive" });
+        } catch (error) {
+            console.error(error);
+            toast({ title: "Error", description: "Could not delete page.", variant: "destructive" });
+        }
+    });
   };
 
-
-  // --- WORKFLOW ACTIONS ---
   const getNextEnabledStage = (currentStageKey: string, workflow: string[]): string | null => {
     const currentIndex = WORKFLOW_SEQUENCE.indexOf(currentStageKey);
     if (currentIndex === -1) return null;
-
     for (let i = currentIndex + 1; i < WORKFLOW_SEQUENCE.length; i++) {
         const nextStageKey = WORKFLOW_SEQUENCE[i];
-        if (workflow.includes(nextStageKey)) {
-            return nextStageKey;
-        }
+        if (workflow.includes(nextStageKey)) return nextStageKey;
     }
-    return null; // Reached end of workflow
+    return null;
   };
 
   const updateBookAndDocuments = React.useCallback(async (
-    bookId: string, 
-    newStatusName: string, 
-    additionalUpdates: Partial<RawBook> = {}
+    bookId: string, newStatusName: string, additionalUpdates: Partial<RawBook> = {}
   ) => {
       try {
           const statusId = statuses.find(s => s.name === newStatusName)?.id;
           if (!statusId) throw new Error(`Status ${newStatusName} not found.`);
-
-          // Perform API calls first
           const response = await Promise.all([
-            fetch(`/api/books/${bookId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ statusId, ...additionalUpdates }),
-            }),
-            fetch('/api/documents/bulk-update-status', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ bookId, newStatusId: statusId }),
-            })
+            fetch(`/api/books/${bookId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ statusId, ...additionalUpdates }) }),
+            fetch('/api/documents/bulk-update-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookId, newStatusId: statusId }) })
           ]);
-          
           if (!response[0].ok) throw new Error('Failed to update book status');
           if (!response[1].ok) throw new Error('Failed to bulk update document statuses');
-          
           const updatedBook = await response[0].json();
-          
-          // Batch state updates together
           setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
-          setDocuments(prevDocs =>
-            prevDocs.map(doc =>
-              doc.bookId === bookId ? { ...doc, status: newStatusName, statusId } : doc
-            )
-          );
-
+          setDocuments(prevDocs => prevDocs.map(doc => doc.bookId === bookId ? { ...doc, status: newStatusName, statusId } : doc));
           return true;
       } catch (error) {
           console.error(error);
@@ -964,395 +931,274 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   }, [toast, statuses]);
   
   const handleMarkAsShipped = (bookIds: string[]) => {
-    bookIds.forEach(async bookId => {
-      const success = await updateBookAndDocuments(bookId, 'In Transit');
-      if (success) {
-        const book = rawBooks.find(b => b.id === bookId);
-        logAction('Book Shipped', `Client marked book "${book?.name}" as shipped.`, { bookId });
+    withMutation(async () => {
+      for (const bookId of bookIds) {
+        const success = await updateBookAndDocuments(bookId, 'In Transit');
+        if (success) {
+          const book = rawBooks.find(b => b.id === bookId);
+          logAction('Book Shipped', `Client marked book "${book?.name}" as shipped.`, { bookId });
+        }
       }
+      toast({ title: `${bookIds.length} Book(s) Marked as Shipped` });
     });
-    toast({ title: `${bookIds.length} Book(s) Marked as Shipped` });
   };
 
   const handleConfirmReception = (bookId: string) => {
-    const book = rawBooks.find(b => b.id === bookId);
-    if (!book || !book.projectId) return;
-
-    const newStatus = 'Received';
-    updateBookAndDocuments(bookId, newStatus);
-    logAction('Reception Confirmed', `Book "${book.name}" has been marked as received.`, { bookId });
-    toast({ title: "Reception Confirmed" });
+    withMutation(async () => {
+      const book = rawBooks.find(b => b.id === bookId);
+      if (!book || !book.projectId) return;
+      const success = await updateBookAndDocuments(bookId, 'Received');
+      if (success) {
+        logAction('Reception Confirmed', `Book "${book.name}" has been marked as received.`, { bookId });
+        toast({ title: "Reception Confirmed" });
+      }
+    });
   };
   
   const handleSendToStorage = async (bookId: string, payload: { actualPageCount: number }) => {
-    const book = rawBooks.find(b => b.id === bookId);
-    if (!book) return;
-    
-    const project = rawProjects.find(p => p.id === book.projectId);
-    if (!project) {
-        toast({ title: "Error", description: `Could not find project for book "${book.name}".`, variant: "destructive" });
-        return;
-    }
-
-    try {
-      const response = await fetch(`/api/books/${bookId}/complete-scan`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          actualPageCount: payload.actualPageCount,
-          bookName: book.name,
-          clientId: project.clientId,
-          projectId: book.projectId
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to complete scan via API');
-      }
-
-      const { book: updatedRawBook, documents: newRawDocuments } = await response.json();
-      
-      setRawBooks(prev => prev.map(b => b.id === bookId ? updatedRawBook : b));
-      
-      const newEnrichedDocs = newRawDocuments.map((doc: RawDocument) => ({
-          ...doc,
-          client: clients.find(c => c.id === doc.clientId)?.name || 'Unknown',
-          status: statuses.find(s => s.id === doc.statusId)?.name || 'Unknown',
-          tags: doc.tags ? JSON.parse(doc.tags as any) : [],
-      }));
-
-      setDocuments(prev => [
-          ...prev.filter(d => d.bookId !== bookId),
-          ...newEnrichedDocs
-      ]);
-      
-      const currentStatusName = statuses.find(s => s.id === book.statusId)?.name || 'Unknown';
-      const logMessage = findStageKeyFromStatus(currentStatusName) === 'already-received' ? 'Reception & Scan Skipped' : 'Scanning Finished';
-      logAction(logMessage, `${payload.actualPageCount} pages created. Book "${book.name}" moved to Storage.`, { bookId });
-      toast({ title: "Task Complete", description: `Book moved to Storage.` });
-
-    } catch (error) {
-      console.error(error);
-      toast({ title: "Error", description: "Could not complete the process.", variant: "destructive" });
-    }
+    await withMutation(async () => {
+      const book = rawBooks.find(b => b.id === bookId);
+      if (!book) return;
+      const project = rawProjects.find(p => p.id === book.projectId);
+      if (!project) { toast({ title: "Error", description: `Could not find project for book "${book.name}".`, variant: "destructive" }); return; }
+      try {
+        const response = await fetch(`/api/books/${bookId}/complete-scan`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ actualPageCount: payload.actualPageCount, bookName: book.name, clientId: project.clientId, projectId: book.projectId }) });
+        if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.error || 'Failed to complete scan via API'); }
+        const { book: updatedRawBook, documents: newRawDocuments } = await response.json();
+        setRawBooks(prev => prev.map(b => b.id === bookId ? updatedRawBook : b));
+        const newEnrichedDocs = newRawDocuments.map((doc: RawDocument) => ({ ...doc, client: clients.find(c => c.id === doc.clientId)?.name || 'Unknown', status: statuses.find(s => s.id === doc.statusId)?.name || 'Unknown', tags: doc.tags ? JSON.parse(doc.tags as any) : [] }));
+        setDocuments(prev => [ ...prev.filter(d => d.bookId !== bookId), ...newEnrichedDocs ]);
+        const currentStatusName = statuses.find(s => s.id === book.statusId)?.name || 'Unknown';
+        const logMessage = findStageKeyFromStatus(currentStatusName) === 'already-received' ? 'Reception & Scan Skipped' : 'Scanning Finished';
+        logAction(logMessage, `${payload.actualPageCount} pages created. Book "${book.name}" moved to Storage.`, { bookId });
+        toast({ title: "Task Complete", description: `Book moved to Storage.` });
+      } catch (error) { console.error(error); toast({ title: "Error", description: "Could not complete the process.", variant: "destructive" }); }
+    });
   };
 
-
   const handleMoveBookToNextStage = (bookId: string, currentStatusName: string) => {
-    const book = rawBooks.find(b => b.id === bookId);
-    if (!book || !book.projectId) return;
-
-    const workflow = projectWorkflows[book.projectId] || [];
-    const currentStageKey = findStageKeyFromStatus(currentStatusName);
-    
-    if (!currentStageKey) {
-        toast({title: "Workflow Error", description: `Cannot find workflow stage for status "${currentStatusName}".`, variant: "destructive"});
+    withMutation(async () => {
+      const book = rawBooks.find(b => b.id === bookId);
+      if (!book || !book.projectId) return;
+      const workflow = projectWorkflows[book.projectId] || [];
+      const currentStageKey = findStageKeyFromStatus(currentStatusName);
+      if (!currentStageKey) { toast({title: "Workflow Error", description: `Cannot find workflow stage for status "${currentStatusName}".`, variant: "destructive"}); return; }
+      const nextStageKey = getNextEnabledStage(currentStageKey, workflow);
+      if (!nextStageKey) {
+        await updateBookAndDocuments(bookId, 'Complete', {});
+        logAction('Workflow End', `Book "${book.name}" has completed the workflow.`, { bookId });
+        toast({title: "Workflow Complete", description: "This is the final step for this project."});
         return;
-    }
-    
-    const nextStageKey = getNextEnabledStage(currentStageKey, workflow);
-    if (!nextStageKey) {
-      toast({title: "Workflow Complete", description: "This is the final step for this project."});
-      updateBookAndDocuments(bookId, 'Complete', {});
-      logAction('Workflow End', `Book "${book.name}" has completed the workflow.`, { bookId });
-      return;
-    }
-    
-    const nextStageConfig = STAGE_CONFIG[nextStageKey];
-    const newStatusName = nextStageConfig.dataStatus || nextStageConfig.dataStage;
-    
-    if (!newStatusName) {
-        toast({title: "Workflow Error", description: `Next stage "${nextStageKey}" has no configured status.`, variant: "destructive"});
-        return;
-    }
-    
-    const additionalUpdates: Partial<RawBook> = {};
-    if (currentStatusName === 'Scanning Started') {
-        additionalUpdates.scanEndTime = getDbSafeDate();
-    }
-    if (currentStatusName === 'Indexing Started') {
-        additionalUpdates.indexingEndTime = getDbSafeDate();
-        if(!book.indexingStartTime) additionalUpdates.indexingStartTime = getDbSafeDate(); // Defensive
-    }
-    if (currentStatusName === 'Checking Started') {
-        additionalUpdates.qcEndTime = getDbSafeDate();
-        if(!book.qcStartTime) additionalUpdates.qcStartTime = getDbSafeDate();
-    }
-    
-    updateBookAndDocuments(bookId, newStatusName, additionalUpdates);
-    logAction('Workflow Step', `Book "${book.name}" moved from ${currentStatusName} to ${newStatusName}.`, { bookId });
-    toast({ title: "Workflow Action", description: `Book moved to ${newStatusName}.` });
+      }
+      const nextStageConfig = STAGE_CONFIG[nextStageKey];
+      const newStatusName = nextStageConfig.dataStatus || nextStageConfig.dataStage;
+      if (!newStatusName) { toast({title: "Workflow Error", description: `Next stage "${nextStageKey}" has no configured status.`, variant: "destructive"}); return; }
+      const additionalUpdates: Partial<RawBook> = {};
+      if (currentStatusName === 'Scanning Started') additionalUpdates.scanEndTime = getDbSafeDate();
+      if (currentStatusName === 'Indexing Started') { additionalUpdates.indexingEndTime = getDbSafeDate(); if(!book.indexingStartTime) additionalUpdates.indexingStartTime = getDbSafeDate(); }
+      if (currentStatusName === 'Checking Started') { additionalUpdates.qcEndTime = getDbSafeDate(); if(!book.qcStartTime) additionalUpdates.qcStartTime = getDbSafeDate(); }
+      if(await updateBookAndDocuments(bookId, newStatusName, additionalUpdates)) {
+        logAction('Workflow Step', `Book "${book.name}" moved from ${currentStatusName} to ${newStatusName}.`, { bookId });
+        toast({ title: "Workflow Action", description: `Book moved to ${newStatusName}.` });
+      }
+    });
   };
 
   const handleAssignUser = async (bookId: string, userId: string, role: 'scanner' | 'indexer' | 'qc') => {
-    const user = users.find(u => u.id === userId);
-    const book = rawBooks.find(b => b.id === bookId);
-    if (!user || !book || !book.projectId) return;
-    
-    const workflow = projectWorkflows[book.projectId] || [];
-    
-    let currentStageKey: string | null = null;
-    let nextStatusKey: string | null = null;
-    let newStatusName: string = '';
-    let logMsg = '';
-    let updates: Partial<RawBook> = {};
-    
-    const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
-    if (!currentStatusName) return;
-
-    currentStageKey = findStageKeyFromStatus(currentStatusName);
-    if (!currentStageKey) return;
-
-    nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
-    
-    if (role === 'scanner') {
-        newStatusName = STAGE_CONFIG[nextStatusKey || 'to-scan']?.dataStatus || 'To Scan';
-        updates.scannerUserId = userId;
-        logMsg = 'Assigned to Scanner';
-    } else if (role === 'indexer') {
-        newStatusName = STAGE_CONFIG[nextStatusKey || 'to-indexing']?.dataStatus || 'To Indexing';
-        updates.indexerUserId = userId;
-        logMsg = 'Assigned to Indexer';
-    } else if (role === 'qc') {
-        newStatusName = STAGE_CONFIG[nextStatusKey || 'to-checking']?.dataStatus || 'To Checking';
-        updates.qcUserId = userId;
-        updates.indexingEndTime = getDbSafeDate();
-        if(!book.indexingStartTime) updates.indexingStartTime = getDbSafeDate();
-        logMsg = 'Assigned for QC';
-    }
-    
-    if (newStatusName) {
-      await updateBookAndDocuments(bookId, newStatusName, updates);
-      logAction(logMsg, `Book "${book.name}" assigned to ${user.name}.`, { bookId });
-      toast({ title: "Book Assigned", description: `Assigned to ${user.name} for ${role}.` });
-    }
+    withMutation(async () => {
+      const user = users.find(u => u.id === userId);
+      const book = rawBooks.find(b => b.id === bookId);
+      if (!user || !book || !book.projectId) return;
+      const workflow = projectWorkflows[book.projectId] || [];
+      const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
+      if (!currentStatusName) return;
+      const currentStageKey = findStageKeyFromStatus(currentStatusName);
+      if (!currentStageKey) return;
+      const nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
+      let newStatusName = '', logMsg = '', updates: Partial<RawBook> = {};
+      if (role === 'scanner') { newStatusName = STAGE_CONFIG[nextStatusKey || 'to-scan']?.dataStatus || 'To Scan'; updates.scannerUserId = userId; logMsg = 'Assigned to Scanner'; }
+      else if (role === 'indexer') { newStatusName = STAGE_CONFIG[nextStatusKey || 'to-indexing']?.dataStatus || 'To Indexing'; updates.indexerUserId = userId; logMsg = 'Assigned to Indexer'; }
+      else if (role === 'qc') { newStatusName = STAGE_CONFIG[nextStatusKey || 'to-checking']?.dataStatus || 'To Checking'; updates.qcUserId = userId; updates.indexingEndTime = getDbSafeDate(); if(!book.indexingStartTime) updates.indexingStartTime = getDbSafeDate(); logMsg = 'Assigned for QC'; }
+      if (newStatusName && await updateBookAndDocuments(bookId, newStatusName, updates)) {
+        logAction(logMsg, `Book "${book.name}" assigned to ${user.name}.`, { bookId });
+        toast({ title: "Book Assigned", description: `Assigned to ${user.name} for ${role}.` });
+      }
+    });
   };
 
   const reassignUser = (bookId: string, newUserId: string, role: 'scanner' | 'indexer' | 'qc') => {
-    const book = rawBooks.find(b => b.id === bookId);
-    const newUser = users.find(u => u.id === newUserId);
-    if (!book || !newUser) return;
-
-    let updateField: 'scannerUserId' | 'indexerUserId' | 'qcUserId' = `${role}UserId`;
-    
-    updateBook(bookId, { [updateField]: newUserId });
-    
-    const oldUser = users.find(u => u.id === book[updateField]);
-    
-    logAction(
-      'User Reassigned', 
-      `Task for book "${book.name}" was reassigned from ${oldUser?.name || 'Unassigned'} to ${newUser.name}.`, 
-      { bookId }
-    );
-    toast({ title: "User Reassigned", description: `${newUser.name} is now responsible for this task.` });
+    withMutation(async () => {
+      const book = rawBooks.find(b => b.id === bookId);
+      const newUser = users.find(u => u.id === newUserId);
+      if (!book || !newUser) return;
+      const updateField: 'scannerUserId' | 'indexerUserId' | 'qcUserId' = `${role}UserId`;
+      await updateBook(bookId, { [updateField]: newUserId });
+      const oldUser = users.find(u => u.id === book[updateField]);
+      logAction('User Reassigned', `Task for book "${book.name}" was reassigned from ${oldUser?.name || 'Unassigned'} to ${newUser.name}.`, { bookId });
+      toast({ title: "User Reassigned", description: `${newUser.name} is now responsible for this task.` });
+    });
   };
 
-
   const handleStartTask = (bookId: string, role: 'scanner' | 'indexing' | 'qc') => {
-    const book = rawBooks.find(b => b.id === bookId);
-    if (!book || !book.projectId) return;
-
-    const workflow = projectWorkflows[book.projectId] || [];
-    
-    let currentStageKey: string | null = null;
-    let nextStatusKey: string | null = null;
-    let newStatusName: string = '';
-    let logMsg = '';
-    let updates: Partial<RawBook> = {};
-    
-    const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
-    if (!currentStatusName) return;
-    
-    currentStageKey = findStageKeyFromStatus(currentStatusName);
-    if (!currentStageKey) return;
-
-    nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
-    
-    if (role === 'scanner') {
-        newStatusName = STAGE_CONFIG[nextStatusKey || 'scanning-started']?.dataStatus || 'Scanning Started';
-        updates.scanStartTime = getDbSafeDate();
-        logMsg = 'Scanning Started';
-    } else if (role === 'indexing') {
-        newStatusName = STAGE_CONFIG[nextStatusKey || 'indexing-started']?.dataStatus || 'Indexing Started';
-        updates.indexingStartTime = getDbSafeDate();
-        logMsg = 'Indexing Started';
-    } else if (role === 'qc') {
-        newStatusName = STAGE_CONFIG[nextStatusKey || 'checking-started']?.dataStatus || 'Checking Started';
-        updates.qcStartTime = getDbSafeDate();
-        logMsg = 'Checking Started';
-    }
-    
-    if (newStatusName) {
-      updateBookAndDocuments(bookId, newStatusName, updates);
-      logAction(logMsg, `${logMsg} process initiated for book.`, { bookId });
-      toast({ title: logMsg });
-    }
+    withMutation(async () => {
+      const book = rawBooks.find(b => b.id === bookId);
+      if (!book || !book.projectId) return;
+      const workflow = projectWorkflows[book.projectId] || [];
+      const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
+      if (!currentStatusName) return;
+      const currentStageKey = findStageKeyFromStatus(currentStatusName);
+      if (!currentStageKey) return;
+      const nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
+      let newStatusName = '', logMsg = '', updates: Partial<RawBook> = {};
+      if (role === 'scanner') { newStatusName = STAGE_CONFIG[nextStatusKey || 'scanning-started']?.dataStatus || 'Scanning Started'; updates.scanStartTime = getDbSafeDate(); logMsg = 'Scanning Started'; }
+      else if (role === 'indexing') { newStatusName = STAGE_CONFIG[nextStatusKey || 'indexing-started']?.dataStatus || 'Indexing Started'; updates.indexingStartTime = getDbSafeDate(); logMsg = 'Indexing Started'; }
+      else if (role === 'qc') { newStatusName = STAGE_CONFIG[nextStatusKey || 'checking-started']?.dataStatus || 'Checking Started'; updates.qcStartTime = getDbSafeDate(); logMsg = 'Checking Started'; }
+      if (newStatusName && await updateBookAndDocuments(bookId, newStatusName, updates)) {
+        logAction(logMsg, `${logMsg} process initiated for book.`, { bookId });
+        toast({ title: logMsg });
+      }
+    });
   };
 
   const handleCancelTask = (bookId: string, currentStatusId: string) => {
-    const book = rawBooks.find(b => b.id === bookId);
-    if (!book) return;
-    const currentStatusName = statuses.find(s => s.id === currentStatusId)?.name;
-    if (!currentStatusName) return;
-
-    const updates: { [key: string]: { bookStatus: string, logMsg: string, clearFields: Partial<RawBook> } } = {
-      'Scanning Started': { bookStatus: 'To Scan', logMsg: 'Scanning', clearFields: { scanStartTime: undefined } },
-      'Indexing Started': { bookStatus: 'To Indexing', logMsg: 'Indexing', clearFields: { indexingStartTime: undefined } },
-      'Checking Started': { bookStatus: 'To Checking', logMsg: 'Checking', clearFields: { qcStartTime: undefined } },
-    };
-
-    const updateKey = Object.keys(updates).find(key => currentStatusName.startsWith(key));
-    if (!updateKey) return;
-    const update = updates[updateKey];
-    
-    updateBookAndDocuments(bookId, update.bookStatus, update.clearFields);
-    logAction('Task Cancelled', `${update.logMsg} for book "${book.name}" was cancelled.`, { bookId });
-    toast({ title: 'Task Cancelled', description: `Book returned to ${update.bookStatus} Queue.`, variant: 'destructive' });
+    withMutation(async () => {
+      const book = rawBooks.find(b => b.id === bookId);
+      if (!book) return;
+      const currentStatusName = statuses.find(s => s.id === currentStatusId)?.name;
+      if (!currentStatusName) return;
+      const updates: { [key: string]: { bookStatus: string, logMsg: string, clearFields: Partial<RawBook> } } = {
+        'Scanning Started': { bookStatus: 'To Scan', logMsg: 'Scanning', clearFields: { scanStartTime: undefined } },
+        'Indexing Started': { bookStatus: 'To Indexing', logMsg: 'Indexing', clearFields: { indexingStartTime: undefined } },
+        'Checking Started': { bookStatus: 'To Checking', logMsg: 'Checking', clearFields: { qcStartTime: undefined } },
+      };
+      const updateKey = Object.keys(updates).find(key => currentStatusName.startsWith(key));
+      if (!updateKey) return;
+      const update = updates[updateKey];
+      if(await updateBookAndDocuments(bookId, update.bookStatus, update.clearFields)) {
+        logAction('Task Cancelled', `${update.logMsg} for book "${book.name}" was cancelled.`, { bookId });
+        toast({ title: 'Task Cancelled', description: `Book returned to ${update.bookStatus} Queue.`, variant: 'destructive' });
+      }
+    });
   };
   
   const handleAdminStatusOverride = (bookId: string, newStatusName: string, reason: string) => {
-    const book = rawBooks.find(b => b.id === bookId);
-    const newStatus = statuses.find(s => s.name === newStatusName);
-    if (!book || !newStatus) return;
-
-    const newStageKey = findStageKeyFromStatus(newStatus.name);
-    const newStageConfig = newStageKey ? STAGE_CONFIG[newStageKey] : null;
-
-    const updates: Partial<RawBook> = {};
-    if (newStageConfig?.assigneeRole !== 'scanner') {
-        updates.scannerUserId = undefined; updates.scanStartTime = undefined; updates.scanEndTime = undefined;
-    }
-    if (newStageConfig?.assigneeRole !== 'indexer') {
-        updates.indexerUserId = undefined; updates.indexingStartTime = undefined; updates.indexingEndTime = undefined;
-    }
-    if (newStageConfig?.assigneeRole !== 'qc') {
-        updates.qcUserId = undefined; updates.qcStartTime = undefined; updates.qcEndTime = undefined;
-    }
-
-    updateBookAndDocuments(bookId, newStatus.name, updates);
-
-    logAction(
-        'Admin Status Override', 
-        `Status of "${book.name}" manually changed to "${newStatus.name}". Reason: ${reason}`,
-        { bookId }
-    );
-    toast({ title: "Status Overridden", description: `Book is now in status: ${newStatus.name}` });
+    withMutation(async () => {
+      const book = rawBooks.find(b => b.id === bookId);
+      const newStatus = statuses.find(s => s.name === newStatusName);
+      if (!book || !newStatus) return;
+      const newStageKey = findStageKeyFromStatus(newStatus.name);
+      const newStageConfig = newStageKey ? STAGE_CONFIG[newStageKey] : null;
+      const updates: Partial<RawBook> = {};
+      if (newStageConfig?.assigneeRole !== 'scanner') { updates.scannerUserId = undefined; updates.scanStartTime = undefined; updates.scanEndTime = undefined; }
+      if (newStageConfig?.assigneeRole !== 'indexer') { updates.indexerUserId = undefined; updates.indexingStartTime = undefined; updates.indexingEndTime = undefined; }
+      if (newStageConfig?.assigneeRole !== 'qc') { updates.qcUserId = undefined; updates.qcStartTime = undefined; updates.qcEndTime = undefined; }
+      if (await updateBookAndDocuments(bookId, newStatus.name, updates)) {
+        logAction('Admin Status Override', `Status of "${book.name}" manually changed to "${newStatus.name}". Reason: ${reason}`, { bookId });
+        toast({ title: "Status Overridden", description: `Book is now in status: ${newStatus.name}` });
+      }
+    });
   };
 
-
   const handleStartProcessing = async (bookId: string) => {
-    const book = rawBooks.find(b => b.id === bookId);
-    if (!book || !book.projectId) return;
-    const workflow = projectWorkflows[book.projectId] || [];
-    const nextStage = getNextEnabledStage('ready-for-processing', workflow) || 'in-processing';
-    const newStatus = STAGE_CONFIG[nextStage]?.dataStatus || STAGE_CONFIG[nextStage]?.dataStage || 'In Processing';
-
-    try {
-        const response = await fetch('/api/processing-logs', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ bookId }),
-        });
-        if (!response.ok) throw new Error('Failed to start processing log');
-        const newLog = await response.json();
-        setProcessingLogs(prev => [...prev.filter(l => l.bookId !== bookId), newLog]);
-        await updateBookAndDocuments(bookId, newStatus);
-        logAction('Processing Started', `Automated processing started for book "${book?.name}".`, { bookId });
-        toast({ title: 'Processing Started' });
-    } catch (error) {
-        console.error(error);
-        toast({ title: "Error", description: "Could not start processing.", variant: "destructive" });
-    }
+    withMutation(async () => {
+      const book = rawBooks.find(b => b.id === bookId);
+      if (!book || !book.projectId) return;
+      const workflow = projectWorkflows[book.projectId] || [];
+      const nextStage = getNextEnabledStage('ready-for-processing', workflow) || 'in-processing';
+      const newStatus = STAGE_CONFIG[nextStage]?.dataStatus || STAGE_CONFIG[nextStage]?.dataStage || 'In Processing';
+      try {
+          const response = await fetch('/api/processing-logs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookId }) });
+          if (!response.ok) throw new Error('Failed to start processing log');
+          const newLog = await response.json();
+          setProcessingLogs(prev => [...prev.filter(l => l.bookId !== bookId), newLog]);
+          await updateBookAndDocuments(bookId, newStatus);
+          logAction('Processing Started', `Automated processing started for book "${book?.name}".`, { bookId });
+          toast({ title: 'Processing Started' });
+      } catch (error) {
+          console.error(error);
+          toast({ title: "Error", description: "Could not start processing.", variant: "destructive" });
+      }
+    });
   };
   
   const handleCompleteProcessing = async (bookId: string) => {
-    const book = rawBooks.find(b => b.id === bookId);
-    const log = processingLogs.find(l => l.bookId === bookId);
-    if (!book || !book.projectId || !log) return;
-    const workflow = projectWorkflows[book.projectId] || [];
-    const nextStage = getNextEnabledStage('in-processing', workflow) || 'processed';
-    const newStatus = STAGE_CONFIG[nextStage]?.dataStatus || STAGE_CONFIG[nextStage]?.dataStage || 'Processed';
-    
-    try {
-        const updatedLogData = { 
-            status: 'Complete', 
-            progress: 100, 
-            log: `${log.log}\n[${new Date().toLocaleTimeString()}] Processing complete.`,
-            lastUpdate: getDbSafeDate(),
-        };
-        const response = await fetch(`/api/processing-logs/${log.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updatedLogData),
-        });
-        if (!response.ok) throw new Error('Failed to update processing log');
-
-        setProcessingLogs(prev => prev.map(l => l.id === log.id ? { ...l, ...updatedLogData } : l));
-        await updateBookAndDocuments(bookId, newStatus);
-        logAction('Processing Completed', `Automated processing finished for book "${book?.name}".`, { bookId });
-        toast({ title: 'Processing Complete' });
-
-    } catch (error) {
-         console.error(error);
-        toast({ title: "Error", description: "Could not complete processing.", variant: "destructive" });
-    }
+    withMutation(async () => {
+      const book = rawBooks.find(b => b.id === bookId);
+      const log = processingLogs.find(l => l.bookId === bookId);
+      if (!book || !book.projectId || !log) return;
+      const workflow = projectWorkflows[book.projectId] || [];
+      const nextStage = getNextEnabledStage('in-processing', workflow) || 'processed';
+      const newStatus = STAGE_CONFIG[nextStage]?.dataStatus || STAGE_CONFIG[nextStage]?.dataStage || 'Processed';
+      try {
+          const updatedLogData = { status: 'Complete', progress: 100, log: `${log.log}\n[${new Date().toLocaleTimeString()}] Processing complete.`, lastUpdate: getDbSafeDate() };
+          const response = await fetch(`/api/processing-logs/${log.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updatedLogData) });
+          if (!response.ok) throw new Error('Failed to update processing log');
+          setProcessingLogs(prev => prev.map(l => l.id === log.id ? { ...l, ...updatedLogData } : l));
+          await updateBookAndDocuments(bookId, newStatus);
+          logAction('Processing Completed', `Automated processing finished for book "${book?.name}".`, { bookId });
+          toast({ title: 'Processing Complete' });
+      } catch (error) {
+           console.error(error);
+          toast({ title: "Error", description: "Could not complete processing.", variant: "destructive" });
+      }
+    });
   };
 
   const handleClientAction = (bookId: string, action: 'approve' | 'reject', reason?: string) => {
-    const book = enrichedBooks.find(b => b.id === bookId);
-    if (!book) return;
-
-    const isApproval = action === 'approve';
-    const newStatus = isApproval ? 'Finalized' : 'Client Rejected';
-    
-    updateBookAndDocuments(bookId, newStatus, { rejectionReason: isApproval ? undefined : reason });
-    
-    logAction(
-      `Client ${isApproval ? 'Approval' : 'Rejection'}`, 
-      isApproval ? `Book "${book?.name}" approved.` : `Book "${book?.name}" rejected. Reason: ${reason}`,
-      { bookId }
-    );
-
-    toast({ title: `Book ${isApproval ? 'Approved' : 'Rejected'}` });
+    withMutation(async () => {
+      const book = enrichedBooks.find(b => b.id === bookId);
+      if (!book) return;
+      const isApproval = action === 'approve';
+      const newStatus = isApproval ? 'Finalized' : 'Client Rejected';
+      if(await updateBookAndDocuments(bookId, newStatus, { rejectionReason: isApproval ? undefined : reason })) {
+        logAction(`Client ${isApproval ? 'Approval' : 'Rejection'}`, isApproval ? `Book "${book?.name}" approved.` : `Book "${book?.name}" rejected. Reason: ${reason}`, { bookId });
+        toast({ title: `Book ${isApproval ? 'Approved' : 'Rejected'}` });
+      }
+    });
   };
 
   const handleFinalize = (bookId: string) => {
-    const book = rawBooks.find(b => b.id === bookId);
-    if (!book || !book.projectId) return;
-    const workflow = projectWorkflows[book.projectId] || [];
-    const nextStageKey = getNextEnabledStage('finalized', workflow) || 'archive';
-    const newStatus = STAGE_CONFIG[nextStageKey]?.dataStatus || STAGE_CONFIG[nextStageKey]?.dataStage || 'Archived';
-    
-    updateBookAndDocuments(bookId, newStatus);
-    logAction('Book Archived', `Book "${book?.name}" was finalized and moved to ${newStatus}.`, { bookId });
-    toast({ title: "Book Archived" });
+    withMutation(async () => {
+      const book = rawBooks.find(b => b.id === bookId);
+      if (!book || !book.projectId) return;
+      const workflow = projectWorkflows[book.projectId] || [];
+      const nextStageKey = getNextEnabledStage('finalized', workflow) || 'archive';
+      const newStatus = STAGE_CONFIG[nextStageKey]?.dataStatus || STAGE_CONFIG[nextStageKey]?.dataStage || 'Archived';
+      if (await updateBookAndDocuments(bookId, newStatus)) {
+        logAction('Book Archived', `Book "${book?.name}" was finalized and moved to ${newStatus}.`, { bookId });
+        toast({ title: "Book Archived" });
+      }
+    });
   };
   
   const handleMarkAsCorrected = (bookId: string) => {
-    const book = rawBooks.find(b => b.id === bookId);
-    if (!book || !book.projectId) return;
-    const workflow = projectWorkflows[book.projectId] || [];
-    const nextStageKey = getNextEnabledStage('client-rejections', workflow) || 'corrected';
-    const newStatus = STAGE_CONFIG[nextStageKey]?.dataStatus || STAGE_CONFIG[nextStageKey]?.dataStage || 'Corrected';
-
-    updateBookAndDocuments(bookId, newStatus);
-    logAction('Marked as Corrected', `Book "${book.name}" marked as corrected after client rejection.`, { bookId });
-    toast({ title: "Book Corrected" });
+    withMutation(async () => {
+      const book = rawBooks.find(b => b.id === bookId);
+      if (!book || !book.projectId) return;
+      const workflow = projectWorkflows[book.projectId] || [];
+      const nextStageKey = getNextEnabledStage('client-rejections', workflow) || 'corrected';
+      const newStatus = STAGE_CONFIG[nextStageKey]?.dataStatus || STAGE_CONFIG[nextStageKey]?.dataStage || 'Corrected';
+      if(await updateBookAndDocuments(bookId, newStatus)) {
+        logAction('Marked as Corrected', `Book "${book.name}" marked as corrected after client rejection.`, { bookId });
+        toast({ title: "Book Corrected" });
+      }
+    });
   };
 
   const handleResubmit = (bookId: string, targetStage: string) => {
-    const book = rawBooks.find(b => b.id === bookId);
-    if (!book) return;
-    updateBookAndDocuments(bookId, targetStage);
-    logAction('Book Resubmitted', `Book "${book?.name}" resubmitted to ${targetStage}.`, { bookId });
-    toast({ title: "Book Resubmitted" });
+    withMutation(async () => {
+      const book = rawBooks.find(b => b.id === bookId);
+      if (!book) return;
+      if (await updateBookAndDocuments(bookId, targetStage)) {
+        logAction('Book Resubmitted', `Book "${book?.name}" resubmitted to ${targetStage}.`, { bookId });
+        toast({ title: "Book Resubmitted" });
+      }
+    });
   };
   
   const updateDocumentStatus = async (docId: string, newStatus: string) => {
     const statusId = statuses.find(s => s.name === newStatus)?.id;
     if (!statusId) return;
-    
     await updateDocument(docId, { statusId: statusId });
   };
 
@@ -1379,7 +1225,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
 
   const value: AppContextType = { 
-    loading,
+    loading, isMutating,
     currentUser, login, logout, changePassword,
     navigationHistory, addNavigationHistoryItem,
     clients, users, scannerUsers, indexerUsers, qcUsers,
@@ -1392,7 +1238,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     permissions,
     projectWorkflows,
     rejectionTags,
-    allProjects: allEnrichedProjects, // Expose all projects for Admin user selection
+    allProjects: allEnrichedProjects,
     accessibleProjectsForUser,
     selectedProjectId,
     setSelectedProjectId,

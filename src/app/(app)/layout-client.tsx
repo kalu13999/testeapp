@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { GlobalProjectFilter } from '@/components/layout/global-project-filter';
 import { allMenuItems } from '@/lib/menu-config';
 import { RecentPagesNav } from '@/components/layout/recent-pages-nav';
+import { GlobalLoader } from '@/components/layout/global-loader';
 
 export const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
   const { currentUser, permissions, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loading, addNavigationHistoryItem } = useAppContext();
@@ -177,6 +178,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
           )}
         </main>
       </SidebarInset>
+      <GlobalLoader />
     </>
   )
 }
