@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FolderSync, FileText, FileJson, Play, ThumbsUp, ThumbsDown, Send, Archive, Undo2, AlertTriangle, ShieldAlert, MoreHorizontal, Info, UserPlus, BookOpen, Check, Tag } from "lucide-react";
+import { FolderSync, FileText, FileJson, Play, ThumbsUp, ThumbsDown, Send, Archive, Undo2, AlertTriangle, ShieldAlert, MoreHorizontal, Info, UserPlus, BookOpen, Check, Tag, ScanLine, PlayCircle, CheckCheck } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +31,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { STAGE_CONFIG, findStageKeyFromStatus } from "@/lib/workflow-config";
+import type { LucideIcon } from "lucide-react";
 
 
 interface FolderViewClientProps {
@@ -60,6 +61,22 @@ const DetailItem = ({ label, value }: { label: string; value: React.ReactNode })
     <p className="col-span-2 font-medium">{value}</p>
   </div>
 );
+
+const iconMap: { [key: string]: LucideIcon } = {
+    Check,
+    ScanLine,
+    FileText,
+    FileJson,
+    Play,
+    Send,
+    FolderSync,
+    PlayCircle,
+    UserPlus,
+    CheckCheck,
+    Archive,
+    ThumbsUp,
+    Undo2,
+};
 
 
 export default function FolderViewClient({ stage, config }: FolderViewClientProps) {
