@@ -752,6 +752,24 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const renderBulkActions = () => {
     if (selection.length === 0) return null;
 
+    if (stage === 'already-received') {
+        const firstSelectedBook = allDisplayItems.find(b => b.id === selection[0]) as EnrichedBook;
+        if (!firstSelectedBook?.projectId) return null;
+        const projectWorkflow = projectWorkflows[firstSelectedBook.projectId] || [];
+        const isScanningEnabled = projectWorkflow.includes('to-scan');
+        if (isScanningEnabled) {
+            return (
+                <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">{selection.length} selected</span>
+                    <Button size="sm" onClick={() => openBulkAssignmentDialog('scanner')}>
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Assign Scanner
+                    </Button>
+                </div>
+            );
+        }
+    }
+
     if (stage === 'indexing-started') {
         return (
             <div className="flex items-center gap-2">
