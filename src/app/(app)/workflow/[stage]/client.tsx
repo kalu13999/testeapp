@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/card"
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send, FolderSync, PlayCircle, UserPlus, CheckCheck, Archive, MoreHorizontal, Info, Download, ArrowUp, ArrowDown, ChevronsUpDown, Loader2, XCircle, FileWarning, ShieldAlert, AlertTriangle, Tag, Replace, FilePlus2, BookOpen, MessageSquareWarning } from "lucide-react";
+import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send, FolderSync, PlayCircle, UserPlus, CheckCheck, Archive, MoreHorizontal, Info, Download, ArrowUp, ArrowDown, ChevronsUpDown, Loader2, XCircle, FileWarning, ShieldAlert, AlertTriangle, Tag, Replace, FilePlus2, BookOpen, MessageSquareWarning, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppContext } from "@/context/workflow-context";
 import { type AppDocument, type RejectionTag } from "@/context/workflow-context";
@@ -176,7 +176,15 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                 return assigneeId === currentUser.id || !assigneeId;
             });
         } else {
-            items = (items as EnrichedBook[]).filter(book => book[(config.assigneeRole as AssignmentRole) + 'UserId'] === currentUser.id);
+             const statusesForRole = {
+                scanner: ['To Scan', 'Scanning Started'],
+                indexer: ['To Indexing', 'Indexing Started'],
+                qc: ['To Checking', 'Checking Started'],
+            }[config.assigneeRole] || [];
+
+            items = (items as EnrichedBook[]).filter(book =>
+                book[(config.assigneeRole as AssignmentRole) + 'UserId'] === currentUser.id && statusesForRole.includes(book.status)
+            );
         }
     }
 
@@ -455,49 +463,26 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   };
 
   const handleBulkAction = () => {
-    if (stage === 'checking-started') {
-      openConfirmationDialog({
-          title: `Complete ${selection.length} tasks?`,
-          description: "This will move all selected books to the next step in their workflow.",
-          onConfirm: () => {
-              selection.forEach(bookId => {
-                  const book = (allDisplayItems.find(b => b.id === bookId) as EnrichedBook);
-                  if (book) {
-                      handleMoveBookToNextStage(book.id, book.status);
-                  }
-              });
-              setSelection([]);
-          }
-      });
-      return;
-    }
-    
-    const stageToRoleMap = {
-      'to-scan': 'scanner',
-      'to-indexing': 'indexer',
-      'to-checking': 'qc',
-    } as const;
+    if (selection.length === 0) return;
+    const firstSelected = allDisplayItems.find(item => item.id === selection[0]) as EnrichedBook;
 
-    if (stage in stageToRoleMap) {
-      const role = stageToRoleMap[stage as keyof typeof stageToRoleMap];
-      selection.forEach(bookId => {
-        const book = books.find(b => b.id === bookId);
-        if (book) {
-          handleStartTask(bookId, role);
-        }
+    if (SIMPLE_BULK_ACTION_STAGES.includes(stage)) {
+      const onConfirm = () => {
+        selection.forEach(bookId => {
+          const book = allDisplayItems.find(b => b.id === bookId) as EnrichedBook;
+          if (book) {
+            handleMoveBookToNextStage(book.id, book.status);
+          }
+        });
+        setSelection([]);
+      };
+
+      openConfirmationDialog({
+        title: `Perform action for ${selection.length} books?`,
+        description: `This will move all selected books to the next step.`,
+        onConfirm,
       });
-    } else if (['processed', 'final-quality-control', 'delivery'].includes(stage)) {
-      selection.forEach(bookId => {
-        const book = books.find(b => b.id === bookId);
-        if (book) handleMoveBookToNextStage(bookId, book.status);
-      });
-    } else if (stage === 'confirm-reception') {
-      selection.forEach(handleConfirmReception);
-    } else if (stage === 'ready-for-processing') {
-      selection.forEach(handleStartProcessing);
     }
-    
-    setSelection([]);
   };
 
   const isCancelable = ['Scanning Started', 'Indexing Started', 'Checking Started'].includes(config.dataStatus as string);
@@ -775,10 +760,12 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     const firstSelected = allDisplayItems.find(item => item.id === selection[0]);
     if (!firstSelected || dataType !== 'book') return null;
 
-    const actionLabel = getDynamicActionButtonLabel(firstSelected as EnrichedBook)?.label;
+    const actionDetails = getDynamicActionButton(firstSelected as EnrichedBook);
+    if (!actionDetails) return null;
+
     const isDisabled = selection.some(bookId => {
         const book = allDisplayItems.find(item => item.id === bookId) as EnrichedBook;
-        return processingBookIds.includes(bookId) || getDynamicActionButtonLabel(book)?.disabled;
+        return processingBookIds.includes(bookId) || getDynamicActionButton(book)?.disabled;
     });
 
     if (SIMPLE_BULK_ACTION_STAGES.includes(stage)) {
@@ -786,8 +773,8 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
             <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">{selection.length} selected</span>
                 <Button size="sm" onClick={handleBulkAction} disabled={isDisabled}>
-                    {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
-                    {actionLabel} ({selection.length})
+                    {actionDetails.icon && <actionDetails.icon className="mr-2 h-4 w-4" />}
+                    {actionDetails.label} ({selection.length})
                 </Button>
             </div>
         );
@@ -965,7 +952,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
                 {scanState.folderName && (
                     <div className="flex items-center gap-2 text-sm font-medium">
-                        {isScanFolderMatch ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-destructive" />}
+                        {isScanFolderMatch ? <CheckCheck className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-destructive" />}
                         <span>{scanState.folderName}</span>
                          {scanState.fileCount !== null && <span className="text-muted-foreground">({scanState.fileCount} .tif files)</span>}
                     </div>
