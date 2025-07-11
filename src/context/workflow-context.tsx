@@ -98,8 +98,6 @@ type AppContextType = {
   updateRejectionTag: (tagId: string, tagData: Partial<Omit<RejectionTag, 'id' | 'clientId'>>) => Promise<void>;
   deleteRejectionTag: (tagId: string) => Promise<void>;
   tagPageForRejection: (pageId: string, tags: string[]) => Promise<void>;
-  clearPageRejectionTags: (pageId: string, tagsToKeep?: string[]) => Promise<void>;
-
 
   // Workflow Actions
   getNextEnabledStage: (currentStage: string, workflow: string[]) => string | null;
@@ -340,7 +338,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             try {
                 parsedTags = JSON.parse(doc.tags);
             } catch (e) {
-                // Ignore parse errors for now, will default to empty array
+                parsedTags = [];
             }
         }
         return {
@@ -855,8 +853,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     });
   };
   
-  const tagPageForRejection = async (pageId: string, tags: string[]) => await updateDocument(pageId, { tags });
-  const clearPageRejectionTags = async (pageId: string, tagsToKeep: string[] = []) => await updateDocument(pageId, { tags: tagsToKeep });
+  const tagPageForRejection = async (pageId: string, tags: string[]) => {
+      await updateDocument(pageId, { tags });
+      const doc = documents.find(d => d.id === pageId);
+      if(doc) {
+        logAction('Page Tagged', `Page "${doc.name}" tagged for rejection with: ${tags.join(', ')}.`, { documentId: pageId, bookId: doc.bookId });
+      }
+  };
+
   const updateDocumentFlag = async (docId: string, flag: AppDocument['flag'], comment?: string) => await updateDocument(docId, { flag, flagComment: flag ? comment : undefined });
   const addPageToBook = async (bookId: string, position: number) => {
     await withMutation(async () => {
@@ -949,14 +953,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
   
   const handleSendToStorage = async (bookId: string, payload: { actualPageCount: number }) => {
-    setProcessingBookIds(prev => [...prev, bookId]);
     await withMutation(async () => {
+      setProcessingBookIds(prev => [...prev, bookId]);
       try {
         const book = rawBooks.find(b => b.id === bookId);
         if (!book) throw new Error("Book not found");
         const project = rawProjects.find(p => p.id === book.projectId);
         if (!project) throw new Error("Project not found");
-  
+
         const response = await fetch(`/api/books/${bookId}/complete-scan`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -975,8 +979,9 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         
         const { book: updatedRawBook, documents: newRawDocuments } = await response.json();
         
-        setRawDocuments(prevDocs => [...prevDocs, ...newRawDocuments]);
+        // This is the atomic update
         setRawBooks(prevBooks => prevBooks.map(b => b.id === bookId ? updatedRawBook : b));
+        setRawDocuments(prevDocs => [...prevDocs, ...newRawDocuments]);
         
         const currentStatusName = statuses.find(s => s.id === book.statusId)?.name || 'Unknown';
         const logMessage = findStageKeyFromStatus(currentStatusName) === 'already-received' ? 'Reception & Scan Skipped' : 'Scanning Finished';
@@ -1267,7 +1272,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     updateProjectWorkflow,
     addBook, updateBook, deleteBook, importBooks,
     addRejectionTag, updateRejectionTag, deleteRejectionTag,
-    tagPageForRejection, clearPageRejectionTags,
+    tagPageForRejection,
     getNextEnabledStage,
     handleMarkAsShipped,
     handleConfirmReception,

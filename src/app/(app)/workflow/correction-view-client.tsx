@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import * as React from "react"
@@ -59,7 +60,6 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
     rejectionTags,
     currentUser,
     tagPageForRejection,
-    clearPageRejectionTags,
   } = useAppContext();
   const { toast } = useToast();
   
@@ -155,7 +155,7 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
   
   const handleTaggingSubmit = () => {
     if (taggingState.docId) {
-      clearPageRejectionTags(taggingState.docId, taggingState.selectedTags);
+      tagPageForRejection(taggingState.docId, taggingState.selectedTags);
     }
     closeTaggingDialog();
   };
