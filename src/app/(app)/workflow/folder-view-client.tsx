@@ -32,6 +32,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { STAGE_CONFIG, findStageKeyFromStatus } from "@/lib/workflow-config";
 import type { LucideIcon } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 
 interface FolderViewClientProps {
@@ -489,6 +497,18 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     const disabled = selection.some(bookId => groupedByBook[bookId]?.hasError);
     let actionButton = null;
 
+    if (stage === 'storage') {
+       return (
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">{selection.length} selected</span>
+          <Button size="sm" onClick={() => openBulkAssignmentDialog('indexer')}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Assign Selected for Indexing
+          </Button>
+        </div>
+      );
+    }
+    
     if (stage === 'pending-deliveries') {
       actionButton = (
         <Button size="sm" onClick={handleBulkAction}>
