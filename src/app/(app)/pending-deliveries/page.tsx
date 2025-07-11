@@ -8,9 +8,10 @@ export default function PendingDeliveriesPage() {
     actionButtonLabel: "", // Actions are handled by the component
     actionButtonIcon: "ThumbsUp",
     emptyStateText: "There are no pending deliveries.",
-    dataStage: "Pending Validation",
+    dataStatus: "Pending Validation",
     viewType: "folder",
   };
   
   return <FolderViewClient config={config} stage="pending-deliveries" />;
 }
+
