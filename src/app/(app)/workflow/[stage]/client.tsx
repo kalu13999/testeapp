@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/card"
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send, FolderSync, Upload, XCircle, CheckCircle, FileWarning, PlayCircle, UserPlus, Info, MoreHorizontal, Download, ArrowUp, ArrowDown, ChevronsUpDown, CheckCheck } from "lucide-react";
+import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send, FolderSync, Upload, XCircle, CheckCircle, FileWarning, PlayCircle, UserPlus, Info, MoreHorizontal, Download, ArrowUp, ArrowDown, ChevronsUpDown, CheckCheck, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppContext } from "@/context/workflow-context";
 import { type AppDocument, type RejectionTag } from "@/context/workflow-context";
@@ -122,10 +122,10 @@ const SIMPLE_BULK_ACTION_STAGES = [
 export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const { 
     books, documents, handleMoveBookToNextStage, 
-    updateDocumentStatus, currentUser, users, permissions,
+    currentUser, users, permissions,
     handleStartTask, handleAssignUser, handleStartProcessing, handleCancelTask,
     selectedProjectId, projectWorkflows, handleConfirmReception, getNextEnabledStage,
-    handleSendToStorage
+    handleSendToStorage, processingBookIds
   } = useAppContext();
 
   const { toast } = useToast();
@@ -594,6 +594,10 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 };
 
   const getDynamicActionButton = (book: EnrichedBook): { label: string, icon: LucideIcon, disabled: boolean } | null => {
+      if (processingBookIds.includes(book.id)) {
+        return { label: "Processing...", icon: Loader2, disabled: true };
+      }
+      
       if (stage === 'confirm-reception') {
           return { label: 'Confirm Arrival', icon: Check, disabled: false };
       }
@@ -617,6 +621,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const renderBookRow = (item: any, index: number) => {
     const isCancelable = ['Scanning Started', 'Indexing Started', 'Checking Started'].includes(item.status);
     const actionDetails = getDynamicActionButton(item);
+    const isProcessing = processingBookIds.includes(item.id);
 
     return (
         <TableRow key={item.id} data-state={selection.includes(item.id) && "selected"}>
@@ -644,7 +649,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
           <div className="flex items-center justify-end gap-2">
             {actionDetails && (
               <Button size="sm" onClick={() => handleActionClick(item)} disabled={actionDetails.disabled}>
-                  {actionDetails.icon && <actionDetails.icon className="mr-2 h-4 w-4" />}
+                  <actionDetails.icon className={isProcessing ? "mr-2 h-4 w-4 animate-spin" : "mr-2 h-4 w-4"} />
                   {actionDetails.label}
               </Button>
             )}
@@ -1044,12 +1049,14 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{assignmentConfig[bulkAssignState.role].title} for {selection.length} Books</DialogTitle>
-            <DialogDescription>{assignmentConfig[bulkAssignState.role].description}</DialogDescription>
+            <DialogDescription>
+                Select a user to process all selected books. They will be added to their personal queue.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <Select value={selectedUserId} onValueChange={setSelectedUserId}>
               <SelectTrigger>
-                <SelectValue placeholder={`Select a ${bulkAssignState.role}...`} />
+                <SelectValue placeholder={`Select an ${bulkAssignState.role}...`} />
               </SelectTrigger>
               <SelectContent>
                  {getAssignableUsers(bulkAssignState.role, (allDisplayItems.find(item => item.id === selection[0]) as EnrichedBook)?.projectId).map(user => (
