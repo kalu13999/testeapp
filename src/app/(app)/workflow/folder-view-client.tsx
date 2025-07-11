@@ -1,5 +1,4 @@
 
-
 "use client"
 
 import * as React from "react"
@@ -16,20 +15,20 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FolderSync, FileText, FileJson, Play, ThumbsUp, ThumbsDown, Send, Archive, Undo2, AlertTriangle, ShieldAlert, MoreHorizontal, Info, UserPlus, BookOpen, Check, Tag, ScanLine, PlayCircle, CheckCheck } from "lucide-react";
+import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, Undo2 } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AppDocument, EnrichedBook, User, RejectionTag } from "@/context/workflow-context";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { AppDocument, EnrichedBook, User, RejectionTag } from "@/context/workflow-context";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { STAGE_CONFIG, findStageKeyFromStatus } from "@/lib/workflow-config";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -40,6 +39,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Skeleton } from "@/components/ui/skeleton";
 
 
 interface FolderViewClientProps {
@@ -71,19 +71,19 @@ const DetailItem = ({ label, value }: { label: string; value: React.ReactNode })
 );
 
 const iconMap: { [key: string]: LucideIcon } = {
-    Check,
-    ScanLine,
-    FileText,
-    FileJson,
-    Play,
-    Send,
-    FolderSync,
-    PlayCircle,
-    UserPlus,
-    CheckCheck,
-    Archive,
-    ThumbsUp,
-    Undo2,
+    Check: Check,
+    ScanLine: ScanLine,
+    FileText: FileText,
+    FileJson: FileJson,
+    Play: PlayCircle,
+    Send: Send,
+    FolderSync: FolderSync,
+    PlayCircle: PlayCircle,
+    UserPlus: UserPlus,
+    CheckCheck: CheckCheck,
+    Archive: Archive,
+    ThumbsUp: ThumbsUp,
+    Undo2: Undo2,
 };
 
 
@@ -105,7 +105,8 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     currentUser,
     tagPageForRejection,
     getNextEnabledStage,
-    projectWorkflows
+    projectWorkflows,
+    processingBookIds
   } = useAppContext();
   const { toast } = useToast();
   const ActionIcon = config.actionButtonIcon ? iconMap[config.actionButtonIcon] : FolderSync;
@@ -568,6 +569,9 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
               <Accordion type="multiple" className="w-full">
                 {Object.values(groupedByBook).map((bookGroup) => {
                   const { book, pages, hasError, hasWarning } = bookGroup;
+                  const isProcessing = processingBookIds.includes(book.id);
+                  const pageCount = pages.length;
+
                   return (
                   <AccordionItem value={book.id} key={book.id}>
                     <div className="flex items-center justify-between hover:bg-muted/50 rounded-md">
@@ -593,7 +597,9 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                                       {hasError && <ShieldAlert className="h-4 w-4 text-destructive" />}
                                       {hasWarning && !hasError && <AlertTriangle className="h-4 w-4 text-orange-500" />}
                                     </p>
-                                    <p className="text-sm text-muted-foreground">{book.projectName} - {pages.length} pages</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      {book.projectName} - {isProcessing ? <span className="flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin"/> Loading pages...</span> : `${pageCount} pages`}
+                                    </p>
                                 </div>
                             </div>
                         </AccordionTrigger>
@@ -629,8 +635,26 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                                 )}
                             </CardContent>
                           </Card>
+                          {stage === 'client-rejections' && (
+                            <Card className="bg-destructive/10 border-destructive/50">
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="flex items-center gap-2 text-base text-destructive font-semibold">
+                                        <MessageSquareWarning className="h-5 w-5" /> Client Rejection Reason
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className="text-sm text-destructive-foreground/90">{book.rejectionReason || "No reason provided."}</p>
+                                </CardContent>
+                            </Card>
+                          )}
+
                           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
-                            {pages.map(page => (
+                            {isProcessing && pages.length === 0 ? (
+                              Array.from({ length: 8 }).map((_, i) => (
+                                <Skeleton key={i} className="aspect-[4/5.5] w-full h-full" />
+                              ))
+                            ) : (
+                              pages.map(page => (
                                 <div key={page.id} className="relative group">
                                   <Link href={`/documents/${page.id}`} className="block">
                                       <Card className="overflow-hidden hover:shadow-lg transition-shadow relative border-2 border-transparent group-hover:border-primary">
@@ -720,7 +744,8 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                                       </DropdownMenu>
                                   </div>
                                 </div>
-                            ))}
+                            ))
+                            )}
                           </div>
                       </div>
                     </AccordionContent>
