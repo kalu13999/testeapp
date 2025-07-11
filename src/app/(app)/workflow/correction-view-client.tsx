@@ -36,7 +36,7 @@ interface CorrectionViewClientProps {
     title: string;
     description: string;
     emptyStateText: string;
-    dataStage?: string;
+    dataStatus?: string;
   };
 }
 
@@ -76,13 +76,13 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
   }>({ open: false, docId: null, docName: null, selectedTags: [], availableTags: [] });
 
   const rejectedBooks = React.useMemo(() => {
-    if (!config.dataStage) return [];
-    let baseBooks = books.filter(book => book.status === config.dataStage);
+    if (!config.dataStatus) return [];
+    let baseBooks = books.filter(book => book.status === config.dataStatus);
     if (selectedProjectId) {
       baseBooks = baseBooks.filter(book => book.projectId === selectedProjectId);
     }
     return baseBooks;
-  }, [books, config.dataStage, selectedProjectId]);
+  }, [books, config.dataStatus, selectedProjectId]);
   
   React.useEffect(() => {
     setSelection([]);
@@ -240,7 +240,7 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
                                 <Info className="h-4 w-4" />
                                 <CardTitle className="text-base">Book Details</CardTitle>
                             </CardHeader>
-                            <CardContent className="space-y-4 text-sm">
+                            <CardContent className="text-sm space-y-4">
                                 <DetailItem label="Book" value={<Link href={`/books/${book.id}`} className="text-primary hover:underline">{book.name}</Link>} />
                                 <DetailItem label="Project" value={book.projectName} />
                                 <DetailItem label="Client" value={book.clientName} />
@@ -474,4 +474,5 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
     </Dialog>
     </>
   )
-}
+
+    
