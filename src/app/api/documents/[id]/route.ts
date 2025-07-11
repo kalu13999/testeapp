@@ -48,13 +48,15 @@ export async function PATCH(request: Request, { params }: { params: { id: string
             return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
         }
 
+        const valuesToUpdate = { ...body };
         // Handle tags array by stringifying it
-        if (body.tags && Array.isArray(body.tags)) {
-            body.tags = JSON.stringify(body.tags);
+        if (valuesToUpdate.tags && Array.isArray(valuesToUpdate.tags)) {
+          valuesToUpdate.tags = JSON.stringify(valuesToUpdate.tags);
         }
 
-        const query = `UPDATE documents SET ${fieldsToUpdate.map(field => `${field} = ?`).join(', ')} WHERE id = ?`;
-        const values = [...fieldsToUpdate.map(field => body[field]), id];
+        const setClause = fieldsToUpdate.map(field => `${field} = ?`).join(', ');
+        const query = `UPDATE documents SET ${setClause} WHERE id = ?`;
+        const values = fieldsToUpdate.map(field => valuesToUpdate[field]).concat(id);
 
         connection = await getConnection();
         await connection.execute(query, values);

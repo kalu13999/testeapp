@@ -340,6 +340,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             } catch (e) {
                 parsedTags = [];
             }
+        } else if (doc.tags && Array.isArray(doc.tags)) {
+            parsedTags = doc.tags;
         }
         return {
             ...doc,

@@ -144,7 +144,7 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
       open: true,
       docId: doc.id,
       docName: doc.name,
-      selectedTags: doc.tags,
+      selectedTags: doc.tags || [],
       availableTags: availableTags
     });
   };
@@ -476,3 +476,4 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
   )
 
     
+
