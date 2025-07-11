@@ -8,9 +8,11 @@ export default function ArchivePage() {
     actionButtonLabel: "", // No action
     actionButtonIcon: "Archive",
     emptyStateText: "No documents have been archived yet.",
-    dataStage: "Archived",
+    dataStatus: "Archived",
+    dataType: "book",
     viewType: "folder",
   };
   
   return <FolderViewClient config={config} stage="archive" />;
 }
+
