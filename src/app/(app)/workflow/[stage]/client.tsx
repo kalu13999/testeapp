@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/card"
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send, FolderSync, Upload, XCircle, CheckCircle, FileWarning, PlayCircle, UserPlus, Info, MoreHorizontal, Download, ArrowUp, ArrowDown, ChevronsUpDown, CheckCheck, Loader2, Archive } from "lucide-react";
+import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send, FolderSync, PlayCircle, UserPlus, CheckCheck, Archive, MoreHorizontal, Info, Download, ArrowUp, ArrowDown, ChevronsUpDown, Loader2, XCircle, FileWarning, ShieldAlert, AlertTriangle, Tag, Replace, FilePlus2, BookOpen, MessageSquareWarning } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppContext } from "@/context/workflow-context";
 import { type AppDocument, type RejectionTag } from "@/context/workflow-context";
@@ -56,11 +56,11 @@ const iconMap: { [key: string]: LucideIcon } = {
     PlayCircle,
     UserPlus,
     CheckCheck,
-    Archive: Archive,
-    ThumbsUp: ThumbsUp,
-    ThumbsDown: ThumbsDown,
-    Undo2: Undo2,
-    MoreHorizontal: MoreHorizontal,
+    Archive,
+    ThumbsUp,
+    ThumbsDown,
+    Undo2,
+    MoreHorizontal,
 };
 
 interface WorkflowClientProps {
@@ -158,7 +158,6 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const allDisplayItems = React.useMemo(() => {
     let items: (EnrichedBook | AppDocument)[];
     
-    // Base filtering by stage status
     if (dataType === 'book' && dataStatus) {
       const statuses = Array.isArray(dataStatus) ? dataStatus : [dataStatus];
       items = books.filter(book => statuses.includes(book.status));
@@ -170,35 +169,33 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
     const isSharedQueue = dataStatus === 'Received';
 
-    // Filter by assignee if the user does NOT have permission to view all
     if (currentUser && config.assigneeRole && dataType === 'book' && !canViewAll) {
         if (isSharedQueue) {
-            // In shared queue, non-privileged users see their own books and unassigned books
             items = (items as EnrichedBook[]).filter(book => {
                 const assigneeId = book[(config.assigneeRole as AssignmentRole) + 'UserId'];
                 return assigneeId === currentUser.id || !assigneeId;
             });
         } else {
-            // In personal queues, they only see their own
             items = (items as EnrichedBook[]).filter(book => book[(config.assigneeRole as AssignmentRole) + 'UserId'] === currentUser.id);
         }
     }
 
-    // Add assigneeName for display purposes
-    if (dataType === 'book' && config.assigneeRole) {
-      return (items as EnrichedBook[]).map(book => {
-        let assigneeName = '—';
-        const role = config.assigneeRole as keyof typeof book;
-        const userId = book[`${role}UserId` as keyof EnrichedBook] as string | undefined;
+    if (dataType === 'book') {
+        return (items as EnrichedBook[]).map(book => {
+            let assigneeName = '—';
+            if(config.assigneeRole) {
+                const role = config.assigneeRole as keyof typeof book;
+                const userId = book[`${role}UserId` as keyof EnrichedBook] as string | undefined;
 
-        if (userId) {
-          const user = users.find(u => u.id === userId);
-          assigneeName = user?.name || 'Unknown';
-        } else if (isSharedQueue) {
-          assigneeName = 'Unassigned';
-        }
-        return { ...book, assigneeName };
-      });
+                if (userId) {
+                    const user = users.find(u => u.id === userId);
+                    assigneeName = user?.name || 'Unknown';
+                } else if (isSharedQueue) {
+                    assigneeName = 'Unassigned';
+                }
+            }
+            return { ...book, assigneeName };
+        });
     }
 
     return items;
@@ -293,7 +290,6 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     setConfirmationState({ open: true, title, description, onConfirm });
   }
 
-  // --- EXPORT LOGIC ---
   const downloadFile = (content: string, fileName: string, mimeType: string) => {
     const blob = new Blob([content], { type: mimeType });
     const link = document.createElement("a");
@@ -395,7 +391,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const getAssignableUsers = (role: AssignmentRole, projectId: string) => {
       const requiredPermission = assignmentConfig[role].permission;
       return users.filter(user => {
-        if (user.role === 'Admin') return false; // Exclude admins
+        if (user.role === 'Admin') return false; 
         const userPermissions = permissions[user.role] || [];
         const hasPermission = userPermissions.includes('*') || userPermissions.includes(requiredPermission);
         const hasProjectAccess = !user.projectIds || user.projectIds.length === 0 || user.projectIds.includes(projectId);
@@ -478,7 +474,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     
     const stageToRoleMap = {
       'to-scan': 'scanner',
-      'to-indexing': 'indexing',
+      'to-indexing': 'indexer',
       'to-checking': 'qc',
     } as const;
 
@@ -585,7 +581,6 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         return;
     }
 
-    // Default action for other stages like 'processed'
     if (actionButtonLabel) {
        openConfirmationDialog({
           title: `Confirm: ${actionButtonLabel}?`,
@@ -763,6 +758,44 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     return count;
   }, [dataType, stage, config.assigneeRole, canViewAll]);
 
+  const renderBulkActions = () => {
+    if (selection.length === 0) return null;
+    
+    if (isCancelable) {
+        return (
+            <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">{selection.length} selected</span>
+                <Button variant="destructive" size="sm" onClick={handleBulkCancel}>
+                    <Undo2 className="mr-2 h-4 w-4" /> Cancel Selected
+                </Button>
+            </div>
+        );
+    }
+    
+    const firstSelected = allDisplayItems.find(item => item.id === selection[0]);
+    if (!firstSelected || dataType !== 'book') return null;
+
+    const actionLabel = getDynamicActionButtonLabel(firstSelected as EnrichedBook)?.label;
+    const isDisabled = selection.some(bookId => {
+        const book = allDisplayItems.find(item => item.id === bookId) as EnrichedBook;
+        return processingBookIds.includes(bookId) || getDynamicActionButtonLabel(book)?.disabled;
+    });
+
+    if (SIMPLE_BULK_ACTION_STAGES.includes(stage)) {
+        return (
+            <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">{selection.length} selected</span>
+                <Button size="sm" onClick={handleBulkAction} disabled={isDisabled}>
+                    {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
+                    {actionLabel} ({selection.length})
+                </Button>
+            </div>
+        );
+    }
+    
+    return null;
+  }
+
   return (
     <>
     <Card>
@@ -773,11 +806,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                 <CardDescription>{description}</CardDescription>
             </div>
             <div className="flex items-center gap-2">
-                {selection.length > 0 && isCancelable && (
-                    <Button variant="destructive" size="sm" onClick={handleBulkCancel}>
-                        <Undo2 className="mr-2 h-4 w-4" /> Cancel Selected
-                    </Button>
-                )}
+                {renderBulkActions()}
                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button size="sm" variant="outline" className="h-9 gap-1">

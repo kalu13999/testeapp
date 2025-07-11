@@ -154,7 +154,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         const result = await action();
         return result;
     } catch (error) {
-        // Errors are handled and toasted within individual functions
         console.error("A mutation failed:", error);
     } finally {
         setIsMutating(false);
@@ -286,7 +285,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     });
   }, [currentUser]);
 
-  // --- Centralized Action Logger ---
   const logAction = React.useCallback(async (
     action: string, 
     details: string, 
@@ -352,13 +350,12 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     });
   }, [rawDocuments, rawBooks, statuses, clients]);
 
-  // --- Memoized Data Enrichment ---
   const allEnrichedProjects: EnrichedProject[] = React.useMemo(() => {
     return rawProjects.map(project => {
         const client = clients.find(c => c.id === project.clientId);
         
         const projectBooks = rawBooks.filter(b => b.projectId === project.id).map(book => {
-            const bookDocuments = documents.filter(d => d.bookId === book.id);
+            const bookDocuments = rawDocuments.filter(d => d.bookId === book.id);
             const bookProgress = book.expectedDocuments > 0 ? (bookDocuments.length / book.expectedDocuments) * 100 : 0;
             return {
                 ...book,
@@ -384,7 +381,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         books: projectBooks,
       };
     });
-  }, [rawProjects, clients, rawBooks, documents, statuses]);
+  }, [rawProjects, clients, rawBooks, rawDocuments, statuses]);
   
   const enrichedBooks: EnrichedBook[] = React.useMemo(() => {
       return allEnrichedProjects.flatMap(p => p.books);
@@ -401,8 +398,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     }
     return allEnrichedProjects;
   }, [allEnrichedProjects, currentUser]);
-
-  // --- CRUD ACTIONS ---
 
   const addClient = async (clientData: Omit<Client, 'id'>) => {
     await withMutation(async () => {
@@ -955,8 +950,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
   
   const handleSendToStorage = async (bookId: string, payload: { actualPageCount: number }) => {
+    setProcessingBookIds(prev => [...prev, bookId]);
     await withMutation(async () => {
-      setProcessingBookIds(prev => [...prev, bookId]);
       try {
         const book = rawBooks.find(b => b.id === bookId);
         if (!book) throw new Error("Book not found");
@@ -981,7 +976,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         
         const { book: updatedRawBook, documents: newRawDocuments } = await response.json();
         
-        // This is the atomic update
         setRawBooks(prevBooks => prevBooks.map(b => b.id === bookId ? updatedRawBook : b));
         setRawDocuments(prevDocs => [...prevDocs, ...newRawDocuments]);
         
@@ -1231,7 +1225,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const indexerUsers = React.useMemo(() => users.filter(user => user.role === 'Indexing'), [users]);
   const qcUsers = React.useMemo(() => users.filter(user => user.role === 'QC Specialist'), [users]);
 
-  // --- Contextual Data Filtering ---
   const projectsForContext = React.useMemo(() => {
     if (!selectedProjectId) return accessibleProjectsForUser;
     return allEnrichedProjects.filter(p => p.id === selectedProjectId);
