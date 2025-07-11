@@ -974,11 +974,11 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
           throw new Error(errorData.error || 'Failed to complete scan via API');
         }
         
-        const { book: updatedEnrichedBook, documents: newRawDocuments } = await response.json();
+        const { book: updatedRawBook, documents: newRawDocuments } = await response.json();
         
         // This is the atomic update
         setRawDocuments(prevDocs => [...prevDocs, ...newRawDocuments]);
-        setRawBooks(prevBooks => prevBooks.map(b => b.id === bookId ? { ...b, ...updatedEnrichedBook } : b));
+        setRawBooks(prevBooks => prevBooks.map(b => b.id === bookId ? updatedRawBook : b));
         
         const currentStatusName = statuses.find(s => s.id === book.statusId)?.name || 'Unknown';
         const logMessage = findStageKeyFromStatus(currentStatusName) === 'already-received' ? 'Reception & Scan Skipped' : 'Scanning Finished';

@@ -64,19 +64,11 @@ export async function POST(request: Request, { params }: { params: { id: string 
             const [rows] = await connection.execute<RowDataPacket[]>('SELECT * FROM documents WHERE id IN (?)', [documentIds]);
             createdDocsRows = rows;
         }
-
-        // Enrich the book object before sending it back
-        const enrichedBook = {
-            ...updatedBook,
-            status: 'Storage', // Directly set the new status name
-            documentCount: actualPageCount,
-            progress: actualPageCount > 0 ? 100 : 0
-        };
-
+        
         releaseConnection(connection);
 
         return NextResponse.json({
-            book: enrichedBook,
+            book: updatedBook,
             documents: createdDocsRows
         }, { status: 200 });
 

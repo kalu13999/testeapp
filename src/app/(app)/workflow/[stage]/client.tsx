@@ -1095,7 +1095,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
             <DetailItem label="Scanned Pages" value={detailsState.book?.documentCount} />
             <Separator />
             {detailsState.book?.info && (
-               <div className="grid grid-cols-1 gap-2">
+               <div className="pt-2 grid grid-cols-1 gap-2">
                 <p className="text-muted-foreground">Additional Info</p>
                 <p className="font-medium whitespace-pre-wrap">{detailsState.book.info}</p>
               </div>
