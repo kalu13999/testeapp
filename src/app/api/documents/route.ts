@@ -10,14 +10,14 @@ export async function GET() {
     connection = await getConnection();
     const [rows] = await connection.execute<RowDataPacket[]>('SELECT * FROM documents');
     const documents = rows.map(doc => {
-      if (doc.tags && typeof doc.tags === 'string') {
+      if (doc.tags && typeof doc.tags === 'string' && doc.tags.trim() !== '') {
         try {
           doc.tags = JSON.parse(doc.tags);
         } catch (e) {
           console.warn(`Could not parse tags for document ${doc.id}: ${doc.tags}`);
           doc.tags = [];
         }
-      } else if (!doc.tags) {
+      } else if (!doc.tags || doc.tags.trim() === '') {
         doc.tags = [];
       }
       return doc;

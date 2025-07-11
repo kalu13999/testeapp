@@ -975,7 +975,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         
         const { book: updatedRawBook, documents: newRawDocuments } = await response.json();
         
-        // This is the atomic update
         setRawDocuments(prevDocs => [...prevDocs, ...newRawDocuments]);
         setRawBooks(prevBooks => prevBooks.map(b => b.id === bookId ? updatedRawBook : b));
         

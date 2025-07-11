@@ -3,8 +3,31 @@
 import { NextResponse } from 'next/server';
 import { getConnection, releaseConnection } from '@/lib/db';
 import type { PoolConnection, RowDataPacket } from 'mysql2/promise';
+import { getRawProjects, getClients, getRawBooks, getDocumentStatuses, getRawDocuments } from '@/lib/data';
+import type { EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, Client, DocumentStatus } from '@/lib/data';
+
 
 const getDbSafeDate = () => new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+// Server-side enrichment logic
+const enrichBook = (
+  book: RawBook, 
+  project: { name: string, clientId: string, clientName: string }, 
+  documents: RawDocument[],
+  statuses: DocumentStatus[]
+): EnrichedBook => {
+  const bookDocuments = documents.filter(d => d.bookId === book.id);
+  const bookProgress = book.expectedDocuments > 0 ? (bookDocuments.length / book.expectedDocuments) * 100 : 0;
+  return {
+    ...book,
+    status: statuses.find(s => s.id === book.statusId)?.name || 'Unknown',
+    clientId: project.clientId,
+    projectName: project.name,
+    clientName: project.clientName,
+    documentCount: bookDocuments.length,
+    progress: Math.min(100, bookProgress),
+  };
+};
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
     const bookId = params.id;
@@ -56,19 +79,39 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
         await connection.commit();
         
-        const [updatedBookRows] = await connection.execute<RowDataPacket[]>('SELECT * FROM books WHERE id = ?', [bookId]);
-        const updatedBook = updatedBookRows[0];
+        // Fetch all necessary data for enrichment
+        const [projects, clients, allBooks, allDocuments, statuses] = await Promise.all([
+            getRawProjects(),
+            getClients(),
+            getRawBooks(),
+            getRawDocuments(),
+            getDocumentStatuses()
+        ]);
         
-        let createdDocsRows: RowDataPacket[] = [];
+        const updatedBookRaw = allBooks.find(b => b.id === bookId);
+        if (!updatedBookRaw) throw new Error("Could not find the updated book");
+        
+        const projectForBook = projects.find(p => p.id === updatedBookRaw.projectId);
+        const clientForBook = clients.find(c => c.id === projectForBook?.clientId);
+        
+        if (!projectForBook || !clientForBook) throw new Error("Could not find project or client for the book");
+
+        const enrichedBookData = enrichBook(
+            updatedBookRaw,
+            { name: projectForBook.name, clientId: clientForBook.id, clientName: clientForBook.name },
+            allDocuments,
+            statuses
+        );
+        
+        let createdDocsRows: RawDocument[] = [];
         if (documentIds.length > 0) {
-            const [rows] = await connection.execute<RowDataPacket[]>('SELECT * FROM documents WHERE id IN (?)', [documentIds]);
-            createdDocsRows = rows;
+            createdDocsRows = allDocuments.filter(d => documentIds.includes(d.id));
         }
         
         releaseConnection(connection);
 
         return NextResponse.json({
-            book: updatedBook,
+            book: enrichedBookData,
             documents: createdDocsRows
         }, { status: 200 });
 

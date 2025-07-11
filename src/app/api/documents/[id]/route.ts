@@ -2,25 +2,27 @@
 
 import { NextResponse } from 'next/server';
 import { getConnection, releaseConnection } from '@/lib/db';
-import type { PoolConnection } from 'mysql2/promise';
+import type { PoolConnection, RowDataPacket } from 'mysql2/promise';
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   const { id } = params;
   let connection: PoolConnection | null = null;
   try {
     connection = await getConnection();
-    const [rows] = await connection.execute('SELECT * FROM documents WHERE id = ?', [id]);
+    const [rows] = await connection.execute<RowDataPacket[]>('SELECT * FROM documents WHERE id = ?', [id]);
     if (Array.isArray(rows) && rows.length === 0) {
       return NextResponse.json({ error: 'Document not found' }, { status: 404 });
     }
     const doc = Array.isArray(rows) ? rows[0] : null;
-    if (doc && doc.tags && typeof doc.tags === 'string') {
+    if (doc && doc.tags && typeof doc.tags === 'string' && doc.tags.trim() !== '') {
       try {
         doc.tags = JSON.parse(doc.tags);
       } catch (e) {
         console.warn(`Could not parse tags for document ${id}: ${doc.tags}`);
         doc.tags = [];
       }
+    } else if (!doc.tags || (typeof doc.tags === 'string' && doc.tags.trim() === '')) {
+      doc.tags = [];
     }
     return NextResponse.json(doc);
   } catch (error) {
@@ -57,12 +59,18 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         connection = await getConnection();
         await connection.execute(query, values);
         
-        const [rows] = await connection.execute('SELECT * FROM documents WHERE id = ?', [id]);
+        const [rows] = await connection.execute<RowDataPacket[]>('SELECT * FROM documents WHERE id = ?', [id]);
         
         releaseConnection(connection);
         const doc = Array.isArray(rows) ? rows[0] : null;
-        if (doc && doc.tags && typeof doc.tags === 'string') {
-          doc.tags = JSON.parse(doc.tags);
+        if (doc && doc.tags && typeof doc.tags === 'string' && doc.tags.trim() !== '') {
+          try {
+            doc.tags = JSON.parse(doc.tags);
+          } catch(e) {
+            doc.tags = [];
+          }
+        } else {
+            doc.tags = [];
         }
         return NextResponse.json(doc);
     } catch (error) {
