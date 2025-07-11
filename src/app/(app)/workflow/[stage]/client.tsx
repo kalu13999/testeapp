@@ -40,6 +40,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Separator } from "@/components/ui/separator";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { STAGE_CONFIG, findStageKeyFromStatus } from "@/lib/workflow-config";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -54,6 +56,11 @@ const iconMap: { [key: string]: LucideIcon } = {
     PlayCircle,
     UserPlus,
     CheckCheck,
+    Archive: Archive,
+    ThumbsUp: ThumbsUp,
+    ThumbsDown: ThumbsDown,
+    Undo2: Undo2,
+    MoreHorizontal: MoreHorizontal,
 };
 
 interface WorkflowClientProps {
@@ -64,7 +71,7 @@ interface WorkflowClientProps {
     actionButtonLabel?: string;
     actionButtonIcon?: keyof typeof iconMap;
     emptyStateText: string;
-    dataStatus?: string; // For books
+    dataStatus?: string | string[]; // For books
     dataStage?: string; // For documents
     assigneeRole?: 'scanner' | 'indexer' | 'qc';
   };
@@ -153,7 +160,8 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     
     // Base filtering by stage status
     if (dataType === 'book' && dataStatus) {
-      items = books.filter(book => book.status === dataStatus);
+      const statuses = Array.isArray(dataStatus) ? dataStatus : [dataStatus];
+      items = books.filter(book => statuses.includes(book.status));
     } else if (dataType === 'document' && dataStage) {
       items = documents.filter(doc => doc.status === dataStage);
     } else {
@@ -498,12 +506,6 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
   const isScanFolderMatch = scanState.book?.name === scanState.folderName;
 
-  const tableColSpan = React.useMemo(() => {
-    let count = 6;
-    if (config.assigneeRole && canViewAll) count++;
-    return count;
-  }, [dataType, stage, config.assigneeRole, canViewAll]);
-
   const handleActionClick = (book: EnrichedBook) => {
     if (stage === 'confirm-reception') {
       handleConfirmReception(book.id);
@@ -813,6 +815,12 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     
     return null;
   }
+
+  const tableColSpan = React.useMemo(() => {
+    let count = 6;
+    if (config.assigneeRole && canViewAll) count++;
+    return count;
+  }, [dataType, stage, config.assigneeRole, canViewAll]);
 
   return (
     <>
