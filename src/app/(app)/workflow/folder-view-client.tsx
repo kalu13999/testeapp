@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, Undo2 } from "lucide-react";
+import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, Undo2, Check, ScanLine, FileText, FileJson, PlayCircle, Send, UserPlus, CheckCheck, Archive, ThumbsUp } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -339,6 +339,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     const { id: bookId, name: bookName, status } = book;
 
     const actionButtonLabel = getDynamicActionButtonLabel(book);
+    const isProcessing = processingBookIds.includes(bookId);
 
     const actionButton = actionButtonLabel ? (
         <Button 
@@ -348,10 +349,10 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
               description: `This will perform the action "${actionButtonLabel}" on "${bookName}".`,
               onConfirm: () => handleMainAction(book)
             })}
-            disabled={hasError || actionButtonLabel === "End of Workflow"}
+            disabled={hasError || actionButtonLabel === "End of Workflow" || isProcessing}
         >
-            <ActionIcon className="mr-2 h-4 w-4" />
-            {actionButtonLabel}
+            {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ActionIcon className="mr-2 h-4 w-4" />}
+            {isProcessing ? "Processing..." : actionButtonLabel}
         </Button>
     ) : null;
 
