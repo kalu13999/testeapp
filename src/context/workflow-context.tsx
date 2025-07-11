@@ -336,13 +336,12 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     return rawDocuments.map(doc => {
         const book = rawBooks.find(b => b.id === doc.bookId);
         const bookStatus = statuses.find(s => s.id === book?.statusId)?.name || 'Unknown';
-        let parsedTags = [];
+        let parsedTags: string[] = [];
         if (doc.tags && typeof doc.tags === 'string' && doc.tags.trim() !== '') {
             try {
                 parsedTags = JSON.parse(doc.tags);
             } catch (e) {
-                console.warn(`Could not parse tags for document ${doc.id}:`, doc.tags);
-                parsedTags = [];
+                // Ignore parse errors for now, will default to empty array
             }
         }
         return {
@@ -350,8 +349,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             client: clients.find(c => c.id === doc.clientId)?.name || 'Unknown',
             status: bookStatus,
             tags: parsedTags,
-        }
-    })
+        };
+    });
   }, [rawDocuments, rawBooks, statuses, clients]);
 
   // --- Memoized Data Enrichment ---
@@ -837,6 +836,9 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
               payload.statusId = statuses.find(s => s.name === payload.status)?.id;
               delete payload.status;
           }
+          if (payload.tags && Array.isArray(payload.tags)) {
+            payload.tags = JSON.stringify(payload.tags);
+          }
           const response = await fetch(`/api/documents/${docId}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
@@ -871,7 +873,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       const newPage: Partial<RawDocument> = {
         id: newPageId, name: newPageName, clientId: book.clientId, 
         type: 'Added Page', lastUpdated: getDbSafeDate(), 
-        tags: JSON.stringify(['added', 'corrected']) as any, projectId: book.projectId, bookId: book.id, 
+        tags: JSON.stringify(['added', 'corrected']),
+        projectId: book.projectId, bookId: book.id, 
         flag: 'info', flagComment: 'This page was manually added during the correction phase.',
         imageUrl: `https://dummyimage.com/400x550/e0e0e0/5c5c5c.png&text=${encodeURIComponent(newPageName)}`
       };
