@@ -40,6 +40,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 
 
 interface FolderViewClientProps {
@@ -231,7 +232,10 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   const handleBulkAssignmentSubmit = () => {
     if (bulkAssignState.role && assignmentState.selectedUserId && selection.length > 0) {
       selection.forEach(bookId => {
-        handleAssignUser(bookId, assignmentState.selectedUserId, bulkAssignState.role!);
+        const book = Object.values(groupedByBook).find(g => g.book.id === bookId)?.book;
+        if(book) {
+            handleAssignUser(book.id, assignmentState.selectedUserId, bulkAssignState.role!);
+        }
       });
       closeBulkAssignmentDialog();
       setSelection([]);
