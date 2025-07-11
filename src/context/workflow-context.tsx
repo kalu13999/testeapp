@@ -832,10 +832,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       if (!doc) return;
       try {
           const payload: { [key: string]: any } = { ...data };
-          if (payload.status) {
-              payload.statusId = statuses.find(s => s.name === payload.status)?.id;
-              delete payload.status;
-          }
           if (payload.tags && Array.isArray(payload.tags)) {
             payload.tags = JSON.stringify(payload.tags);
           }
@@ -955,44 +951,47 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   
   const handleSendToStorage = async (bookId: string, payload: { actualPageCount: number }) => {
     setProcessingBookIds(prev => [...prev, bookId]);
-    try {
-      const book = rawBooks.find(b => b.id === bookId);
-      if (!book) throw new Error("Book not found");
-      const project = rawProjects.find(p => p.id === book.projectId);
-      if (!project) throw new Error("Project not found");
-
-      const response = await fetch(`/api/books/${bookId}/complete-scan`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          actualPageCount: payload.actualPageCount,
-          bookName: book.name,
-          clientId: project.clientId,
-          projectId: book.projectId
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to complete scan via API');
+    await withMutation(async () => {
+      try {
+        const book = rawBooks.find(b => b.id === bookId);
+        if (!book) throw new Error("Book not found");
+        const project = rawProjects.find(p => p.id === book.projectId);
+        if (!project) throw new Error("Project not found");
+  
+        const response = await fetch(`/api/books/${bookId}/complete-scan`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            actualPageCount: payload.actualPageCount,
+            bookName: book.name,
+            clientId: project.clientId,
+            projectId: book.projectId
+          })
+        });
+  
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to complete scan via API');
+        }
+        
+        const { book: updatedEnrichedBook, documents: newRawDocuments } = await response.json();
+        
+        // This is the atomic update
+        setRawDocuments(prevDocs => [...prevDocs, ...newRawDocuments]);
+        setRawBooks(prevBooks => prevBooks.map(b => b.id === bookId ? { ...b, ...updatedEnrichedBook } : b));
+        
+        const currentStatusName = statuses.find(s => s.id === book.statusId)?.name || 'Unknown';
+        const logMessage = findStageKeyFromStatus(currentStatusName) === 'already-received' ? 'Reception & Scan Skipped' : 'Scanning Finished';
+        logAction(logMessage, `${payload.actualPageCount} pages created. Book "${book.name}" moved to Storage.`, { bookId });
+        toast({ title: "Task Complete", description: `Book moved to Storage.` });
+  
+      } catch (error) {
+        console.error(error);
+        toast({ title: "Error", description: "Could not complete the process.", variant: "destructive" });
+      } finally {
+        setProcessingBookIds(prev => prev.filter(id => id !== bookId));
       }
-      
-      const { book: updatedRawBook, documents: newRawDocuments } = await response.json();
-      
-      setRawDocuments(prev => [...prev, ...newRawDocuments]);
-      setRawBooks(prev => prev.map(b => b.id === bookId ? updatedRawBook : b));
-      
-      const currentStatusName = statuses.find(s => s.id === book.statusId)?.name || 'Unknown';
-      const logMessage = findStageKeyFromStatus(currentStatusName) === 'already-received' ? 'Reception & Scan Skipped' : 'Scanning Finished';
-      logAction(logMessage, `${payload.actualPageCount} pages created. Book "${book.name}" moved to Storage.`, { bookId });
-      toast({ title: "Task Complete", description: `Book moved to Storage.` });
-
-    } catch (error) {
-      console.error(error);
-      toast({ title: "Error", description: "Could not complete the process.", variant: "destructive" });
-    } finally {
-      setProcessingBookIds(prev => prev.filter(id => id !== bookId));
-    }
+    });
   };
 
   const handleMoveBookToNextStage = (bookId: string, currentStatus: string) => {

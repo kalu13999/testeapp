@@ -27,35 +27,37 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
         const documentsToInsert = [];
         const documentIds = [];
-        for (let i = 1; i <= actualPageCount; i++) {
-            const docId = `doc_${Date.now()}_${Math.random().toString(36).substring(2, 9)}_${i}`;
-            documentIds.push(docId);
-            documentsToInsert.push([
-                docId,
-                `${bookName} - Page ${i}`,
-                clientId,
-                'Scanned Page',
-                getDbSafeDate(),
-                JSON.stringify([]),
-                null,
-                projectId,
-                bookId,
-                null,
-                null,
-                `https://placehold.co/400x550.png?text=Page+${i}`
-            ]);
+        if (actualPageCount > 0) {
+          for (let i = 1; i <= actualPageCount; i++) {
+              const docId = `doc_${Date.now()}_${Math.random().toString(36).substring(2, 9)}_${i}`;
+              documentIds.push(docId);
+              documentsToInsert.push([
+                  docId,
+                  `${bookName} - Page ${i}`,
+                  clientId,
+                  'Scanned Page',
+                  getDbSafeDate(),
+                  JSON.stringify([]),
+                  null,
+                  projectId,
+                  bookId,
+                  null,
+                  null,
+                  `https://placehold.co/400x550.png?text=Page+${i}`
+              ]);
+          }
+          
+          if (documentsToInsert.length > 0) {
+              await connection.query('INSERT INTO documents (id, name, clientId, type, lastUpdated, tags, folderId, projectId, bookId, flag, flagComment, imageUrl) VALUES ?', [documentsToInsert]);
+          }
         }
         
-        if (documentsToInsert.length > 0) {
-            await connection.query('INSERT INTO documents (id, name, clientId, type, lastUpdated, tags, folderId, projectId, bookId, flag, flagComment, imageUrl) VALUES ?', [documentsToInsert]);
-        }
-        
-        // Correctly update the books table using statusId
         await connection.execute('UPDATE books SET statusId = ?, scanEndTime = ?, expectedDocuments = ? WHERE id = ?', [storageStatusId, getDbSafeDate(), actualPageCount, bookId]);
 
         await connection.commit();
         
         const [updatedBookRows] = await connection.execute<RowDataPacket[]>('SELECT * FROM books WHERE id = ?', [bookId]);
+        const updatedBook = updatedBookRows[0];
         
         let createdDocsRows: RowDataPacket[] = [];
         if (documentIds.length > 0) {
@@ -63,10 +65,18 @@ export async function POST(request: Request, { params }: { params: { id: string 
             createdDocsRows = rows;
         }
 
+        // Enrich the book object before sending it back
+        const enrichedBook = {
+            ...updatedBook,
+            status: 'Storage', // Directly set the new status name
+            documentCount: actualPageCount,
+            progress: actualPageCount > 0 ? 100 : 0
+        };
+
         releaseConnection(connection);
 
         return NextResponse.json({
-            book: updatedBookRows[0],
+            book: enrichedBook,
             documents: createdDocsRows
         }, { status: 200 });
 
@@ -75,6 +85,6 @@ export async function POST(request: Request, { params }: { params: { id: string 
         console.error(`Error completing scan for book ${bookId}:`, error);
         return NextResponse.json({ error: 'Failed to complete scan' }, { status: 500 });
     } finally {
-        if (connection) releaseConnection(connection);
+        if (connection && connection.connection) releaseConnection(connection);
     }
 }
