@@ -323,3 +323,13 @@ export const findStageKeyFromStatus = (statusName: string): string | undefined =
     }
     return undefined;
 };
+
+export const getNextEnabledStage = (currentStage: string, workflow: string[]): string | null => {
+    const currentIndex = WORKFLOW_SEQUENCE.indexOf(currentStage);
+    if (currentIndex === -1) return null;
+    for (let i = currentIndex + 1; i < WORKFLOW_SEQUENCE.length; i++) {
+        const nextStageKey = WORKFLOW_SEQUENCE[i];
+        if (workflow.includes(nextStageKey)) return nextStageKey;
+    }
+    return null;
+};

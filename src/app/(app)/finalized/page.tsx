@@ -8,7 +8,7 @@ export default function FinalizedPage() {
     actionButtonLabel: "Archive",
     actionButtonIcon: "Archive",
     emptyStateText: "No documents are currently finalized.",
-    dataStage: "Finalized",
+    dataStatus: "Finalized",
     viewType: "folder",
   };
   
