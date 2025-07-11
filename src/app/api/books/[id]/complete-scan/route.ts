@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { getConnection, releaseConnection } from '@/lib/db';
 import type { PoolConnection, RowDataPacket } from 'mysql2/promise';
+import { findStageKeyFromStatus } from '@/lib/workflow-config';
 
 const getDbSafeDate = () => new Date().toISOString().slice(0, 19).replace('T', ' ');
 
@@ -18,8 +19,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
         connection = await getConnection();
         await connection.beginTransaction();
 
-        const docStatusResult = await connection.execute("SELECT id FROM document_statuses WHERE name = 'Storage'");
-        const storageStatusId = (docStatusResult[0] as any)[0]?.id;
+        const [docStatusResult] = await connection.execute<RowDataPacket[]>("SELECT id FROM document_statuses WHERE name = 'Storage'");
+        const storageStatusId = docStatusResult[0]?.id;
         if (!storageStatusId) {
             throw new Error("Could not find 'Storage' status in document_statuses table.");
         }
@@ -33,7 +34,6 @@ export async function POST(request: Request, { params }: { params: { id: string 
                 docId,
                 `${bookName} - Page ${i}`,
                 clientId,
-                storageStatusId,
                 'Scanned Page',
                 getDbSafeDate(),
                 JSON.stringify([]),
@@ -47,7 +47,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
         }
         
         if (documentsToInsert.length > 0) {
-            await connection.query('INSERT INTO documents (id, name, clientId, statusId, type, lastUpdated, tags, folderId, projectId, bookId, flag, flagComment, imageUrl) VALUES ?', [documentsToInsert]);
+            await connection.query('INSERT INTO documents (id, name, clientId, type, lastUpdated, tags, folderId, projectId, bookId, flag, flagComment, imageUrl) VALUES ?', [documentsToInsert]);
         }
         
         // Correctly update the books table using statusId
@@ -58,7 +58,6 @@ export async function POST(request: Request, { params }: { params: { id: string 
         const [updatedBookRows] = await connection.execute<RowDataPacket[]>('SELECT * FROM books WHERE id = ?', [bookId]);
         
         let createdDocsRows: RowDataPacket[] = [];
-        // Add a guard to prevent SQL error on empty array
         if (documentIds.length > 0) {
             const [rows] = await connection.execute<RowDataPacket[]>('SELECT * FROM documents WHERE id IN (?)', [documentIds]);
             createdDocsRows = rows;

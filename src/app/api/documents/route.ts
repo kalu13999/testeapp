@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import { getConnection, releaseConnection } from '@/lib/db';
 import type { PoolConnection } from 'mysql2/promise';
@@ -24,13 +25,12 @@ export async function POST(request: Request) {
         const docData = await request.json();
         
         connection = await getConnection();
-        const query = 'INSERT INTO documents (id, name, clientId, statusId, type, lastUpdated, tags, folderId, projectId, bookId, flag, flagComment, imageUrl) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+        const query = 'INSERT INTO documents (id, name, clientId, type, lastUpdated, tags, folderId, projectId, bookId, flag, flagComment, imageUrl) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
         
         const values = [
             docData.id, 
             docData.name, 
             docData.clientId, 
-            docData.statusId, 
             docData.type,
             docData.lastUpdated, 
             JSON.stringify(docData.tags || []), 

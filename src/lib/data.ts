@@ -33,7 +33,6 @@ export interface Folder {
 export interface Document {
     id: string;
     clientId: string;
-    statusId: string;
     type: string;
     lastUpdated: string;
     tags: string[];

@@ -236,7 +236,7 @@ export default function DocumentDetailClient({ docId }: { docId: string }) {
                             <Separator />
                             <div className="flex justify-between items-start"><span>Tags:</span>
                                 <div className="flex flex-wrap gap-1 justify-end">
-                                    {document.tags.map(tag => <Badge key={tag} variant="outline">{tag}</Badge>)}
+                                    {Array.isArray(document.tags) && document.tags.map(tag => <Badge key={tag} variant="outline">{tag}</Badge>)}
                                 </div>
                             </div>
                         </CardContent>
@@ -256,7 +256,7 @@ export default function DocumentDetailClient({ docId }: { docId: string }) {
             <Dialog open={flagDialogState.open} onOpenChange={closeFlagDialog}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Flag Document: "{document.name}"</DialogTitle>
+                        <DialogTitle>Flag Document: "{flagDialogState.docName}"</DialogTitle>
                         <DialogDescription>
                             Provide a comment for the flag. This will be visible to the team.
                         </DialogDescription>

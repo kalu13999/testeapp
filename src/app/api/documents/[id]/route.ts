@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import { getConnection, releaseConnection } from '@/lib/db';
 import type { PoolConnection } from 'mysql2/promise';
@@ -28,7 +29,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     try {
         const body = await request.json();
         
-        const allowedFields = ['statusId', 'flag', 'flagComment', 'tags'];
+        const allowedFields = ['flag', 'flagComment', 'tags'];
         const fieldsToUpdate = Object.keys(body).filter(key => allowedFields.includes(key));
         
         if (fieldsToUpdate.length === 0) {
