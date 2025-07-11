@@ -1,14 +1,28 @@
 
+
 import { NextResponse } from 'next/server';
 import { getConnection, releaseConnection } from '@/lib/db';
-import type { PoolConnection } from 'mysql2/promise';
+import type { PoolConnection, RowDataPacket } from 'mysql2/promise';
 
 export async function GET() {
   let connection: PoolConnection | null = null;
   try {
     connection = await getConnection();
-    const [rows] = await connection.execute('SELECT * FROM documents');
-    return NextResponse.json(rows);
+    const [rows] = await connection.execute<RowDataPacket[]>('SELECT * FROM documents');
+    const documents = rows.map(doc => {
+      if (doc.tags && typeof doc.tags === 'string') {
+        try {
+          doc.tags = JSON.parse(doc.tags);
+        } catch (e) {
+          console.warn(`Could not parse tags for document ${doc.id}: ${doc.tags}`);
+          doc.tags = [];
+        }
+      } else if (!doc.tags) {
+        doc.tags = [];
+      }
+      return doc;
+    });
+    return NextResponse.json(documents);
   } catch (error) {
     console.error("Error fetching documents:", error);
     return NextResponse.json({ error: 'Failed to fetch documents' }, { status: 500 });

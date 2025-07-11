@@ -1,10 +1,11 @@
 
+
 "use client"
 
 import * as React from 'react';
 import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions, ProjectWorkflows, RejectionTag, DocumentStatus } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
-import { WORKFLOW_SEQUENCE, STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage } from '@/lib/workflow-config';
+import { WORKFLOW_SEQUENCE, STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage as getNextStage } from '@/lib/workflow-config';
 import * as dataApi from '@/lib/data';
 import { UserFormValues } from '@/app/(app)/users/user-form';
 
@@ -109,7 +110,7 @@ type AppContextType = {
   handleAssignUser: (bookId: string, userId: string, role: 'scanner' | 'indexer' | 'qc') => void;
   reassignUser: (bookId: string, newUserId: string, role: 'scanner' | 'indexer' | 'qc') => void;
   handleStartTask: (bookId: string, role: 'scanner' | 'indexing' | 'qc') => void;
-  handleCancelTask: (bookId: string, currentStatusId: string) => void;
+  handleCancelTask: (bookId: string, currentStatus: string) => void;
   handleAdminStatusOverride: (bookId: string, newStatusName: string, reason: string) => void;
   handleStartProcessing: (bookId: string) => void;
   handleCompleteProcessing: (bookId: string) => void;
@@ -966,7 +967,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       
       const { book: updatedRawBook, documents: newRawDocuments } = await response.json();
       
-      // Atomic state update
       setRawDocuments(prev => [...prev, ...newRawDocuments]);
       setRawBooks(prev => prev.map(b => b.id === bookId ? updatedRawBook : b));
       
@@ -983,14 +983,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     }
   };
 
-  const handleMoveBookToNextStage = (bookId: string, currentStatusName: string) => {
+  const handleMoveBookToNextStage = (bookId: string, currentStatus: string) => {
     withMutation(async () => {
       const book = rawBooks.find(b => b.id === bookId);
       if (!book || !book.projectId) return;
       const workflow = projectWorkflows[book.projectId] || [];
-      const currentStageKey = findStageKeyFromStatus(currentStatusName);
-      if (!currentStageKey) { toast({title: "Workflow Error", description: `Cannot find workflow stage for status "${currentStatusName}".`, variant: "destructive"}); return; }
-      const nextStageKey = getNextEnabledStage(currentStageKey, workflow);
+      const currentStageKey = findStageKeyFromStatus(currentStatus);
+      if (!currentStageKey) { toast({title: "Workflow Error", description: `Cannot find workflow stage for status "${currentStatus}".`, variant: "destructive"}); return; }
+      const nextStageKey = getNextStage(currentStageKey, workflow);
       if (!nextStageKey) {
         const updatedBook = await updateBookStatus(bookId, 'Complete');
         setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
@@ -1002,12 +1002,12 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       const newStatusName = nextStageConfig.dataStatus || nextStageConfig.dataStage;
       if (!newStatusName) { toast({title: "Workflow Error", description: `Next stage "${nextStageKey}" has no configured status.`, variant: "destructive"}); return; }
       const additionalUpdates: Partial<RawBook> = {};
-      if (currentStatusName === 'Scanning Started') additionalUpdates.scanEndTime = getDbSafeDate();
-      if (currentStatusName === 'Indexing Started') { additionalUpdates.indexingEndTime = getDbSafeDate(); if(!book.indexingStartTime) additionalUpdates.indexingStartTime = getDbSafeDate(); }
-      if (currentStatusName === 'Checking Started') { additionalUpdates.qcEndTime = getDbSafeDate(); if(!book.qcStartTime) additionalUpdates.qcStartTime = getDbSafeDate(); }
+      if (currentStatus === 'Scanning Started') additionalUpdates.scanEndTime = getDbSafeDate();
+      if (currentStatus === 'Indexing Started') { additionalUpdates.indexingEndTime = getDbSafeDate(); if(!book.indexingStartTime) additionalUpdates.indexingStartTime = getDbSafeDate(); }
+      if (currentStatus === 'Checking Started') { additionalUpdates.qcEndTime = getDbSafeDate(); if(!book.qcStartTime) additionalUpdates.qcStartTime = getDbSafeDate(); }
       const updatedBook = await updateBookStatus(bookId, newStatusName, additionalUpdates);
       setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
-      logAction('Workflow Step', `Book "${book.name}" moved from ${currentStatusName} to ${newStatusName}.`, { bookId });
+      logAction('Workflow Step', `Book "${book.name}" moved from ${currentStatus} to ${newStatusName}.`, { bookId });
       toast({ title: "Workflow Action", description: `Book moved to ${newStatusName}.` });
     });
   };
@@ -1022,7 +1022,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       if (!currentStatusName) return;
       const currentStageKey = findStageKeyFromStatus(currentStatusName);
       if (!currentStageKey) return;
-      const nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
+      const nextStatusKey = getNextStage(currentStageKey, workflow);
       let newStatusName = '', logMsg = '', updates: Partial<RawBook> = {};
       if (role === 'scanner') { newStatusName = STAGE_CONFIG[nextStatusKey || 'to-scan']?.dataStatus || 'To Scan'; updates.scannerUserId = userId; logMsg = 'Assigned to Scanner'; }
       else if (role === 'indexer') { newStatusName = STAGE_CONFIG[nextStatusKey || 'to-indexing']?.dataStatus || 'To Indexing'; updates.indexerUserId = userId; logMsg = 'Assigned to Indexer'; }
@@ -1056,7 +1056,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       if (!currentStatusName) return;
       const currentStageKey = findStageKeyFromStatus(currentStatusName);
       if (!currentStageKey) return;
-      const nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
+      const nextStatusKey = getNextStage(currentStageKey, workflow);
       let newStatusName = '', logMsg = '', updates: Partial<RawBook> = {};
       if (role === 'scanner') { newStatusName = STAGE_CONFIG[nextStatusKey || 'scanning-started']?.dataStatus || 'Scanning Started'; updates.scanStartTime = getDbSafeDate(); logMsg = 'Scanning Started'; }
       else if (role === 'indexing') { newStatusName = STAGE_CONFIG[nextStatusKey || 'indexing-started']?.dataStatus || 'Indexing Started'; updates.indexingStartTime = getDbSafeDate(); logMsg = 'Indexing Started'; }
@@ -1070,18 +1070,17 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     });
   };
 
-  const handleCancelTask = (bookId: string, currentStatusId: string) => {
+  const handleCancelTask = (bookId: string, currentStatus: string) => {
     withMutation(async () => {
       const book = rawBooks.find(b => b.id === bookId);
       if (!book) return;
-      const currentStatusName = statuses.find(s => s.id === currentStatusId)?.name;
-      if (!currentStatusName) return;
+      
       const updates: { [key: string]: { bookStatus: string, logMsg: string, clearFields: Partial<RawBook> } } = {
         'Scanning Started': { bookStatus: 'To Scan', logMsg: 'Scanning', clearFields: { scanStartTime: undefined } },
         'Indexing Started': { bookStatus: 'To Indexing', logMsg: 'Indexing', clearFields: { indexingStartTime: undefined } },
         'Checking Started': { bookStatus: 'To Checking', logMsg: 'Checking', clearFields: { qcStartTime: undefined } },
       };
-      const updateKey = Object.keys(updates).find(key => currentStatusName.startsWith(key));
+      const updateKey = Object.keys(updates).find(key => currentStatus.startsWith(key));
       if (!updateKey) return;
       const update = updates[updateKey];
       
@@ -1116,7 +1115,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       const book = rawBooks.find(b => b.id === bookId);
       if (!book || !book.projectId) return;
       const workflow = projectWorkflows[book.projectId] || [];
-      const nextStage = getNextEnabledStage('ready-for-processing', workflow) || 'in-processing';
+      const nextStage = getNextStage('ready-for-processing', workflow) || 'in-processing';
       const newStatus = STAGE_CONFIG[nextStage]?.dataStatus || STAGE_CONFIG[nextStage]?.dataStage || 'In Processing';
       try {
           const response = await fetch('/api/processing-logs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookId }) });
@@ -1140,7 +1139,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       const log = processingLogs.find(l => l.bookId === bookId);
       if (!book || !book.projectId || !log) return;
       const workflow = projectWorkflows[book.projectId] || [];
-      const nextStage = getNextEnabledStage('in-processing', workflow) || 'processed';
+      const nextStage = getNextStage('in-processing', workflow) || 'processed';
       const newStatus = STAGE_CONFIG[nextStage]?.dataStatus || STAGE_CONFIG[nextStage]?.dataStage || 'Processed';
       try {
           const updatedLogData = { status: 'Complete', progress: 100, log: `${log.log}\n[${new Date().toLocaleTimeString()}] Processing complete.`, lastUpdate: getDbSafeDate() };
@@ -1178,7 +1177,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       const book = rawBooks.find(b => b.id === bookId);
       if (!book || !book.projectId) return;
       const workflow = projectWorkflows[book.projectId] || [];
-      const nextStageKey = getNextEnabledStage('finalized', workflow) || 'archive';
+      const nextStageKey = getNextStage('finalized', workflow) || 'archive';
       const newStatus = STAGE_CONFIG[nextStageKey]?.dataStatus || STAGE_CONFIG[nextStageKey]?.dataStage || 'Archived';
       const updatedBook = await updateBookStatus(bookId, newStatus);
       setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
@@ -1192,7 +1191,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       const book = rawBooks.find(b => b.id === bookId);
       if (!book || !book.projectId) return;
       const workflow = projectWorkflows[book.projectId] || [];
-      const nextStageKey = getNextEnabledStage('client-rejections', workflow) || 'corrected';
+      const nextStageKey = getNextStage('client-rejections', workflow) || 'corrected';
       const newStatus = STAGE_CONFIG[nextStageKey]?.dataStatus || STAGE_CONFIG[nextStageKey]?.dataStage || 'Corrected';
       const updatedBook = await updateBookStatus(bookId, newStatus);
       setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
@@ -1264,7 +1263,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     addBook, updateBook, deleteBook, importBooks,
     addRejectionTag, updateRejectionTag, deleteRejectionTag,
     tagPageForRejection, clearPageRejectionTags,
-    getNextEnabledStage,
+    getNextEnabledStage: getNextStage,
     handleMarkAsShipped,
     handleConfirmReception,
     handleSendToStorage,

@@ -444,7 +444,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     selection.forEach(id => {
         const item = allDisplayItems.find(d => d.id === id) as EnrichedBook;
         if (item) {
-            handleCancelTask(item.id, item.statusId);
+            handleCancelTask(item.id, item.status);
         }
     });
     setSelection([]);
@@ -672,7 +672,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                         <DropdownMenuItem onSelect={() => openConfirmationDialog({
                                 title: `Cancel task for "${item.name}"?`,
                                 description: "This will return the book to the previous step.",
-                                onConfirm: () => handleCancelTask(item.id, item.statusId)
+                                onConfirm: () => handleCancelTask(item.id, item.status)
                             })} className="text-destructive">
                             <Undo2 className="mr-2 h-4 w-4" />
                             Cancel Task

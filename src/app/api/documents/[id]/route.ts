@@ -1,4 +1,5 @@
 
+
 import { NextResponse } from 'next/server';
 import { getConnection, releaseConnection } from '@/lib/db';
 import type { PoolConnection } from 'mysql2/promise';
@@ -12,7 +13,16 @@ export async function GET(request: Request, { params }: { params: { id: string }
     if (Array.isArray(rows) && rows.length === 0) {
       return NextResponse.json({ error: 'Document not found' }, { status: 404 });
     }
-    return NextResponse.json(Array.isArray(rows) ? rows[0] : null);
+    const doc = Array.isArray(rows) ? rows[0] : null;
+    if (doc && doc.tags && typeof doc.tags === 'string') {
+      try {
+        doc.tags = JSON.parse(doc.tags);
+      } catch (e) {
+        console.warn(`Could not parse tags for document ${id}: ${doc.tags}`);
+        doc.tags = [];
+      }
+    }
+    return NextResponse.json(doc);
   } catch (error) {
     console.error(`Error fetching document ${id}:`, error);
     return NextResponse.json({ error: 'Failed to fetch document' }, { status: 500 });
@@ -50,7 +60,11 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         const [rows] = await connection.execute('SELECT * FROM documents WHERE id = ?', [id]);
         
         releaseConnection(connection);
-        return NextResponse.json(Array.isArray(rows) ? rows[0] : null);
+        const doc = Array.isArray(rows) ? rows[0] : null;
+        if (doc && doc.tags && typeof doc.tags === 'string') {
+          doc.tags = JSON.parse(doc.tags);
+        }
+        return NextResponse.json(doc);
     } catch (error) {
         console.error(`Error updating document ${id}:`, error);
         return NextResponse.json({ error: 'Failed to update document' }, { status: 500 });

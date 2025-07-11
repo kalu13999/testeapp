@@ -1,4 +1,5 @@
 
+
 // Define types for our data structures
 export interface Client {
     id: string;
