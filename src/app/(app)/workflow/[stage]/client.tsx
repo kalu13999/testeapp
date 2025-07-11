@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/card"
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send, FolderSync, Upload, XCircle, CheckCircle, FileWarning, PlayCircle, UserPlus, Info, MoreHorizontal, Download, ArrowUp, ArrowDown, ChevronsUpDown, CheckCheck, Loader2 } from "lucide-react";
+import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send, FolderSync, Upload, XCircle, CheckCircle, FileWarning, PlayCircle, UserPlus, Info, MoreHorizontal, Download, ArrowUp, ArrowDown, ChevronsUpDown, CheckCheck, Loader2, Archive } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppContext } from "@/context/workflow-context";
 import { type AppDocument, type RejectionTag } from "@/context/workflow-context";
@@ -504,7 +504,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     setSelection([]);
   };
 
-  const isScanFolderMatch = scanState.book?.name === scanState.folderName;
+  const isCancelable = ['Scanning Started', 'Indexing Started', 'Checking Started'].includes(config.dataStatus as string);
 
   const handleActionClick = (book: EnrichedBook) => {
     if (stage === 'confirm-reception') {
@@ -621,7 +621,6 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   }
     
   const renderBookRow = (item: any, index: number) => {
-    const isCancelable = ['Scanning Started', 'Indexing Started', 'Checking Started'].includes(item.status);
     const actionDetails = getDynamicActionButton(item);
     const isProcessing = processingBookIds.includes(item.id);
 
@@ -756,65 +755,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     );
   }
 
-  const renderBulkActions = () => {
-    if (selection.length === 0) return null;
-
-    if (stage === 'already-received') {
-        const firstSelectedBook = allDisplayItems.find(b => b.id === selection[0]) as EnrichedBook;
-        if (!firstSelectedBook?.projectId) return null;
-        const projectWorkflow = projectWorkflows[firstSelectedBook.projectId] || [];
-        const isScanningEnabled = projectWorkflow.includes('to-scan');
-        if (isScanningEnabled) {
-            return (
-                <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">{selection.length} selected</span>
-                    <Button size="sm" onClick={() => openBulkAssignmentDialog('scanner')}>
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        Assign Scanner
-                    </Button>
-                </div>
-            );
-        }
-    }
-
-    if (stage === 'indexing-started') {
-        return (
-            <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">{selection.length} selected</span>
-                <Button size="sm" onClick={() => openBulkAssignmentDialog('qc')}>
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Assign Selected for QC
-                </Button>
-            </div>
-        );
-    }
-    
-    if (stage === 'checking-started') {
-        return (
-            <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">{selection.length} selected</span>
-                <Button size="sm" onClick={handleBulkAction}>
-                    <CheckCheck className="mr-2 h-4 w-4" />
-                    Complete Selected
-                </Button>
-            </div>
-        );
-    }
-
-    if (SIMPLE_BULK_ACTION_STAGES.includes(stage) && actionButtonLabel) {
-        return (
-            <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">{selection.length} selected</span>
-                <Button size="sm" onClick={handleBulkAction}>
-                    {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
-                    {actionButtonLabel} Selected
-                </Button>
-            </div>
-        );
-    }
-    
-    return null;
-  }
+  const isScanFolderMatch = scanState.book?.name === scanState.folderName;
 
   const tableColSpan = React.useMemo(() => {
     let count = 6;
@@ -832,7 +773,11 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                 <CardDescription>{description}</CardDescription>
             </div>
             <div className="flex items-center gap-2">
-                {renderBulkActions()}
+                {selection.length > 0 && isCancelable && (
+                    <Button variant="destructive" size="sm" onClick={handleBulkCancel}>
+                        <Undo2 className="mr-2 h-4 w-4" /> Cancel Selected
+                    </Button>
+                )}
                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button size="sm" variant="outline" className="h-9 gap-1">
