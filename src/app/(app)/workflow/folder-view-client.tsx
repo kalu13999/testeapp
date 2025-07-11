@@ -3,6 +3,7 @@
 "use client"
 
 import * as React from "react"
+import * as XLSX from 'xlsx';
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -17,10 +18,9 @@ import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { FolderSync, FileText, FileJson, Play, ThumbsUp, ThumbsDown, Send, Archive, Undo2, AlertTriangle, ShieldAlert, MoreHorizontal, Info, UserPlus, BookOpen, Check, Tag } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
-import { useToast } from "@/hooks/use-toast";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { AppDocument, EnrichedBook, User, RejectionTag } from "@/context/workflow-context";
@@ -32,23 +32,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { STAGE_CONFIG, findStageKeyFromStatus } from "@/lib/workflow-config";
 
-
-type IconMap = {
-  [key: string]: React.ElementType;
-};
-
-const iconMap: IconMap = {
-  FolderSync,
-  FileText,
-  FileJson,
-  Play,
-  ThumbsUp,
-  Send,
-  Archive,
-  Undo2,
-  UserPlus,
-  Check,
-};
 
 interface FolderViewClientProps {
   stage: string;
@@ -84,7 +67,6 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     documents, 
     books, 
     handleMoveBookToNextStage,
-    handleStartProcessing,
     handleClientAction,
     handleFinalize,
     handleMarkAsCorrected,
@@ -122,10 +104,12 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     bookId: string | null;
     bookName: string | null;
     projectId: string | null;
-    role: 'indexer' | 'qc' | null;
+    role: 'indexer' | 'qc' | 'scanner' | null;
     selectedUserId: string;
   }>({ open: false, bookId: null, bookName: null, projectId: null, role: null, selectedUserId: '' });
-  
+
+  const [bulkAssignState, setBulkAssignState] = React.useState<{ open: boolean; role: 'indexer' | 'qc' | 'scanner' | null }>({ open: false, role: null });
+
   const [taggingState, setTaggingState] = React.useState<{
     open: boolean;
     docId: string | null;
@@ -194,14 +178,14 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     closeFlagDialog();
   };
 
-  const openAssignmentDialog = (bookId: string, bookName: string, projectId: string, role: 'indexer' | 'qc') => {
+  const openAssignmentDialog = (bookId: string, bookName: string, projectId: string, role: 'indexer' | 'qc' | 'scanner') => {
     setAssignmentState({ open: true, bookId, bookName, projectId, role, selectedUserId: '' });
   };
 
   const closeAssignmentDialog = () => {
     setAssignmentState({ open: false, bookId: null, bookName: null, projectId: null, role: null, selectedUserId: '' });
   };
-
+  
   const handleAssignmentSubmit = () => {
     if (assignmentState.bookId && assignmentState.selectedUserId && assignmentState.role) {
       handleAssignUser(assignmentState.bookId, assignmentState.selectedUserId, assignmentState.role);
@@ -209,18 +193,38 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     }
   };
   
+  const openBulkAssignmentDialog = (role: 'indexer' | 'qc' | 'scanner') => {
+    setBulkAssignState({ open: true, role });
+  };
+
+  const closeBulkAssignmentDialog = () => {
+    setBulkAssignState({ open: false, role: null });
+    setAssignmentState(prev => ({...prev, selectedUserId: ''})); // Reset user ID
+  };
+
+  const handleBulkAssignmentSubmit = () => {
+    if (bulkAssignState.role && assignmentState.selectedUserId && selection.length > 0) {
+      selection.forEach(bookId => {
+        handleAssignUser(bookId, assignmentState.selectedUserId, bulkAssignState.role!);
+      });
+      closeBulkAssignmentDialog();
+      setSelection([]);
+    }
+  };
+
   const assignmentConfig: { [key in 'indexer' | 'qc' | 'scanner']: { permission: string } } = {
     indexer: { permission: '/workflow/to-indexing' },
     qc: { permission: '/workflow/to-checking' },
     scanner: { permission: '/workflow/to-scan' }
   };
 
-  const getAssignableUsers = (role: 'indexer' | 'qc', projectId: string) => {
+  const getAssignableUsers = (role: 'indexer' | 'qc' | 'scanner', projectId?: string) => {
     const requiredPermission = assignmentConfig[role].permission;
     return users.filter(user => {
-      if (user.role === 'Admin') return false; // Exclude admins
+      if (user.role === 'Admin') return false; 
       const userPermissions = permissions[user.role] || [];
       const hasPermission = userPermissions.includes('*') || userPermissions.includes(requiredPermission);
+      if (!projectId) return hasPermission; // For bulk assignment before knowing project
       const hasProjectAccess = !user.projectIds || user.projectIds.length === 0 || user.projectIds.includes(projectId);
       return hasPermission && hasProjectAccess;
     });
@@ -240,6 +244,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     
     if (!nextStage) {
       toast({ title: "Workflow End", description: "This is the final step for this project.", variant: "default" });
+      handleMoveBookToNextStage(book.id, book.status);
       return;
     }
     
@@ -282,12 +287,10 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
 
 
   const getDynamicActionButtonLabel = React.useCallback((book: EnrichedBook) => {
-    // If the config for the CURRENT stage has a specific label, ALWAYS use it.
     if (config.actionButtonLabel) {
       return config.actionButtonLabel;
     }
     
-    // If not, THEN generate a dynamic label for the NEXT stage.
     if (!book.projectId) return "Next Step";
     
     const workflow = projectWorkflows[book.projectId] || [];
@@ -380,8 +383,8 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
            </DropdownMenu>
          )
       case 'archive':
-        return null; // No actions in archive
-      default: // For standard workflow stages
+        return null;
+      default: 
         if (!actionButtonLabel) return null;
         if (hasError) {
           return (
@@ -403,6 +406,9 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
 
   const handleBulkAction = () => {
     switch (stage) {
+      case 'storage':
+        openBulkAssignmentDialog('indexer');
+        break;
       case 'pending-deliveries':
         openConfirmationDialog({
           title: `Approve ${selection.length} books?`,
@@ -464,7 +470,6 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     if (selection.length === 0) return null;
     
     const disabled = selection.some(bookId => groupedByBook[bookId]?.hasError);
-
     let actionButton = null;
 
     if (stage === 'pending-deliveries') {
@@ -692,7 +697,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
               </div>
             )}
           </CardContent>
-          <CardFooter>
+           <CardFooter>
             <div className="text-xs text-muted-foreground">
               Showing <strong>{Object.keys(groupedByBook).length}</strong> books in this stage.
             </div>
@@ -795,6 +800,35 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
       </DialogContent>
     </Dialog>
     
+    <Dialog open={bulkAssignState.open} onOpenChange={closeBulkAssignmentDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign {selection.length} books to a {bulkAssignState.role}</DialogTitle>
+            <DialogDescription>
+                Select a user to process all selected books. They will be added to their personal queue.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Select value={assignmentState.selectedUserId} onValueChange={(val) => setAssignmentState(s => ({...s, selectedUserId: val}))}>
+              <SelectTrigger>
+                <SelectValue placeholder={`Select an ${bulkAssignState.role}...`} />
+              </SelectTrigger>
+              <SelectContent>
+                {bulkAssignState.role && getAssignableUsers(bulkAssignState.role).map(user => (
+                    <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeBulkAssignmentDialog}>Cancel</Button>
+            <Button onClick={handleBulkAssignmentSubmit} disabled={!assignmentState.selectedUserId}>
+              Assign and Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+    </Dialog>
+    
     <Dialog open={taggingState.open} onOpenChange={closeTaggingDialog}>
         <DialogContent>
             <DialogHeader>
@@ -839,7 +873,6 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
             </DialogFooter>
         </DialogContent>
     </Dialog>
-
     </>
   )
 }
