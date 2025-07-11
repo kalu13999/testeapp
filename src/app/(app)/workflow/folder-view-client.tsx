@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import * as React from "react"
@@ -15,7 +16,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, Undo2, Check, ScanLine, FileText, FileJson, PlayCircle, Send, UserPlus, CheckCheck, Archive, ThumbsUp, MoreHorizontal, Loader2 } from "lucide-react";
+import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, Check, ScanLine, FileText, FileJson, PlayCircle, Send, UserPlus, CheckCheck, Archive, ThumbsUp, Undo2, MoreHorizontal, Loader2 } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -72,19 +73,19 @@ const DetailItem = ({ label, value }: { label: string; value: React.ReactNode })
 );
 
 const iconMap: { [key: string]: LucideIcon } = {
-    Check: Check,
-    ScanLine: ScanLine,
-    FileText: FileText,
-    FileJson: FileJson,
+    Check,
+    ScanLine,
+    FileText,
+    FileJson,
     Play: PlayCircle,
-    Send: Send,
-    FolderSync: FolderSync,
-    PlayCircle: PlayCircle,
-    UserPlus: UserPlus,
-    CheckCheck: CheckCheck,
-    Archive: Archive,
-    ThumbsUp: ThumbsUp,
-    Undo2: Undo2,
+    Send,
+    FolderSync,
+    PlayCircle,
+    UserPlus,
+    CheckCheck,
+    Archive,
+    ThumbsUp,
+    Undo2,
 };
 
 
@@ -602,8 +603,12 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                                       {hasError && <ShieldAlert className="h-4 w-4 text-destructive" />}
                                       {hasWarning && !hasError && <AlertTriangle className="h-4 w-4 text-orange-500" />}
                                     </p>
-                                    <p className="text-sm text-muted-foreground">
-                                      {book.projectName} - {isProcessing ? <span className="flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin"/> Loading pages...</span> : `${pageCount} pages`}
+                                    <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                                      {book.projectName} - 
+                                      {isProcessing ? 
+                                        <span className="flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin"/> Loading pages...</span> 
+                                        : <span>{pageCount} pages</span>
+                                      }
                                     </p>
                                 </div>
                             </div>

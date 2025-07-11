@@ -120,7 +120,6 @@ type AppContextType = {
   handleResubmit: (bookId: string, targetStage: string) => void;
   addPageToBook: (bookId: string, position: number) => Promise<void>;
   deletePageFromBook: (pageId: string, bookId: string) => Promise<void>;
-  updateDocumentStatus: (docId: string, newStatus: string) => Promise<void>;
   updateDocumentFlag: (docId: string, flag: AppDocument['flag'], comment?: string) => Promise<void>;
 };
 
@@ -1222,10 +1221,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     });
   };
   
-  const updateDocumentStatus = async (docId: string, newStatus: string) => {
-    // This is now a no-op as document status is derived from book status.
-  };
-
   const scannerUsers = React.useMemo(() => users.filter(user => user.role === 'Scanning'), [users]);
   const indexerUsers = React.useMemo(() => users.filter(user => user.role === 'Indexing'), [users]);
   const qcUsers = React.useMemo(() => users.filter(user => user.role === 'QC Specialist'), [users]);
@@ -1280,7 +1275,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     handleSendToStorage,
     handleMoveBookToNextStage, handleClientAction,
     handleFinalize, handleMarkAsCorrected, handleResubmit,
-    addPageToBook, deletePageFromBook, updateDocumentStatus,
+    addPageToBook, deletePageFromBook,
     updateDocumentFlag, handleStartProcessing, handleCompleteProcessing,
     handleAssignUser, reassignUser, handleStartTask, handleCancelTask,
     handleAdminStatusOverride,

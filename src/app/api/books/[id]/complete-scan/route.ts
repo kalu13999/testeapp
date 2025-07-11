@@ -37,7 +37,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
                   clientId,
                   'Scanned Page',
                   getDbSafeDate(),
-                  JSON.stringify([]),
+                  '[]', // Empty JSON array for tags
                   null,
                   projectId,
                   bookId,
