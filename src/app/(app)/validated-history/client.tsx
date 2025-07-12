@@ -330,7 +330,7 @@ export default function ValidatedHistoryClient() {
                                         Date {getSortIndicator('validationDate')}
                                     </div>
                                 </TableHead>
-                                <TableHead>Details</TableHead>
+                                <TableHead className="w-[80px] text-center">Reason</TableHead>
                                 <TableHead><span className="sr-only">Actions</span></TableHead>
                             </TableRow>
                             <TableRow>
@@ -391,7 +391,7 @@ export default function ValidatedHistoryClient() {
                                             )}
                                         </TableCell>
                                         <TableCell>{book.validationDate !== 'N/A' ? new Date(book.validationDate).toLocaleDateString() : 'N/A'}</TableCell>
-                                        <TableCell>
+                                        <TableCell className="text-center">
                                             {book.rejectionReason ? (
                                                 <TooltipProvider>
                                                     <Tooltip>
@@ -399,7 +399,7 @@ export default function ValidatedHistoryClient() {
                                                             <Info className="h-5 w-5 text-muted-foreground" />
                                                         </TooltipTrigger>
                                                         <TooltipContent>
-                                                            <p>{book.rejectionReason}</p>
+                                                            <p className="max-w-sm">{book.rejectionReason}</p>
                                                         </TooltipContent>
                                                     </Tooltip>
                                                 </TooltipProvider>
