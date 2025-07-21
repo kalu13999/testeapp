@@ -363,7 +363,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
             })}
             disabled={hasError || actionButtonLabel === "End of Workflow" || isProcessing}
         >
-            {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ActionIcon className="mr-2 h-4 w-4" />}
+            {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
             {isProcessing ? "Processing..." : actionButtonLabel}
         </Button>
     ) : null;
@@ -530,7 +530,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
       const label = getDynamicActionButtonLabel(firstBook);
       actionButton = (
          <Button size="sm" onClick={handleBulkAction} disabled={disabled || label === "End of Workflow"}>
-          <ActionIcon className="mr-2 h-4 w-4" />
+          {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
           {label} ({selection.length})
         </Button>
       );
@@ -556,7 +556,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   }
   
   const gridClasses: { [key: number]: string } = {
-    2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4', 5: 'grid-cols-5', 6: 'grid-cols-6',
+    1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4', 5: 'grid-cols-5', 6: 'grid-cols-6',
     7: 'grid-cols-7', 8: 'grid-cols-8', 9: 'grid-cols-9', 10: 'grid-cols-10', 11: 'grid-cols-11', 12: 'grid-cols-12'
   };
 
@@ -663,16 +663,17 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                           )}
 
                           <div className="flex items-center justify-end gap-4">
-                            <Label htmlFor={`columns-slider-${book.id}`} className="text-sm">Thumbnail Size:</Label>
+                            <Label htmlFor={`columns-slider-${book.id}`} className="text-sm whitespace-nowrap">Thumbnail Size:</Label>
                             <Slider
                                 id={`columns-slider-${book.id}`}
-                                min={2}
+                                min={1}
                                 max={12}
                                 step={1}
                                 value={[bookCols]}
                                 onValueChange={(value) => setBookColumns(book.id, value[0])}
-                                className="w-[150px]"
+                                className="w-full max-w-[200px]"
                             />
+                            <Badge variant="outline" className="w-16 justify-center">{bookCols} {bookCols > 1 ? 'cols' : 'col'}</Badge>
                           </div>
 
                           <div className={`grid gap-4 ${gridClasses[bookCols] || 'grid-cols-8'}`}>
