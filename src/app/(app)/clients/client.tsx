@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -53,6 +54,7 @@ import { Input } from "@/components/ui/input"
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
 
 
 const ITEMS_PER_PAGE = 10;
@@ -399,7 +401,7 @@ export default function ClientsClient() {
                   <TableCell className="font-medium">{client.name}</TableCell>
                   <TableCell>{client.contactEmail}</TableCell>
                   <TableCell>{client.contactPhone}</TableCell>
-                  <TableCell>{client.since}</TableCell>
+                  <TableCell>{format(new Date(client.since), "yyyy-MM-dd")}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -494,7 +496,7 @@ export default function ClientsClient() {
             </div>
              <div className="grid grid-cols-3 items-center gap-x-4">
               <p className="text-muted-foreground">Client Since</p>
-              <p className="col-span-2 font-medium">{dialogState.data?.since}</p>
+              <p className="col-span-2 font-medium">{dialogState.data?.since ? format(new Date(dialogState.data.since), "yyyy-MM-dd") : '—'}</p>
             </div>
             {dialogState.data?.info && (
               <div className="grid grid-cols-3 items-start gap-x-4">

@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import React from "react"
+import { format } from "date-fns"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -46,7 +47,7 @@ export function ClientForm({ client, onSave, onCancel }: ClientFormProps) {
       contactPhone: client?.contactPhone || "",
       address: client?.address || "",
       website: client?.website || "",
-      since: client?.since || new Date().toISOString().split('T')[0],
+      since: client?.since ? format(new Date(client.since), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
       info: client?.info || "",
     },
   })
@@ -58,7 +59,7 @@ export function ClientForm({ client, onSave, onCancel }: ClientFormProps) {
       contactPhone: client?.contactPhone || "",
       address: client?.address || "",
       website: client?.website || "",
-      since: client?.since || new Date().toISOString().split('T')[0],
+      since: client?.since ? format(new Date(client.since), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
       info: client?.info || "",
     })
   }, [client, form])
