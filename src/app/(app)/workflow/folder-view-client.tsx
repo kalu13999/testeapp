@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { Slider } from "@/components/ui/slider";
 
 
 interface FolderViewClientProps {
@@ -145,6 +146,12 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     selectedTags: string[];
     availableTags: RejectionTag[];
   }>({ open: false, docId: null, docName: null, selectedTags: [], availableTags: [] });
+  
+  const [columnStates, setColumnStates] = React.useState<{ [key: string]: { cols: number } }>({});
+
+  const setBookColumns = (bookId: string, cols: number) => {
+    setColumnStates(prev => ({ ...prev, [bookId]: { cols } }));
+  };
 
   const groupedByBook = React.useMemo(() => {
     if (!config.dataStatus) return {};
@@ -437,48 +444,28 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   }
 
   const handleBulkAction = () => {
-    switch (stage) {
-      case 'storage':
-        openBulkAssignmentDialog('indexer');
-        break;
-      case 'pending-deliveries':
-        openConfirmationDialog({
-          title: `Approve ${selection.length} books?`,
-          description: "This will approve all documents for the selected books.",
-          onConfirm: () => {
-            selection.forEach(bookId => handleClientAction(bookId, 'approve'));
-            setSelection([]);
-          }
-        });
-        break;
-      case 'finalized':
-        openConfirmationDialog({
-          title: `Archive ${selection.length} books?`,
-          description: "This is a final action and cannot be undone.",
-          onConfirm: () => {
-            selection.forEach(bookId => handleFinalize(bookId));
-            setSelection([]);
-          }
-        });
-        break;
-      default:
-        const firstBook = groupedByBook[selection[0]]?.book;
-        if (!firstBook) return;
+    if (selection.length === 0) return;
 
-        const actionLabel = getDynamicActionButtonLabel(firstBook);
-        openConfirmationDialog({
-          title: `Perform action on ${selection.length} books?`,
-          description: `This will perform "${actionLabel}" for all selected books.`,
-          onConfirm: () => {
-            selection.forEach(bookId => {
-              const book = groupedByBook[bookId]?.book;
-              if (book) handleMainAction(book);
-            });
-            setSelection([]);
-          }
-        });
-        break;
+    if (stage === 'storage') {
+        openBulkAssignmentDialog('indexer');
+        return;
     }
+    
+    const firstBook = groupedByBook[selection[0]]?.book;
+    if (!firstBook) return;
+
+    const actionLabel = getDynamicActionButtonLabel(firstBook);
+    openConfirmationDialog({
+      title: `Perform action on ${selection.length} books?`,
+      description: `This will perform "${actionLabel}" for all selected books.`,
+      onConfirm: () => {
+        selection.forEach(bookId => {
+          const book = groupedByBook[bookId]?.book;
+          if (book) handleMainAction(book);
+        });
+        setSelection([]);
+      }
+    });
   }
   
   const handleBulkResubmit = (targetStage: string) => {
@@ -567,6 +554,11 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
         .filter(doc => doc.bookId === bookId)
         .sort((a, b) => getPageNum(a.name) - getPageNum(b.name));
   }
+  
+  const gridClasses: { [key: number]: string } = {
+    2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4', 5: 'grid-cols-5', 6: 'grid-cols-6',
+    7: 'grid-cols-7', 8: 'grid-cols-8', 9: 'grid-cols-9', 10: 'grid-cols-10', 11: 'grid-cols-11', 12: 'grid-cols-12'
+  };
 
   return (
     <>
@@ -588,6 +580,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                   const { book, pages, hasError, hasWarning } = bookGroup;
                   const isProcessing = processingBookIds.includes(book.id);
                   const pageCount = pages.length;
+                  const bookCols = columnStates[book.id]?.cols || 8;
 
                   return (
                   <AccordionItem value={book.id} key={book.id}>
@@ -669,7 +662,20 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                             </Card>
                           )}
 
-                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
+                          <div className="flex items-center justify-end gap-4">
+                            <Label htmlFor={`columns-slider-${book.id}`} className="text-sm">Thumbnail Size:</Label>
+                            <Slider
+                                id={`columns-slider-${book.id}`}
+                                min={2}
+                                max={12}
+                                step={1}
+                                value={[bookCols]}
+                                onValueChange={(value) => setBookColumns(book.id, value[0])}
+                                className="w-[150px]"
+                            />
+                          </div>
+
+                          <div className={`grid gap-4 ${gridClasses[bookCols] || 'grid-cols-8'}`}>
                             {isProcessing && pages.length === 0 ? (
                               Array.from({ length: 8 }).map((_, i) => (
                                 <Skeleton key={i} className="aspect-[4/5.5] w-full h-full" />

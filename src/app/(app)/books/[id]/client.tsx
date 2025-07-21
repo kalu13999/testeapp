@@ -19,6 +19,8 @@ import { useAppContext } from "@/context/workflow-context";
 import { Info, BookOpen, History, InfoIcon, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Slider } from "@/components/ui/slider";
+import { Label } from "@/components/ui/label";
 
 interface BookDetailClientProps {
   bookId: string;
@@ -36,6 +38,7 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
     { id: 'date', desc: true }
   ]);
+  const [columns, setColumns] = React.useState(6);
 
   const book = books.find(b => b.id === bookId);
   const pages = React.useMemo(() => {
@@ -115,6 +118,11 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
     );
   }
 
+  const gridClasses: { [key: number]: string } = {
+    2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4', 5: 'grid-cols-5', 6: 'grid-cols-6',
+    7: 'grid-cols-7', 8: 'grid-cols-8', 9: 'grid-cols-9', 10: 'grid-cols-10', 11: 'grid-cols-11', 12: 'grid-cols-12'
+  };
+
   return (
     <div className="grid lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 space-y-6">
@@ -126,8 +134,21 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
             </p>
         </div>
 
+        <div className="flex items-center gap-4 py-2">
+          <Label htmlFor="columns-slider" className="text-sm">Thumbnail Size:</Label>
+          <Slider
+            id="columns-slider"
+            min={2}
+            max={12}
+            step={1}
+            value={[columns]}
+            onValueChange={(value) => setColumns(value[0])}
+            className="w-[150px]"
+          />
+        </div>
+
         {pages.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            <div className={`grid gap-4 ${gridClasses[columns] || 'grid-cols-6'}`}>
                 {pages.map(page => (
                     <Link href={`/documents/${page.id}`} key={page.id}>
                         <Card className="overflow-hidden hover:shadow-lg transition-shadow">
