@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, Check, ScanLine, FileText, FileJson, PlayCircle, Send, UserPlus, CheckCheck, Archive, ThumbsUp, ThumbsDown, Undo2, MoreHorizontal, Loader2 } from "lucide-react";
+import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, Check, ScanLine, FileText, FileJson, PlayCircle, Send, UserPlus, CheckCheck, Archive, ThumbsUp, ThumbsDown, Undo2, MoreHorizontal, Loader2, Upload } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -300,7 +300,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
       open: true,
       docId: doc.id,
       docName: doc.name,
-      selectedTags: doc.tags,
+      selectedTags: doc.tags || [],
       availableTags: availableTags
     });
   };
@@ -557,6 +557,17 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     );
   }
 
+  const getPagesForBook = (bookId: string) => {
+    const getPageNum = (name: string): number => {
+        const match = name.match(/ - Page (\d+)/);
+        return match ? parseInt(match[1], 10) : 9999; 
+    }
+
+    return documents
+        .filter(doc => doc.bookId === bookId)
+        .sort((a, b) => getPageNum(a.name) - getPageNum(b.name));
+  }
+
   return (
     <>
      <AlertDialog>
@@ -664,7 +675,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                                 <Skeleton key={i} className="aspect-[4/5.5] w-full h-full" />
                               ))
                             ) : (
-                              pages.map(page => (
+                              getPagesForBook(book.id).map(page => (
                                 <div key={page.id} className="relative group">
                                   <Link href={`/documents/${page.id}`} className="block">
                                       <Card className="overflow-hidden hover:shadow-lg transition-shadow relative border-2 border-transparent group-hover:border-primary">

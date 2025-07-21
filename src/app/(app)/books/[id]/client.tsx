@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import * as React from "react"
@@ -37,7 +38,16 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
   ]);
 
   const book = books.find(b => b.id === bookId);
-  const pages = documents.filter(d => d.bookId === bookId);
+  const pages = React.useMemo(() => {
+    const getPageNum = (name: string): number => {
+        const match = name.match(/ - Page (\d+)/);
+        return match ? parseInt(match[1], 10) : 9999; 
+    }
+    return documents
+      .filter(d => d.bookId === bookId)
+      .sort((a, b) => getPageNum(a.name) - getPageNum(b.name));
+  }, [documents, bookId]);
+  
   const scanner = users.find(u => u.id === book?.scannerUserId);
 
   const bookAuditLogs = React.useMemo(() => {
