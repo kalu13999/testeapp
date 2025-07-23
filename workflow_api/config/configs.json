@@ -1,4 +1,3 @@
-
 {
   "server": {
     "port": 4000
@@ -10,10 +9,24 @@
     "database": "SEU_NOME_DA_BASE_DE_DADOS",
     "port": 3306
   },
-  "paths": {
-    "remote_public_thumbs": "C:\\path\\to\\your\\flowvault-project\\public\\thumbs"
-  },
-  "system": {
-    "scanner_id_prefix": "Scanner"
+  "folders": {
+    "public_thumbs": "public_thumbs",
+    "workflow_stages": [
+      "001-storage",
+      "002-toIndexing",
+      "003-indexingStarted",
+      "004-toChecking",
+      "005-checkingStarted",
+      "006-readyForProcessing",
+      "007-inProcessing",
+      "008-processed",
+      "009-finalQualityControl",
+      "010-delivery",
+      "011-pendingValidation",
+      "012-clientRejected",
+      "013-corrected",
+      "014-finalized",
+      "015-archived"
+    ]
   }
 }
