@@ -1,3 +1,4 @@
+
 import os
 import requests
 import logging
@@ -8,8 +9,15 @@ import random
 # --- Configurações ---
 API_BASE_URL = "http://localhost:4000"
 SYSTEM_USER_ID = "u_system"
-DISTRIBUTION_STRATEGY = 'FIXED'  # 'PERCENTAGE', 'FIXED', ou 'WEIGHT'
+DISTRIBUTION_STRATEGY = 'FIXED'  # Altere para 'PERCENTAGE', 'FIXED', ou 'WEIGHT'
 REMOTE_PUBLIC_THUMBS_PATH = r"C:\path\to\your\flowvault-project\public\thumbs" # Substitua pelo caminho real
+
+# Validação Crítica
+if not os.path.exists(os.path.dirname(REMOTE_PUBLIC_THUMBS_PATH)):
+    logging.critical(f"ERRO CRÍTICO: O caminho base para as miniaturas públicas '{REMOTE_PUBLIC_THUMBS_PATH}' não parece ser válido. Verifique a configuração.")
+    # Considerar sair do script se o caminho for essencial e inválido
+    # exit(1)
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -65,6 +73,7 @@ def choose_storage(storages, stats):
         storages_abaixo_minimo = [s for s in storages if s['tifs_enviados_hoje'] < s['minimo_diario_fixo']]
         if storages_abaixo_minimo:
             return min(storages_abaixo_minimo, key=lambda s: s['tifs_enviados_hoje'] / s['minimo_diario_fixo'] if s['minimo_diario_fixo'] > 0 else float('inf'))
+    
     elif DISTRIBUTION_STRATEGY == 'PERCENTAGE':
         total_tifs_hoje = sum(s['tifs_enviados_hoje'] for s in storages)
         storages_abaixo_percentagem = []
@@ -97,6 +106,8 @@ def create_thumbnails(file_list, source_folder, local_thumb_folder):
             thumb_path = os.path.join(local_thumb_folder, thumb_filename)
             
             with Image.open(source_path) as img:
+                # Processar todos os frames do TIF, se houver
+                img.seek(0)
                 img.thumbnail((400, 550))
                 img.convert("RGB").save(thumb_path, "JPEG", quality=85)
             thumb_files.append(thumb_filename)
@@ -125,20 +136,26 @@ def handle_folder(scanner, folder_name, storages, stats):
         logging.warning(f"Nenhum ficheiro .tif/.tiff em '{folder_name}'. A ignorar.")
         return
         
-    destination_folder = os.path.join(target_storage['root_path'], "001-storage", folder_name)
+    destination_folder = os.path.join(target_storage['root_path'], folder_name)
+    storage_thumb_folder = os.path.join(target_storage['thumbs_path'], folder_name)
     local_thumb_folder = os.path.join(scanner['local_thumbs_path'], folder_name)
     
-    # A lógica de log de transferência será adicionada na próxima fase.
-    logId = "temp_log_id" # Placeholder
+    # Placeholder para o log de transferência
+    logId = "temp_log_id"
     
     try:
         logging.info(f"A criar {len(tif_files)} miniaturas...")
         thumb_filenames = create_thumbnails(tif_files, folder_path, local_thumb_folder)
 
-        logging.info(f"A copiar {len(tif_files)} ficheiros para: {destination_folder}")
+        logging.info(f"A copiar {len(tif_files)} ficheiros .tif para: {destination_folder}")
         shutil.copytree(folder_path, destination_folder, dirs_exist_ok=True)
 
-        logging.info(f"A copiar {len(thumb_filenames)} miniaturas para a pasta pública: {REMOTE_PUBLIC_THUMBS_PATH}")
+        logging.info(f"A copiar {len(thumb_filenames)} miniaturas para o storage: {storage_thumb_folder}")
+        os.makedirs(storage_thumb_folder, exist_ok=True)
+        for thumb in thumb_filenames:
+            shutil.copy2(os.path.join(local_thumb_folder, thumb), os.path.join(storage_thumb_folder, thumb))
+
+        logging.info(f"A copiar {len(thumb_filenames)} miniaturas para a pasta pública central: {REMOTE_PUBLIC_THUMBS_PATH}")
         os.makedirs(REMOTE_PUBLIC_THUMBS_PATH, exist_ok=True)
         for thumb in thumb_filenames:
             shutil.copy2(os.path.join(local_thumb_folder, thumb), os.path.join(REMOTE_PUBLIC_THUMBS_PATH, thumb))
@@ -149,24 +166,23 @@ def handle_folder(scanner, folder_name, storages, stats):
         return
 
     file_list_payload = []
-    for i, tif_name in enumerate(tif_files):
+    for i, tif_name in enumerate(sorted(tif_files)):
         thumb_name = os.path.splitext(tif_name)[0] + ".jpg"
         file_list_payload.append({
             "fileName": f"{folder_name} - Page {i + 1}",
             "originalFileName": tif_name,
-            "imageUrl": f"/thumbs/{thumb_name}" # URL público
+            "imageUrl": f"/thumbs/{thumb_name}"
         })
     
     scan_complete_payload = {
         "bookId": book_id,
         "fileList": file_list_payload,
-        "logId": logId # Enviar o ID do log para a API
+        "logId": logId
     }
 
     if complete_scan_process(scan_complete_payload):
         logging.info(f"Sucesso! A mover '{folder_name}' para a pasta de concluídos.")
         shutil.move(folder_path, os.path.join(scanner['success_folder'], folder_name))
-        # Limpar pasta de thumbs local
         shutil.rmtree(local_thumb_folder, ignore_errors=True)
     else:
         logging.error(f"A API retornou um erro para '{folder_name}'. A mover para a pasta de erros.")
