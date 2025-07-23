@@ -79,6 +79,18 @@ async function checkAndCreateFolders() {
 
 // --- Endpoints da API ---
 
+app.get('/api/scanners', async (req, res) => {
+    try {
+        const [rows] = await dbPool.query(
+            "SELECT id, nome, ip, scanner_root_folder, error_folder, success_folder, local_thumbs_path FROM scanners WHERE status = 'ativo'"
+        );
+        res.json(rows);
+    } catch (err) {
+        console.error('Erro ao buscar scanners:', err);
+        res.status(500).json({ error: 'Erro interno ao buscar scanners.' });
+    }
+});
+
 app.get('/api/storages', async (req, res) => {
     try {
         const [rows] = await dbPool.query(
