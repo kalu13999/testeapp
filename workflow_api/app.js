@@ -15,9 +15,10 @@ const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 const app = express();
 app.use(express.json());
 
-// --- Servir a pasta pública de miniaturas ---
-const publicThumbsPath = path.join(__dirname, config.folders.public_thumbs);
+// Servir a pasta pública de miniaturas do Servidor Central
+const publicThumbsPath = path.resolve(__dirname, config.paths.remote_public_thumbs);
 app.use('/thumbs', express.static(publicThumbsPath));
+
 
 let dbPool;
 
@@ -34,56 +35,26 @@ async function initializeDbPool() {
         await connection.ping();
         connection.release();
         console.log('✅ Pool de conexões à base de dados está ativo.');
+
     } catch (err) {
         console.error('❌ Erro ao inicializar o pool de conexões:', err.message);
         process.exit(1);
     }
 }
 
-async function checkAndCreateFolders() {
-    console.log('Verificando e criando estruturas de pastas...');
-    
-    // 1. Criar a pasta pública local para as miniaturas
-    try {
-        if (!fs.existsSync(publicThumbsPath)) {
-            fs.mkdirSync(publicThumbsPath, { recursive: true });
-            console.log(`Pasta pública de miniaturas criada: ${publicThumbsPath}`);
-        } else {
-            console.log(`Pasta pública de miniaturas já existe: ${publicThumbsPath}`);
-        }
-    } catch (err) {
-        console.error(`❌ Erro ao criar a pasta pública de miniaturas:`, err);
-        throw err;
-    }
-
-    // 2. Criar as pastas de workflow dentro de cada storage ativo
-    try {
-        const [storages] = await dbPool.query("SELECT root_path FROM storages WHERE status = 'ativo'");
-        
-        if (storages.length === 0) {
-            console.log('⚠️ Nenhum storage ativo encontrado. Nenhuma pasta de workflow foi criada.');
-            return;
-        }
-
-        for (const storage of storages) {
-            console.log(`-- Verificando storage em: ${storage.root_path}`);
-            for (const folderName of config.folders.workflow_stages) {
-                const folderPath = path.join(storage.root_path, folderName);
-                if (!fs.existsSync(folderPath)) {
-                    fs.mkdirSync(folderPath, { recursive: true });
-                    console.log(`   - Criada: ${folderPath}`);
-                }
-            }
-        }
-        console.log('✅ Estrutura de pastas dos storages verificada.');
-    } catch (err) {
-        console.error('❌ Erro ao criar as pastas de workflow nos storages:', err);
-        throw err;
-    }
-}
-
-
 // --- Endpoints da API ---
+
+app.get('/api/scanners', async (req, res) => {
+    try {
+        const [rows] = await dbPool.query(
+            "SELECT id, nome, scanner_root_folder, error_folder, success_folder, local_thumbs_path FROM scanners WHERE status = 'ativo'"
+        );
+        res.json(rows);
+    } catch (err) {
+        console.error('Erro ao buscar scanners:', err);
+        res.status(500).json({ error: 'Erro interno ao buscar scanners.' });
+    }
+});
 
 app.get('/api/storages', async (req, res) => {
     try {
@@ -140,7 +111,6 @@ app.post('/api/books/byname', async (req, res) => {
 // --- Inicialização do Servidor ---
 async function startServer() {
     await initializeDbPool();
-    await checkAndCreateFolders(); // Adicionado aqui
     const PORT = config.server.port || 4000;
     app.listen(PORT, () => {
       console.log(`API de Workflow a rodar na porta ${PORT}`);
