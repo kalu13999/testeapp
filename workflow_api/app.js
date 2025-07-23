@@ -21,7 +21,6 @@ const publicThumbsPath = path.resolve(__dirname, config.folders.public_thumbs);
 app.use('/thumbs', express.static(publicThumbsPath));
 
 // --- Configuração do Multer para Upload ---
-// Configura o armazenamento em memória para que possamos manipular o ficheiro antes de o guardar
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
@@ -53,64 +52,116 @@ async function checkAndCreateFolders() {
             fs.mkdirSync(publicThumbsPath, { recursive: true });
             console.log(`Pasta pública de miniaturas criada: ${publicThumbsPath}`);
         }
-        // A criação das pastas de workflow nos storages foi removida daqui,
-        // pois faz mais sentido ser uma tarefa de configuração manual ou de um script de setup,
-        // para não sobrecarregar o arranque da API com operações de rede.
-        console.log('✅ Estrutura de pastas da API verificada.');
+        
+        const [storages] = await dbPool.query("SELECT root_path, thumbs_path FROM storages WHERE status = 'ativo'");
+
+        if (storages.length === 0) {
+            console.warn("Aviso: Nenhum storage ativo encontrado. Nenhuma pasta de workflow será criada nos storages.");
+        } else {
+            for (const storage of storages) {
+                console.log(`A verificar pastas para o storage em: ${storage.root_path}`);
+                // Cria a pasta de thumbs no storage se não existir
+                if (!fs.existsSync(storage.thumbs_path)) {
+                    fs.mkdirSync(storage.thumbs_path, { recursive: true });
+                    console.log(`   -> Criada pasta de thumbs do storage: ${storage.thumbs_path}`);
+                }
+                // Cria as subpastas de workflow
+                for (const folderName of config.folders.workflow_stages) {
+                    const folderPath = path.join(storage.root_path, folderName);
+                    if (!fs.existsSync(folderPath)) {
+                        fs.mkdirSync(folderPath, { recursive: true });
+                        console.log(`   -> Criada: ${folderPath}`);
+                    }
+                }
+            }
+        }
+        console.log('✅ Estrutura de pastas verificada com sucesso.');
     } catch (err) {
-        console.error(`❌ Erro crítico ao criar estrutura de pastas da API:`, err);
+        console.error(`❌ Erro crítico ao criar estrutura de pastas:`, err);
         throw err;
     }
 }
 
 // --- Endpoints da API ---
 
-app.get('/api/config', async (req, res) => {
+app.get('/api/scanners', async (req, res) => {
     try {
-        const [scanners] = await dbPool.query("SELECT id, nome, ip, scanner_root_folder, error_folder, success_folder, local_thumbs_path FROM scanners WHERE status = 'ativo'");
-        const [storages] = await dbPool.query("SELECT id, nome, ip, root_path, thumbs_path, percentual_minimo_diario, minimo_diario_fixo, peso FROM storages WHERE status = 'ativo'");
-        const today = new Date().toISOString().slice(0, 10);
-        const [stats] = await dbPool.query('SELECT storage_id, total_tifs_enviados FROM envio_diario WHERE data = ?', [today]);
-
-        res.json({
-            scanners,
-            storages,
-            stats,
-        });
+        const [rows] = await dbPool.query(
+            "SELECT id, nome, ip, scanner_root_folder, error_folder, success_folder, local_thumbs_path FROM scanners WHERE status = 'ativo'"
+        );
+        res.json(rows);
     } catch (err) {
-        console.error('Erro ao buscar configuração completa:', err);
-        res.status(500).json({ error: 'Erro interno ao buscar configuração.' });
+        console.error('Erro ao buscar scanners:', err);
+        res.status(500).json({ error: 'Erro interno ao buscar scanners.' });
     }
 });
 
+app.get('/api/storages', async (req, res) => {
+    try {
+        const [rows] = await dbPool.query(
+            "SELECT id, nome, ip, root_path, thumbs_path, percentual_minimo_diario, minimo_diario_fixo, peso FROM storages WHERE status = 'ativo'"
+        );
+        res.json(rows);
+    } catch (err) {
+        console.error('Erro ao buscar storages:', err);
+        res.status(500).json({ error: 'Erro interno ao buscar storages.' });
+    }
+});
+
+app.get('/api/storages/stats', async (req, res) => {
+    try {
+        const today = new Date().toISOString().slice(0, 10);
+        const [rows] = await dbPool.query(
+            'SELECT storage_id, total_tifs_enviados FROM envio_diario WHERE data = ?',
+            [today]
+        );
+        res.json(rows);
+    } catch (err) {
+        console.error('Erro ao buscar estatísticas diárias:', err);
+        res.status(500).json({ error: 'Erro interno ao buscar estatísticas.' });
+    }
+});
 
 app.post('/api/books/byname', async (req, res) => {
   const { bookName } = req.body;
   if (!bookName) {
       return res.status(400).json({ error: 'Campo "bookName" é obrigatório.' });
   }
+
   try {
-    const [rows] = await dbPool.query('SELECT id FROM books WHERE name = ?', [bookName]);
-    if (rows.length === 0) return res.status(404).json({ error: 'Livro não encontrado.' });
-    if (rows.length > 1) return res.status(400).json({ error: 'Mais que um livro encontrado com esse nome.' });
-    return res.json({ bookId: rows[0].id });
+    const [rows] = await dbPool.query(
+        'SELECT id FROM books WHERE name = ?', 
+        [bookName]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Livro não encontrado.' });
+    } else if (rows.length > 1) {
+      return res.status(400).json({ error: 'Mais que um livro encontrado com esse nome.' });
+    } else {
+      return res.json({ bookId: rows[0].id });
+    }
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Erro interno ao comunicar com a base de dados.' });
   }
 });
 
-// NOVO ENDPOINT PARA UPLOAD DE MINIATURAS
 app.post('/api/upload/thumbnail', upload.single('thumbnail'), (req, res) => {
     const file = req.file;
-    const { originalName } = req.body;
+    const { originalName, bookName } = req.body;
 
-    if (!file || !originalName) {
-        return res.status(400).json({ error: 'Ficheiro de miniatura e nome original são obrigatórios.' });
+    if (!file || !originalName || !bookName) {
+        return res.status(400).json({ error: 'Ficheiro, nome original e nome do livro são obrigatórios.' });
     }
     
     try {
-        const thumbPath = path.join(publicThumbsPath, originalName);
+        const bookThumbDir = path.join(publicThumbsPath, bookName);
+        if (!fs.existsSync(bookThumbDir)) {
+            fs.mkdirSync(bookThumbDir, { recursive: true });
+        }
+        
+        const thumbPath = path.join(bookThumbDir, originalName);
         fs.writeFileSync(thumbPath, file.buffer);
         console.log(`Thumbnail '${originalName}' guardada em ${thumbPath}`);
         res.status(200).json({ message: "Thumbnail recebida com sucesso." });
@@ -119,6 +170,7 @@ app.post('/api/upload/thumbnail', upload.single('thumbnail'), (req, res) => {
         res.status(500).json({ error: "Erro ao guardar a miniatura no servidor." });
     }
 });
+
 
 app.post('/api/scan/complete', async (req, res) => {
     const { bookId, fileList } = req.body;
@@ -145,9 +197,10 @@ app.post('/api/scan/complete', async (req, res) => {
 
         if (fileList.length > 0) {
             const documentsToInsert = fileList.map((file, index) => {
-                const docId = `doc_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-                // Ex: "MyBook - Page 1"
+                const docId = `doc_${Date.now()}_${Math.random().toString(36).substring(2, 9)}_${index}`;
                 const docName = `${bookName} - Page ${index + 1}`;
+                // O imageUrl agora vem do worker e já tem a estrutura de pasta correta
+                const publicImageUrl = `/thumbs/${encodeURIComponent(bookName)}/${encodeURIComponent(path.basename(file.imageUrl))}`;
                 return [
                     docId,
                     docName,
@@ -157,7 +210,7 @@ app.post('/api/scan/complete', async (req, res) => {
                     '[]',
                     projectId,
                     bookId,
-                    file.imageUrl // O URL público já vem do worker
+                    publicImageUrl
                 ];
             });
 
@@ -189,7 +242,7 @@ app.post('/api/scan/complete', async (req, res) => {
 // --- Inicialização do Servidor ---
 async function startServer() {
     await initializeDbPool();
-    await checkAndCreateFolders();
+    await checkAndCreateFolders(); 
     const PORT = config.server.port || 4000;
     app.listen(PORT, () => {
       console.log(`API de Workflow a rodar na porta ${PORT}`);
@@ -197,3 +250,5 @@ async function startServer() {
 }
 
 startServer();
+
+    
