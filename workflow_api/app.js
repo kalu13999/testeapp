@@ -91,6 +91,7 @@ app.get('/api/scanners', async (req, res) => {
     }
 });
 
+
 app.get('/api/storages', async (req, res) => {
     try {
         const [rows] = await dbPool.query(
@@ -142,6 +143,68 @@ app.post('/api/books/byname', async (req, res) => {
   }
 });
 
+app.post('/api/scan/complete', async (req, res) => {
+    const { bookId, fileList, logId } = req.body;
+    if (!bookId || !fileList || !Array.isArray(fileList) || !logId) {
+        return res.status(400).json({ error: 'bookId, fileList e logId são obrigatórios.' });
+    }
+
+    let connection;
+    try {
+        connection = await dbPool.getConnection();
+        await connection.beginTransaction();
+
+        const [bookRows] = await connection.query('SELECT projectId, clientId FROM books WHERE id = ?', [bookId]);
+        if (bookRows.length === 0) {
+            throw new Error(`Livro com ID ${bookId} não encontrado.`);
+        }
+        const { projectId, clientId } = bookRows[0];
+
+        // 1. Inserir todos os documentos
+        if (fileList.length > 0) {
+            const documentsToInsert = fileList.map(file => {
+                const docId = `doc_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+                return [
+                    docId,
+                    file.fileName,
+                    clientId,
+                    'Scanned Page', // tipo
+                    new Date(), // lastUpdated
+                    '[]', // tags
+                    projectId,
+                    bookId,
+                    file.imageUrl
+                ];
+            });
+
+            await connection.query(
+                `INSERT INTO documents (id, name, clientId, type, lastUpdated, tags, projectId, bookId, imageUrl) VALUES ?`,
+                [documentsToInsert]
+            );
+        }
+
+        // 2. Mudar o estado do livro para 'Storage'
+        const [statusRows] = await connection.query("SELECT id FROM document_statuses WHERE name = 'Storage'");
+        if (statusRows.length === 0) throw new Error("Estado 'Storage' não encontrado.");
+        const storageStatusId = statusRows[0].id;
+        
+        await connection.query("UPDATE books SET statusId = ?, scanEndTime = NOW() WHERE id = ?", [storageStatusId, bookId]);
+
+        // 3. Atualizar o log de transferência para 'sucesso'
+        await connection.query("UPDATE log_transferencias SET status = 'sucesso', data_fim = NOW() WHERE id = ?", [logId]);
+
+        await connection.commit();
+        res.status(200).json({ message: "Processo de digitalização concluído e registado com sucesso." });
+
+    } catch (err) {
+        if (connection) await connection.rollback();
+        console.error(`Erro ao finalizar o processo para bookId ${bookId}:`, err);
+        res.status(500).json({ error: `Erro interno ao finalizar o processo: ${err.message}` });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
 
 // --- Inicialização do Servidor ---
 async function startServer() {
@@ -154,3 +217,5 @@ async function startServer() {
 }
 
 startServer();
+
+    

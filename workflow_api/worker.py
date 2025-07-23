@@ -1,4 +1,3 @@
-
 import os
 import requests
 import logging
@@ -7,16 +6,10 @@ import shutil
 import random
 
 # --- Configurações ---
-# A URL base da sua nova API de Workflow externa
-API_BASE_URL = "http://localhost:4000" 
-# ID do utilizador que o sistema usará para os logs de auditoria
+API_BASE_URL = "http://localhost:4000"
 SYSTEM_USER_ID = "u_system"
-# Estratégia de distribuição: 'PERCENTAGE', 'FIXED', ou 'WEIGHT'
-DISTRIBUTION_STRATEGY = 'FIXED'
-# Pasta de rede para onde as miniaturas públicas devem ser copiadas no servidor central
-# Esta é a única configuração de caminho que permanece aqui, pois é global.
-REMOTE_PUBLIC_THUMBS_PATH = r"C:\path\to\your\flowvault-project\public\thumbs"
-
+DISTRIBUTION_STRATEGY = 'FIXED'  # 'PERCENTAGE', 'FIXED', ou 'WEIGHT'
+REMOTE_PUBLIC_THUMBS_PATH = r"C:\path\to\your\flowvault-project\public\thumbs" # Substitua pelo caminho real
 
 logging.basicConfig(
     level=logging.INFO,
@@ -28,9 +21,7 @@ logging.basicConfig(
 )
 
 # --- Funções de Comunicação com a API ---
-
 def get_api_config(endpoint):
-    """Função genérica para obter configuração da API."""
     try:
         response = requests.get(f"{API_BASE_URL}/api{endpoint}")
         response.raise_for_status()
@@ -40,7 +31,6 @@ def get_api_config(endpoint):
         return None
 
 def get_book_id(book_name):
-    """Obtém o bookId a partir do nome do livro (nome da pasta)."""
     try:
         response = requests.post(f"{API_BASE_URL}/api/books/byname", json={"bookName": book_name})
         if response.status_code == 200:
@@ -52,24 +42,18 @@ def get_book_id(book_name):
         return None
 
 def complete_scan_process(payload):
-    """Notifica a API que o processo de digitalização foi concluído."""
     try:
-        # Este endpoint será criado na Fase 4
-        # response = requests.post(f"{API_BASE_URL}/api/scan/complete", json=payload)
-        # response.raise_for_status()
-        logging.info(f"Simulação: Chamada a /api/scan/complete para o livro '{payload['bookId']}' bem-sucedida.")
-        return True # Simular sucesso por agora
+        response = requests.post(f"{API_BASE_URL}/api/scan/complete", json=payload)
+        response.raise_for_status()
+        logging.info(f"Finalização do scan registada com sucesso para o livro '{payload['bookId']}'.")
+        return True
     except requests.exceptions.RequestException as e:
-        # logging.error(f"Erro ao finalizar o processo de scan para '{payload['bookId']}': {e.response.text if e.response else e}")
-        logging.error(f"Simulação: Erro ao chamar /api/scan/complete para '{payload['bookId']}'.")
+        error_text = e.response.text if e.response else str(e)
+        logging.error(f"Erro ao finalizar o processo de scan para '{payload['bookId']}': {error_text}")
         return False
 
-# --- Funções de Lógica de Ficheiros ---
-
+# --- Lógica de Ficheiros e Distribuição ---
 def choose_storage(storages, stats):
-    """
-    Decide para qual storage enviar os ficheiros com base na estratégia definida.
-    """
     if not storages:
         return None
 
@@ -81,7 +65,6 @@ def choose_storage(storages, stats):
         storages_abaixo_minimo = [s for s in storages if s['tifs_enviados_hoje'] < s['minimo_diario_fixo']]
         if storages_abaixo_minimo:
             return min(storages_abaixo_minimo, key=lambda s: s['tifs_enviados_hoje'] / s['minimo_diario_fixo'] if s['minimo_diario_fixo'] > 0 else float('inf'))
-
     elif DISTRIBUTION_STRATEGY == 'PERCENTAGE':
         total_tifs_hoje = sum(s['tifs_enviados_hoje'] for s in storages)
         storages_abaixo_percentagem = []
@@ -89,7 +72,6 @@ def choose_storage(storages, stats):
             percentagem_atual = (s['tifs_enviados_hoje'] / (total_tifs_hoje + 1)) * 100
             if percentagem_atual < s['percentual_minimo_diario']:
                 storages_abaixo_percentagem.append(s)
-        
         if storages_abaixo_percentagem:
             return min(storages_abaixo_percentagem, key=lambda s: (s['tifs_enviados_hoje'] / (total_tifs_hoje + 1)) * 100)
 
@@ -97,23 +79,16 @@ def choose_storage(storages, stats):
     for storage in storages:
         lista_ponderada.extend([storage] * storage['peso'])
     
-    if not lista_ponderada:
-        return random.choice(storages) if storages else None
-        
-    return random.choice(lista_ponderada)
+    return random.choice(lista_ponderada) if lista_ponderada else (random.choice(storages) if storages else None)
 
 def create_thumbnails(file_list, source_folder, local_thumb_folder):
-    """
-    Gera miniaturas para os ficheiros.
-    """
     try:
         from PIL import Image
     except ImportError:
-        logging.error("A biblioteca Pillow não está instalada. Execute 'pip install Pillow' para criar miniaturas.")
+        logging.error("A biblioteca Pillow não está instalada. Execute 'pip install Pillow'. As miniaturas não serão criadas.")
         return []
 
     os.makedirs(local_thumb_folder, exist_ok=True)
-    
     thumb_files = []
     for tif_file in file_list:
         try:
@@ -124,52 +99,52 @@ def create_thumbnails(file_list, source_folder, local_thumb_folder):
             with Image.open(source_path) as img:
                 img.thumbnail((400, 550))
                 img.convert("RGB").save(thumb_path, "JPEG", quality=85)
-
             thumb_files.append(thumb_filename)
         except Exception as e:
             logging.error(f"Erro ao criar miniatura para {tif_file}: {e}")
-    
     return thumb_files
 
 def handle_folder(scanner, folder_name, storages, stats):
-    """Processa uma única pasta de um scanner específico."""
     folder_path = os.path.join(scanner['scanner_root_folder'], folder_name)
-    logging.info(f"--- Processando pasta: {folder_name} (do Scanner: {scanner['nome']}) ---")
+    logging.info(f"--- Processando: {folder_name} (Scanner: {scanner['nome']}) ---")
 
     book_id = get_book_id(folder_name)
     if not book_id:
-        logging.error(f"Não foi possível obter um bookId para a pasta '{folder_name}'. A mover para a pasta de erros.")
+        logging.error(f"bookId não encontrado para '{folder_name}'. A mover para erros.")
         shutil.move(folder_path, os.path.join(scanner['error_folder'], folder_name))
         return
 
     target_storage = choose_storage(storages, stats)
     if not target_storage:
-        logging.error("Nenhum storage ativo disponível. A processar mais tarde.")
+        logging.error("Nenhum storage disponível. A tentar mais tarde.")
         return
-    logging.info(f"Storage de destino escolhido: '{target_storage['nome']}' (Estratégia: {DISTRIBUTION_STRATEGY})")
+    logging.info(f"Storage destino: '{target_storage['nome']}' (Estratégia: {DISTRIBUTION_STRATEGY})")
 
-    tif_files = [f for f in os.listdir(folder_path) if f.lower().endswith('.tif')]
+    tif_files = [f for f in os.listdir(folder_path) if f.lower().endswith(('.tif', '.tiff'))]
     if not tif_files:
-        logging.warning(f"Nenhum ficheiro .tif encontrado em '{folder_name}'. A ignorar a pasta.")
+        logging.warning(f"Nenhum ficheiro .tif/.tiff em '{folder_name}'. A ignorar.")
         return
-
+        
     destination_folder = os.path.join(target_storage['root_path'], "001-storage", folder_name)
     local_thumb_folder = os.path.join(scanner['local_thumbs_path'], folder_name)
+    
+    # A lógica de log de transferência será adicionada na próxima fase.
+    logId = "temp_log_id" # Placeholder
     
     try:
         logging.info(f"A criar {len(tif_files)} miniaturas...")
         thumb_filenames = create_thumbnails(tif_files, folder_path, local_thumb_folder)
 
-        logging.info(f"A copiar {len(tif_files)} ficheiros originais para: {destination_folder}")
+        logging.info(f"A copiar {len(tif_files)} ficheiros para: {destination_folder}")
         shutil.copytree(folder_path, destination_folder, dirs_exist_ok=True)
 
-        logging.info(f"A copiar {len(thumb_filenames)} miniaturas para o servidor público: {REMOTE_PUBLIC_THUMBS_PATH}")
+        logging.info(f"A copiar {len(thumb_filenames)} miniaturas para a pasta pública: {REMOTE_PUBLIC_THUMBS_PATH}")
         os.makedirs(REMOTE_PUBLIC_THUMBS_PATH, exist_ok=True)
         for thumb in thumb_filenames:
             shutil.copy2(os.path.join(local_thumb_folder, thumb), os.path.join(REMOTE_PUBLIC_THUMBS_PATH, thumb))
-            
+
     except Exception as e:
-        logging.error(f"Erro crítico ao copiar ficheiros para '{folder_name}': {e}. A mover para a pasta de erros.")
+        logging.error(f"Erro ao copiar ficheiros para '{folder_name}': {e}. A mover para a pasta de erros.")
         shutil.move(folder_path, os.path.join(scanner['error_folder'], folder_name))
         return
 
@@ -179,28 +154,27 @@ def handle_folder(scanner, folder_name, storages, stats):
         file_list_payload.append({
             "fileName": f"{folder_name} - Page {i + 1}",
             "originalFileName": tif_name,
-            "imageUrl": f"/thumbs/{thumb_name}"
+            "imageUrl": f"/thumbs/{thumb_name}" # URL público
         })
     
     scan_complete_payload = {
         "bookId": book_id,
-        "scannerId": scanner['nome'],
-        "fileList": file_list_payload
+        "fileList": file_list_payload,
+        "logId": logId # Enviar o ID do log para a API
     }
 
     if complete_scan_process(scan_complete_payload):
         logging.info(f"Sucesso! A mover '{folder_name}' para a pasta de concluídos.")
         shutil.move(folder_path, os.path.join(scanner['success_folder'], folder_name))
+        # Limpar pasta de thumbs local
+        shutil.rmtree(local_thumb_folder, ignore_errors=True)
     else:
-        logging.error(f"A API retornou um erro para '{folder_name}'. A mover para a pasta de erros para análise.")
+        logging.error(f"A API retornou um erro para '{folder_name}'. A mover para a pasta de erros.")
         shutil.move(folder_path, os.path.join(scanner['error_folder'], folder_name))
 
-
 def main():
-    """Função principal do worker."""
     logging.info("--- Worker de Scanner iniciado ---")
     
-    # Obter configuração da API
     scanners = get_api_config('/scanners')
     storages = get_api_config('/storages')
     stats = get_api_config('/storages/stats')
@@ -209,33 +183,28 @@ def main():
         logging.error("Não foi possível obter a configuração de scanners ou storages da API. A sair.")
         return
 
-    # Iterar por cada scanner configurado na base de dados
     for scanner in scanners:
-        logging.info(f"=== A verificar Scanner: {scanner['nome']} em '{scanner['scanner_root_folder']}' ===")
+        logging.info(f"=== Verificando Scanner: {scanner['nome']} em '{scanner['scanner_root_folder']}' ===")
         
-        # Criar pastas de suporte para o scanner se não existirem
         os.makedirs(scanner['error_folder'], exist_ok=True)
         os.makedirs(scanner['success_folder'], exist_ok=True)
         os.makedirs(scanner['local_thumbs_path'], exist_ok=True)
         
         try:
-            folders_to_process = [
-                d for d in os.listdir(scanner['scanner_root_folder']) 
-                if os.path.isdir(os.path.join(scanner['scanner_root_folder'], d)) and not d.startswith('_')
-            ]
+            folders_to_process = [d for d in os.listdir(scanner['scanner_root_folder']) if os.path.isdir(os.path.join(scanner['scanner_root_folder'], d)) and not d.startswith('_')]
         except FileNotFoundError:
             logging.error(f"A pasta do scanner '{scanner['scanner_root_folder']}' não foi encontrada.")
-            continue # Passa para o próximo scanner
+            continue
             
         if not folders_to_process:
             logging.info(f"Nenhuma pasta nova para processar no scanner {scanner['nome']}.")
             continue
 
-        logging.info(f"Encontradas {len(folders_to_process)} pastas para processar: {', '.join(folders_to_process)}")
+        logging.info(f"Encontradas {len(folders_to_process)} pastas: {', '.join(folders_to_process)}")
         
         for folder_name in folders_to_process:
             handle_folder(scanner, folder_name, storages, stats)
-            time.sleep(1) # Pequena pausa entre pastas
+            time.sleep(1)
 
     logging.info("--- Ciclo do worker concluído ---")
 
@@ -244,3 +213,5 @@ if __name__ == "__main__":
         main()
         logging.info("A aguardar 60 segundos para o próximo ciclo...")
         time.sleep(60)
+
+    
