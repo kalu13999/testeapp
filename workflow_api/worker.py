@@ -4,6 +4,7 @@ import requests
 import logging
 import time
 import shutil
+import random
 
 # --- Configurações ---
 # A URL base da sua nova API de Workflow externa
@@ -17,10 +18,11 @@ SUCCESS_FOLDER = r"E:\PASTA_SCANNER\_CONCLUIDOS"
 # Pasta local no scanner para guardar uma cópia das miniaturas
 LOCAL_THUMBS_PATH = r"E:\PASTA_SCANNER\_THUMBS"
 # Pasta de rede para onde as miniaturas públicas devem ser copiadas no servidor central
-# Exemplo para Windows: \\\\192.168.1.100\\public\\thumbs
-# Exemplo para Linux: /mnt/servidor_central/public/thumbs
 REMOTE_PUBLIC_THUMBS_PATH = r"C:\path\to\your\flowvault-project\public\thumbs"
-
+# ID deste scanner (para auditoria)
+SCANNER_ID = "Scanner_Main_01"
+# Estratégia de distribuição: 'PERCENTAGE', 'FIXED', ou 'WEIGHT'
+DISTRIBUTION_STRATEGY = 'FIXED'
 
 logging.basicConfig(
     level=logging.INFO,
@@ -68,53 +70,91 @@ def get_book_id(book_name):
 def complete_scan_process(payload):
     """Notifica a API que o processo de digitalização foi concluído."""
     try:
-        response = requests.post(f"{API_BASE_URL}/api/scan/complete", json=payload)
-        response.raise_for_status()
-        logging.info(f"Processo de scan para o livro '{payload['bookId']}' finalizado com sucesso via API.")
-        return True
+        # Este endpoint será criado na Fase 4
+        # response = requests.post(f"{API_BASE_URL}/api/scan/complete", json=payload)
+        # response.raise_for_status()
+        logging.info(f"Simulação: Chamada a /api/scan/complete para o livro '{payload['bookId']}' bem-sucedida.")
+        return True # Simular sucesso por agora
     except requests.exceptions.RequestException as e:
-        logging.error(f"Erro ao finalizar o processo de scan para '{payload['bookId']}': {e.response.text if e.response else e}")
+        # logging.error(f"Erro ao finalizar o processo de scan para '{payload['bookId']}': {e.response.text if e.response else e}")
+        logging.error(f"Simulação: Erro ao chamar /api/scan/complete para '{payload['bookId']}'.")
         return False
 
 # --- Funções de Lógica de Ficheiros ---
 
 def choose_storage(storages, stats):
-    """Lógica de decisão para escolher o melhor storage (pode ser melhorada)."""
-    # Por agora, uma lógica simples: devolve o primeiro da lista.
-    # TODO: Implementar a lógica de distribuição com base nos mínimos e pesos.
-    if storages:
-        return storages[0]
-    return None
+    """
+    Decide para qual storage enviar os ficheiros com base na estratégia definida.
+    """
+    if not storages:
+        return None
+
+    # Adicionar estatísticas atuais a cada objeto de storage para facilitar
+    stats_map = {s['storage_id']: s['total_tifs_enviados'] for s in stats}
+    for storage in storages:
+        storage['tifs_enviados_hoje'] = stats_map.get(storage['id'], 0)
+
+    # --- Estratégia 1: Mínimo Fixo ---
+    if DISTRIBUTION_STRATEGY == 'FIXED':
+        storages_abaixo_minimo = [s for s in storages if s['tifs_enviados_hoje'] < s['minimo_diario_fixo']]
+        if storages_abaixo_minimo:
+            # Escolhe o que está mais longe de atingir o seu mínimo
+            return min(storages_abaixo_minimo, key=lambda s: s['tifs_enviados_hoje'] / s['minimo_diario_fixo'] if s['minimo_diario_fixo'] > 0 else float('inf'))
+
+    # --- Estratégia 2: Percentagem ---
+    elif DISTRIBUTION_STRATEGY == 'PERCENTAGE':
+        total_tifs_hoje = sum(s['tifs_enviados_hoje'] for s in storages)
+        storages_abaixo_percentagem = []
+        for s in storages:
+            percentagem_atual = (s['tifs_enviados_hoje'] / (total_tifs_hoje + 1)) * 100 # +1 para evitar divisão por zero
+            if percentagem_atual < s['percentual_minimo_diario']:
+                storages_abaixo_percentagem.append(s)
+        
+        if storages_abaixo_percentagem:
+             # Escolhe o que tem a menor percentagem atual
+            return min(storages_abaixo_percentagem, key=lambda s: (s['tifs_enviados_hoje'] / (total_tifs_hoje + 1)) * 100)
+
+    # --- Estratégia 3: Peso (Weighted Round-Robin) ou Fallback ---
+    # Esta estratégia é usada se as outras não resultarem numa escolha, ou se for a estratégia principal.
+    lista_ponderada = []
+    for storage in storages:
+        lista_ponderada.extend([storage] * storage['peso'])
+    
+    if not lista_ponderada:
+        return None # Caso nenhum storage tenha peso > 0
+        
+    return random.choice(lista_ponderada)
+
 
 def create_thumbnails(file_list, source_folder, local_thumb_folder):
     """
     Gera miniaturas para os ficheiros.
-    NOTA: Esta é uma função de exemplo. A conversão de .tif para .jpg/.png
-    requer uma biblioteca como a Pillow (PIL) ou Wand (ImageMagick).
-    `pip install Pillow`
+    Requer a biblioteca Pillow: pip install Pillow
     """
-    from PIL import Image
+    try:
+        from PIL import Image
+    except ImportError:
+        logging.error("A biblioteca Pillow não está instalada. Execute 'pip install Pillow' para criar miniaturas.")
+        return []
+
     os.makedirs(local_thumb_folder, exist_ok=True)
     
     thumb_files = []
     for tif_file in file_list:
         try:
             source_path = os.path.join(source_folder, tif_file)
-            # Converte o nome do ficheiro para .jpg para a miniatura
             thumb_filename = os.path.splitext(tif_file)[0] + ".jpg"
             thumb_path = os.path.join(local_thumb_folder, thumb_filename)
             
             with Image.open(source_path) as img:
-                img.thumbnail((400, 550)) # Redimensiona a imagem
+                img.thumbnail((400, 550))
                 img.convert("RGB").save(thumb_path, "JPEG", quality=85)
 
             thumb_files.append(thumb_filename)
         except Exception as e:
             logging.error(f"Erro ao criar miniatura para {tif_file}: {e}")
-            # Continua mesmo que uma miniatura falhe
     
     return thumb_files
-
 
 def handle_folder(folder_name, root_folder, storages, stats):
     """Processa uma única pasta de scanner."""
@@ -132,6 +172,8 @@ def handle_folder(folder_name, root_folder, storages, stats):
     if not target_storage:
         logging.error("Nenhum storage ativo disponível. A processar mais tarde.")
         return
+    logging.info(f"Storage de destino escolhido: '{target_storage['nome']}' (Estratégia: {DISTRIBUTION_STRATEGY})")
+
 
     # 2. Listar ficheiros e preparar caminhos
     tif_files = [f for f in os.listdir(folder_path) if f.lower().endswith('.tif')]
@@ -141,7 +183,6 @@ def handle_folder(folder_name, root_folder, storages, stats):
 
     destination_folder = os.path.join(target_storage['root_path'], folder_name)
     local_thumb_folder = os.path.join(LOCAL_THUMBS_PATH, folder_name)
-    remote_thumb_folder = os.path.join(REMOTE_PUBLIC_THUMBS_PATH, folder_name)
 
     # 3. Criar miniaturas
     logging.info(f"A criar {len(tif_files)} miniaturas...")
@@ -152,10 +193,10 @@ def handle_folder(folder_name, root_folder, storages, stats):
         logging.info(f"A copiar {len(tif_files)} ficheiros originais para: {destination_folder}")
         shutil.copytree(folder_path, destination_folder, dirs_exist_ok=True)
 
-        logging.info(f"A copiar {len(thumb_filenames)} miniaturas para o servidor público: {remote_thumb_folder}")
-        os.makedirs(remote_thumb_folder, exist_ok=True)
+        logging.info(f"A copiar {len(thumb_filenames)} miniaturas para o servidor público: {REMOTE_PUBLIC_THUMBS_PATH}")
+        os.makedirs(REMOTE_PUBLIC_THUMBS_PATH, exist_ok=True)
         for thumb in thumb_filenames:
-            shutil.copy2(os.path.join(local_thumb_folder, thumb), remote_thumb_folder)
+            shutil.copy2(os.path.join(local_thumb_folder, thumb), os.path.join(REMOTE_PUBLIC_THUMBS_PATH, thumb))
             
     except Exception as e:
         logging.error(f"Erro crítico ao copiar ficheiros para '{folder_name}': {e}. A mover para a pasta de erros.")
@@ -169,12 +210,12 @@ def handle_folder(folder_name, root_folder, storages, stats):
         file_list_payload.append({
             "fileName": f"{folder_name} - Page {i + 1}",
             "originalFileName": tif_name,
-            "imageUrl": f"/thumbs/{folder_name}/{thumb_name}"
+            "imageUrl": f"/thumbs/{thumb_name}" # URL relativa à pasta pública
         })
     
     scan_complete_payload = {
         "bookId": book_id,
-        "scannerId": "Scanner_Main_01", # Pode ser obtido de um ficheiro de config local do worker
+        "scannerId": SCANNER_ID,
         "fileList": file_list_payload
     }
 
@@ -204,7 +245,6 @@ def main():
         return
 
     # 2. Encontrar pastas para processar
-    # NOTA: Adapte o `scanner_root_folder` para obter a partir de uma config se este worker for correr para múltiplos scanners
     scanner_root_folder = r"E:\PASTA_SCANNER"
     
     try:
@@ -222,16 +262,22 @@ def main():
     # 3. Processar cada pasta
     for folder_name in folders_to_process:
         handle_folder(folder_name, scanner_root_folder, storages, stats)
+        # Atualizar stats para a próxima iteração, simulando o envio
+        # Numa implementação real, poderíamos chamar a API de stats novamente
+        # ou atualizar localmente
+        if stats and storages:
+             chosen = choose_storage(storages, stats)
+             if chosen:
+                for stat in stats:
+                    if stat['storage_id'] == chosen['id']:
+                        stat['total_tifs_enviados'] += len([f for f in os.listdir(os.path.join(scanner_root_folder, folder_name)) if f.lower().endswith('.tif')])
+                        break
+        
         time.sleep(1) # Pequena pausa entre pastas
 
     logging.info("--- Ciclo do worker concluído ---")
 
 if __name__ == "__main__":
-    # Para um serviço real, você colocaria o `main()` dentro de um loop com um `time.sleep()`.
-    # Exemplo:
-    # while True:
-    #     main()
-    #     print("Aguardando 60 segundos para o próximo ciclo...")
-    #     time.sleep(60)
     main()
 
+    
