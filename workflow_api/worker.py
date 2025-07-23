@@ -10,14 +10,6 @@ import random
 API_BASE_URL = "http://localhost:4000"
 SYSTEM_USER_ID = "u_system"
 DISTRIBUTION_STRATEGY = 'FIXED'  # Altere para 'PERCENTAGE', 'FIXED', ou 'WEIGHT'
-REMOTE_PUBLIC_THUMBS_PATH = r"C:\path\to\your\flowvault-project\public\thumbs" # Substitua pelo caminho real
-
-# Validação Crítica
-if not os.path.exists(os.path.dirname(REMOTE_PUBLIC_THUMBS_PATH)):
-    logging.critical(f"ERRO CRÍTICO: O caminho base para as miniaturas públicas '{REMOTE_PUBLIC_THUMBS_PATH}' não parece ser válido. Verifique a configuração.")
-    # Considerar sair do script se o caminho for essencial e inválido
-    # exit(1)
-
 
 logging.basicConfig(
     level=logging.INFO,
@@ -29,13 +21,13 @@ logging.basicConfig(
 )
 
 # --- Funções de Comunicação com a API ---
-def get_api_config(endpoint):
+def get_full_config():
     try:
-        response = requests.get(f"{API_BASE_URL}/api{endpoint}")
+        response = requests.get(f"{API_BASE_URL}/api/config/all")
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
-        logging.error(f"Erro ao obter configuração do endpoint '{endpoint}': {e}")
+        logging.error(f"Erro ao obter configuração completa da API: {e}")
         return None
 
 def get_book_id(book_name):
@@ -106,7 +98,6 @@ def create_thumbnails(file_list, source_folder, local_thumb_folder):
             thumb_path = os.path.join(local_thumb_folder, thumb_filename)
             
             with Image.open(source_path) as img:
-                # Processar todos os frames do TIF, se houver
                 img.seek(0)
                 img.thumbnail((400, 550))
                 img.convert("RGB").save(thumb_path, "JPEG", quality=85)
@@ -115,7 +106,7 @@ def create_thumbnails(file_list, source_folder, local_thumb_folder):
             logging.error(f"Erro ao criar miniatura para {tif_file}: {e}")
     return thumb_files
 
-def handle_folder(scanner, folder_name, storages, stats):
+def handle_folder(scanner, folder_name, storages, stats, remote_public_thumbs_path):
     folder_path = os.path.join(scanner['scanner_root_folder'], folder_name)
     logging.info(f"--- Processando: {folder_name} (Scanner: {scanner['nome']}) ---")
 
@@ -140,7 +131,6 @@ def handle_folder(scanner, folder_name, storages, stats):
     storage_thumb_folder = os.path.join(target_storage['thumbs_path'], folder_name)
     local_thumb_folder = os.path.join(scanner['local_thumbs_path'], folder_name)
     
-    # Placeholder para o log de transferência
     logId = "temp_log_id"
     
     try:
@@ -155,10 +145,10 @@ def handle_folder(scanner, folder_name, storages, stats):
         for thumb in thumb_filenames:
             shutil.copy2(os.path.join(local_thumb_folder, thumb), os.path.join(storage_thumb_folder, thumb))
 
-        logging.info(f"A copiar {len(thumb_filenames)} miniaturas para a pasta pública central: {REMOTE_PUBLIC_THUMBS_PATH}")
-        os.makedirs(REMOTE_PUBLIC_THUMBS_PATH, exist_ok=True)
+        logging.info(f"A copiar {len(thumb_filenames)} miniaturas para a pasta pública central: {remote_public_thumbs_path}")
+        os.makedirs(remote_public_thumbs_path, exist_ok=True)
         for thumb in thumb_filenames:
-            shutil.copy2(os.path.join(local_thumb_folder, thumb), os.path.join(REMOTE_PUBLIC_THUMBS_PATH, thumb))
+            shutil.copy2(os.path.join(local_thumb_folder, thumb), os.path.join(remote_public_thumbs_path, thumb))
 
     except Exception as e:
         logging.error(f"Erro ao copiar ficheiros para '{folder_name}': {e}. A mover para a pasta de erros.")
@@ -191,12 +181,19 @@ def handle_folder(scanner, folder_name, storages, stats):
 def main():
     logging.info("--- Worker de Scanner iniciado ---")
     
-    scanners = get_api_config('/scanners')
-    storages = get_api_config('/storages')
-    stats = get_api_config('/storages/stats')
+    config_data = get_full_config()
 
-    if not scanners or not storages:
-        logging.error("Não foi possível obter a configuração de scanners ou storages da API. A sair.")
+    if not config_data:
+        logging.error("Não foi possível obter a configuração completa da API. A sair.")
+        return
+        
+    scanners = config_data.get('scanners', [])
+    storages = config_data.get('storages', [])
+    stats = config_data.get('stats', [])
+    remote_public_thumbs_path = config_data.get('remotePublicThumbsPath')
+    
+    if not scanners or not storages or not remote_public_thumbs_path:
+        logging.error("Configuração de scanners, storages ou remotePublicThumbsPath está em falta na resposta da API. A sair.")
         return
 
     for scanner in scanners:
@@ -219,7 +216,7 @@ def main():
         logging.info(f"Encontradas {len(folders_to_process)} pastas: {', '.join(folders_to_process)}")
         
         for folder_name in folders_to_process:
-            handle_folder(scanner, folder_name, storages, stats)
+            handle_folder(scanner, folder_name, storages, stats, remote_public_thumbs_path)
             time.sleep(1)
 
     logging.info("--- Ciclo do worker concluído ---")
@@ -229,5 +226,3 @@ if __name__ == "__main__":
         main()
         logging.info("A aguardar 60 segundos para o próximo ciclo...")
         time.sleep(60)
-
-    

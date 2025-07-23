@@ -1,0 +1,32 @@
+{
+  "server": {
+    "port": 4000
+  },
+  "database": {
+    "host": "SEU_HOST_DA_BASE_DE_DADOS",
+    "user": "SEU_USER_DA_BASE_DE_DADOS",
+    "password": "SUA_PASSWORD_DA_BASE_DE_DADOS",
+    "database": "SEU_NOME_DA_BASE_DE_DADOS",
+    "port": 3306
+  },
+  "folders": {
+    "public_thumbs": "\\\\SEU_SERVIDOR_CENTRAL\\c$\\path\\to\\your\\flowvault-project\\public\\thumbs",
+    "workflow_stages": [
+      "001-storage",
+      "002-toIndexing",
+      "003-indexingStarted",
+      "004-toChecking",
+      "005-checkingStarted",
+      "006-readyForProcessing",
+      "007-inProcessing",
+      "008-processed",
+      "009-finalQualityControl",
+      "010-delivery",
+      "011-pendingValidation",
+      "012-clientRejected",
+      "013-corrected",
+      "014-finalized",
+      "015-archived"
+    ]
+  }
+}
