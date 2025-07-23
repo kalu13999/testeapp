@@ -1,3 +1,4 @@
+
 const express = require('express');
 const mysql = require('mysql2/promise');
 const fs = require('fs');
@@ -59,12 +60,14 @@ async function checkAndCreateFolders() {
         
         // 3. Iterar e criar as pastas para cada storage
         for (const storage of storages) {
-            console.log(`A verificar pastas para o storage em: ${storage.root_path}`);
-            for (const folderName of config.folders.workflow_stages) {
-                const folderPath = path.join(storage.root_path, folderName);
-                if (!fs.existsSync(folderPath)) {
-                    fs.mkdirSync(folderPath, { recursive: true });
-                    console.log(`   -> Criada: ${folderPath}`);
+            if (storage.root_path) {
+                console.log(`A verificar pastas para o storage em: ${storage.root_path}`);
+                for (const folderName of config.folders.workflow_stages) {
+                    const folderPath = path.join(storage.root_path, folderName);
+                    if (!fs.existsSync(folderPath)) {
+                        fs.mkdirSync(folderPath, { recursive: true });
+                        console.log(`   -> Criada: ${folderPath}`);
+                    }
                 }
             }
         }
@@ -90,7 +93,6 @@ app.get('/api/scanners', async (req, res) => {
         res.status(500).json({ error: 'Erro interno ao buscar scanners.' });
     }
 });
-
 
 app.get('/api/storages', async (req, res) => {
     try {
@@ -154,9 +156,16 @@ app.post('/api/scan/complete', async (req, res) => {
         connection = await dbPool.getConnection();
         await connection.beginTransaction();
 
-        const [bookRows] = await connection.query('SELECT projectId, clientId FROM books WHERE id = ?', [bookId]);
+        // CORREÇÃO: Usar JOIN para obter o clientId a partir do projectId
+        const [bookRows] = await connection.query(
+            `SELECT b.projectId, p.clientId 
+             FROM books b
+             JOIN projects p ON b.projectId = p.id
+             WHERE b.id = ?`, 
+            [bookId]
+        );
         if (bookRows.length === 0) {
-            throw new Error(`Livro com ID ${bookId} não encontrado.`);
+            throw new Error(`Livro com ID ${bookId} ou projeto associado não encontrado.`);
         }
         const { projectId, clientId } = bookRows[0];
 
@@ -167,7 +176,7 @@ app.post('/api/scan/complete', async (req, res) => {
                 return [
                     docId,
                     file.fileName,
-                    clientId,
+                    clientId, // Agora temos o clientId correto
                     'Scanned Page', // tipo
                     new Date(), // lastUpdated
                     '[]', // tags
@@ -188,10 +197,10 @@ app.post('/api/scan/complete', async (req, res) => {
         if (statusRows.length === 0) throw new Error("Estado 'Storage' não encontrado.");
         const storageStatusId = statusRows[0].id;
         
-        await connection.query("UPDATE books SET statusId = ?, scanEndTime = NOW() WHERE id = ?", [storageStatusId, bookId]);
+        await connection.query("UPDATE books SET statusId = ?, scanEndTime = NOW(), expectedDocuments = ? WHERE id = ?", [storageStatusId, fileList.length, bookId]);
 
         // 3. Atualizar o log de transferência para 'sucesso'
-        await connection.query("UPDATE log_transferencias SET status = 'sucesso', data_fim = NOW() WHERE id = ?", [logId]);
+        // await connection.query("UPDATE log_transferencias SET status = 'sucesso', data_fim = NOW() WHERE id = ?", [logId]);
 
         await connection.commit();
         res.status(200).json({ message: "Processo de digitalização concluído e registado com sucesso." });
