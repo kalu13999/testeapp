@@ -6,11 +6,7 @@ import time
 import shutil
 import random
 
-# --- Configurações ---
-API_BASE_URL = "http://localhost:4000"
-SYSTEM_USER_ID = "u_system"
-DISTRIBUTION_STRATEGY = 'FIXED'  # Altere para 'PERCENTAGE', 'FIXED', ou 'WEIGHT'
-
+# --- Configurações de Logging ---
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -20,17 +16,24 @@ logging.basicConfig(
     ]
 )
 
+# --- Constantes ---
+API_BASE_URL = "http://localhost:4000"
+DISTRIBUTION_STRATEGY = 'FIXED'  # Alterne para 'PERCENTAGE', 'FIXED', ou 'WEIGHT'
+
 # --- Funções de Comunicação com a API ---
+
 def get_full_config():
+    """Obtém a configuração completa de scanners e storages da API."""
     try:
-        response = requests.get(f"{API_BASE_URL}/api/config/all")
+        response = requests.get(f"{API_BASE_URL}/api/config")
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
-        logging.error(f"Erro ao obter configuração completa da API: {e}")
+        logging.error(f"Erro ao obter configuração da API: {e}")
         return None
 
 def get_book_id(book_name):
+    """Obtém o ID de um livro pelo nome."""
     try:
         response = requests.post(f"{API_BASE_URL}/api/books/byname", json={"bookName": book_name})
         if response.status_code == 200:
@@ -41,7 +44,21 @@ def get_book_id(book_name):
         logging.error(f'Erro de conexão ao buscar bookId para "{book_name}": {e}')
         return None
 
+def upload_thumbnail(thumb_path, original_name):
+    """Faz o upload de uma miniatura para a API."""
+    try:
+        with open(thumb_path, 'rb') as f:
+            files = {'thumbnail': (original_name, f, 'image/jpeg')}
+            data = {'originalName': original_name}
+            response = requests.post(f"{API_BASE_URL}/api/upload/thumbnail", files=files, data=data)
+            response.raise_for_status()
+        return True
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Erro ao fazer upload da miniatura {original_name}: {e}")
+        return False
+
 def complete_scan_process(payload):
+    """Notifica a API que o processo de digitalização foi concluído."""
     try:
         response = requests.post(f"{API_BASE_URL}/api/scan/complete", json=payload)
         response.raise_for_status()
@@ -53,19 +70,18 @@ def complete_scan_process(payload):
         return False
 
 # --- Lógica de Ficheiros e Distribuição ---
-def choose_storage(storages, stats):
-    if not storages:
-        return None
 
+def choose_storage(storages, stats):
+    """Lógica de decisão para escolher o melhor storage."""
+    if not storages: return None
     stats_map = {s['storage_id']: s['total_tifs_enviados'] for s in stats}
     for storage in storages:
         storage['tifs_enviados_hoje'] = stats_map.get(storage['id'], 0)
-
+    
     if DISTRIBUTION_STRATEGY == 'FIXED':
         storages_abaixo_minimo = [s for s in storages if s['tifs_enviados_hoje'] < s['minimo_diario_fixo']]
         if storages_abaixo_minimo:
-            return min(storages_abaixo_minimo, key=lambda s: s['tifs_enviados_hoje'] / s['minimo_diario_fixo'] if s['minimo_diario_fixo'] > 0 else float('inf'))
-    
+            return min(storages_abaixo_minimo, key=lambda s: (s['tifs_enviados_hoje'] / s['minimo_diario_fixo']) if s['minimo_diario_fixo'] > 0 else float('inf'))
     elif DISTRIBUTION_STRATEGY == 'PERCENTAGE':
         total_tifs_hoje = sum(s['tifs_enviados_hoje'] for s in storages)
         storages_abaixo_percentagem = []
@@ -75,14 +91,12 @@ def choose_storage(storages, stats):
                 storages_abaixo_percentagem.append(s)
         if storages_abaixo_percentagem:
             return min(storages_abaixo_percentagem, key=lambda s: (s['tifs_enviados_hoje'] / (total_tifs_hoje + 1)) * 100)
-
-    lista_ponderada = []
-    for storage in storages:
-        lista_ponderada.extend([storage] * storage['peso'])
     
-    return random.choice(lista_ponderada) if lista_ponderada else (random.choice(storages) if storages else None)
+    lista_ponderada = [s for s in storages for _ in range(s.get('peso', 1))]
+    return random.choice(lista_ponderada) if lista_ponderada else None
 
-def create_thumbnails(file_list, source_folder, local_thumb_folder):
+def create_and_upload_thumbnails(tif_files, source_folder, local_thumb_folder, book_name):
+    """Cria miniaturas, guarda localmente e faz o upload para o servidor central."""
     try:
         from PIL import Image
     except ImportError:
@@ -90,23 +104,34 @@ def create_thumbnails(file_list, source_folder, local_thumb_folder):
         return []
 
     os.makedirs(local_thumb_folder, exist_ok=True)
-    thumb_files = []
-    for tif_file in file_list:
+    uploaded_thumbs_info = []
+    for tif_file in tif_files:
         try:
             source_path = os.path.join(source_folder, tif_file)
-            thumb_filename = os.path.splitext(tif_file)[0] + ".jpg"
-            thumb_path = os.path.join(local_thumb_folder, thumb_filename)
+            thumb_filename = f"{os.path.splitext(tif_file)[0]}.jpg"
+            local_thumb_path = os.path.join(local_thumb_folder, thumb_filename)
             
             with Image.open(source_path) as img:
                 img.seek(0)
                 img.thumbnail((400, 550))
-                img.convert("RGB").save(thumb_path, "JPEG", quality=85)
-            thumb_files.append(thumb_filename)
-        except Exception as e:
-            logging.error(f"Erro ao criar miniatura para {tif_file}: {e}")
-    return thumb_files
+                img.convert("RGB").save(local_thumb_path, "JPEG", quality=85)
+            
+            if upload_thumbnail(local_thumb_path, thumb_filename):
+                uploaded_thumbs_info.append({
+                    "originalTif": tif_file,
+                    "imageUrl": f"/thumbs/{thumb_filename}"
+                })
+            else:
+                logging.error(f"Falha no upload da miniatura para {tif_file}, o processo para este livro será abortado.")
+                return None # Aborta se uma miniatura falhar o upload
 
-def handle_folder(scanner, folder_name, storages, stats, remote_public_thumbs_path):
+        except Exception as e:
+            logging.error(f"Erro ao criar/enviar miniatura para {tif_file}: {e}")
+            return None # Aborta o processo do livro
+            
+    return uploaded_thumbs_info
+
+def handle_folder(scanner, folder_name, storages, stats):
     folder_path = os.path.join(scanner['scanner_root_folder'], folder_name)
     logging.info(f"--- Processando: {folder_name} (Scanner: {scanner['nome']}) ---")
 
@@ -122,86 +147,69 @@ def handle_folder(scanner, folder_name, storages, stats, remote_public_thumbs_pa
         return
     logging.info(f"Storage destino: '{target_storage['nome']}' (Estratégia: {DISTRIBUTION_STRATEGY})")
 
-    tif_files = [f for f in os.listdir(folder_path) if f.lower().endswith(('.tif', '.tiff'))]
+    tif_files = sorted([f for f in os.listdir(folder_path) if f.lower().endswith(('.tif', '.tiff'))])
     if not tif_files:
-        logging.warning(f"Nenhum ficheiro .tif/.tiff em '{folder_name}'. A ignorar.")
+        logging.warning(f"Nenhum ficheiro .tif/.tiff em '{folder_name}'. A mover para a pasta de sucesso (vazio).")
+        shutil.move(folder_path, os.path.join(scanner['success_folder'], folder_name))
         return
-        
-    destination_folder = os.path.join(target_storage['root_path'], folder_name)
-    storage_thumb_folder = os.path.join(target_storage['thumbs_path'], folder_name)
-    local_thumb_folder = os.path.join(scanner['local_thumbs_path'], folder_name)
-    
-    logId = "temp_log_id"
-    
-    try:
-        logging.info(f"A criar {len(tif_files)} miniaturas...")
-        thumb_filenames = create_thumbnails(tif_files, folder_path, local_thumb_folder)
 
-        logging.info(f"A copiar {len(tif_files)} ficheiros .tif para: {destination_folder}")
-        shutil.copytree(folder_path, destination_folder, dirs_exist_ok=True)
-
-        logging.info(f"A copiar {len(thumb_filenames)} miniaturas para o storage: {storage_thumb_folder}")
-        os.makedirs(storage_thumb_folder, exist_ok=True)
-        for thumb in thumb_filenames:
-            shutil.copy2(os.path.join(local_thumb_folder, thumb), os.path.join(storage_thumb_folder, thumb))
-
-        logging.info(f"A copiar {len(thumb_filenames)} miniaturas para a pasta pública central: {remote_public_thumbs_path}")
-        os.makedirs(remote_public_thumbs_path, exist_ok=True)
-        for thumb in thumb_filenames:
-            shutil.copy2(os.path.join(local_thumb_folder, thumb), os.path.join(remote_public_thumbs_path, thumb))
-
-    except Exception as e:
-        logging.error(f"Erro ao copiar ficheiros para '{folder_name}': {e}. A mover para a pasta de erros.")
+    # --- Criação e Upload de Miniaturas ---
+    logging.info(f"A criar e a fazer upload de {len(tif_files)} miniaturas...")
+    thumb_info_list = create_and_upload_thumbnails(tif_files, folder_path, scanner['local_thumbs_path'], folder_name)
+    if thumb_info_list is None:
+        logging.error(f"Erro no processamento de miniaturas para '{folder_name}'. A mover para a pasta de erros.")
         shutil.move(folder_path, os.path.join(scanner['error_folder'], folder_name))
         return
 
-    file_list_payload = []
-    for i, tif_name in enumerate(sorted(tif_files)):
-        thumb_name = os.path.splitext(tif_name)[0] + ".jpg"
-        file_list_payload.append({
-            "fileName": f"{folder_name} - Page {i + 1}",
-            "originalFileName": tif_name,
-            "imageUrl": f"/thumbs/{thumb_name}"
-        })
-    
-    scan_complete_payload = {
-        "bookId": book_id,
-        "fileList": file_list_payload,
-        "logId": logId
-    }
+    # --- Cópia para Storage ---
+    try:
+        destination_folder = os.path.join(target_storage['root_path'], "001-storage", folder_name)
+        storage_thumb_folder = os.path.join(target_storage['thumbs_path'], folder_name)
 
+        logging.info(f"A copiar {len(tif_files)} ficheiros .tif para: {destination_folder}")
+        shutil.copytree(folder_path, destination_folder, dirs_exist_ok=True)
+        
+        logging.info(f"A copiar {len(thumb_info_list)} miniaturas locais para o storage: {storage_thumb_folder}")
+        os.makedirs(storage_thumb_folder, exist_ok=True)
+        for thumb_info in thumb_info_list:
+            thumb_filename = os.path.basename(thumb_info['imageUrl'])
+            shutil.copy2(os.path.join(scanner['local_thumbs_path'], thumb_filename), os.path.join(storage_thumb_folder, thumb_filename))
+    
+    except Exception as e:
+        logging.error(f"Erro ao copiar ficheiros para o storage para '{folder_name}': {e}. A mover para a pasta de erros.")
+        shutil.move(folder_path, os.path.join(scanner['error_folder'], folder_name))
+        return
+
+    # --- Finalizar Processo ---
+    scan_complete_payload = { "bookId": book_id, "fileList": thumb_info_list }
     if complete_scan_process(scan_complete_payload):
         logging.info(f"Sucesso! A mover '{folder_name}' para a pasta de concluídos.")
         shutil.move(folder_path, os.path.join(scanner['success_folder'], folder_name))
-        shutil.rmtree(local_thumb_folder, ignore_errors=True)
+        shutil.rmtree(scanner['local_thumbs_path'], ignore_errors=True) # Limpa pasta local de thumbs
     else:
-        logging.error(f"A API retornou um erro para '{folder_name}'. A mover para a pasta de erros.")
+        logging.error(f"A API retornou um erro ao finalizar '{folder_name}'. A mover para a pasta de erros.")
         shutil.move(folder_path, os.path.join(scanner['error_folder'], folder_name))
 
 def main():
     logging.info("--- Worker de Scanner iniciado ---")
     
     config_data = get_full_config()
-
     if not config_data:
-        logging.error("Não foi possível obter a configuração completa da API. A sair.")
+        logging.error("Não foi possível obter a configuração da API. A sair.")
         return
         
     scanners = config_data.get('scanners', [])
     storages = config_data.get('storages', [])
     stats = config_data.get('stats', [])
-    remote_public_thumbs_path = config_data.get('remotePublicThumbsPath')
     
-    if not scanners or not storages or not remote_public_thumbs_path:
-        logging.error("Configuração de scanners, storages ou remotePublicThumbsPath está em falta na resposta da API. A sair.")
+    if not scanners or not storages:
+        logging.error("Configuração de scanners ou storages está em falta. A sair.")
         return
 
     for scanner in scanners:
         logging.info(f"=== Verificando Scanner: {scanner['nome']} em '{scanner['scanner_root_folder']}' ===")
-        
         os.makedirs(scanner['error_folder'], exist_ok=True)
         os.makedirs(scanner['success_folder'], exist_ok=True)
-        os.makedirs(scanner['local_thumbs_path'], exist_ok=True)
         
         try:
             folders_to_process = [d for d in os.listdir(scanner['scanner_root_folder']) if os.path.isdir(os.path.join(scanner['scanner_root_folder'], d)) and not d.startswith('_')]
@@ -214,15 +222,17 @@ def main():
             continue
 
         logging.info(f"Encontradas {len(folders_to_process)} pastas: {', '.join(folders_to_process)}")
-        
         for folder_name in folders_to_process:
-            handle_folder(scanner, folder_name, storages, stats, remote_public_thumbs_path)
+            handle_folder(scanner, folder_name, storages, stats)
             time.sleep(1)
 
     logging.info("--- Ciclo do worker concluído ---")
 
 if __name__ == "__main__":
     while True:
-        main()
+        try:
+            main()
+        except Exception as e:
+            logging.critical(f"Erro fatal no ciclo principal do worker: {e}", exc_info=True)
         logging.info("A aguardar 60 segundos para o próximo ciclo...")
         time.sleep(60)
