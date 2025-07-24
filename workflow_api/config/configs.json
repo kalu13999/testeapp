@@ -1,6 +1,8 @@
 {
   "server": {
-    "port": 4000
+    "port": 4000,
+    "api_base_url": "http://localhost:4000",
+    "public_thumbs_route": "/thumbs"
   },
   "database": {
     "host": "SEU_HOST_DA_BASE_DE_DADOS",
@@ -10,7 +12,7 @@
     "port": 3306
   },
   "folders": {
-    "public_thumbs": "public_thumbs",
+    "public_thumbs_folder": "public_thumbs",
     "workflow_stages": [
       "001-storage",
       "002-toIndexing",

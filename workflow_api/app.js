@@ -16,9 +16,9 @@ const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 const app = express();
 app.use(express.json());
 
-// --- Configuração de Pastas ---
-const publicThumbsPath = path.resolve(__dirname, config.folders.public_thumbs);
-app.use('/thumbs', express.static(publicThumbsPath));
+// --- Configuração de Pastas e Rota Estática ---
+const publicThumbsPath = path.resolve(__dirname, config.folders.public_thumbs_folder);
+app.use(config.server.public_thumbs_route, express.static(publicThumbsPath));
 
 // --- Configuração do Multer para Upload ---
 const storage = multer.memoryStorage();
@@ -60,12 +60,10 @@ async function checkAndCreateFolders() {
         } else {
             for (const storage of storages) {
                 console.log(`A verificar pastas para o storage em: ${storage.root_path}`);
-                // Cria a pasta de thumbs no storage se não existir
                 if (!fs.existsSync(storage.thumbs_path)) {
                     fs.mkdirSync(storage.thumbs_path, { recursive: true });
                     console.log(`   -> Criada pasta de thumbs do storage: ${storage.thumbs_path}`);
                 }
-                // Cria as subpastas de workflow
                 for (const folderName of config.folders.workflow_stages) {
                     const folderPath = path.join(storage.root_path, folderName);
                     if (!fs.existsSync(folderPath)) {
@@ -95,6 +93,7 @@ app.get('/api/scanners', async (req, res) => {
         res.status(500).json({ error: 'Erro interno ao buscar scanners.' });
     }
 });
+
 
 app.get('/api/storages', async (req, res) => {
     try {
@@ -184,7 +183,7 @@ app.post('/api/scan/complete', async (req, res) => {
         await connection.beginTransaction();
 
         const [bookRows] = await connection.query(
-            `SELECT b.name, b.projectId, p.clientId 
+            `SELECT b.name AS bookName, b.projectId, p.clientId 
              FROM books b
              JOIN projects p ON b.projectId = p.id
              WHERE b.id = ?`, 
@@ -193,14 +192,15 @@ app.post('/api/scan/complete', async (req, res) => {
         if (bookRows.length === 0) {
             throw new Error(`Livro com ID ${bookId} ou projeto associado não encontrado.`);
         }
-        const { name: bookName, projectId, clientId } = bookRows[0];
+        const { bookName, projectId, clientId } = bookRows[0];
 
         if (fileList.length > 0) {
             const documentsToInsert = fileList.map((file, index) => {
                 const docId = `doc_${Date.now()}_${Math.random().toString(36).substring(2, 9)}_${index}`;
                 const docName = `${bookName} - Page ${index + 1}`;
-                // O imageUrl agora vem do worker e já tem a estrutura de pasta correta
-                const publicImageUrl = `/thumbs/${encodeURIComponent(bookName)}/${encodeURIComponent(path.basename(file.imageUrl))}`;
+                
+                const thumbUrl = `${config.server.api_base_url}${config.server.public_thumbs_route}/${encodeURIComponent(bookName)}/${encodeURIComponent(file.imageUrl)}`;
+
                 return [
                     docId,
                     docName,
@@ -210,7 +210,7 @@ app.post('/api/scan/complete', async (req, res) => {
                     '[]',
                     projectId,
                     bookId,
-                    publicImageUrl
+                    thumbUrl
                 ];
             });
 
@@ -250,5 +250,3 @@ async function startServer() {
 }
 
 startServer();
-
-    
