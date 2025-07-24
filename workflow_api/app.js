@@ -4,6 +4,7 @@ const mysql = require('mysql2/promise');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
+const cors = require('cors');
 
 // --- Configuração ---
 const configPath = path.join(__dirname, 'config', 'configs.json');
@@ -14,6 +15,7 @@ if (!fs.existsSync(configPath)) {
 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
 const app = express();
+app.use(cors()); // Ativa o CORS para todos os pedidos
 app.use(express.json());
 
 // --- Configuração de Pastas e Rota Estática ---
