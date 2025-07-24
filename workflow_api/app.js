@@ -80,6 +80,11 @@ async function checkAndCreateFolders() {
     }
 }
 
+
+
+function normalizePath(path) {
+  return path.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+}
 // --- Endpoints da API ---
 
 app.get('/api/scanners', async (req, res) => {
@@ -199,7 +204,11 @@ app.post('/api/scan/complete', async (req, res) => {
                 const docId = `doc_${Date.now()}_${Math.random().toString(36).substring(2, 9)}_${index}`;
                 const docName = `${bookName} - Page ${index + 1}`;
                 
-                const thumbUrl = `${config.server.api_base_url}${config.server.public_thumbs_route}/${encodeURIComponent(bookName)}/${encodeURIComponent(file.imageUrl)}`;
+                const baseUrl = config.server.api_base_url.replace(/\/+$/, ''); // remove barra final
+                const publicRoute = normalizePath(config.server.public_thumbs_route);
+                const imagePath = normalizePath(file.imageUrl);
+
+                const thumbUrl = `${baseUrl}/${publicRoute}/${imagePath}`;
 
                 return [
                     docId,

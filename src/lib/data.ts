@@ -23,6 +23,7 @@ export interface DocumentStatus {
     id: string;
     name: string;
     stage: string;
+    folderName: string | null;
 }
 
 export interface Folder {

@@ -131,7 +131,7 @@ def create_and_upload_thumbnails(tif_files, source_folder, local_thumb_folder, b
             if upload_thumbnail(local_thumb_path, thumb_filename, book_name):
                 uploaded_thumbs_info.append({
                     "originalTif": tif_file,
-                    "imageUrl": thumb_filename 
+                    "imageUrl": f"/{book_name}/{thumb_filename}"
                 })
             else:
                 logging.error(f"Falha no upload da miniatura para {tif_file}, o processo para este livro será abortado.")
