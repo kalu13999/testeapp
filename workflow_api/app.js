@@ -82,8 +82,8 @@ async function checkAndCreateFolders() {
 
 
 
-function normalizePath(path) {
-  return path.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+function normalizePath(pathStr) {
+  return pathStr.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
 }
 // --- Endpoints da API ---
 
@@ -175,6 +175,49 @@ app.post('/api/upload/thumbnail', upload.single('thumbnail'), (req, res) => {
     }
 });
 
+app.post('/api/workflow/move', async (req, res) => {
+    const { bookName, fromFolder, toFolder } = req.body;
+
+    if (!bookName || !fromFolder || !toFolder) {
+        return res.status(400).json({ error: 'Os campos bookName, fromFolder e toFolder são obrigatórios.' });
+    }
+
+    try {
+        const [storages] = await dbPool.query("SELECT root_path FROM storages WHERE status = 'ativo'");
+        if (storages.length === 0) {
+            return res.status(500).json({ error: 'Nenhum storage ativo configurado.' });
+        }
+        
+        let folderMoved = false;
+        for (const storage of storages) {
+            const sourcePath = path.join(storage.root_path, fromFolder, bookName);
+            const destinationPath = path.join(storage.root_path, toFolder, bookName);
+
+            if (fs.existsSync(sourcePath)) {
+                try {
+                    fs.renameSync(sourcePath, destinationPath);
+                    logging.info(`Pasta '${bookName}' movida de '${sourcePath}' para '${destinationPath}'`);
+                    folderMoved = true;
+                    break; 
+                } catch (moveError) {
+                    logging.error(`Erro ao mover pasta '${bookName}': ${moveError}`);
+                    return res.status(500).json({ error: `Erro ao mover a pasta: ${moveError.message}` });
+                }
+            }
+        }
+
+        if (folderMoved) {
+            return res.status(200).json({ message: `Pasta '${bookName}' movida com sucesso de '${fromFolder}' para '${toFolder}'.` });
+        } else {
+            return res.status(404).json({ error: `Pasta '${bookName}' não encontrada no estágio '${fromFolder}' em nenhum storage ativo.` });
+        }
+
+    } catch (err) {
+        console.error(`Erro no endpoint /api/workflow/move: ${err}`);
+        res.status(500).json({ error: 'Erro interno do servidor.' });
+    }
+});
+
 
 app.post('/api/scan/complete', async (req, res) => {
     const { bookId, fileList } = req.body;
@@ -205,10 +248,9 @@ app.post('/api/scan/complete', async (req, res) => {
                 const docName = `${bookName} - Page ${index + 1}`;
                 
                 const baseUrl = config.server.api_base_url.replace(/\/+$/, ''); // remove barra final
-                const publicRoute = normalizePath(config.server.public_thumbs_route);
-                const imagePath = normalizePath(file.imageUrl);
-
-                const thumbUrl = `${baseUrl}/${publicRoute}/${imagePath}`;
+                
+                // file.imageUrl já vem como /bookName/thumb.jpg
+                const thumbUrl = `${baseUrl}${config.server.public_thumbs_route}${file.imageUrl}`;
 
                 return [
                     docId,
