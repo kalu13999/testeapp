@@ -153,8 +153,9 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     try {
         const result = await action();
         return result;
-    } catch (error) {
+    } catch (error: any) {
         console.error("A mutation failed:", error);
+        toast({ title: "Operation Failed", description: error.message, variant: "destructive" });
     } finally {
         setIsMutating(false);
     }
@@ -921,35 +922,25 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     return await response.json();
   }, [statuses]);
 
-  const moveBookFolder = React.useCallback(async (book: EnrichedBook, currentStatusName: string, nextStatusName: string) => {
-    await withMutation(async () => {
-      try {
-        const response = await fetch(`/api/workflow/move`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            bookName: book.name,
-            fromStatus: currentStatusName,
-            toStatus: nextStatusName,
-          }),
-        });
+  const moveBookFolder = React.useCallback(async (bookName: string, fromStatus: string, toStatus: string) => {
+    const apiUrl = process.env.NEXT_PUBLIC_WORKFLOW_API_URL;
+    if (!apiUrl) {
+      console.warn("Workflow API URL not configured. Physical folder move will be skipped.");
+      return { success: true };
+    }
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to move book folder.');
-        }
-
-      } catch (error: any) {
-        console.error("Folder move failed:", error);
-        toast({
-          title: "Physical Folder Move Failed",
-          description: `The book's status was updated, but the physical folder could not be moved. Reason: ${error.message}`,
-          variant: "destructive"
-        });
-        // Note: The state update in the DB is not reverted here. This would require more complex transaction logic.
-      }
+    const response = await fetch(`${apiUrl}/api/workflow/move`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bookName, fromStatus, toStatus }),
     });
-  }, [toast]);
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to move book folder.');
+    }
+    return { success: true };
+  }, []);
   
   const handleMarkAsShipped = (bookIds: string[]) => {
     withMutation(async () => {
@@ -1027,32 +1018,38 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     withMutation(async () => {
       const book = rawBooks.find(b => b.id === bookId);
       if (!book || !book.projectId) return;
+      
       const workflow = projectWorkflows[book.projectId] || [];
       const currentStageKey = findStageKeyFromStatus(currentStatus);
       if (!currentStageKey) { toast({title: "Workflow Error", description: `Cannot find workflow stage for status "${currentStatus}".`, variant: "destructive"}); return; }
+      
       const nextStageKey = getNextEnabledStage(currentStageKey, workflow);
       if (!nextStageKey) {
+        await moveBookFolder(book.name, currentStatus, 'Complete');
         const updatedBook = await updateBookStatus(bookId, 'Complete');
         setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
         logAction('Workflow End', `Book "${book.name}" has completed the workflow.`, { bookId });
         toast({title: "Workflow Complete", description: "This is the final step for this project."});
         return;
       }
+      
       const nextStageConfig = STAGE_CONFIG[nextStageKey];
       const newStatusName = nextStageConfig.dataStatus || nextStageConfig.dataStage;
       if (!newStatusName) { toast({title: "Workflow Error", description: `Next stage "${nextStageKey}" has no configured status.`, variant: "destructive"}); return; }
+      
+      // First, try to move the physical folder
+      await moveBookFolder(book.name, currentStatus, newStatusName);
+
+      // If successful, update the database
       const additionalUpdates: Partial<RawBook> = {};
       if (currentStatus === 'Scanning Started') additionalUpdates.scanEndTime = getDbSafeDate();
       if (currentStatus === 'Indexing Started') { additionalUpdates.indexingEndTime = getDbSafeDate(); if(!book.indexingStartTime) additionalUpdates.indexingStartTime = getDbSafeDate(); }
       if (currentStatus === 'Checking Started') { additionalUpdates.qcEndTime = getDbSafeDate(); if(!book.qcStartTime) additionalUpdates.qcStartTime = getDbSafeDate(); }
+      
       const updatedBook = await updateBookStatus(bookId, newStatusName, additionalUpdates);
       setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
       logAction('Workflow Step', `Book "${book.name}" moved from ${currentStatus} to ${newStatusName}.`, { bookId });
       toast({ title: "Workflow Action", description: `Book moved to ${newStatusName}.` });
-
-      if (enrichedBooks.find(b => b.id === bookId)) {
-        await moveBookFolder(enrichedBooks.find(b => b.id === bookId)!, currentStatus, newStatusName);
-      }
     });
   };
 
@@ -1061,25 +1058,28 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       const user = users.find(u => u.id === userId);
       const book = rawBooks.find(b => b.id === bookId);
       if (!user || !book || !book.projectId) return;
-      const workflow = projectWorkflows[book.projectId] || [];
+
       const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
       if (!currentStatusName) return;
       const currentStageKey = findStageKeyFromStatus(currentStatusName);
       if (!currentStageKey) return;
-      const nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
-      let newStatusName = '', logMsg = '', updates: Partial<RawBook> = {};
-      if (role === 'scanner') { newStatusName = STAGE_CONFIG[nextStatusKey || 'to-scan']?.dataStatus || 'To Scan'; updates.scannerUserId = userId; logMsg = 'Assigned to Scanner'; }
-      else if (role === 'indexer') { newStatusName = STAGE_CONFIG[nextStatusKey || 'to-indexing']?.dataStatus || 'To Indexing'; updates.indexerUserId = userId; logMsg = 'Assigned to Indexer'; }
-      else if (role === 'qc') { newStatusName = STAGE_CONFIG[nextStatusKey || 'to-checking']?.dataStatus || 'To Checking'; updates.qcUserId = userId; updates.indexingEndTime = getDbSafeDate(); if(!book.indexingStartTime) updates.indexingStartTime = getDbSafeDate(); logMsg = 'Assigned for QC'; }
+      
+      const nextStageKey = getNextEnabledStage(currentStageKey, projectWorkflows[book.projectId] || []);
+      if (!nextStageKey) return;
+
+      const newStatusName = STAGE_CONFIG[nextStageKey]?.dataStatus || 'Unknown';
+      
+      let logMsg = '', updates: Partial<RawBook> = {};
+      if (role === 'scanner') { updates.scannerUserId = userId; logMsg = 'Assigned to Scanner'; }
+      else if (role === 'indexer') { updates.indexerUserId = userId; logMsg = 'Assigned to Indexer'; }
+      else if (role === 'qc') { updates.qcUserId = userId; logMsg = 'Assigned for QC'; }
+      
+      await moveBookFolder(book.name, currentStatusName, newStatusName);
+      
       const updatedBook = await updateBookStatus(bookId, newStatusName, updates);
       setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
       logAction(logMsg, `Book "${book.name}" assigned to ${user.name}.`, { bookId });
       toast({ title: "Book Assigned", description: `Assigned to ${user.name} for ${role}.` });
-
-      const fullUpdatedBook = enrichedBooks.find(b => b.id === bookId);
-      if (fullUpdatedBook) {
-        await moveBookFolder(fullUpdatedBook, currentStatusName, newStatusName);
-      }
     });
   };
 
