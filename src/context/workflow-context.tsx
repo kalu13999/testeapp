@@ -920,6 +920,36 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     if (!response.ok) throw new Error('Failed to update book status');
     return await response.json();
   }, [statuses]);
+
+  const moveBookFolder = React.useCallback(async (book: EnrichedBook, currentStatusName: string, nextStatusName: string) => {
+    await withMutation(async () => {
+      try {
+        const response = await fetch(`/api/workflow/move`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bookName: book.name,
+            fromStatus: currentStatusName,
+            toStatus: nextStatusName,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to move book folder.');
+        }
+
+      } catch (error: any) {
+        console.error("Folder move failed:", error);
+        toast({
+          title: "Physical Folder Move Failed",
+          description: `The book's status was updated, but the physical folder could not be moved. Reason: ${error.message}`,
+          variant: "destructive"
+        });
+        // Note: The state update in the DB is not reverted here. This would require more complex transaction logic.
+      }
+    });
+  }, [toast]);
   
   const handleMarkAsShipped = (bookIds: string[]) => {
     withMutation(async () => {
@@ -1019,6 +1049,10 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
       logAction('Workflow Step', `Book "${book.name}" moved from ${currentStatus} to ${newStatusName}.`, { bookId });
       toast({ title: "Workflow Action", description: `Book moved to ${newStatusName}.` });
+
+      if (enrichedBooks.find(b => b.id === bookId)) {
+        await moveBookFolder(enrichedBooks.find(b => b.id === bookId)!, currentStatus, newStatusName);
+      }
     });
   };
 
@@ -1041,6 +1075,11 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
       logAction(logMsg, `Book "${book.name}" assigned to ${user.name}.`, { bookId });
       toast({ title: "Book Assigned", description: `Assigned to ${user.name} for ${role}.` });
+
+      const fullUpdatedBook = enrichedBooks.find(b => b.id === bookId);
+      if (fullUpdatedBook) {
+        await moveBookFolder(fullUpdatedBook, currentStatusName, newStatusName);
+      }
     });
   };
 

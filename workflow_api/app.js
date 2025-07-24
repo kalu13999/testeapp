@@ -176,14 +176,30 @@ app.post('/api/upload/thumbnail', upload.single('thumbnail'), (req, res) => {
 });
 
 app.post('/api/workflow/move', async (req, res) => {
-    const { bookName, fromFolder, toFolder } = req.body;
+    const { bookName, fromStatus, toStatus } = req.body;
+    let connection;
 
-    if (!bookName || !fromFolder || !toFolder) {
-        return res.status(400).json({ error: 'Os campos bookName, fromFolder e toFolder são obrigatórios.' });
+    if (!bookName || !fromStatus || !toStatus) {
+        return res.status(400).json({ error: 'Os campos bookName, fromStatus e toStatus são obrigatórios.' });
     }
 
     try {
-        const [logRows] = await dbPool.query(
+        connection = await dbPool.getConnection();
+        
+        const [statusRows] = await connection.query(
+            `SELECT name, folderName FROM document_statuses WHERE name IN (?, ?)`,
+            [fromStatus, toStatus]
+        );
+        
+        const fromFolder = statusRows.find(r => r.name === fromStatus)?.folderName;
+        const toFolder = statusRows.find(r => r.name === toStatus)?.folderName;
+
+        if (!fromFolder || !toFolder) {
+            logging.info(`Transição de '${fromStatus}' para '${toStatus}' é puramente lógica. Nenhum ficheiro movido.`);
+            return res.status(200).json({ message: "Transição lógica, nenhuma pasta movida." });
+        }
+        
+        const [logRows] = await connection.query(
             `SELECT s.root_path 
              FROM log_transferencias lt
              JOIN storages s ON lt.storage_id = s.id
@@ -212,7 +228,6 @@ app.post('/api/workflow/move', async (req, res) => {
         if (fs.existsSync(destinationPath)) {
             const warningMessage = `A pasta de destino '${destinationPath}' já existe. A pasta de origem não será movida para evitar sobreposição.`;
             console.warn(warningMessage);
-            // Consideramos sucesso parcial, pois o estado pode já ter sido movido.
             return res.status(200).json({ message: warningMessage });
         }
         
@@ -223,6 +238,8 @@ app.post('/api/workflow/move', async (req, res) => {
     } catch (err) {
         console.error(`Erro no endpoint /api/workflow/move para o livro '${bookName}':`, err);
         res.status(500).json({ error: 'Erro interno do servidor ao tentar mover a pasta.' });
+    } finally {
+        if (connection) connection.release();
     }
 });
 
