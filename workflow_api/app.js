@@ -183,46 +183,55 @@ app.post('/api/workflow/move', async (req, res) => {
     }
 
     try {
-        const [storages] = await dbPool.query("SELECT root_path FROM storages WHERE status = 'ativo'");
-        if (storages.length === 0) {
-            return res.status(500).json({ error: 'Nenhum storage ativo configurado.' });
+        const [logRows] = await dbPool.query(
+            `SELECT s.root_path 
+             FROM log_transferencias lt
+             JOIN storages s ON lt.storage_id = s.id
+             WHERE lt.nome_pasta = ? AND lt.status = 'sucesso'
+             ORDER BY lt.data_fim DESC
+             LIMIT 1`,
+            [bookName]
+        );
+
+        if (logRows.length === 0) {
+            const errorMessage = `Nenhum registo de transferência bem-sucedida encontrado para o livro '${bookName}'. A pasta não pode ser movida.`;
+            console.error(errorMessage);
+            return res.status(404).json({ error: errorMessage });
+        }
+
+        const { root_path } = logRows[0];
+        const sourcePath = path.join(root_path, fromFolder, bookName);
+        const destinationPath = path.join(root_path, toFolder, bookName);
+
+        if (!fs.existsSync(sourcePath)) {
+            const errorMessage = `A pasta de origem '${sourcePath}' não foi encontrada no storage. O movimento foi abortado.`;
+            console.error(errorMessage);
+            return res.status(404).json({ error: errorMessage });
         }
         
-        let folderMoved = false;
-        for (const storage of storages) {
-            const sourcePath = path.join(storage.root_path, fromFolder, bookName);
-            const destinationPath = path.join(storage.root_path, toFolder, bookName);
-
-            if (fs.existsSync(sourcePath)) {
-                try {
-                    fs.renameSync(sourcePath, destinationPath);
-                    logging.info(`Pasta '${bookName}' movida de '${sourcePath}' para '${destinationPath}'`);
-                    folderMoved = true;
-                    break; 
-                } catch (moveError) {
-                    logging.error(`Erro ao mover pasta '${bookName}': ${moveError}`);
-                    return res.status(500).json({ error: `Erro ao mover a pasta: ${moveError.message}` });
-                }
-            }
+        if (fs.existsSync(destinationPath)) {
+            const warningMessage = `A pasta de destino '${destinationPath}' já existe. A pasta de origem não será movida para evitar sobreposição.`;
+            console.warn(warningMessage);
+            // Consideramos sucesso parcial, pois o estado pode já ter sido movido.
+            return res.status(200).json({ message: warningMessage });
         }
-
-        if (folderMoved) {
-            return res.status(200).json({ message: `Pasta '${bookName}' movida com sucesso de '${fromFolder}' para '${toFolder}'.` });
-        } else {
-            return res.status(404).json({ error: `Pasta '${bookName}' não encontrada no estágio '${fromFolder}' em nenhum storage ativo.` });
-        }
+        
+        fs.renameSync(sourcePath, destinationPath);
+        console.log(`Pasta '${bookName}' movida de '${sourcePath}' para '${destinationPath}'.`);
+        return res.status(200).json({ message: `Pasta '${bookName}' movida com sucesso de '${fromFolder}' para '${toFolder}'.` });
 
     } catch (err) {
-        console.error(`Erro no endpoint /api/workflow/move: ${err}`);
-        res.status(500).json({ error: 'Erro interno do servidor.' });
+        console.error(`Erro no endpoint /api/workflow/move para o livro '${bookName}':`, err);
+        res.status(500).json({ error: 'Erro interno do servidor ao tentar mover a pasta.' });
     }
 });
 
 
 app.post('/api/scan/complete', async (req, res) => {
-    const { bookId, fileList } = req.body;
-    if (!bookId || !fileList || !Array.isArray(fileList)) {
-        return res.status(400).json({ error: 'bookId e fileList (array) são obrigatórios.' });
+    const { bookId, fileList, storageId, scannerId } = req.body;
+
+    if (!bookId || !fileList || !Array.isArray(fileList) || !storageId || !scannerId) {
+        return res.status(400).json({ error: 'bookId, fileList (array), storageId e scannerId são obrigatórios.' });
     }
 
     let connection;
@@ -246,22 +255,11 @@ app.post('/api/scan/complete', async (req, res) => {
             const documentsToInsert = fileList.map((file, index) => {
                 const docId = `doc_${Date.now()}_${Math.random().toString(36).substring(2, 9)}_${index}`;
                 const docName = `${bookName} - Page ${index + 1}`;
-                
-                const baseUrl = config.server.api_base_url.replace(/\/+$/, ''); // remove barra final
-                
-                // file.imageUrl já vem como /bookName/thumb.jpg
-                const thumbUrl = `${baseUrl}${config.server.public_thumbs_route}${file.imageUrl}`;
+                const thumbUrl = `${config.server.api_base_url}${config.server.public_thumbs_route}${file.imageUrl}`;
 
                 return [
-                    docId,
-                    docName,
-                    clientId,
-                    'Scanned Page',
-                    new Date(),
-                    '[]',
-                    projectId,
-                    bookId,
-                    thumbUrl
+                    docId, docName, clientId, 'Scanned Page', new Date(), '[]',
+                    projectId, bookId, thumbUrl
                 ];
             });
 
@@ -275,7 +273,17 @@ app.post('/api/scan/complete', async (req, res) => {
         if (statusRows.length === 0) throw new Error("Estado 'Storage' não encontrado.");
         const storageStatusId = statusRows[0].id;
         
-        await connection.query("UPDATE books SET statusId = ?, scanEndTime = NOW(), expectedDocuments = ? WHERE id = ?", [storageStatusId, fileList.length, bookId]);
+        await connection.query(
+            "UPDATE books SET statusId = ?, scanEndTime = NOW(), expectedDocuments = ? WHERE id = ?", 
+            [storageStatusId, fileList.length, bookId]
+        );
+
+        // Registar na tabela log_transferencias
+        await connection.query(
+            `INSERT INTO log_transferencias (nome_pasta, bookId, total_tifs, storage_id, scanner_id, status, data_fim) 
+             VALUES (?, ?, ?, ?, ?, 'sucesso', NOW())`,
+            [bookName, bookId, fileList.length, storageId, scannerId]
+        );
 
         await connection.commit();
         res.status(200).json({ message: "Processo de digitalização concluído e registado com sucesso." });

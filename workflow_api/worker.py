@@ -127,7 +127,6 @@ def create_and_upload_thumbnails(tif_files, source_folder, local_thumb_folder, b
                 img.thumbnail((400, 550))
                 img.convert("RGB").save(local_thumb_path, "JPEG", quality=85)
             
-            # Envia o nome do livro junto com a miniatura
             if upload_thumbnail(local_thumb_path, thumb_filename, book_name):
                 uploaded_thumbs_info.append({
                     "originalTif": tif_file,
@@ -191,7 +190,12 @@ def handle_folder(scanner, folder_name, storages, stats):
         return
 
     # --- Finalizar Processo ---
-    scan_complete_payload = { "bookId": book_id, "fileList": thumb_info_list }
+    scan_complete_payload = { 
+        "bookId": book_id, 
+        "fileList": thumb_info_list,
+        "storageId": target_storage['id'],
+        "scannerId": scanner['id']
+    }
     if complete_scan_process(scan_complete_payload):
         logging.info(f"Sucesso! A mover '{folder_name}' para a pasta de concluídos.")
         shutil.move(folder_path, os.path.join(scanner['success_folder'], folder_name))
