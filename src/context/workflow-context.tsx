@@ -926,20 +926,24 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     const apiUrl = process.env.NEXT_PUBLIC_WORKFLOW_API_URL;
     if (!apiUrl) {
       console.warn("Workflow API URL not configured. Physical folder move will be skipped.");
-      return { success: true };
+      return;
     }
+    
+    try {
+        const response = await fetch(`${apiUrl}/api/workflow/move`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bookName, fromStatus, toStatus }),
+        });
 
-    const response = await fetch(`${apiUrl}/api/workflow/move`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bookName, fromStatus, toStatus }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to move book folder.');
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `Failed to move folder. API responded with status ${response.status}`);
+        }
+    } catch (error: any) {
+        console.error("Error calling workflow API to move folder:", error);
+        throw new Error(error.message || "An unknown error occurred while moving the folder.");
     }
-    return { success: true };
   }, []);
   
   const handleMarkAsShipped = (bookIds: string[]) => {
@@ -960,6 +964,11 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const handleConfirmReception = (bookId: string) => {
     withMutation(async () => {
       try {
+        const book = rawBooks.find(b => b.id === bookId);
+        if (!book) return;
+
+        await moveBookFolder(book.name, 'In Transit', 'Received');
+
         const updatedBook = await updateBookStatus(bookId, 'Received');
         setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
         logAction('Reception Confirmed', `Book "${updatedBook.name}" has been marked as received.`, { bookId });
@@ -1025,7 +1034,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       
       const nextStageKey = getNextEnabledStage(currentStageKey, workflow);
       if (!nextStageKey) {
-        await moveBookFolder(book.name, currentStatus, 'Complete');
         const updatedBook = await updateBookStatus(bookId, 'Complete');
         setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
         logAction('Workflow End', `Book "${book.name}" has completed the workflow.`, { bookId });
@@ -1037,10 +1045,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       const newStatusName = nextStageConfig.dataStatus || nextStageConfig.dataStage;
       if (!newStatusName) { toast({title: "Workflow Error", description: `Next stage "${nextStageKey}" has no configured status.`, variant: "destructive"}); return; }
       
-      // First, try to move the physical folder
       await moveBookFolder(book.name, currentStatus, newStatusName);
-
-      // If successful, update the database
+      
       const additionalUpdates: Partial<RawBook> = {};
       if (currentStatus === 'Scanning Started') additionalUpdates.scanEndTime = getDbSafeDate();
       if (currentStatus === 'Indexing Started') { additionalUpdates.indexingEndTime = getDbSafeDate(); if(!book.indexingStartTime) additionalUpdates.indexingStartTime = getDbSafeDate(); }
@@ -1111,6 +1117,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       else if (role === 'indexing') { newStatusName = STAGE_CONFIG[nextStatusKey || 'indexing-started']?.dataStatus || 'Indexing Started'; updates.indexingStartTime = getDbSafeDate(); logMsg = 'Indexing Started'; }
       else if (role === 'qc') { newStatusName = STAGE_CONFIG[nextStatusKey || 'checking-started']?.dataStatus || 'Checking Started'; updates.qcStartTime = getDbSafeDate(); logMsg = 'Checking Started'; }
       
+      await moveBookFolder(book.name, currentStatusName, newStatusName);
       const updatedBook = await updateBookStatus(bookId, newStatusName, updates);
       setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
       
@@ -1133,6 +1140,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       if (!updateKey) return;
       const update = updates[updateKey];
       
+      await moveBookFolder(book.name, currentStatus, update.bookStatus);
       const updatedBook = await updateBookStatus(bookId, update.bookStatus, update.clearFields);
       setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
 
@@ -1167,6 +1175,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       const nextStage = getNextEnabledStage('ready-for-processing', workflow) || 'in-processing';
       const newStatus = STAGE_CONFIG[nextStage]?.dataStatus || STAGE_CONFIG[nextStage]?.dataStage || 'In Processing';
       try {
+          await moveBookFolder(book.name, 'Ready for Processing', newStatus);
           const response = await fetch('/api/processing-logs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookId }) });
           if (!response.ok) throw new Error('Failed to start processing log');
           const newLog = await response.json();
@@ -1191,6 +1200,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       const nextStage = getNextEnabledStage('in-processing', workflow) || 'processed';
       const newStatus = STAGE_CONFIG[nextStage]?.dataStatus || STAGE_CONFIG[nextStage]?.dataStage || 'Processed';
       try {
+          await moveBookFolder(book.name, 'In Processing', newStatus);
           const updatedLogData = { status: 'Complete', progress: 100, log: `${log.log}\n[${new Date().toLocaleTimeString()}] Processing complete.`, lastUpdate: getDbSafeDate() };
           const response = await fetch(`/api/processing-logs/${log.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updatedLogData) });
           if (!response.ok) throw new Error('Failed to update processing log');
@@ -1214,6 +1224,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       if (!book) return;
       const isApproval = action === 'approve';
       const newStatus = isApproval ? 'Finalized' : 'Client Rejected';
+      await moveBookFolder(book.name, 'Pending Validation', newStatus);
       const updatedBook = await updateBookStatus(bookId, newStatus, { rejectionReason: isApproval ? undefined : reason });
       setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
       logAction(`Client ${isApproval ? 'Approval' : 'Rejection'}`, isApproval ? `Book "${book?.name}" approved.` : `Book "${book?.name}" rejected. Reason: ${reason}`, { bookId });
@@ -1228,6 +1239,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       const workflow = projectWorkflows[book.projectId] || [];
       const nextStageKey = getNextEnabledStage('finalized', workflow) || 'archive';
       const newStatus = STAGE_CONFIG[nextStageKey]?.dataStatus || STAGE_CONFIG[nextStageKey]?.dataStage || 'Archived';
+      await moveBookFolder(book.name, 'Finalized', newStatus);
       const updatedBook = await updateBookStatus(bookId, newStatus);
       setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
       logAction('Book Archived', `Book "${book?.name}" was finalized and moved to ${newStatus}.`, { bookId });
@@ -1242,6 +1254,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       const workflow = projectWorkflows[book.projectId] || [];
       const nextStageKey = getNextEnabledStage('client-rejections', workflow) || 'corrected';
       const newStatus = STAGE_CONFIG[nextStageKey]?.dataStatus || STAGE_CONFIG[nextStageKey]?.dataStage || 'Corrected';
+      await moveBookFolder(book.name, 'Client Rejected', newStatus);
       const updatedBook = await updateBookStatus(bookId, newStatus);
       setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
       logAction('Marked as Corrected', `Book "${book.name}" marked as corrected after client rejection.`, { bookId });
@@ -1253,6 +1266,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     withMutation(async () => {
       const book = rawBooks.find(b => b.id === bookId);
       if (!book) return;
+      await moveBookFolder(book.name, 'Corrected', targetStage);
       const updatedBook = await updateBookStatus(bookId, targetStage);
       setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
       logAction('Book Resubmitted', `Book "${book?.name}" resubmitted to ${targetStage}.`, { bookId });
