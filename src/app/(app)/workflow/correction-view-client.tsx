@@ -474,6 +474,6 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
     </Dialog>
     </>
   )
-
+}
     
 
