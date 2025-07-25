@@ -87,9 +87,9 @@ export default function SettingsClient() {
     toast({ title: "Profile Updated", description: "Your profile information has been saved." });
   };
 
-  const onPasswordSubmit = (data: PasswordFormValues) => {
+  const onPasswordSubmit = async (data: PasswordFormValues) => {
     if (!currentUser) return;
-    const success = changePassword(currentUser.id, data.currentPassword, data.newPassword);
+    const success = await changePassword(currentUser.id, data.currentPassword, data.newPassword);
     if (success) {
       passwordForm.reset();
     }
