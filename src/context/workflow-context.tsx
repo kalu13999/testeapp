@@ -951,9 +951,20 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         }
     } catch (error: any) {
         console.error("Error calling workflow API to move folder:", error);
+        if (error.message.includes('Nenhum registo de transferência bem-sucedida encontrado')) {
+          const book = rawBooks.find(b => b.name === bookName);
+          const bookId = book?.id;
+          logAction('System Alert', `Failed to move folder for '${bookName}': Location in storage is unknown. Please check transfer logs.`, { bookId });
+          toast({
+            title: "Folder Location Unknown",
+            description: `Could not determine the physical location for the book "${bookName}". An alert has been logged for administrators.`,
+            variant: "destructive",
+            duration: 10000,
+          });
+        }
         throw new Error(error.message || "An unknown error occurred while moving the folder.");
     }
-  }, []);
+  }, [logAction, toast, rawBooks]);
   
   const handleMarkAsShipped = (bookIds: string[]) => {
     withMutation(async () => {
