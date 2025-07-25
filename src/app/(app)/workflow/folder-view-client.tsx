@@ -443,29 +443,8 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     }
   }
 
-  const handleBulkComplete = () => {
-    if (selection.length === 0) return;
-    openConfirmationDialog({
-      title: `Complete ${selection.length} tasks?`,
-      description: "This will mark all selected books as complete and move them to the next stage.",
-      onConfirm: () => {
-        selection.forEach(bookId => {
-          const book = groupedByBook[bookId]?.book;
-          if (book) handleMoveBookToNextStage(book.id, book.status);
-        });
-        setSelection([]);
-      }
-    });
-  };
-
   const handleBulkAction = () => {
     if (selection.length === 0) return;
-
-    if (stage === 'storage') {
-        openBulkAssignmentDialog('indexer');
-        return;
-    }
-    
     const firstBook = groupedByBook[selection[0]]?.book;
     if (!firstBook) return;
 
@@ -500,28 +479,9 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     });
   }
   
-  const isCancelable = ['Scanning Started', 'Indexing Started', 'Checking Started'].includes(config.dataStatus as string);
-  
   const renderBulkActions = () => {
     if (selection.length === 0) return null;
-
-    if (isCancelable) {
-        return (
-            <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">{selection.length} selected</span>
-                <Button variant="destructive" size="sm" onClick={() => handleBulkAction()}>
-                    <Undo2 className="mr-2 h-4 w-4" /> Cancel Selected
-                </Button>
-                <Button variant="default" size="sm" onClick={handleBulkComplete}>
-                    <CheckCheck className="mr-2 h-4 w-4" /> Mark Selected as Complete
-                </Button>
-            </div>
-        );
-    }
     
-    const firstSelected = Object.values(groupedByBook).find(g => g.book.id === selection[0])?.book;
-    if (!firstSelected) return null;
-
     if (stage === 'pending-deliveries') {
       return (
          <div className="flex items-center gap-2">
@@ -550,6 +510,8 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
         </div>
       );
     } else if (config.actionButtonLabel && stage !== 'archive') {
+      const firstSelected = Object.values(groupedByBook).find(g => g.book.id === selection[0])?.book;
+      if (!firstSelected) return null;
       const actionLabel = getDynamicActionButtonLabel(firstSelected);
       const isDisabled = selection.some(bookId => groupedByBook[bookId]?.hasError || actionLabel === "End of Workflow");
       

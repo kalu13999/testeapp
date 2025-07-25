@@ -462,6 +462,21 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     setSelection([]);
   };
 
+  const handleBulkComplete = () => {
+    if (selection.length === 0) return;
+    openConfirmationDialog({
+      title: `Complete ${selection.length} tasks?`,
+      description: "This will mark all selected books as complete and move them to the next stage.",
+      onConfirm: () => {
+        selection.forEach(bookId => {
+          const book = allDisplayItems.find(b => b.id === bookId) as EnrichedBook;
+          if (book) handleMoveBookToNextStage(book.id, book.status);
+        });
+        setSelection([]);
+      }
+    });
+  };
+
   const handleBulkAction = () => {
     if (selection.length === 0) return;
     const firstSelected = allDisplayItems.find(item => item.id === selection[0]) as EnrichedBook;
@@ -745,7 +760,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
   const renderBulkActions = () => {
     if (selection.length === 0) return null;
-    
+
     if (isCancelable) {
         return (
             <div className="flex items-center gap-2">
@@ -753,6 +768,11 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                 <Button variant="destructive" size="sm" onClick={handleBulkCancel}>
                     <Undo2 className="mr-2 h-4 w-4" /> Cancel Selected
                 </Button>
+                 {['indexing-started', 'checking-started'].includes(stage) && (
+                    <Button variant="default" size="sm" onClick={handleBulkComplete}>
+                        <CheckCheck className="mr-2 h-4 w-4" /> Mark Selected as Complete
+                    </Button>
+                )}
             </div>
         );
     }
