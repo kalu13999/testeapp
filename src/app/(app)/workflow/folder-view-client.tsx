@@ -443,6 +443,21 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     }
   }
 
+  const handleBulkComplete = () => {
+    if (selection.length === 0) return;
+    openConfirmationDialog({
+      title: `Complete ${selection.length} tasks?`,
+      description: "This will mark all selected books as complete and move them to the next stage.",
+      onConfirm: () => {
+        selection.forEach(bookId => {
+          const book = groupedByBook[bookId]?.book;
+          if (book) handleMoveBookToNextStage(book.id, book.status);
+        });
+        setSelection([]);
+      }
+    });
+  };
+
   const handleBulkAction = () => {
     if (selection.length === 0) return;
 
@@ -484,64 +499,83 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
       }
     });
   }
-
+  
+  const isCancelable = ['Scanning Started', 'Indexing Started', 'Checking Started'].includes(config.dataStatus as string);
+  
   const renderBulkActions = () => {
     if (selection.length === 0) return null;
-    
-    const disabled = selection.some(bookId => groupedByBook[bookId]?.hasError);
-    let actionButton = null;
 
-    if (stage === 'storage') {
-       return (
+    if (isCancelable) {
+        return (
+            <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">{selection.length} selected</span>
+                <Button variant="destructive" size="sm" onClick={() => handleBulkAction()}>
+                    <Undo2 className="mr-2 h-4 w-4" /> Cancel Selected
+                </Button>
+                <Button variant="default" size="sm" onClick={handleBulkComplete}>
+                    <CheckCheck className="mr-2 h-4 w-4" /> Mark Selected as Complete
+                </Button>
+            </div>
+        );
+    }
+    
+    const firstSelected = Object.values(groupedByBook).find(g => g.book.id === selection[0])?.book;
+    if (!firstSelected) return null;
+
+    if (stage === 'pending-deliveries') {
+      return (
+         <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">{selection.length} selected</span>
+            <Button size="sm" onClick={handleBulkAction}>
+              <ThumbsUp className="mr-2 h-4 w-4" /> Approve Selected
+            </Button>
+         </div>
+      );
+    } else if (stage === 'corrected') {
+      return (
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">{selection.length} selected</span>
-          <Button size="sm" onClick={() => openBulkAssignmentDialog('indexer')}>
-            <UserPlus className="mr-2 h-4 w-4" />
-            Assign Selected for Indexing
-          </Button>
+            <span className="text-sm text-muted-foreground">{selection.length} selected</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm">
+                  <Send className="mr-2 h-4 w-4" /> Resubmit Selected To...
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => handleBulkResubmit('To Indexing')}>Indexing</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleBulkResubmit('To Checking')}>Quality Control</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleBulkResubmit('Delivery')}>Delivery</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
+      );
+    } else if (config.actionButtonLabel && stage !== 'archive') {
+      const actionLabel = getDynamicActionButtonLabel(firstSelected);
+      const isDisabled = selection.some(bookId => groupedByBook[bookId]?.hasError || actionLabel === "End of Workflow");
+      
+      if(stage === 'storage') {
+        return (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">{selection.length} selected</span>
+            <Button size="sm" onClick={() => openBulkAssignmentDialog('indexer')}>
+              <UserPlus className="mr-2 h-4 w-4" /> Assign Selected for Indexing
+            </Button>
+          </div>
+        );
+      }
+
+      return (
+        <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">{selection.length} selected</span>
+            <Button size="sm" onClick={handleBulkAction} disabled={isDisabled}>
+                {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
+                {actionLabel} ({selection.length})
+            </Button>
         </div>
       );
     }
-    
-    if (stage === 'pending-deliveries') {
-      actionButton = (
-        <Button size="sm" onClick={handleBulkAction}>
-          <ThumbsUp className="mr-2 h-4 w-4" /> Approve Selected
-        </Button>
-      );
-    } else if (stage === 'corrected') {
-      actionButton = (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size="sm">
-              <Send className="mr-2 h-4 w-4" /> Resubmit Selected To...
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => handleBulkResubmit('To Indexing')}>Indexing</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleBulkResubmit('To Checking')}>Quality Control</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleBulkResubmit('Delivery')}>Delivery</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
-    } else if (config.actionButtonLabel && stage !== 'archive') {
-      const firstBook = groupedByBook[selection[0]]?.book;
-      if (!firstBook) return null;
-      const label = getDynamicActionButtonLabel(firstBook);
-      actionButton = (
-         <Button size="sm" onClick={handleBulkAction} disabled={disabled || label === "End of Workflow"}>
-          {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
-          {label} ({selection.length})
-        </Button>
-      );
-    }
 
-    return (
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-muted-foreground">{selection.length} selected</span>
-        {actionButton}
-      </div>
-    );
+    return null;
   }
 
   const getPagesForBook = (bookId: string) => {
