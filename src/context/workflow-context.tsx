@@ -961,6 +961,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             variant: "destructive",
             duration: 10000,
           });
+          return;
         }
         throw new Error(error.message || "An unknown error occurred while moving the folder.");
     }
@@ -1373,3 +1374,4 @@ export function useAppContext() {
   }
   return context;
 }
+
