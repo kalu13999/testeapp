@@ -7,6 +7,9 @@ import ProcessingViewClient from "../processing-view-client";
 import { STAGE_CONFIG } from "@/lib/workflow-config";
 
 export default async function WorkflowStagePage({ params }: { params: { stage: string } }) {
+    // Force a microtask delay to ensure params are fully resolved.
+    await new Promise(resolve => setTimeout(resolve, 0));
+    
     const { stage } = params;
     const config = STAGE_CONFIG[stage as keyof typeof STAGE_CONFIG];
     if (!config) {
@@ -27,4 +30,3 @@ export default async function WorkflowStagePage({ params }: { params: { stage: s
     
     return <WorkflowClient config={config} stage={stage} />;
 }
-
