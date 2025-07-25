@@ -71,7 +71,7 @@ interface WorkflowClientProps {
     actionButtonLabel?: string;
     actionButtonIcon?: keyof typeof iconMap;
     emptyStateText: string;
-    dataStatus?: string | string[]; // For books
+    dataStatus?: string; // For books
     dataStage?: string; // For documents
     assigneeRole?: 'scanner' | 'indexer' | 'qc';
   };
@@ -159,8 +159,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     let items: (EnrichedBook | AppDocument)[];
     
     if (dataType === 'book' && dataStatus) {
-      const statuses = Array.isArray(dataStatus) ? dataStatus : [dataStatus];
-      items = books.filter(book => statuses.includes(book.status));
+      items = books.filter(book => book.status === dataStatus);
     } else if (dataType === 'document' && dataStage) {
       items = documents.filter(doc => doc.status === dataStage);
     } else {
@@ -777,7 +776,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         );
     }
     
-    const firstSelected = allDisplayItems.find(item => item.id === selection[0]);
+    const firstSelected = allDisplayItems.find(item => item.id === selection[0]) as EnrichedBook;
     if (!firstSelected || dataType !== 'book') return null;
 
     const actionDetails = getDynamicActionButton(firstSelected as EnrichedBook);
