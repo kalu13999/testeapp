@@ -31,9 +31,11 @@ export default function DocumentDetailClient({ docId }: { docId: string }) {
 
     const [flagDialogState, setFlagDialogState] = React.useState<{
         open: boolean;
+        docId: string | null;
+        docName: string | null;
         flag: AppDocument['flag'];
         comment: string;
-    }>({ open: false, flag: null, comment: '' });
+    }>({ open: false, docId: null, docName: null, flag: null, comment: '' });
     
     const documentAuditLogs = React.useMemo(() => {
         let logs = auditLogs.filter(log => log.documentId === docId);
@@ -98,22 +100,24 @@ export default function DocumentDetailClient({ docId }: { docId: string }) {
         )
     }
 
-    const openFlagDialog = (flag: NonNullable<AppDocument['flag']>) => {
-        if (!document) return;
+    const openFlagDialog = (doc: AppDocument, flag: NonNullable<AppDocument['flag']>) => {
+        if (!doc) return;
         setFlagDialogState({
             open: true,
+            docId: doc.id,
+            docName: doc.name,
             flag: flag,
-            comment: document.flagComment || '',
+            comment: doc.flagComment || '',
         });
     };
 
     const closeFlagDialog = () => {
-        setFlagDialogState({ open: false, flag: null, comment: '' });
+        setFlagDialogState({ open: false, docId: null, docName: null, flag: null, comment: '' });
     };
 
     const handleFlagSubmit = () => {
-        if (document && flagDialogState.flag) {
-            updateDocumentFlag(document.id, flagDialogState.flag, flagDialogState.comment);
+        if (flagDialogState.docId && flagDialogState.flag) {
+            updateDocumentFlag(flagDialogState.docId, flagDialogState.flag, flagDialogState.comment);
         }
         closeFlagDialog();
     };
@@ -190,13 +194,13 @@ export default function DocumentDetailClient({ docId }: { docId: string }) {
                             <CardDescription>Mark this document with a status. Errors will block workflow progression.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-2">
-                            <Button variant="destructive" className="w-full" onClick={() => openFlagDialog('error')}>
+                            <Button variant="destructive" className="w-full" onClick={() => openFlagDialog(document, 'error')}>
                                 <ShieldAlert className="mr-2 h-4 w-4" /> Mark with Error
                             </Button>
-                            <Button variant="secondary" className="w-full" onClick={() => openFlagDialog('warning')}>
+                            <Button variant="secondary" className="w-full" onClick={() => openFlagDialog(document, 'warning')}>
                                 <AlertTriangle className="mr-2 h-4 w-4" /> Mark with Warning
                             </Button>
-                            <Button variant="outline" className="w-full" onClick={() => openFlagDialog('info')}>
+                            <Button variant="outline" className="w-full" onClick={() => openFlagDialog(document, 'info')}>
                                 <InfoIcon className="mr-2 h-4 w-4" /> Mark with Info
                             </Button>
                             {document.flag && (
