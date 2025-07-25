@@ -306,7 +306,7 @@ export default function BookManagementClient() {
     setImportJson("");
   }
 
-  const handleSave = (values: Omit<RawBook, 'id' | 'projectId' | 'status'>) => {
+  const handleSave = (values: Omit<RawBook, 'id' | 'projectId' | 'statusId'>) => {
     if (dialogState.type === 'new' && selectedProjectId) {
       addBook(selectedProjectId, values);
     } else if (dialogState.type === 'edit' && dialogState.data) {
