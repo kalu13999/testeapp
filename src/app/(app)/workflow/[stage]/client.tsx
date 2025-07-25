@@ -155,6 +155,15 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const userPermissions = currentUser ? permissions[currentUser.role] || [] : [];
   const canViewAll = userPermissions.includes('/workflow/view-all') || userPermissions.includes('*');
 
+  const getAssigneeIdForBook = (book: EnrichedBook, role: AssignmentRole): string | undefined => {
+    switch (role) {
+        case 'scanner': return book.scannerUserId;
+        case 'indexer': return book.indexerUserId;
+        case 'qc': return book.qcUserId;
+        default: return undefined;
+    }
+  };
+
   const allDisplayItems = React.useMemo(() => {
     let items: (EnrichedBook | AppDocument)[];
     
@@ -171,7 +180,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     if (currentUser && config.assigneeRole && dataType === 'book' && !canViewAll) {
         if (isSharedQueue) {
             items = (items as EnrichedBook[]).filter(book => {
-                const assigneeId = book[(config.assigneeRole as AssignmentRole) + 'UserId'];
+                const assigneeId = getAssigneeIdForBook(book, config.assigneeRole as AssignmentRole);
                 return assigneeId === currentUser.id || !assigneeId;
             });
         } else {
@@ -182,7 +191,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
             }[config.assigneeRole] || [];
 
             items = (items as EnrichedBook[]).filter(book =>
-                book[(config.assigneeRole as AssignmentRole) + 'UserId'] === currentUser.id && statusesForRole.includes(book.status)
+                getAssigneeIdForBook(book, config.assigneeRole as AssignmentRole) === currentUser.id && statusesForRole.includes(book.status)
             );
         }
     }
@@ -191,11 +200,10 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         return (items as EnrichedBook[]).map(book => {
             let assigneeName = '—';
             if(config.assigneeRole) {
-                const role = config.assigneeRole as keyof typeof book;
-                const userId = book[`${role}UserId` as keyof EnrichedBook] as string | undefined;
+                const assigneeId = getAssigneeIdForBook(book, config.assigneeRole);
 
-                if (userId) {
-                    const user = users.find(u => u.id === userId);
+                if (assigneeId) {
+                    const user = users.find(u => u.id === assigneeId);
                     assigneeName = user?.name || 'Unknown';
                 } else if (isSharedQueue) {
                     assigneeName = 'Unassigned';
@@ -430,7 +438,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   
   const closeBulkAssignmentDialog = () => {
     setBulkAssignState({ open: false, role: null });
-    setSelectedUserId("");
+    setAssignmentState(prev => ({...prev, selectedUserId: ''})); // Reset user ID
   };
 
   const handleConfirmBulkAssignment = () => {
@@ -450,6 +458,8 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     closeBulkAssignmentDialog();
     setSelection([]);
   };
+
+  const isCancelable = ['Scanning Started', 'Indexing Started', 'Checking Started'].includes(config.dataStatus as string);
 
   const handleBulkCancel = () => {
     selection.forEach(id => {
@@ -498,8 +508,6 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
       });
     }
   };
-
-  const isCancelable = ['Scanning Started', 'Indexing Started', 'Checking Started'].includes(config.dataStatus as string);
 
   const handleActionClick = (book: EnrichedBook) => {
     if (stage === 'confirm-reception') {
@@ -1042,7 +1050,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+            <Select value={assignmentState.selectedUserId} onValueChange={(val) => setAssignmentState(s => ({...s, selectedUserId: val}))}>
               <SelectTrigger>
                 <SelectValue placeholder={`Select an ${bulkAssignState.role}...`} />
               </SelectTrigger>
@@ -1055,7 +1063,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeBulkAssignmentDialog}>Cancel</Button>
-            <Button onClick={handleConfirmBulkAssignment} disabled={!selectedUserId}>
+            <Button onClick={handleConfirmBulkAssignment} disabled={!assignmentState.selectedUserId}>
               Assign and Confirm
             </Button>
           </DialogFooter>
