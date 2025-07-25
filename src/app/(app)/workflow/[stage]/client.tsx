@@ -145,6 +145,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const [assignState, setAssignState] = React.useState<{ open: boolean; book: EnrichedBook | null; role: AssignmentRole | null }>({ open: false, book: null, role: null });
   const [bulkAssignState, setBulkAssignState] = React.useState<{ open: boolean; role: AssignmentRole | null }>({ open: false, role: null });
   const [selectedUserId, setSelectedUserId] = React.useState<string>("");
+  const [selectedBulkUserId, setSelectedBulkUserId] = React.useState<string>("");
   const [detailsState, setDetailsState] = React.useState<{ open: boolean; book?: EnrichedBook }>({ open: false });
   const [currentPage, setCurrentPage] = React.useState(1);
   const [columnFilters, setColumnFilters] = React.useState<{ [key: string]: string }>({});
@@ -163,7 +164,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         default: return undefined;
     }
   };
-
+  
   const allDisplayItems = React.useMemo(() => {
     let items: (EnrichedBook | AppDocument)[];
     
@@ -403,12 +404,13 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     setScanState({ open: false, book: null, folderName: null, fileCount: null });
   }
   
-  const getAssignableUsers = (role: AssignmentRole, projectId: string) => {
+  const getAssignableUsers = (role: AssignmentRole, projectId?: string) => {
       const requiredPermission = assignmentConfig[role].permission;
       return users.filter(user => {
         if (user.role === 'Admin') return false; 
         const userPermissions = permissions[user.role] || [];
         const hasPermission = userPermissions.includes('*') || userPermissions.includes(requiredPermission);
+        if (!projectId) return hasPermission;
         const hasProjectAccess = !user.projectIds || user.projectIds.length === 0 || user.projectIds.includes(projectId);
         return hasPermission && hasProjectAccess;
       });
@@ -438,12 +440,12 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   
   const closeBulkAssignmentDialog = () => {
     setBulkAssignState({ open: false, role: null });
-    setAssignmentState(prev => ({...prev, selectedUserId: ''})); // Reset user ID
+    setSelectedBulkUserId('');
   };
 
   const handleConfirmBulkAssignment = () => {
     const role = bulkAssignState.role;
-    if (!selectedUserId || !role) {
+    if (!selectedBulkUserId || !role) {
       toast({ title: "No User Selected", description: "Please select a user to assign the books.", variant: "destructive" });
       return;
     }
@@ -451,7 +453,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     selection.forEach(bookId => {
       const book = allDisplayItems.find(b => b.id === bookId) as EnrichedBook;
       if (book) {
-        handleAssignUser(book.id, selectedUserId, role);
+        handleAssignUser(book.id, selectedBulkUserId, role);
       }
     });
 
@@ -1050,7 +1052,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <Select value={assignmentState.selectedUserId} onValueChange={(val) => setAssignmentState(s => ({...s, selectedUserId: val}))}>
+            <Select value={selectedBulkUserId} onValueChange={setSelectedBulkUserId}>
               <SelectTrigger>
                 <SelectValue placeholder={`Select an ${bulkAssignState.role}...`} />
               </SelectTrigger>
@@ -1063,7 +1065,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeBulkAssignmentDialog}>Cancel</Button>
-            <Button onClick={handleConfirmBulkAssignment} disabled={!assignmentState.selectedUserId}>
+            <Button onClick={handleConfirmBulkAssignment} disabled={!selectedBulkUserId}>
               Assign and Confirm
             </Button>
           </DialogFooter>
