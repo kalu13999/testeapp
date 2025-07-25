@@ -127,6 +127,15 @@ const OPERATOR_ROLES = ["Operator", "QC Specialist", "Reception", "Scanning", "I
 
 const getDbSafeDate = () => new Date().toISOString().slice(0, 19).replace('T', ' ');
 
+const openLocalApp = (protocol: string, data: Record<string, string>) => {
+  const queryString = new URLSearchParams(data).toString();
+  const url = `${protocol}://start?${queryString}`;
+  // Use a timeout to avoid blocking the UI thread if the protocol is not handled.
+  setTimeout(() => {
+    window.location.href = url;
+  }, 100);
+};
+
 export function AppProvider({ children }: { children: React.ReactNode; }) {
   const [loading, setLoading] = React.useState(true);
   const [isMutating, setIsMutating] = React.useState(false);
@@ -1105,7 +1114,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const handleStartTask = (bookId: string, role: 'scanner' | 'indexing' | 'qc') => {
     withMutation(async () => {
       const book = rawBooks.find(b => b.id === bookId);
-      if (!book || !book.projectId) return;
+      if (!book || !book.projectId || !currentUser) return;
       const workflow = projectWorkflows[book.projectId] || [];
       const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
       if (!currentStatusName) return;
@@ -1123,6 +1132,12 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       
       logAction(logMsg, `${logMsg} process initiated for book.`, { bookId });
       toast({ title: logMsg });
+
+      if (role === 'indexing') {
+        openLocalApp('rfs-indexing-app', { bookId: book.id, userId: currentUser.id });
+      } else if (role === 'qc') {
+        openLocalApp('rfs-check-app', { bookId: book.id, userId: currentUser.id });
+      }
     });
   };
 
