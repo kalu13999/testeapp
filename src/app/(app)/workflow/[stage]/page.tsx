@@ -6,7 +6,8 @@ import CorrectionViewClient from "../correction-view-client";
 import ProcessingViewClient from "../processing-view-client";
 import { STAGE_CONFIG } from "@/lib/workflow-config";
 
-export default async function WorkflowStagePage({ params: { stage } }: { params: { stage: string } }) {
+export default async function WorkflowStagePage({ params }: { params: { stage: string } }) {
+    const { stage } = params;
     const config = STAGE_CONFIG[stage as keyof typeof STAGE_CONFIG];
     if (!config) {
         notFound();
