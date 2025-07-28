@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { getConnection, releaseConnection } from '@/lib/db';
 import type { PoolConnection } from 'mysql2/promise';
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
-    const projectId = params.id;
+export async function PUT(request: Request, { params }: { params: { projectId: string } }) {
+    const { projectId } = params;
     const { workflow } = await request.json();
 
     if (!projectId || !Array.isArray(workflow)) {
