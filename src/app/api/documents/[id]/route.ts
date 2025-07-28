@@ -48,10 +48,22 @@ export async function PATCH(request: Request, { params }: { params: { id: string
             return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
         }
 
-        const valuesToUpdate = { ...body };
-        // Handle tags array by stringifying it
-        if (valuesToUpdate.tags && Array.isArray(valuesToUpdate.tags)) {
-          valuesToUpdate.tags = JSON.stringify(valuesToUpdate.tags);
+        const valuesToUpdate: { [key: string]: any } = {};
+        fieldsToUpdate.forEach(field => {
+            if (field === 'tags' && Array.isArray(body[field])) {
+                valuesToUpdate[field] = JSON.stringify(body[field]);
+            } else if (field === 'flag' && body[field] === null) {
+                valuesToUpdate[field] = null;
+            } else {
+                valuesToUpdate[field] = body[field];
+            }
+        });
+        
+        if (body.flag === null) {
+            valuesToUpdate.flagComment = null;
+            if (!fieldsToUpdate.includes('flagComment')) {
+                fieldsToUpdate.push('flagComment');
+            }
         }
 
         const setClause = fieldsToUpdate.map(field => `${field} = ?`).join(', ');

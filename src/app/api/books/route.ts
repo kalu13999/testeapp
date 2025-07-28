@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import { getConnection, releaseConnection } from '@/lib/db';
 import type { PoolConnection } from 'mysql2/promise';
@@ -65,11 +66,18 @@ export async function POST(request: Request) {
         // Handle single book creation
         if (body.book && body.projectId) {
             const { projectId, book } = body;
-            const newBook: Omit<RawBook, 'id'> & {id: string} = {
-                id: `book_${Date.now()}`,
+             const newId = `book_${Date.now()}`;
+            const newBook = {
+                id: newId,
+                name: book.name,
                 statusId: book.statusId || 'ds_1', // Pending Shipment
+                expectedDocuments: book.expectedDocuments,
                 projectId,
-                ...book
+                priority: book.priority || 'Medium',
+                info: book.info || '',
+                author: book.author || null,
+                isbn: book.isbn || null,
+                publicationYear: book.publicationYear || null,
             };
             
             const bookInsertQuery = `
@@ -77,14 +85,14 @@ export async function POST(request: Request) {
               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `;
 
-            await connection.execute(bookInsertQuery, [
-                newBook.id, newBook.name, newBook.statusId, newBook.expectedDocuments, newBook.projectId,
-                newBook.priority, newBook.info, newBook.author, newBook.isbn, newBook.publicationYear
-            ]);
+            await connection.execute(bookInsertQuery, Object.values(newBook));
             
             await connection.commit();
+            
+            const [rows] = await connection.execute('SELECT * FROM books WHERE id = ?', [newId]);
+
             releaseConnection(connection);
-            return NextResponse.json(newBook, { status: 201 });
+            return NextResponse.json(Array.isArray(rows) ? rows[0] : null, { status: 201 });
         }
         
         await connection.rollback();

@@ -39,7 +39,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
-import { STAGE_CONFIG, findStageKeyFromStatus } from "@/lib/workflow-config";
+import { STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage } from "@/lib/workflow-config";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -488,28 +488,34 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     });
   };
 
-  const handleBulkAction = () => {
-    if (selection.length === 0) return;
-    const firstSelected = allDisplayItems.find(item => item.id === selection[0]) as EnrichedBook;
-
-    if (SIMPLE_BULK_ACTION_STAGES.includes(stage)) {
-      const onConfirm = () => {
-        selection.forEach(bookId => {
-          const book = allDisplayItems.find(b => b.id === bookId) as EnrichedBook;
-          if (book) {
-            handleMoveBookToNextStage(book.id, book.status);
-          }
-        });
-        setSelection([]);
-      };
-
-      openConfirmationDialog({
-        title: `Perform action for ${selection.length} books?`,
-        description: `This will move all selected books to the next step.`,
-        onConfirm,
-      });
+  const handleMainAction = (book: EnrichedBook) => {
+    if (!book.projectId) {
+        toast({ title: "Error", description: "Project ID not found for this book.", variant: "destructive" });
+        return;
     }
-  };
+    
+    const workflow = projectWorkflows[book.projectId] || [];
+    const currentStageKey = findStageKeyFromStatus(book.status);
+    if (!currentStageKey) {
+        toast({ title: "Workflow Error", description: `Cannot find a workflow stage for status: "${book.status}"`, variant: "destructive" });
+        return;
+    }
+    
+    const nextStage = getNextEnabledStage(currentStageKey, workflow);
+    
+    if (!nextStage) {
+      handleMoveBookToNextStage(book.id, book.status); // Will handle "End of Workflow" case
+      return;
+    }
+    
+    const nextStageConfig = STAGE_CONFIG[nextStage];
+
+    if (nextStageConfig?.assigneeRole) {
+      openAssignmentDialog(book, nextStageConfig.assigneeRole);
+    } else {
+       handleMoveBookToNextStage(book.id, book.status);
+    }
+  }
 
   const handleActionClick = (book: EnrichedBook) => {
     if (stage === 'confirm-reception') {
@@ -560,7 +566,6 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
             
             const nextStageKey = getNextEnabledStage(currentStageKey, workflow);
             if (!nextStageKey) {
-                toast({ title: "Workflow End", description: "This is the last configured step for this project." });
                 handleMoveBookToNextStage(book.id, book.status);
                 return;
             }
@@ -599,6 +604,62 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     }
 };
 
+  const getDynamicActionButtonLabel = React.useCallback((book: EnrichedBook) => {
+    if (config.actionButtonLabel) return config.actionButtonLabel;
+    if (!book.projectId) return "Next Step";
+    
+    const workflow = projectWorkflows[book.projectId] || [];
+    const currentStageKey = findStageKeyFromStatus(book.status);
+    if (!currentStageKey) return "Next Step";
+    
+    const nextStageKey = getNextEnabledStage(currentStageKey, workflow);
+    if (!nextStageKey) return "End of Workflow";
+    
+    const nextStageConfig = STAGE_CONFIG[nextStageKey];
+    if (nextStageConfig.assigneeRole) return `Assign for ${nextStageConfig.title}`;
+    return `Move to ${nextStageConfig.title}`;
+  }, [config.actionButtonLabel, projectWorkflows, getNextEnabledStage]);
+  
+  const determineNextActionType = React.useCallback((book: EnrichedBook): 'ASSIGN' | 'MOVE' | 'FOLDER_SELECT' | 'END' => {
+      if (!book.projectId) return 'MOVE';
+      const workflow = projectWorkflows[book.projectId] || [];
+      const currentStageKey = findStageKeyFromStatus(book.status);
+      if (!currentStageKey) return 'MOVE';
+      if(currentStageKey === 'scanning-started') return 'FOLDER_SELECT';
+      const nextStage = getNextEnabledStage(currentStageKey, workflow);
+      if (!nextStage) return 'END';
+      const nextStageConfig = STAGE_CONFIG[nextStage];
+      return nextStageConfig.assigneeRole ? 'ASSIGN' : 'MOVE';
+  }, [projectWorkflows, getNextEnabledStage]);
+
+  const handleBulkAction = () => {
+    if (selection.length === 0) return;
+    const firstBook = allDisplayItems.find(item => item.id === selection[0]) as EnrichedBook;
+    if (!firstBook) return;
+
+    const actionType = determineNextActionType(firstBook);
+
+    if (actionType === 'ASSIGN') {
+        const role = STAGE_CONFIG[getNextEnabledStage(findStageKeyFromStatus(firstBook.status)!, projectWorkflows[firstBook.projectId] || [])!]?.assigneeRole;
+        if(role) openBulkAssignmentDialog(role);
+    } else if (actionType === 'FOLDER_SELECT') {
+        toast({ title: "Bulk Action Not Supported", description: "This action must be performed individually for each book.", variant: "destructive" });
+    } else {
+        const actionLabel = getDynamicActionButtonLabel(firstBook);
+        openConfirmationDialog({
+            title: `Perform action on ${selection.length} books?`,
+            description: `This will perform "${actionLabel}" for all selected books.`,
+            onConfirm: () => {
+                selection.forEach(bookId => {
+                    const book = allDisplayItems.find(b => b.id === bookId) as EnrichedBook;
+                    if (book) handleMainAction(book);
+                });
+                setSelection([]);
+            }
+        });
+    }
+  };
+  
   const getDynamicActionButton = (book: EnrichedBook): { label: string, icon: LucideIcon, disabled: boolean } | null => {
       if (processingBookIds.includes(book.id)) {
         return { label: "Processing...", icon: Loader2, disabled: true };
@@ -797,7 +858,10 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         return processingBookIds.includes(bookId) || getDynamicActionButton(book)?.disabled;
     });
 
-    if (SIMPLE_BULK_ACTION_STAGES.includes(stage)) {
+    if (SIMPLE_BULK_ACTION_STAGES.includes(stage) || stage === 'already-received') {
+        const actionType = determineNextActionType(firstSelected);
+        if (actionType === 'FOLDER_SELECT') return null; // Disable bulk for folder select
+
         return (
             <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">{selection.length} selected</span>
@@ -834,12 +898,12 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                         <DropdownMenuLabel>Export Selected ({selection.length})</DropdownMenuLabel>
                         <DropdownMenuItem onSelect={() => exportXLSX(selectedItems)} disabled={selection.length === 0}>Export as XLSX</DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => exportJSON(selectedItems)} disabled={selection.length === 0}>Export as JSON</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => exportCSV(selectedItems)} disabled={selection.length === 0}>Export as CSV</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportCSV(selectedItems, Object.keys(selectedItems[0] || {}))} disabled={selection.length === 0}>Export as CSV</DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuLabel>Export All ({sortedAndFilteredItems.length})</DropdownMenuLabel>
                         <DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredItems)} disabled={sortedAndFilteredItems.length === 0}>Export as XLSX</DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredItems)} disabled={sortedAndFilteredItems.length === 0}>Export as JSON</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredItems)} disabled={sortedAndFilteredItems.length === 0}>Export as CSV</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredItems, Object.keys(sortedAndFilteredItems[0] || {}))} disabled={sortedAndFilteredItems.length === 0}>Export as CSV</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
@@ -1013,21 +1077,21 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
       </DialogContent>
     </Dialog>
 
-    {assignState.role && assignState.book && (
-      <Dialog open={assignState.open} onOpenChange={closeAssignmentDialog}>
+    <Dialog open={assignState.open} onOpenChange={closeAssignmentDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{assignmentConfig[assignState.role].title} for "{assignState.book?.name}"</DialogTitle>
-            <DialogDescription>{assignmentConfig[assignState.role].description}</DialogDescription>
+            <DialogTitle>{assignState.role ? assignmentConfig[assignState.role].title : 'Assign User'} for "{assignState.book?.name}"</DialogTitle>
+            <DialogDescription>{assignState.role ? assignmentConfig[assignState.role].description : ''}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <Select value={selectedUserId} onValueChange={setSelectedUserId}>
               <SelectTrigger>
-                <SelectValue placeholder={`Select a ${assignState.role}...`} />
+                <SelectValue placeholder={`Select an ${assignState.role}...`} />
               </SelectTrigger>
               <SelectContent>
-                {getAssignableUsers(assignState.role, assignState.book.projectId).map(user => (
-                  <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+                {assignState.role && assignState.book && 
+                  getAssignableUsers(assignState.role, assignState.book.projectId).map(user => (
+                    <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -1040,13 +1104,11 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    )}
     
-    {bulkAssignState.role && (
-      <Dialog open={bulkAssignState.open} onOpenChange={closeBulkAssignmentDialog}>
+    <Dialog open={bulkAssignState.open} onOpenChange={closeBulkAssignmentDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{assignmentConfig[bulkAssignState.role].title} for {selection.length} Books</DialogTitle>
+            <DialogTitle>{bulkAssignState.role ? assignmentConfig[bulkAssignState.role].title : 'Assign User'} for {selection.length} Books</DialogTitle>
             <DialogDescription>
                 Select a user to process all selected books. They will be added to their personal queue.
             </DialogDescription>
@@ -1057,8 +1119,8 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
                 <SelectValue placeholder={`Select an ${bulkAssignState.role}...`} />
               </SelectTrigger>
               <SelectContent>
-                 {getAssignableUsers(bulkAssignState.role, (allDisplayItems.find(item => item.id === selection[0]) as EnrichedBook)?.projectId).map(user => (
-                  <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+                {bulkAssignState.role && getAssignableUsers(bulkAssignState.role).map(user => (
+                    <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -1070,40 +1132,32 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
-    )}
-
-     <Dialog open={detailsState.open} onOpenChange={() => setDetailsState({ open: false, book: undefined })}>
+    </Dialog>
+    
+    <Dialog open={flagDialogState.open} onOpenChange={closeFlagDialog}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Book Details</DialogTitle>
-            <DialogDescription>{detailsState.book?.name}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4 text-sm">
-            <DetailItem label="Book" value={<Link href={`/books/${detailsState.book?.id}`} className="text-primary hover:underline">{detailsState.book?.name}</Link>} />
-            <DetailItem label="Project" value={detailsState.book?.projectName} />
-            <DetailItem label="Client" value={detailsState.book?.clientName} />
-            <Separator />
-            <DetailItem label="Author" value={detailsState.book?.author || '—'} />
-            <DetailItem label="ISBN" value={detailsState.book?.isbn || '—'} />
-            <DetailItem label="Publication Year" value={detailsState.book?.publicationYear || '—'} />
-            <Separator />
-            <DetailItem label="Priority" value={detailsState.book?.priority || '—'} />
-            <DetailItem label="Expected Pages" value={detailsState.book?.expectedDocuments} />
-            <DetailItem label="Scanned Pages" value={detailsState.book?.documentCount} />
-            <Separator />
-            {detailsState.book?.info && (
-               <div className="pt-2 grid grid-cols-1 gap-2">
-                <p className="text-muted-foreground">Additional Info</p>
-                <p className="font-medium whitespace-pre-wrap">{detailsState.book.info}</p>
-              </div>
-            )}
-          </div>
-           <DialogFooter>
-              <Button type="button" variant="secondary" onClick={() => setDetailsState({ open: false, book: undefined })}>Close</Button>
-          </DialogFooter>
+            <DialogHeader>
+                <DialogTitle>Flag Document: "{flagDialogState.docName}"</DialogTitle>
+                <DialogDescription>
+                    Provide a comment for the flag. This will be visible to the team.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 py-4">
+                <Label htmlFor="flag-comment">Comment</Label>
+                <Textarea
+                    id="flag-comment"
+                    placeholder={`Reason for the ${flagDialogState.flag}...`}
+                    value={flagDialogState.comment}
+                    onChange={(e) => setFlagDialogState(prev => ({...prev, comment: e.target.value}))}
+                    className="min-h-[100px]"
+                />
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={closeFlagDialog}>Cancel</Button>
+                <Button onClick={handleFlagSubmit} disabled={!flagDialogState.comment.trim()}>Save Comment</Button>
+            </DialogFooter>
         </DialogContent>
-      </Dialog>
+    </Dialog>
     </>
   )
 }
