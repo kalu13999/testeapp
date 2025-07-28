@@ -763,9 +763,21 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
   const updateProjectWorkflow = (projectId: string, workflow: string[]) => {
     withMutation(async () => {
-      setProjectWorkflows(prev => ({ ...prev, [projectId]: workflow }));
-      logAction('Project Workflow Updated', `Workflow for project ID ${projectId} was updated.`, {});
-      toast({ title: "Project Workflow Updated" });
+      try {
+        const response = await fetch(`/api/project-workflows/${projectId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ workflow }),
+        });
+        if (!response.ok) throw new Error("Failed to update workflow on the server.");
+        
+        setProjectWorkflows(prev => ({ ...prev, [projectId]: workflow }));
+        logAction('Project Workflow Updated', `Workflow for project ID ${projectId} was updated.`, {});
+        toast({ title: "Project Workflow Updated" });
+      } catch (error) {
+        console.error(error);
+        toast({ title: "Error", description: "Could not save workflow changes.", variant: "destructive" });
+      }
     });
   };
 
@@ -1396,5 +1408,6 @@ export function useAppContext() {
   }
   return context;
 }
+
 
 
