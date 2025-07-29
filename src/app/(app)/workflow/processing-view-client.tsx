@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import * as React from "react"
@@ -15,7 +16,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Loader2, BookOpen, Clock, CheckCircle, XCircle } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { Progress } from "@/components/ui/progress";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import type { EnrichedBook, ProcessingBatch, ProcessingBatchItem, ProcessingLog } from "@/lib/data";
 import { format } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
