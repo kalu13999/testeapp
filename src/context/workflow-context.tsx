@@ -3,7 +3,7 @@
 "use client"
 
 import * as React from 'react';
-import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions, ProjectWorkflows, RejectionTag, DocumentStatus } from '@/lib/data';
+import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions, ProjectWorkflows, RejectionTag, DocumentStatus, ProcessingBatch, ProcessingBatchItem } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { WORKFLOW_SEQUENCE, STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage } from '@/lib/workflow-config';
 import * as dataApi from '@/lib/data';
@@ -52,6 +52,8 @@ type AppContextType = {
   books: EnrichedBook[];
   documents: AppDocument[];
   auditLogs: EnrichedAuditLog[];
+  processingBatches: ProcessingBatch[];
+  processingBatchItems: ProcessingBatchItem[];
   processingLogs: ProcessingLog[];
   roles: string[];
   permissions: Permissions;
@@ -110,8 +112,8 @@ type AppContextType = {
   handleStartTask: (bookId: string, role: 'scanner' | 'indexing' | 'qc') => void;
   handleCancelTask: (bookId: string, currentStatus: string) => void;
   handleAdminStatusOverride: (bookId: string, newStatusName: string, reason: string) => void;
-  handleStartProcessing: (bookId: string) => void;
-  handleCompleteProcessing: (bookId: string) => void;
+  startProcessingBatch: (bookIds: string[]) => void;
+  completeProcessingBatch: (batchId: string) => void;
   handleClientAction: (bookId: string, action: 'approve' | 'reject', reason?: string) => void;
   handleFinalize: (bookId: string) => void;
   handleMarkAsCorrected: (bookId: string) => void;
@@ -147,6 +149,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const [rawBooks, setRawBooks] = React.useState<RawBook[]>([]);
   const [rawDocuments, setRawDocuments] = React.useState<RawDocument[]>([]);
   const [auditLogs, setAuditLogs] = React.useState<EnrichedAuditLog[]>([]);
+  const [processingBatches, setProcessingBatches] = React.useState<ProcessingBatch[]>([]);
+  const [processingBatchItems, setProcessingBatchItems] = React.useState<ProcessingBatchItem[]>([]);
   const [processingLogs, setProcessingLogs] = React.useState<ProcessingLog[]>([]);
   const [roles, setRoles] = React.useState<string[]>([]);
   const [permissions, setPermissions] = React.useState<Permissions>({});
@@ -176,12 +180,13 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             setLoading(true);
             const [
                 clientsData, usersData, projectsData, booksData, 
-                docsData, auditData, processingData, permissionsData, 
-                rolesData, workflowsData, rejectionData, statusesData
+                docsData, auditData, batchesData, batchItemsData, logsData,
+                permissionsData, rolesData, workflowsData, rejectionData, statusesData
             ] = await Promise.all([
                 dataApi.getClients(), dataApi.getUsers(), dataApi.getRawProjects(),
                 dataApi.getRawBooks(), dataApi.getRawDocuments(), dataApi.getAuditLogs(),
-                dataApi.getProcessingLogs(), dataApi.getPermissions(), dataApi.getRoles(),
+                dataApi.getProcessingBatches(), dataApi.getProcessingBatchItems(), dataApi.getProcessingLogs(),
+                dataApi.getPermissions(), dataApi.getRoles(),
                 dataApi.getProjectWorkflows(), dataApi.getRejectionTags(), dataApi.getDocumentStatuses()
             ]);
 
@@ -197,7 +202,9 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
                 .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             setAuditLogs(enrichedAuditLogs);
 
-            setProcessingLogs(processingData);
+            setProcessingBatches(batchesData);
+            setProcessingBatchItems(batchItemsData);
+            setProcessingLogs(logsData);
             setPermissions(permissionsData);
             setRoles(rolesData);
             setProjectWorkflows(workflowsData);
@@ -1118,6 +1125,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       
       const updatedBook = await updateBookStatus(bookId, newStatusName, updates);
       setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
+      
       logAction(logMsg, `Book "${book.name}" assigned to ${user.name}.`, { bookId });
       toast({ title: "Book Assigned", description: `Assigned to ${user.name} for ${role}.` });
     });
@@ -1217,93 +1225,62 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     });
   };
 
-  const handleStartProcessing = async (bookId: string) => {
+  const startProcessingBatch = async (bookIds: string[]) => {
     await withMutation(async () => {
-      const book = rawBooks.find(b => b.id === bookId);
-      if (!book || !book.projectId) return;
-
-      const workflow = projectWorkflows[book.projectId] || [];
-      const nextStage = getNextEnabledStage('ready-for-processing', workflow) || 'in-processing';
-      const newStatus = STAGE_CONFIG[nextStage]?.dataStatus || 'In Processing';
-      const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
-      if (!currentStatusName) return;
-      
-      const moveResult = await moveBookFolder(book.name, currentStatusName, newStatus);
-      if (moveResult !== true) return;
-
       try {
-          const response = await fetch('/api/processing-logs', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ bookId })
-          });
-          if (!response.ok) throw new Error('Failed to start processing log');
-          
-          const newLog = await response.json();
-          setProcessingLogs(prev => [...prev, newLog]);
-          
-          const updatedBook = await updateBookStatus(bookId, newStatus);
-          setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
-          
-          logAction('Processing Started', `Automated processing started for book "${book?.name}".`, { bookId });
-          toast({ title: 'Processing Started' });
+        const response = await fetch('/api/processing-batches', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bookIds }),
+        });
+        if (!response.ok) throw new Error('Failed to create processing batch');
+        const newBatch = await response.json();
+        
+        // Optimistically update the UI
+        setProcessingBatches(prev => [newBatch, ...prev]);
+        const statusId = statuses.find(s => s.name === 'In Processing')?.id;
+        if(statusId) {
+            setRawBooks(prev => prev.map(b => bookIds.includes(b.id) ? { ...b, statusId } : b));
+        }
+        
+        logAction('Processing Batch Started', `Batch ${newBatch.id} started with ${bookIds.length} books.`, {});
+        toast({ title: "Processing Batch Started" });
       } catch (error) {
-          console.error(error);
-          toast({ title: "Error", description: "Could not start processing.", variant: "destructive" });
+        console.error(error);
+        toast({ title: "Error", description: "Could not start processing batch.", variant: "destructive" });
       }
     });
   };
-  
-  const handleCompleteProcessing = async (bookId: string) => {
+
+  const completeProcessingBatch = async (batchId: string) => {
     await withMutation(async () => {
-        const book = rawBooks.find(b => b.id === bookId);
-        const log = processingLogs.find(l => l.bookId === bookId);
-        
-        if (!book || !book.projectId) return;
+      const batch = processingBatches.find(b => b.id === batchId);
+      if (!batch) return;
+      
+      const itemsInBatch = processingBatchItems.filter(i => i.batchId === batchId);
+      const bookIdsInBatch = itemsInBatch.map(i => i.bookId);
 
-        console.log(`WORKFLOW: Completing processing for book ${book.name}`);
-        const workflow = projectWorkflows[book.projectId] || [];
-        const nextStage = getNextEnabledStage('in-processing', workflow);
-        if (!nextStage) {
-            toast({ title: "Workflow End", description: "This is the final step for this project.", variant: "default" });
-            return;
+      try {
+        const response = await fetch(`/api/processing-batches/${batchId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'Complete', endTime: getDbSafeDate(), progress: 100 }),
+        });
+        if (!response.ok) throw new Error('Failed to update batch');
+        const updatedBatch = await response.json();
+        setProcessingBatches(prev => prev.map(b => b.id === batchId ? updatedBatch : b));
+
+        // Move all books to the next stage
+        for (const bookId of bookIdsInBatch) {
+            handleMoveBookToNextStage(bookId, 'In Processing');
         }
 
-        const newStatus = STAGE_CONFIG[nextStage]?.dataStatus || 'Processed';
-        const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
-        if (!currentStatusName) return;
-
-        console.log(`WORKFLOW: Calling moveBookFolder from handleCompleteProcessing for ${book.name}`);
-        const moveResult = await moveBookFolder(book.name, currentStatusName, newStatus);
-        if (moveResult !== true) return;
-        
-        try {
-            if (log) {
-                const updatedLogData: Partial<ProcessingLog> = {
-                    status: 'Complete',
-                    progress: 100,
-                    log: `${log.log}\n[${new Date().toLocaleTimeString()}] Processing marked as complete.`,
-                    lastUpdate: getDbSafeDate()
-                };
-                const response = await fetch(`/api/processing-logs/${log.id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(updatedLogData)
-                });
-                if (!response.ok) throw new Error('Failed to update processing log');
-                const updatedLog = await response.json();
-                setProcessingLogs(prev => prev.map(l => (l.id === log.id ? updatedLog : l)));
-            }
-
-            const updatedBook = await updateBookStatus(bookId, newStatus);
-            setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
-
-            logAction('Processing Completed', `Automated processing finished for book "${book.name}".`, { bookId });
-            toast({ title: 'Processing Complete' });
-        } catch (error) {
-            console.error(error);
-            toast({ title: "Error", description: "Could not complete processing.", variant: "destructive" });
-        }
+        logAction('Processing Batch Completed', `Batch ${batchId} was completed.`, {});
+        toast({ title: "Processing Batch Completed" });
+      } catch(error) {
+        console.error(error);
+        toast({ title: "Error", description: `Could not complete batch ${batchId}.`, variant: "destructive" });
+      }
     });
   };
 
@@ -1411,7 +1388,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     books: booksForContext, 
     documents: documentsForContext, 
     auditLogs,
-    processingLogs,
+    processingBatches, processingBatchItems, processingLogs,
     roles,
     permissions,
     projectWorkflows,
@@ -1435,7 +1412,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     handleMoveBookToNextStage, handleClientAction,
     handleFinalize, handleMarkAsCorrected, handleResubmit,
     addPageToBook, deletePageFromBook,
-    updateDocumentFlag, handleStartProcessing, handleCompleteProcessing,
+    updateDocumentFlag, startProcessingBatch, completeProcessingBatch,
     handleAssignUser, reassignUser, handleStartTask, handleCancelTask,
     handleAdminStatusOverride,
   };
@@ -1454,3 +1431,4 @@ export function useAppContext() {
   }
   return context;
 }
+
