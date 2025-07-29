@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import * as React from "react"
@@ -41,7 +42,7 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
   const { books, startProcessingBatch, selectedProjectId } = useAppContext();
   const [selection, setSelection] = React.useState<string[]>([]);
   const [multiSelection, setMultiSelection] = React.useState<string[]>([]);
-  const [filter, setFilter] = React.useState("");
+  const [columnFilters, setColumnFilters] = React.useState<{ [key: string]: string }>({});
 
   const availableBooks = React.useMemo(() => {
     let baseBooks = books.filter(book => book.status === config.dataStatus);
@@ -49,14 +50,18 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
       baseBooks = baseBooks.filter(book => book.projectId === selectedProjectId);
     }
     
-    if (filter) {
-        baseBooks = baseBooks.filter(book => 
-            book.name.toLowerCase().includes(filter.toLowerCase()) ||
-            book.projectName.toLowerCase().includes(filter.toLowerCase())
-        );
-    }
-    return baseBooks;
-  }, [books, config.dataStatus, selectedProjectId, filter]);
+    let filtered = baseBooks;
+    Object.entries(columnFilters).forEach(([columnId, value]) => {
+      if (value) {
+        filtered = filtered.filter(book => {
+          const bookValue = book[columnId as keyof EnrichedBook];
+          return String(bookValue).toLowerCase().includes(value.toLowerCase());
+        });
+      }
+    });
+
+    return filtered;
+  }, [books, config.dataStatus, selectedProjectId, columnFilters]);
 
   const selectedBooksInfo = React.useMemo(() => {
       return selection.map(id => books.find(b => b.id === id)).filter((b): b is EnrichedBook => !!b);
@@ -89,6 +94,14 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
       setMultiSelection(availableBooks.filter(b => !selection.includes(b.id)).map(b => b.id));
     }
   }
+  
+  const handleColumnFilterChange = (columnId: string, value: string) => {
+    setColumnFilters(prev => ({ ...prev, [columnId]: value }));
+  };
+
+  const handleClearFilters = () => {
+    setColumnFilters({});
+  };
 
   const availableForMultiSelectCount = availableBooks.filter(b => !selection.includes(b.id)).length;
 
@@ -97,17 +110,11 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
       <div className="lg:col-span-2">
         <Card>
           <CardHeader>
-            <CardTitle>{config.title}</CardTitle>
-            <CardDescription>{config.description}</CardDescription>
-          </CardHeader>
-          <CardContent>
              <div className="flex justify-between items-center mb-4">
-                <Input 
-                    placeholder="Filter books by name or project..."
-                    value={filter}
-                    onChange={(e) => setFilter(e.target.value)}
-                    className="max-w-sm"
-                />
+                <div>
+                    <CardTitle>{config.title}</CardTitle>
+                    <CardDescription>{config.description}</CardDescription>
+                </div>
                 <Button 
                     variant="secondary" 
                     size="sm" 
@@ -118,6 +125,8 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
                     Add {multiSelection.length} Selected to Batch
                 </Button>
              </div>
+          </CardHeader>
+          <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -128,10 +137,26 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
                         disabled={availableForMultiSelectCount === 0}
                       />
                   </TableHead>
-                  <TableHead className="w-[80px]">Action</TableHead>
+                  <TableHead className="w-[120px]">Action</TableHead>
                   <TableHead>Book Name</TableHead>
                   <TableHead>Project</TableHead>
                   <TableHead className="text-right">Pages</TableHead>
+                </TableRow>
+                 <TableRow>
+                    <TableHead />
+                    <TableHead />
+                    <TableHead>
+                        <Input placeholder="Filter by name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/>
+                    </TableHead>
+                     <TableHead>
+                        <Input placeholder="Filter by project..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/>
+                    </TableHead>
+                    <TableHead className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                             <Input placeholder="Pages..." value={columnFilters['expectedDocuments'] || ''} onChange={(e) => handleColumnFilterChange('expectedDocuments', e.target.value)} className="h-8 w-24 text-right"/>
+                             <Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Clear</Button>
+                        </div>
+                    </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -139,7 +164,7 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
                   availableBooks.map(book => {
                     const isSelected = selection.includes(book.id);
                     return (
-                        <TableRow key={book.id}>
+                        <TableRow key={book.id} data-state={isSelected ? "selected" : ""}>
                           <TableCell>
                             <Checkbox
                               checked={multiSelection.includes(book.id)}
@@ -158,6 +183,7 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
                               size="sm" 
                               variant={isSelected ? "destructive" : "outline"}
                               onClick={() => toggleSelection(book.id)}
+                              className="w-[100px]"
                             >
                               {isSelected ? (
                                 <X className="mr-2 h-4 w-4" />
@@ -178,7 +204,7 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
                 ) : (
                   <TableRow>
                     <TableCell colSpan={5} className="h-24 text-center">
-                        <p>{config.emptyStateText}</p>
+                        <p>{Object.values(columnFilters).some(v=>v) ? "No books match your filters." : config.emptyStateText}</p>
                     </TableCell>
                   </TableRow>
                 )}
