@@ -1247,6 +1247,20 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const startProcessingBatch = async (bookIds: string[]) => {
     await withMutation(async () => {
       try {
+        // Move folders first
+        const fromStatusName = 'Ready for Processing';
+        const toStatusName = 'In Processing';
+        for (const bookId of bookIds) {
+          const book = rawBooks.find(b => b.id === bookId);
+          if (book) {
+            const moveResult = await moveBookFolder(book.name, fromStatusName, toStatusName);
+            if (!moveResult) {
+              // If any move fails, we might want to stop the whole batch.
+              throw new Error(`Failed to move folder for book "${book.name}". Batch start aborted.`);
+            }
+          }
+        }
+
         const response = await fetch('/api/processing-batches', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1265,9 +1279,9 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         logAction('Processing Batch Started', `Batch ${newBatch.id} started with ${bookIds.length} books.`, {});
         await logProcessingEvent(newBatch.id, `Batch ${newBatch.id} started with ${bookIds.length} books.`);
         toast({ title: "Processing Batch Started" });
-      } catch (error) {
+      } catch (error: any) {
         console.error(error);
-        toast({ title: "Error", description: "Could not start processing batch.", variant: "destructive" });
+        toast({ title: "Error", description: error.message || "Could not start processing batch.", variant: "destructive" });
       }
     });
   };
@@ -1452,5 +1466,6 @@ export function useAppContext() {
   }
   return context;
 }
+
 
 
