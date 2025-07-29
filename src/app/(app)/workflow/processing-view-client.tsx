@@ -42,12 +42,12 @@ interface ProcessingViewClientProps {
 
 export default function ProcessingViewClient({ config }: ProcessingViewClientProps) {
   const {
+    books,
     processingBatches,
     processingBatchItems,
     processingLogs,
     handleCompleteProcessing,
     selectedProjectId,
-    books
   } = useAppContext();
 
   const [confirmationState, setConfirmationState] = React.useState<{ open: boolean; batch: ProcessingBatch | null }>({ open: false, batch: null });
@@ -136,6 +136,8 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
                             <TableRow>
                               <TableHead>Book Name</TableHead>
                               <TableHead>Status</TableHead>
+                              <TableHead>Start Time</TableHead>
+                              <TableHead>End Time</TableHead>
                               <TableHead className="text-right">Pages</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -149,7 +151,9 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
                                     <Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link>
                                   </TableCell>
                                   <TableCell>{item.status}</TableCell>
-                                  <TableCell className="text-right">{Object.values(item.processedPages || {}).join(', ')}</TableCell>
+                                  <TableCell>{item.itemStartTime ? format(new Date(item.itemStartTime), 'HH:mm:ss') : '—'}</TableCell>
+                                  <TableCell>{item.itemEndTime ? format(new Date(item.itemEndTime), 'HH:mm:ss') : '—'}</TableCell>
+                                  <TableCell className="text-right">{book.expectedDocuments}</TableCell>
                                 </TableRow>
                               )
                             })}
