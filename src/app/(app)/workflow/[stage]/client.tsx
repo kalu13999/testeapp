@@ -4,16 +4,8 @@
 
 import * as React from "react"
 import * as XLSX from 'xlsx';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import Image from "next/image";
 import {
   Card,
   CardContent,
@@ -22,26 +14,54 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import type { LucideIcon } from "lucide-react";
-import Link from "next/link";
-import { ThumbsDown, ThumbsUp, Undo2, Check, ScanLine, FileText, FileJson, Play, Send, FolderSync, PlayCircle, UserPlus, CheckCheck, Archive, MoreHorizontal, Info, Download, ArrowUp, ArrowDown, ChevronsUpDown, Loader2, XCircle, FileWarning, ShieldAlert, AlertTriangle, Tag, Replace, FilePlus2, BookOpen, MessageSquareWarning, Upload } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, Check, ScanLine, FileText, FileJson, PlayCircle, Send, UserPlus, CheckCheck, Archive, ThumbsUp, ThumbsDown, Undo2, MoreHorizontal, Loader2, Upload, FileWarning, Download, ArrowUp, ArrowDown, ChevronsUpDown, XCircle } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
-import { type AppDocument, type RejectionTag } from "@/context/workflow-context";
-import type { EnrichedBook, User } from "@/lib/data";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Checkbox } from "@/components/ui/checkbox";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
-import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { AppDocument, EnrichedBook, User, RejectionTag } from "@/context/workflow-context";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage } from "@/lib/workflow-config";
+import type { LucideIcon } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { Slider } from "@/components/ui/slider";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+
 
 const ITEMS_PER_PAGE = 10;
 
@@ -50,7 +70,7 @@ const iconMap: { [key: string]: LucideIcon } = {
     ScanLine,
     FileText,
     FileJson,
-    Play,
+    Play: PlayCircle,
     Send,
     FolderSync,
     PlayCircle,
@@ -132,12 +152,14 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     currentUser, users, permissions,
     handleStartTask, handleAssignUser, handleStartProcessing, handleCancelTask,
     selectedProjectId, projectWorkflows, handleConfirmReception, getNextEnabledStage,
-    handleSendToStorage, processingBookIds
+    handleSendToStorage, processingBookIds,
+    handleClientAction, handleFinalize, handleMarkAsCorrected, handleResubmit,
+    addPageToBook, deletePageFromBook, updateDocumentFlag, rejectionTags, tagPageForRejection
   } = useAppContext();
 
   const { toast } = useToast();
   const { title, description, dataType, actionButtonLabel, actionButtonIcon, emptyStateText, dataStatus, dataStage } = config;
-  const ActionIcon = actionButtonIcon ? iconMap[actionButtonIcon] : null;
+  const ActionIcon = actionButtonIcon ? iconMap[actionButtonIcon] : FolderSync;
 
   const [scanState, setScanState] = React.useState<{ open: boolean; book: EnrichedBook | null; folderName: string | null; fileCount: number | null; }>({ open: false, book: null, folderName: null, fileCount: null });
   const [selection, setSelection] = React.useState<string[]>([]);
@@ -152,7 +174,27 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
     { id: 'name', desc: false }
   ]);
+  const [rejectionComment, setRejectionComment] = React.useState("");
+  const [currentBook, setCurrentBook] = React.useState<{id: string, name: string} | null>(null);
+
+  const [flagDialogState, setFlagDialogState] = React.useState<{
+    open: boolean;
+    docId: string | null;
+    docName: string | null;
+    flag: AppDocument['flag'];
+    comment: string;
+  }>({ open: false, docId: null, docName: null, flag: null, comment: '' });
   
+  const [taggingState, setTaggingState] = React.useState<{
+    open: boolean;
+    docId: string | null;
+    docName: string | null;
+    selectedTags: string[];
+    availableTags: RejectionTag[];
+  }>({ open: false, docId: null, docName: null, selectedTags: [], availableTags: [] });
+  
+  const [columnStates, setColumnStates] = React.useState<{ [key: string]: { cols: number } }>({});
+
   const userPermissions = currentUser ? permissions[currentUser.role] || [] : [];
   const canViewAll = userPermissions.includes('/workflow/view-all') || userPermissions.includes('*');
 
@@ -464,13 +506,19 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const isCancelable = ['Scanning Started', 'Indexing Started', 'Checking Started'].includes(config.dataStatus as string);
 
   const handleBulkCancel = () => {
-    selection.forEach(id => {
-        const item = allDisplayItems.find(d => d.id === id) as EnrichedBook;
-        if (item) {
-            handleCancelTask(item.id, item.status);
+    openConfirmationDialog({
+        title: `Cancel ${selection.length} tasks?`,
+        description: "This will return all selected books to their previous step.",
+        onConfirm: () => {
+            selection.forEach(id => {
+                const item = allDisplayItems.find(d => d.id === id) as EnrichedBook;
+                if (item) {
+                    handleCancelTask(item.id, item.status);
+                }
+            });
+            setSelection([]);
         }
     });
-    setSelection([]);
   };
 
   const handleBulkComplete = () => {
@@ -504,7 +552,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     const nextStage = getNextEnabledStage(currentStageKey, workflow);
     
     if (!nextStage) {
-      handleMoveBookToNextStage(book.id, book.status); // Will handle "End of Workflow" case
+      handleMoveBookToNextStage(book.id, book.status);
       return;
     }
     
@@ -519,7 +567,11 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
   const handleActionClick = (book: EnrichedBook) => {
     if (stage === 'confirm-reception') {
-      handleConfirmReception(book.id);
+      openConfirmationDialog({
+        title: `Confirm Reception for "${book.name}"?`,
+        description: `This will confirm the physical arrival of the book.`,
+        onConfirm: () => handleConfirmReception(book.id)
+      });
       return;
     }
 
@@ -558,30 +610,10 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     }
     
     if (['indexing-started', 'checking-started'].includes(stage)) {
-        const onConfirm = () => {
-            if (!book.projectId) return;
-            const workflow = projectWorkflows[book.projectId] || [];
-            const currentStageKey = findStageKeyFromStatus(book.status);
-            if (!currentStageKey) return;
-            
-            const nextStageKey = getNextEnabledStage(currentStageKey, workflow);
-            if (!nextStageKey) {
-                handleMoveBookToNextStage(book.id, book.status);
-                return;
-            }
-
-            const nextStageConfig = STAGE_CONFIG[nextStageKey];
-            if (nextStageConfig.assigneeRole) {
-                openAssignmentDialog(book, nextStageConfig.assigneeRole);
-            } else {
-                handleMoveBookToNextStage(book.id, book.status);
-            }
-        };
-
         openConfirmationDialog({
             title: `Confirm: Mark as Complete?`,
             description: `This will complete the task for "${book.name}" and move it to the next step.`,
-            onConfirm: onConfirm
+            onConfirm: () => handleMainAction(book)
         });
         return;
     }
@@ -599,13 +631,16 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
        openConfirmationDialog({
           title: `Confirm: ${actionButtonLabel}?`,
           description: `This will perform the action for "${book.name}".`,
-          onConfirm: () => handleMoveBookToNextStage(book.id, book.status)
+          onConfirm: () => handleMainAction(book)
       });
     }
 };
 
   const getDynamicActionButtonLabel = React.useCallback((book: EnrichedBook) => {
-    if (config.actionButtonLabel) return config.actionButtonLabel;
+    if (config.actionButtonLabel) {
+      return config.actionButtonLabel;
+    }
+    
     if (!book.projectId) return "Next Step";
     
     const workflow = projectWorkflows[book.projectId] || [];
@@ -616,7 +651,9 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     if (!nextStageKey) return "End of Workflow";
     
     const nextStageConfig = STAGE_CONFIG[nextStageKey];
-    if (nextStageConfig.assigneeRole) return `Assign for ${nextStageConfig.title}`;
+    if (nextStageConfig.assigneeRole) {
+        return `Assign for ${nextStageConfig.title}`;
+    }
     return `Move to ${nextStageConfig.title}`;
   }, [config.actionButtonLabel, projectWorkflows, getNextEnabledStage]);
   
@@ -820,6 +857,61 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     );
   }
 
+  const handleRejectSubmit = () => {
+    if (!currentBook) return;
+    handleClientAction(currentBook.id, 'reject', rejectionComment);
+    setRejectionComment("");
+    setCurrentBook(null);
+  }
+
+  const openTaggingDialog = (doc: AppDocument) => {
+    const book = Object.values(groupedByBook).map(g => g.book).find(b => b.id === doc.bookId);
+    if (!book) return;
+    
+    // Always load tags based on the book's client.
+    const availableTags = rejectionTags.filter(tag => tag.clientId === book.clientId);
+
+    setTaggingState({
+      open: true,
+      docId: doc.id,
+      docName: doc.name,
+      selectedTags: doc.tags || [],
+      availableTags: availableTags
+    });
+  };
+  
+  const closeTaggingDialog = () => {
+    setTaggingState({ open: false, docId: null, docName: null, selectedTags: [], availableTags: [] });
+  };
+  
+  const handleTaggingSubmit = () => {
+    if (taggingState.docId) {
+      tagPageForRejection(taggingState.docId, taggingState.selectedTags);
+    }
+    closeTaggingDialog();
+  };
+
+  const setBookColumns = (bookId: string, cols: number) => {
+    setColumnStates(prev => ({ ...prev, [bookId]: { cols } }));
+  };
+  
+  const getPagesForBook = (bookId: string) => {
+    const getPageNum = (name: string): number => {
+        const match = name.match(/ - Page (\d+)/);
+        return match ? parseInt(match[1], 10) : 9999; 
+    }
+
+    return documents
+        .filter(doc => doc.bookId === bookId)
+        .sort((a, b) => getPageNum(a.name) - getPageNum(b.name));
+  }
+  
+  const gridClasses: { [key: number]: string } = {
+    1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4', 5: 'grid-cols-5', 6: 'grid-cols-6',
+    7: 'grid-cols-7', 8: 'grid-cols-8', 9: 'grid-cols-9', 10: 'grid-cols-10', 11: 'grid-cols-11', 12: 'grid-cols-12'
+  };
+
+
   const isScanFolderMatch = scanState.book?.name === scanState.folderName;
 
   const tableColSpan = React.useMemo(() => {
@@ -828,176 +920,154 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     return count;
   }, [dataType, stage, config.assigneeRole, canViewAll]);
 
-  const renderBulkActions = () => {
-    if (selection.length === 0) return null;
-
-    if (isCancelable) {
-        return (
-            <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">{selection.length} selected</span>
-                <Button variant="destructive" size="sm" onClick={handleBulkCancel}>
-                    <Undo2 className="mr-2 h-4 w-4" /> Cancel Selected
-                </Button>
-                 {['indexing-started', 'checking-started'].includes(stage) && (
-                    <Button variant="default" size="sm" onClick={handleBulkComplete}>
-                        <CheckCheck className="mr-2 h-4 w-4" /> Mark Selected as Complete
-                    </Button>
-                )}
-            </div>
-        );
-    }
-    
-    const firstSelected = allDisplayItems.find(item => item.id === selection[0]) as EnrichedBook;
-    if (!firstSelected || dataType !== 'book') return null;
-
-    const actionDetails = getDynamicActionButton(firstSelected as EnrichedBook);
-    if (!actionDetails) return null;
-
-    const isDisabled = selection.some(bookId => {
-        const book = allDisplayItems.find(item => item.id === bookId) as EnrichedBook;
-        return processingBookIds.includes(bookId) || getDynamicActionButton(book)?.disabled;
-    });
-
-    if (SIMPLE_BULK_ACTION_STAGES.includes(stage) || stage === 'already-received') {
-        const actionType = determineNextActionType(firstSelected);
-        if (actionType === 'FOLDER_SELECT') return null; // Disable bulk for folder select
-
-        return (
-            <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">{selection.length} selected</span>
-                <Button size="sm" onClick={handleBulkAction} disabled={isDisabled}>
-                    {actionDetails.icon && <actionDetails.icon className="mr-2 h-4 w-4" />}
-                    {actionDetails.label} ({selection.length})
-                </Button>
-            </div>
-        );
-    }
-    
-    return null;
-  }
-
   return (
     <>
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-            <div>
-                <CardTitle className="font-headline">{title}</CardTitle>
-                <CardDescription>{description}</CardDescription>
+    <AlertDialog>
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+                <div>
+                    <CardTitle className="font-headline">{title}</CardTitle>
+                    <CardDescription>{description}</CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                    {renderBulkActions()}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button size="sm" variant="outline" className="h-9 gap-1">
+                                <Download className="h-3.5 w-3.5" />
+                                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Export</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Export Selected ({selection.length})</DropdownMenuLabel>
+                            <DropdownMenuItem onSelect={() => exportXLSX(selectedItems)} disabled={selection.length === 0}>Export as XLSX</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => exportJSON(selectedItems)} disabled={selection.length === 0}>Export as JSON</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => exportCSV(selectedItems, Object.keys(selectedItems[0] || {}))} disabled={selection.length === 0}>Export as CSV</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel>Export All ({sortedAndFilteredItems.length})</DropdownMenuLabel>
+                            <DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredItems)} disabled={sortedAndFilteredItems.length === 0}>Export as XLSX</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredItems)} disabled={sortedAndFilteredItems.length === 0}>Export as JSON</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredItems, Object.keys(sortedAndFilteredItems[0] || {}))} disabled={sortedAndFilteredItems.length === 0}>Export as CSV</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
             </div>
-            <div className="flex items-center gap-2">
-                {renderBulkActions()}
-                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button size="sm" variant="outline" className="h-9 gap-1">
-                            <Download className="h-3.5 w-3.5" />
-                            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Export</span>
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Export Selected ({selection.length})</DropdownMenuLabel>
-                        <DropdownMenuItem onSelect={() => exportXLSX(selectedItems)} disabled={selection.length === 0}>Export as XLSX</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => exportJSON(selectedItems)} disabled={selection.length === 0}>Export as JSON</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => exportCSV(selectedItems, Object.keys(selectedItems[0] || {}))} disabled={selection.length === 0}>Export as CSV</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuLabel>Export All ({sortedAndFilteredItems.length})</DropdownMenuLabel>
-                        <DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredItems)} disabled={sortedAndFilteredItems.length === 0}>Export as XLSX</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredItems)} disabled={sortedAndFilteredItems.length === 0}>Export as JSON</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredItems, Object.keys(sortedAndFilteredItems[0] || {}))} disabled={sortedAndFilteredItems.length === 0}>Export as CSV</DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            {dataType === 'book' ? (
-              <>
-              <TableRow>
-                  <TableHead className="w-[50px]">
-                      <Checkbox
-                          checked={displayItems.length > 0 && selection.length === displayItems.length}
-                          onCheckedChange={(checked) => setSelection(checked ? displayItems.map(item => item.id) : [])}
-                          aria-label="Select all"
-                      />
-                  </TableHead>
-                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>Book Name {getSortIndicator('name')}</div></TableHead>
-                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('projectName', e.shiftKey)}>Project {getSortIndicator('projectName')}</div></TableHead>
-                  <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('clientName', e.shiftKey)}>Client {getSortIndicator('clientName')}</div></TableHead>
-                  {canViewAll && config.assigneeRole && (
-                     <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('assigneeName', e.shiftKey)}>Assigned To {getSortIndicator('assigneeName')}</div></TableHead>
-                  )}
-                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Status {getSortIndicator('status')}</div></TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-              <TableRow>
-                <TableHead />
-                <TableHead><Input placeholder="Filter by name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/></TableHead>
-                <TableHead><Input placeholder="Filter by project..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/></TableHead>
-                <TableHead className="hidden md:table-cell"><Input placeholder="Filter by client..." value={columnFilters['clientName'] || ''} onChange={(e) => handleColumnFilterChange('clientName', e.target.value)} className="h-8"/></TableHead>
-                 {canViewAll && config.assigneeRole && (
-                   <TableHead><Input placeholder="Filter by user..." value={columnFilters['assigneeName'] || ''} onChange={(e) => handleColumnFilterChange('assigneeName', e.target.value)} className="h-8"/></TableHead>
-                 )}
-                <TableHead><Input placeholder="Filter by status..." value={columnFilters['status'] || ''} onChange={(e) => handleColumnFilterChange('status', e.target.value)} className="h-8"/></TableHead>
-                <TableHead className="text-right"><Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Clear</Button></TableHead>
-              </TableRow>
-              </>
-            ) : (
-              <>
-               <TableRow>
-                  <TableHead className="w-[50px]">
-                     <Checkbox
-                          checked={displayItems.length > 0 && selection.length === displayItems.length}
-                          onCheckedChange={(checked) => setSelection(checked ? displayItems.map(item => item.id) : [])}
-                          aria-label="Select all"
-                      />
-                  </TableHead>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>Document Name {getSortIndicator('name')}</div></TableHead>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('client', e.shiftKey)}>Client {getSortIndicator('client')}</div></TableHead>
-                <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('type', e.shiftKey)}>Type {getSortIndicator('type')}</div></TableHead>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Status {getSortIndicator('status')}</div></TableHead>
-                <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('lastUpdated', e.shiftKey)}>Last Updated {getSortIndicator('lastUpdated')}</div></TableHead>
-                {(actionButtonLabel) && (
-                  <TableHead>Actions</TableHead>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                {dataType === 'book' ? (
+                  <>
+                  <TableRow>
+                      <TableHead className="w-[50px]">
+                          <Checkbox
+                              checked={displayItems.length > 0 && selection.length === displayItems.length}
+                              onCheckedChange={(checked) => setSelection(checked ? displayItems.map(item => item.id) : [])}
+                              aria-label="Select all"
+                          />
+                      </TableHead>
+                      <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>Book Name {getSortIndicator('name')}</div></TableHead>
+                      <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('projectName', e.shiftKey)}>Project {getSortIndicator('projectName')}</div></TableHead>
+                      <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('clientName', e.shiftKey)}>Client {getSortIndicator('clientName')}</div></TableHead>
+                      {canViewAll && config.assigneeRole && (
+                         <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('assigneeName', e.shiftKey)}>Assigned To {getSortIndicator('assigneeName')}</div></TableHead>
+                      )}
+                      <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Status {getSortIndicator('status')}</div></TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                  <TableRow>
+                    <TableHead />
+                    <TableHead><Input placeholder="Filter by name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/></TableHead>
+                    <TableHead><Input placeholder="Filter by project..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/></TableHead>
+                    <TableHead className="hidden md:table-cell"><Input placeholder="Filter by client..." value={columnFilters['clientName'] || ''} onChange={(e) => handleColumnFilterChange('clientName', e.target.value)} className="h-8"/></TableHead>
+                     {canViewAll && config.assigneeRole && (
+                       <TableHead><Input placeholder="Filter by user..." value={columnFilters['assigneeName'] || ''} onChange={(e) => handleColumnFilterChange('assigneeName', e.target.value)} className="h-8"/></TableHead>
+                     )}
+                    <TableHead><Input placeholder="Filter by status..." value={columnFilters['status'] || ''} onChange={(e) => handleColumnFilterChange('status', e.target.value)} className="h-8"/></TableHead>
+                    <TableHead className="text-right"><Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Clear</Button></TableHead>
+                  </TableRow>
+                  </>
+                ) : (
+                  <>
+                   <TableRow>
+                      <TableHead className="w-[50px]">
+                         <Checkbox
+                              checked={displayItems.length > 0 && selection.length === displayItems.length}
+                              onCheckedChange={(checked) => setSelection(checked ? displayItems.map(item => item.id) : [])}
+                              aria-label="Select all"
+                          />
+                      </TableHead>
+                    <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>Document Name {getSortIndicator('name')}</div></TableHead>
+                    <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('client', e.shiftKey)}>Client {getSortIndicator('client')}</div></TableHead>
+                    <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('type', e.shiftKey)}>Type {getSortIndicator('type')}</div></TableHead>
+                    <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Status {getSortIndicator('status')}</div></TableHead>
+                    <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('lastUpdated', e.shiftKey)}>Last Updated {getSortIndicator('lastUpdated')}</div></TableHead>
+                    {(actionButtonLabel) && (
+                      <TableHead>Actions</TableHead>
+                    )}
+                  </TableRow>
+                  <TableRow>
+                    <TableHead />
+                    <TableHead><Input placeholder="Filter name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/></TableHead>
+                    <TableHead><Input placeholder="Filter client..." value={columnFilters['client'] || ''} onChange={(e) => handleColumnFilterChange('client', e.target.value)} className="h-8"/></TableHead>
+                    <TableHead className="hidden md:table-cell"><Input placeholder="Filter type..." value={columnFilters['type'] || ''} onChange={(e) => handleColumnFilterChange('type', e.target.value)} className="h-8"/></TableHead>
+                    <TableHead><Input placeholder="Filter status..." value={columnFilters['status'] || ''} onChange={(e) => handleColumnFilterChange('status', e.target.value)} className="h-8"/></TableHead>
+                    <TableHead className="hidden md:table-cell"><Input placeholder="Filter date..." value={columnFilters['lastUpdated'] || ''} onChange={(e) => handleColumnFilterChange('lastUpdated', e.target.value)} className="h-8"/></TableHead>
+                    {(actionButtonLabel) && (<TableHead className="text-right"><Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Clear</Button></TableHead>)}
+                  </TableRow>
+                  </>
                 )}
-              </TableRow>
-              <TableRow>
-                <TableHead />
-                <TableHead><Input placeholder="Filter name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/></TableHead>
-                <TableHead><Input placeholder="Filter client..." value={columnFilters['client'] || ''} onChange={(e) => handleColumnFilterChange('client', e.target.value)} className="h-8"/></TableHead>
-                <TableHead className="hidden md:table-cell"><Input placeholder="Filter type..." value={columnFilters['type'] || ''} onChange={(e) => handleColumnFilterChange('type', e.target.value)} className="h-8"/></TableHead>
-                <TableHead><Input placeholder="Filter status..." value={columnFilters['status'] || ''} onChange={(e) => handleColumnFilterChange('status', e.target.value)} className="h-8"/></TableHead>
-                <TableHead className="hidden md:table-cell"><Input placeholder="Filter date..." value={columnFilters['lastUpdated'] || ''} onChange={(e) => handleColumnFilterChange('lastUpdated', e.target.value)} className="h-8"/></TableHead>
-                {(actionButtonLabel) && (<TableHead className="text-right"><Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Clear</Button></TableHead>)}
-              </TableRow>
-              </>
-            )}
-          </TableHeader>
-          <TableBody>
-            {displayItems.length > 0 ? (
-              displayItems.map((item, index) => (
-                dataType === 'book'
-                  ? renderBookRow(item as EnrichedBook, index)
-                  : renderDocumentRow(item as AppDocument, index)
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={tableColSpan} className="h-24 text-center">
-                  {emptyStateText}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </CardContent>
-      <CardFooter className="flex items-center justify-between">
-        <div className="text-xs text-muted-foreground">
-            {selection.length > 0 ? `${selection.length} of ${sortedAndFilteredItems.length} item(s) selected.` : `Showing ${displayItems.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + displayItems.length} of ${sortedAndFilteredItems.length} items`}
-        </div>
-        <PaginationNav />
-      </CardFooter>
-    </Card>
+              </TableHeader>
+              <TableBody>
+                {displayItems.length > 0 ? (
+                  displayItems.map((item, index) => (
+                    dataType === 'book'
+                      ? renderBookRow(item as EnrichedBook, index)
+                      : renderDocumentRow(item as AppDocument, index)
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={tableColSpan} className="h-24 text-center">
+                      {emptyStateText}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+          <CardFooter className="flex items-center justify-between">
+            <div className="text-xs text-muted-foreground">
+                {selection.length > 0 ? `${selection.length} of ${sortedAndFilteredItems.length} item(s) selected.` : `Showing ${displayItems.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + displayItems.length} of ${sortedAndFilteredItems.length} items`}
+            </div>
+            <PaginationNav />
+          </CardFooter>
+        </Card>
+
+        <AlertDialogContent>
+          <AlertDialogHeader>
+              <AlertDialogTitle>Reason for Rejection</AlertDialogTitle>
+              <AlertDialogDescription>
+                  Please provide a reason for rejecting the book "{currentBook?.name}". This will be sent to the internal team for correction.
+              </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+              <Label htmlFor="rejection-comment">Comment</Label>
+              <Textarea 
+                  id="rejection-comment"
+                  placeholder="e.g., Page 5 is blurry, please re-scan."
+                  value={rejectionComment}
+                  onChange={(e) => setRejectionComment(e.target.value)}
+              />
+          </div>
+          <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleRejectSubmit} disabled={!rejectionComment.trim()}>
+                  Submit Rejection
+              </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     <AlertDialog open={confirmationState.open} onOpenChange={(open) => !open && setConfirmationState(prev => ({...prev, open: false}))}>
         <AlertDialogContent>
@@ -1158,6 +1228,29 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
             </DialogFooter>
         </DialogContent>
     </Dialog>
+
+    <Dialog open={detailsState.open} onOpenChange={() => setDetailsState({ open: false, book: undefined })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Book Details</DialogTitle>
+            <DialogDescription>{detailsState.book?.name}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4 text-sm">
+            <DetailItem label="Project" value={<Link href={`/projects/${detailsState.book?.projectId}`} className="text-primary hover:underline">{detailsState.book?.projectName}</Link>} />
+            <DetailItem label="Client" value={detailsState.book?.clientName} />
+            <DetailItem label="Status" value={<Badge variant="outline">{detailsState.book?.status}</Badge>} />
+            <Separator />
+            <DetailItem label="Author" value={detailsState.book?.author || '—'} />
+            <DetailItem label="ISBN" value={detailsState.book?.isbn || '—'} />
+            <Separator />
+            <DetailItem label="Expected Pages" value={detailsState.book?.expectedDocuments} />
+            <DetailItem label="Scanned Pages" value={detailsState.book?.documentCount} />
+          </div>
+           <DialogFooter>
+              <Button type="button" variant="secondary" onClick={() => setDetailsState({ open: false, book: undefined })}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
