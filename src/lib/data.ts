@@ -111,15 +111,39 @@ export interface Project {
     info?: string;
 }
 
-export interface ProcessingLog {
-    id: string;
-    bookId: string;
-    status: 'In Progress' | 'Complete' | 'Failed';
-    progress: number;
-    log: string;
-    startTime: string;
-    lastUpdate: string;
+export interface ProcessingBatch {
+  id: string;
+  startTime: string;
+  endTime: string | null;
+  status: 'In Progress' | 'Complete' | 'Failed';
+  progress: number;
+  timestampStr: string;
+  info: string | null;
+  obs: string | null;
 }
+
+export interface ProcessingBatchItem {
+  id: string;
+  batchId: string;
+  bookId: string;
+  itemStartTime: string | null;
+  itemEndTime: string | null;
+  processedPages: Record<string, number> | null;
+  status: 'Pending' | 'In Progress' | 'Complete' | 'Failed';
+  info: string | null;
+  obs: string | null;
+}
+
+export interface ProcessingLog {
+  id: string;
+  batchId: string;
+  message: string;
+  timestamp: string;
+  level: 'INFO' | 'ERROR' | 'WARN';
+  info: string | null;
+  obs: string | null;
+}
+
 
 export type Permissions = {
   [role: string]: string[];
@@ -195,13 +219,18 @@ export const getBookById = (id: string) => fetchData<RawBook>(`/books/${id}`);
 export const getRawDocuments = () => fetchData<Document[]>('/documents');
 export const getDocumentById = (id: string) => fetchData<Document>(`/documents/${id}`);
 export const getAuditLogs = () => fetchData<AuditLog[]>('/audit-logs');
-export const getProcessingLogs = () => fetchData<ProcessingLog[]>('/processing-logs');
 export const getPermissions = () => fetchData<Permissions>('/permissions');
 export const getRoles = () => fetchData<string[]>('/roles');
 export const getProjectWorkflows = () => fetchData<ProjectWorkflows>('/project-workflows');
 export const getRejectionTags = () => fetchData<RejectionTag[]>('/rejection-tags');
 export const getDocumentStatuses = () => fetchData<DocumentStatus[]>('/document-statuses');
 export const getFolders = () => fetchData<Folder[]>('/folders');
+
+// New functions for processing batches
+export const getProcessingBatches = () => fetchData<ProcessingBatch[]>('/processing-batches');
+export const getProcessingBatchItems = () => fetchData<ProcessingBatchItem[]>('/processing-batch-items');
+export const getProcessingLogs = () => fetchData<ProcessingLog[]>('/processing-logs');
+
 
 // Enriched data fetching functions
 export async function getEnrichedProjects(): Promise<EnrichedProject[]> {

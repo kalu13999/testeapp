@@ -7,7 +7,7 @@ export async function GET() {
   let connection: PoolConnection | null = null;
   try {
     connection = await getConnection();
-    const [rows] = await connection.execute('SELECT * FROM processing_logs');
+    const [rows] = await connection.execute('SELECT * FROM processing_logs ORDER BY timestamp ASC');
     return NextResponse.json(rows);
   } catch (error) {
     console.error("Error fetching processing_logs:", error);
@@ -22,23 +22,28 @@ export async function GET() {
 export async function POST(request: Request) {
     let connection: PoolConnection | null = null;
     try {
-        const { bookId } = await request.json();
-        
-        const now = new Date();
-        const dbSafeDate = now.toISOString().slice(0, 19).replace('T', ' ');
+        const logData = await request.json();
+        const { batchId, message, level = 'INFO', info, obs } = logData;
 
+        if (!batchId || !message) {
+            return NextResponse.json({ error: 'Missing required fields: batchId and message' }, { status: 400 });
+        }
+        
+        const newId = `plog_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
+        
         const newLog = {
-            id: `pl_${Date.now()}`,
-            bookId,
-            status: 'In Progress',
-            progress: 0,
-            log: `[${now.toLocaleTimeString()}] Processing initiated.`,
-            startTime: dbSafeDate,
-            lastUpdate: dbSafeDate,
+            id: newId,
+            batchId,
+            message,
+            timestamp,
+            level,
+            info: info || null,
+            obs: obs || null
         };
         
         connection = await getConnection();
-        const query = 'INSERT INTO processing_logs (id, bookId, status, progress, log, startTime, lastUpdate) VALUES (?, ?, ?, ?, ?, ?, ?)';
+        const query = 'INSERT INTO processing_logs (id, batchId, message, timestamp, level, info, obs) VALUES (?, ?, ?, ?, ?, ?, ?)';
         const values = Object.values(newLog);
         
         await connection.execute(query, values);
