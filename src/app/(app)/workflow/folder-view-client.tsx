@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, Check, ScanLine, FileText, FileJson, PlayCircle, Send, UserPlus, CheckCheck, Archive, ThumbsUp, ThumbsDown, Undo2, MoreHorizontal, Loader2, Upload } from "lucide-react";
+import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, Check, ScanLine, FileText, FileJson, PlayCircle, Send, UserPlus, CheckCheck, Archive, ThumbsUp, ThumbsDown, Undo2, MoreHorizontal, Loader2, Upload, FileWarning, Download, ArrowUp, ArrowDown, ChevronsUpDown, XCircle } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -30,7 +30,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AppDocument, EnrichedBook, User, RejectionTag } from "@/context/workflow-context";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { STAGE_CONFIG, findStageKeyFromStatus } from "@/lib/workflow-config";
+import { STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage } from "@/lib/workflow-config";
 import type { LucideIcon } from "lucide-react";
 import {
   DropdownMenu,
@@ -137,7 +137,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     selectedUserId: string;
   }>({ open: false, bookId: null, bookName: null, projectId: null, role: null, selectedUserId: '' });
 
-  const [bulkAssignState, setBulkAssignState] = React.useState<{ open: boolean; role: 'indexer' | 'qc' | 'scanner' | null }>({ open: false, role: null });
+  const [bulkAssignState, setBulkAssignState] = React.useState<{ open: boolean; role: 'indexer' | 'qc' | 'scanner' | null, selectedUserId: string }>({ open: false, role: null, selectedUserId: '' });
 
   const [taggingState, setTaggingState] = React.useState<{
     open: boolean;
@@ -229,20 +229,19 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   };
   
   const openBulkAssignmentDialog = (role: 'indexer' | 'qc' | 'scanner') => {
-    setBulkAssignState({ open: true, role });
+    setBulkAssignState({ open: true, role, selectedUserId: '' });
   };
 
   const closeBulkAssignmentDialog = () => {
-    setBulkAssignState({ open: false, role: null });
-    setAssignmentState(prev => ({...prev, selectedUserId: ''})); // Reset user ID
+    setBulkAssignState({ open: false, role: null, selectedUserId: '' });
   };
 
   const handleBulkAssignmentSubmit = () => {
-    if (bulkAssignState.role && assignmentState.selectedUserId && selection.length > 0) {
+    if (bulkAssignState.role && bulkAssignState.selectedUserId && selection.length > 0) {
       selection.forEach(bookId => {
         const book = Object.values(groupedByBook).find(g => g.book.id === bookId)?.book;
         if(book) {
-            handleAssignUser(book.id, assignmentState.selectedUserId, bulkAssignState.role!);
+            handleAssignUser(book.id, bulkAssignState.selectedUserId, bulkAssignState.role!);
         }
       });
       closeBulkAssignmentDialog();
@@ -276,7 +275,10 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     
     const workflow = projectWorkflows[book.projectId] || [];
     const currentStageKey = findStageKeyFromStatus(book.status);
-    if (!currentStageKey) return;
+    if (!currentStageKey) {
+        toast({ title: "Workflow Error", description: `Cannot find a workflow stage for status: "${book.status}"`, variant: "destructive" });
+        return;
+    }
     
     const nextStage = getNextEnabledStage(currentStageKey, workflow);
     
@@ -323,8 +325,23 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     closeTaggingDialog();
   };
 
-
   const getDynamicActionButtonLabel = React.useCallback((book: EnrichedBook) => {
+    if (stage === 'storage') {
+        if (!book.projectId) return "Next Step";
+        const workflow = projectWorkflows[book.projectId] || [];
+        const currentStageKey = findStageKeyFromStatus(book.status);
+        if (!currentStageKey) return "Next Step";
+        
+        const nextStageKey = getNextEnabledStage(currentStageKey, workflow);
+        if (!nextStageKey) return "End of Workflow";
+        
+        const nextStageConfig = STAGE_CONFIG[nextStageKey];
+        if (nextStageConfig.assigneeRole) {
+            return `Assign for ${nextStageConfig.title}`;
+        }
+        return `Move to ${nextStageConfig.title}`;
+    }
+
     if (config.actionButtonLabel) {
       return config.actionButtonLabel;
     }
@@ -343,30 +360,160 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
         return `Assign for ${nextStageConfig.title}`;
     }
     return `Move to ${nextStageConfig.title}`;
-  }, [config.actionButtonLabel, projectWorkflows, getNextEnabledStage]);
+  }, [stage, config.actionButtonLabel, projectWorkflows, getNextEnabledStage]);
 
+  const handleBulkAction = () => {
+    if (selection.length === 0) return;
+    const firstBook = Object.values(groupedByBook).find(g => g.book.id === selection[0])?.book;
+    if (!firstBook) return;
 
+    if(stage === 'storage') {
+      const nextStageKey = getNextEnabledStage('storage', projectWorkflows[firstBook.projectId] || []);
+      if (nextStageKey && STAGE_CONFIG[nextStageKey]?.assigneeRole) {
+        openBulkAssignmentDialog(STAGE_CONFIG[nextStageKey].assigneeRole!);
+        return;
+      }
+    }
+    
+    const actionLabel = getDynamicActionButtonLabel(firstBook);
+    openConfirmationDialog({
+      title: `Perform action on ${selection.length} books?`,
+      description: `This will perform "${actionLabel}" for all selected books.`,
+      onConfirm: () => {
+        selection.forEach(bookId => {
+          const book = groupedByBook[bookId]?.book;
+          if (book) handleMainAction(book);
+        });
+        setSelection([]);
+      }
+    });
+  }
+  
+  const handleBulkResubmit = (targetStage: string) => {
+    const stageKey = findStageKeyFromStatus(targetStage);
+    if (!stageKey) {
+      toast({ title: "Workflow Error", description: `Could not find configuration for stage: ${targetStage}`, variant: "destructive" });
+      return;
+    }
+    const stageConfig = STAGE_CONFIG[stageKey];
+    openConfirmationDialog({
+      title: `Resubmit ${selection.length} books?`,
+      description: `This will resubmit all selected books to the "${stageConfig.title}" stage.`,
+      onConfirm: () => {
+        selection.forEach(bookId => handleResubmit(bookId, targetStage));
+        setSelection([]);
+      }
+    });
+  }
+  
+  const renderBulkActions = () => {
+    if (selection.length === 0) return null;
+    
+    if (stage === 'pending-deliveries') {
+      return (
+         <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">{selection.length} selected</span>
+            <Button size="sm" onClick={() => openConfirmationDialog({
+              title: `Approve ${selection.length} books?`,
+              description: 'This will approve all selected books and finalize them.',
+              onConfirm: () => {
+                selection.forEach(bookId => handleClientAction(bookId, 'approve'));
+                setSelection([]);
+              }
+            })}>
+              <ThumbsUp className="mr-2 h-4 w-4" /> Approve Selected
+            </Button>
+         </div>
+      );
+    } else if (stage === 'corrected') {
+      return (
+        <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">{selection.length} selected</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm">
+                  <Send className="mr-2 h-4 w-4" /> Resubmit Selected To...
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => handleBulkResubmit('To Indexing')}>Indexing</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleBulkResubmit('To Checking')}>Quality Control</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleBulkResubmit('Delivery')}>Delivery</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
+      );
+    } else if (stage === 'client-rejections') {
+      return (
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">{selection.length} selected</span>
+           <Button size="sm" onClick={() => openConfirmationDialog({
+             title: `Mark ${selection.length} books as corrected?`,
+             description: `This will move all selected books to the next stage.`,
+             onConfirm: () => {
+               selection.forEach(bookId => handleMarkAsCorrected(bookId));
+               setSelection([]);
+             }
+           })}>
+            <Undo2 className="mr-2 h-4 w-4" />
+            Mark Selected as Corrected
+          </Button>
+        </div>
+      )
+    } else if (config.actionButtonLabel && stage !== 'archive') {
+      const firstSelected = Object.values(groupedByBook).find(g => g.book.id === selection[0])?.book;
+      if (!firstSelected) return null;
+      const actionLabel = getDynamicActionButtonLabel(firstSelected);
+      const isDisabled = selection.some(bookId => groupedByBook[bookId]?.hasError || actionLabel === "End of Workflow");
+      
+      if(stage === 'storage') {
+        return (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">{selection.length} selected</span>
+            <Button size="sm" onClick={handleBulkAction} disabled={isDisabled}>
+              {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
+              {actionLabel} ({selection.length})
+            </Button>
+          </div>
+        );
+      }
+
+      return (
+        <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">{selection.length} selected</span>
+            <Button size="sm" onClick={handleBulkAction} disabled={isDisabled}>
+                {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
+                {actionLabel} ({selection.length})
+            </Button>
+        </div>
+      );
+    }
+
+    return null;
+  }
+  
   const renderActions = (bookGroup: GroupedDocuments[string]) => {
     const { book, hasError } = bookGroup;
-    const { id: bookId, name: bookName, status } = book;
-
-    const actionButtonLabel = getDynamicActionButtonLabel(book);
+    const { id: bookId, name: bookName } = book;
     const isProcessing = processingBookIds.includes(bookId);
 
-    const actionButton = actionButtonLabel ? (
-        <Button 
-            size="sm" 
-            onClick={() => openConfirmationDialog({
-              title: `Are you sure?`,
-              description: `This will perform the action "${actionButtonLabel}" on "${bookName}".`,
-              onConfirm: () => handleMainAction(book)
-            })}
-            disabled={hasError || actionButtonLabel === "End of Workflow" || isProcessing}
-        >
-            {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
-            {isProcessing ? "Processing..." : actionButtonLabel}
+    if (isProcessing) {
+      return (
+        <Button size="sm" disabled>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...
         </Button>
-    ) : null;
+      );
+    }
+    
+    if (stage === 'storage') {
+        const actionLabel = getDynamicActionButtonLabel(book);
+        return (
+            <Button size="sm" onClick={() => handleMainAction(book)}>
+                <ActionIcon className="mr-2 h-4 w-4" />
+                {actionLabel}
+            </Button>
+        );
+    }
 
     switch (stage) {
       case 'pending-deliveries':
@@ -424,7 +571,22 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
       case 'archive':
         return null;
       default: 
-        if (!actionButtonLabel) return null;
+        if (!config.actionButtonLabel) return null;
+        const actionButton = (
+            <Button 
+                size="sm" 
+                onClick={() => openConfirmationDialog({
+                  title: `Are you sure?`,
+                  description: `This will perform the action "${config.actionButtonLabel}" on "${bookName}".`,
+                  onConfirm: () => handleMainAction(book)
+                })}
+                disabled={hasError}
+            >
+                <ActionIcon className="mr-2 h-4 w-4" />
+                {config.actionButtonLabel}
+            </Button>
+        );
+
         if (hasError) {
           return (
             <TooltipProvider>
@@ -441,103 +603,6 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
         }
         return actionButton;
     }
-  }
-
-  const handleBulkAction = () => {
-    if (selection.length === 0) return;
-    const firstBook = groupedByBook[selection[0]]?.book;
-    if (!firstBook) return;
-
-    const actionLabel = getDynamicActionButtonLabel(firstBook);
-    openConfirmationDialog({
-      title: `Perform action on ${selection.length} books?`,
-      description: `This will perform "${actionLabel}" for all selected books.`,
-      onConfirm: () => {
-        selection.forEach(bookId => {
-          const book = groupedByBook[bookId]?.book;
-          if (book) handleMainAction(book);
-        });
-        setSelection([]);
-      }
-    });
-  }
-  
-  const handleBulkResubmit = (targetStage: string) => {
-    const stageKey = findStageKeyFromStatus(targetStage);
-    if (!stageKey) {
-      toast({ title: "Workflow Error", description: `Could not find configuration for stage: ${targetStage}`, variant: "destructive" });
-      return;
-    }
-    const stageConfig = STAGE_CONFIG[stageKey];
-    openConfirmationDialog({
-      title: `Resubmit ${selection.length} books?`,
-      description: `This will resubmit all selected books to the "${stageConfig.title}" stage.`,
-      onConfirm: () => {
-        selection.forEach(bookId => handleResubmit(bookId, targetStage));
-        setSelection([]);
-      }
-    });
-  }
-  
-  const renderBulkActions = () => {
-    if (selection.length === 0) return null;
-    
-    if (stage === 'pending-deliveries') {
-      return (
-         <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">{selection.length} selected</span>
-            <Button size="sm" onClick={handleBulkAction}>
-              <ThumbsUp className="mr-2 h-4 w-4" /> Approve Selected
-            </Button>
-         </div>
-      );
-    } else if (stage === 'corrected') {
-      return (
-        <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">{selection.length} selected</span>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm">
-                  <Send className="mr-2 h-4 w-4" /> Resubmit Selected To...
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => handleBulkResubmit('To Indexing')}>Indexing</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleBulkResubmit('To Checking')}>Quality Control</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleBulkResubmit('Delivery')}>Delivery</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-        </div>
-      );
-    } else if (config.actionButtonLabel && stage !== 'archive') {
-      const firstSelected = Object.values(groupedByBook).find(g => g.book.id === selection[0])?.book;
-      if (!firstSelected) return null;
-      const actionLabel = getDynamicActionButtonLabel(firstSelected);
-      const isDisabled = selection.some(bookId => groupedByBook[bookId]?.hasError || actionLabel === "End of Workflow");
-      
-      if(stage === 'storage') {
-        return (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">{selection.length} selected</span>
-            <Button size="sm" onClick={() => openBulkAssignmentDialog('indexer')}>
-              <UserPlus className="mr-2 h-4 w-4" /> Assign Selected for Indexing
-            </Button>
-          </div>
-        );
-      }
-
-      return (
-        <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">{selection.length} selected</span>
-            <Button size="sm" onClick={handleBulkAction} disabled={isDisabled}>
-                {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
-                {actionLabel} ({selection.length})
-            </Button>
-        </div>
-      );
-    }
-
-    return null;
   }
 
   const getPagesForBook = (bookId: string) => {
@@ -895,7 +960,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <Select value={assignmentState.selectedUserId} onValueChange={(val) => setAssignmentState(s => ({...s, selectedUserId: val}))}>
+            <Select value={bulkAssignState.selectedUserId} onValueChange={(val) => setBulkAssignState(s => ({...s, selectedUserId: val}))}>
               <SelectTrigger>
                 <SelectValue placeholder={`Select an ${bulkAssignState.role}...`} />
               </SelectTrigger>
@@ -908,7 +973,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeBulkAssignmentDialog}>Cancel</Button>
-            <Button onClick={handleBulkAssignmentSubmit} disabled={!assignmentState.selectedUserId}>
+            <Button onClick={handleBulkAssignmentSubmit} disabled={!bulkAssignState.selectedUserId}>
               Assign and Confirm
             </Button>
           </DialogFooter>
