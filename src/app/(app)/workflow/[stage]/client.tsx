@@ -64,6 +64,11 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 
 const ITEMS_PER_PAGE = 10;
+const SIMPLE_BULK_ACTION_STAGES = [
+  'confirm-reception', 'to-scan', 'to-indexing', 'to-checking',
+  'indexing-started', 'checking-started', 'ready-for-processing',
+  'processed', 'final-quality-control', 'delivery', 'finalized',
+];
 
 const iconMap: { [key: string]: LucideIcon } = {
     Check,
@@ -134,6 +139,15 @@ const DetailItem = ({ label, value }: { label: string; value: React.ReactNode })
   </div>
 );
 
+type GroupedDocuments = {
+  [bookId: string]: {
+    book: EnrichedBook;
+    pages: AppDocument[];
+    hasError: boolean;
+    hasWarning: boolean;
+  };
+};
+
 export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const { 
     books, documents, handleMoveBookToNextStage, 
@@ -185,6 +199,30 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
   const userPermissions = currentUser ? permissions[currentUser.role] || [] : [];
   const canViewAll = userPermissions.includes('/workflow/view-all') || userPermissions.includes('*');
+
+  const groupedByBook = React.useMemo(() => {
+    if (!config.dataStatus) return {};
+    let booksInStage = books.filter(book => book.status === config.dataStatus);
+
+    if (selectedProjectId) {
+      booksInStage = booksInStage.filter(book => book.projectId === selectedProjectId);
+    }
+
+    if (currentUser?.role === 'Client' && currentUser.clientId) {
+      booksInStage = booksInStage.filter(b => b.clientId === currentUser.clientId);
+    }
+    
+    return booksInStage.reduce<GroupedDocuments>((acc, book) => {
+        const pages = documents.filter(doc => doc.bookId === book.id);
+        acc[book.id] = {
+            book,
+            pages,
+            hasError: pages.some(p => p.flag === 'error'),
+            hasWarning: pages.some(p => p.flag === 'warning')
+        };
+        return acc;
+    }, {});
+  }, [books, documents, config.dataStatus, selectedProjectId, currentUser]);
 
   const getAssigneeIdForBook = (book: EnrichedBook, role: AssignmentRole): string | undefined => {
     switch (role) {
@@ -446,17 +484,19 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
       });
   }
 
-  const openAssignmentDialog = (bookId: string, bookName: string, projectId: string, role: AssignmentRole) => {
-    setAssignmentState({ open: true, bookId, bookName, projectId, role, selectedUserId: '' });
+  const openAssignmentDialog = (book: EnrichedBook, role: AssignmentRole) => {
+    setAssignState({ open: true, book, role });
+    setSelectedUserId('');
   };
   
   const closeAssignmentDialog = () => {
-    setAssignmentState({ open: false, bookId: null, bookName: null, projectId: null, role: null, selectedUserId: '' });
+    setAssignState({ open: false, book: null, role: null });
+    setSelectedUserId('');
   };
 
   const handleConfirmAssignment = () => {
-    if (assignmentState.bookId && assignmentState.selectedUserId && assignmentState.role) {
-      handleAssignUser(assignmentState.bookId, assignmentState.selectedUserId, assignmentState.role);
+    if (assignState.book && selectedUserId && assignState.role) {
+      handleAssignUser(assignState.book.id, selectedUserId, assignState.role);
       closeAssignmentDialog();
     } else {
       toast({ title: "No User Selected", description: "Please select a user to assign the task.", variant: "destructive" });
@@ -537,7 +577,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
       const projectWorkflow = projectWorkflows[book.projectId!] || [];
       const isScanningEnabled = projectWorkflow.includes('to-scan');
       if (isScanningEnabled) {
-        openAssignmentDialog(book.id, book.name, book.projectId, 'scanner');
+        openAssignmentDialog(book, 'scanner');
       } else {
         setScanState({ open: true, book, folderName: null, fileCount: null });
       }
@@ -617,7 +657,7 @@ const handleMainAction = (book: EnrichedBook) => {
   const nextStageConfig = STAGE_CONFIG[nextStage];
 
   if (nextStageConfig?.assigneeRole) {
-    openAssignmentDialog(book.id, book.name, book.projectId, nextStageConfig.assigneeRole);
+    openAssignmentDialog(book, nextStageConfig.assigneeRole);
   } else {
      handleMoveBookToNextStage(book.id, book.status);
   }
@@ -886,6 +926,23 @@ const handleMainAction = (book: EnrichedBook) => {
     return count;
   }, [dataType, stage, config.assigneeRole, canViewAll]);
   
+  const handleBulkResubmit = (targetStage: string) => {
+    const stageKey = findStageKeyFromStatus(targetStage);
+    if (!stageKey) {
+      toast({ title: "Workflow Error", description: `Could not find configuration for stage: ${targetStage}`, variant: "destructive" });
+      return;
+    }
+    const stageConfig = STAGE_CONFIG[stageKey];
+    openConfirmationDialog({
+      title: `Resubmit ${selection.length} books?`,
+      description: `This will resubmit all selected books to the "${stageConfig.title}" stage.`,
+      onConfirm: () => {
+        selection.forEach(bookId => handleResubmit(bookId, targetStage));
+        setSelection([]);
+      }
+    });
+  }
+  
   const renderBulkActions = () => {
     if (selection.length === 0) return null;
     
@@ -961,7 +1018,7 @@ const handleMainAction = (book: EnrichedBook) => {
           return (
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">{selection.length} selected</span>
-              <Button size="sm" onClick={handleBulkComplete}>
+              <Button size="sm" onClick={handleBulkAction}>
                 <CheckCheck className="mr-2 h-4 w-4" /> Complete Selected
               </Button>
             </div>
@@ -980,32 +1037,32 @@ const handleMainAction = (book: EnrichedBook) => {
 
     return null;
   }
-  const handleBulkResubmit = (targetStage: string) => {
-    const stageKey = findStageKeyFromStatus(targetStage);
-    if (!stageKey) {
-      toast({ title: "Workflow Error", description: `Could not find configuration for stage: ${targetStage}`, variant: "destructive" });
-      return;
+  
+  const getPagesForBook = (bookId: string) => {
+    const getPageNum = (name: string): number => {
+        const match = name.match(/ - Page (\d+)/);
+        return match ? parseInt(match[1], 10) : 9999; 
     }
-    const stageConfig = STAGE_CONFIG[stageKey];
-    openConfirmationDialog({
-      title: `Resubmit ${selection.length} books?`,
-      description: `This will resubmit all selected books to the "${stageConfig.title}" stage.`,
-      onConfirm: () => {
-        selection.forEach(bookId => handleResubmit(bookId, targetStage));
-        setSelection([]);
-      }
-    });
+
+    return documents
+        .filter(doc => doc.bookId === bookId)
+        .sort((a, b) => getPageNum(a.name) - getPageNum(b.name));
   }
+  
+  const gridClasses: { [key: number]: string } = {
+    1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4', 5: 'grid-cols-5', 6: 'grid-cols-6',
+    7: 'grid-cols-7', 8: 'grid-cols-8', 9: 'grid-cols-9', 10: 'grid-cols-10', 11: 'grid-cols-11', 12: 'grid-cols-12'
+  };
 
   return (
     <>
-    <AlertDialog>
+     <AlertDialog>
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
                 <div>
-                    <CardTitle className="font-headline">{title}</CardTitle>
-                    <CardDescription>{description}</CardDescription>
+                    <CardTitle className="font-headline">{config.title}</CardTitle>
+                    <CardDescription>{config.description}</CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
                     {renderBulkActions()}
