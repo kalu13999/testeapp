@@ -197,7 +197,9 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
                   <DetailItem label="Expected Pages" value={book.expectedDocuments} />
                   <DetailItem label="Scanned Pages" value={book.documentCount} />
                   <Separator />
-                  <DetailItem label="Scanner Assigned" value={scanner?.name || '—'} />
+                  <DetailItem label="Scanner" value={book.scannerName || '—'} />
+                  <DetailItem label="Storage" value={book.storageName || '—'} />
+                  <Separator />
                   <DetailItem label="Scan Started" value={book.scanStartTime ? new Date(book.scanStartTime).toLocaleString() : '—'} />
                   <DetailItem label="Scan Ended" value={book.scanEndTime ? new Date(book.scanEndTime).toLocaleString() : '—'} />
             </CardContent>
