@@ -26,6 +26,7 @@ import { Input } from "@/components/ui/input"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { AnimatePresence, motion } from "framer-motion"
+import { Checkbox } from "@/components/ui/checkbox"
 
 interface ReadyForProcessingClientProps {
   stage: string;
@@ -40,6 +41,7 @@ interface ReadyForProcessingClientProps {
 export default function ReadyForProcessingClient({ config }: ReadyForProcessingClientProps) {
   const { books, startProcessingBatch, selectedProjectId } = useAppContext();
   const [selection, setSelection] = React.useState<string[]>([]);
+  const [multiSelection, setMultiSelection] = React.useState<string[]>([]);
   const [filter, setFilter] = React.useState("");
 
   const availableBooks = React.useMemo(() => {
@@ -72,6 +74,21 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
     setSelection([]);
   }
 
+  const handleAddMultiple = () => {
+    setSelection(prev => [...new Set([...prev, ...multiSelection])]);
+    setMultiSelection([]);
+  }
+
+  const toggleAllMultiSelection = () => {
+    if (multiSelection.length === availableBooks.filter(b => !selection.includes(b.id)).length) {
+      setMultiSelection([]);
+    } else {
+      setMultiSelection(availableBooks.filter(b => !selection.includes(b.id)).map(b => b.id));
+    }
+  }
+
+  const availableForMultiSelectCount = availableBooks.filter(b => !selection.includes(b.id)).length;
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
       <div className="lg:col-span-2">
@@ -81,16 +98,33 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
             <CardDescription>{config.description}</CardDescription>
           </CardHeader>
           <CardContent>
-             <div className="mb-4">
+             <div className="flex justify-between items-center mb-4">
                 <Input 
                     placeholder="Filter books by name or project..."
                     value={filter}
                     onChange={(e) => setFilter(e.target.value)}
+                    className="max-w-sm"
                 />
+                <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    disabled={multiSelection.length === 0}
+                    onClick={handleAddMultiple}
+                >
+                    <ListPlus className="mr-2 h-4 w-4" />
+                    Add {multiSelection.length} Selected to Batch
+                </Button>
              </div>
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[40px]">
+                      <Checkbox
+                        onCheckedChange={toggleAllMultiSelection}
+                        checked={multiSelection.length > 0 && multiSelection.length === availableForMultiSelectCount}
+                        disabled={availableForMultiSelectCount === 0}
+                      />
+                  </TableHead>
                   <TableHead className="w-[80px]">Action</TableHead>
                   <TableHead>Book Name</TableHead>
                   <TableHead>Project</TableHead>
@@ -99,32 +133,48 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
               </TableHeader>
               <TableBody>
                 {availableBooks.length > 0 ? (
-                  availableBooks.map(book => (
-                    <TableRow key={book.id}>
-                      <TableCell>
-                        <Button 
-                          size="sm" 
-                          variant={selection.includes(book.id) ? "destructive" : "outline"}
-                          onClick={() => toggleSelection(book.id)}
-                        >
-                          {selection.includes(book.id) ? (
-                            <X className="mr-2 h-4 w-4" />
-                          ) : (
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                          )}
-                          {selection.includes(book.id) ? 'Remove' : 'Add'}
-                        </Button>
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        <Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link>
-                      </TableCell>
-                      <TableCell>{book.projectName}</TableCell>
-                      <TableCell className="text-right">{book.expectedDocuments}</TableCell>
-                    </TableRow>
-                  ))
+                  availableBooks.map(book => {
+                    const isSelected = selection.includes(book.id);
+                    return (
+                        <TableRow key={book.id}>
+                          <TableCell>
+                            <Checkbox
+                              checked={multiSelection.includes(book.id)}
+                              onCheckedChange={() => {
+                                setMultiSelection(prev => 
+                                  prev.includes(book.id) 
+                                    ? prev.filter(id => id !== book.id)
+                                    : [...prev, book.id]
+                                );
+                              }}
+                              disabled={isSelected}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Button 
+                              size="sm" 
+                              variant={isSelected ? "destructive" : "outline"}
+                              onClick={() => toggleSelection(book.id)}
+                            >
+                              {isSelected ? (
+                                <X className="mr-2 h-4 w-4" />
+                              ) : (
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                              )}
+                              {isSelected ? 'Remove' : 'Add'}
+                            </Button>
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            <Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link>
+                          </TableCell>
+                          <TableCell>{book.projectName}</TableCell>
+                          <TableCell className="text-right">{book.expectedDocuments}</TableCell>
+                        </TableRow>
+                    )
+                  })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
+                    <TableCell colSpan={5} className="h-24 text-center">
                         <p>{config.emptyStateText}</p>
                     </TableCell>
                   </TableRow>
