@@ -1,5 +1,31 @@
 
 
+export interface Storage {
+    id: string;
+    nome: string;
+    ip: string;
+    root_path: string;
+    thumbs_path: string;
+    percentual_minimo_diario: number;
+    minimo_diario_fixo: number;
+    peso: number;
+    status: 'ativo' | 'inativo';
+}
+
+export interface LogTransferencia {
+    id: number;
+    nome_pasta: string;
+    bookId: string;
+    total_tifs: number;
+    storage_id: string;
+    scanner_id: string;
+    status: 'sucesso' | 'erro';
+    data_inicio: string;
+    data_fim: string;
+    detalhes?: string;
+}
+
+
 // Define types for our data structures
 export interface Client {
     id: string;
@@ -172,6 +198,7 @@ export interface EnrichedBook extends RawBook {
     clientName: string;
     documentCount: number;
     progress: number;
+    storageName?: string;
 }
 
 
@@ -225,6 +252,9 @@ export const getProjectWorkflows = () => fetchData<ProjectWorkflows>('/project-w
 export const getRejectionTags = () => fetchData<RejectionTag[]>('/rejection-tags');
 export const getDocumentStatuses = () => fetchData<DocumentStatus[]>('/document-statuses');
 export const getFolders = () => fetchData<Folder[]>('/folders');
+export const getStorages = () => fetchData<Storage[]>('/storages');
+export const getTransferLogs = () => fetchData<LogTransferencia[]>('/log-transferencias');
+
 
 // New functions for processing batches
 export const getProcessingBatches = () => fetchData<ProcessingBatch[]>('/processing-batches');
@@ -234,13 +264,26 @@ export const getProcessingLogs = () => fetchData<ProcessingLog[]>('/processing-l
 
 // Enriched data fetching functions
 export async function getEnrichedProjects(): Promise<EnrichedProject[]> {
-    const [projects, clients, books, documents, statuses] = await Promise.all([
+    const [projects, clients, books, documents, statuses, transferLogs, storages] = await Promise.all([
       getRawProjects(),
       getClients(),
       getRawBooks(),
       getRawDocuments(),
       getDocumentStatuses(),
+      getTransferLogs(),
+      getStorages(),
     ]);
+
+    const storageMap = new Map(storages.map(s => [s.id, s.nome]));
+    const bookStorageMap = new Map<string, string>();
+
+    transferLogs.forEach(log => {
+      if (log.bookId && log.status === 'sucesso' && storageMap.has(log.storage_id)) {
+          // A lógica pode precisar de ser mais robusta, por exemplo, pegar o mais recente.
+          // Por agora, o último registo de sucesso para um livro define o seu storage.
+          bookStorageMap.set(log.bookId, storageMap.get(log.storage_id)!);
+      }
+    });
   
     return projects.map(project => {
       const client = clients.find(c => c.id === project.clientId);
@@ -256,6 +299,7 @@ export async function getEnrichedProjects(): Promise<EnrichedProject[]> {
           clientName: client?.name || 'Unknown Client',
           documentCount: bookDocuments.length,
           progress: Math.min(100, bookProgress),
+          storageName: bookStorageMap.get(book.id),
         };
       });
   

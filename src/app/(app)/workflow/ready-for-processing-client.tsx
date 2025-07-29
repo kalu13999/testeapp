@@ -177,6 +177,7 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
                   <TableHead className="w-[120px]">Action</TableHead>
                   <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name')}>Book Name {getSortIndicator('name')}</div></TableHead>
                   <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('projectName')}>Project {getSortIndicator('projectName')}</div></TableHead>
+                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('storageName')}>Storage {getSortIndicator('storageName')}</div></TableHead>
                   <TableHead className="text-right"><div className="flex items-center justify-end gap-2 cursor-pointer select-none group" onClick={() => handleSort('expectedDocuments')}>Pages {getSortIndicator('expectedDocuments')}</div></TableHead>
                 </TableRow>
                  <TableRow>
@@ -187,6 +188,9 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
                     </TableHead>
                      <TableHead>
                         <Input placeholder="Filter by project..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/>
+                    </TableHead>
+                     <TableHead>
+                        <Input placeholder="Filter by storage..." value={columnFilters['storageName'] || ''} onChange={(e) => handleColumnFilterChange('storageName', e.target.value)} className="h-8"/>
                     </TableHead>
                     <TableHead className="text-right">
                         <div className="flex items-center justify-end gap-2">
@@ -234,13 +238,14 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
                             <Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link>
                           </TableCell>
                           <TableCell>{book.projectName}</TableCell>
+                          <TableCell>{book.storageName || 'N/A'}</TableCell>
                           <TableCell className="text-right">{book.expectedDocuments}</TableCell>
                         </TableRow>
                     )
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
+                    <TableCell colSpan={6} className="h-24 text-center">
                         <p>{Object.values(columnFilters).some(v=>v) ? "No books match your filters." : config.emptyStateText}</p>
                     </TableCell>
                   </TableRow>

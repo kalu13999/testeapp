@@ -3,7 +3,7 @@
 "use client"
 
 import * as React from 'react';
-import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions, ProjectWorkflows, RejectionTag, DocumentStatus, ProcessingBatch, ProcessingBatchItem } from '@/lib/data';
+import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions, ProjectWorkflows, RejectionTag, DocumentStatus, ProcessingBatch, ProcessingBatchItem, Storage, LogTransferencia } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { WORKFLOW_SEQUENCE, STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage } from '@/lib/workflow-config';
 import * as dataApi from '@/lib/data';
@@ -157,6 +157,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const [projectWorkflows, setProjectWorkflows] = React.useState<ProjectWorkflows>({});
   const [rejectionTags, setRejectionTags] = React.useState<RejectionTag[]>([]);
   const [statuses, setStatuses] = React.useState<DocumentStatus[]>([]);
+  const [storages, setStorages] = React.useState<Storage[]>([]);
+  const [transferLogs, setTransferLogs] = React.useState<LogTransferencia[]>([]);
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
   const [navigationHistory, setNavigationHistory] = React.useState<NavigationHistoryItem[]>([]);
   const { toast } = useToast();
@@ -181,13 +183,15 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             const [
                 clientsData, usersData, projectsData, booksData, 
                 docsData, auditData, batchesData, batchItemsData, logsData,
-                permissionsData, rolesData, workflowsData, rejectionData, statusesData
+                permissionsData, rolesData, workflowsData, rejectionData, statusesData,
+                storagesData, transferLogsData,
             ] = await Promise.all([
                 dataApi.getClients(), dataApi.getUsers(), dataApi.getRawProjects(),
                 dataApi.getRawBooks(), dataApi.getRawDocuments(), dataApi.getAuditLogs(),
                 dataApi.getProcessingBatches(), dataApi.getProcessingBatchItems(), dataApi.getProcessingLogs(),
                 dataApi.getPermissions(), dataApi.getRoles(),
-                dataApi.getProjectWorkflows(), dataApi.getRejectionTags(), dataApi.getDocumentStatuses()
+                dataApi.getProjectWorkflows(), dataApi.getRejectionTags(), dataApi.getDocumentStatuses(),
+                dataApi.getStorages(), dataApi.getTransferLogs(),
             ]);
 
             setClients(clientsData);
@@ -196,6 +200,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             setRawBooks(booksData);
             setStatuses(statusesData);
             setRawDocuments(docsData);
+            setStorages(storagesData);
+            setTransferLogs(transferLogsData);
 
             const enrichedAuditLogs = auditData
                 .map(log => ({ ...log, user: usersData.find(u => u.id === log.userId)?.name || 'Unknown' }))
@@ -368,6 +374,15 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   }, [rawDocuments, rawBooks, statuses, clients]);
 
   const allEnrichedProjects: EnrichedProject[] = React.useMemo(() => {
+    const storageMap = new Map(storages.map(s => [s.id, s.nome]));
+    const bookStorageMap = new Map<string, string>();
+
+    transferLogs.forEach(log => {
+      if (log.bookId && log.status === 'sucesso' && storageMap.has(log.storage_id)) {
+          bookStorageMap.set(log.bookId, storageMap.get(log.storage_id)!);
+      }
+    });
+
     return rawProjects.map(project => {
         const client = clients.find(c => c.id === project.clientId);
         
@@ -382,6 +397,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
                 clientName: client?.name || 'Unknown Client',
                 documentCount: bookDocuments.length,
                 progress: Math.min(100, bookProgress),
+                storageName: bookStorageMap.get(book.id),
             };
         });
 
@@ -398,7 +414,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         books: projectBooks,
       };
     });
-  }, [rawProjects, clients, rawBooks, rawDocuments, statuses]);
+  }, [rawProjects, clients, rawBooks, rawDocuments, statuses, storages, transferLogs]);
   
   const enrichedBooks: EnrichedBook[] = React.useMemo(() => {
       return allEnrichedProjects.flatMap(p => p.books);
@@ -1247,15 +1263,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const startProcessingBatch = async (bookIds: string[]) => {
     await withMutation(async () => {
       try {
-        // Move folders first
         const fromStatusName = 'Ready for Processing';
         const toStatusName = 'In Processing';
+
         for (const bookId of bookIds) {
           const book = rawBooks.find(b => b.id === bookId);
           if (book) {
             const moveResult = await moveBookFolder(book.name, fromStatusName, toStatusName);
             if (!moveResult) {
-              // If any move fails, we might want to stop the whole batch.
               throw new Error(`Failed to move folder for book "${book.name}". Batch start aborted.`);
             }
           }
@@ -1269,7 +1284,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         if (!response.ok) throw new Error('Failed to create processing batch');
         const newBatch = await response.json();
         
-        // Optimistically update the UI
         setProcessingBatches(prev => [newBatch, ...prev]);
         const statusId = statuses.find(s => s.name === 'In Processing')?.id;
         if(statusId) {
@@ -1466,6 +1480,3 @@ export function useAppContext() {
   }
   return context;
 }
-
-
-
