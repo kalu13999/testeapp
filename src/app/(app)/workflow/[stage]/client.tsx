@@ -134,18 +134,6 @@ const DetailItem = ({ label, value }: { label: string; value: React.ReactNode })
   </div>
 );
 
-const SIMPLE_BULK_ACTION_STAGES = [
-    'confirm-reception',
-    'to-scan',
-    'to-indexing',
-    'to-checking',
-    'ready-for-processing',
-    'processed',
-    'final-quality-control',
-    'delivery',
-];
-
-
 export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const { 
     books, documents, handleMoveBookToNextStage, 
@@ -458,18 +446,17 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
       });
   }
 
-  const openAssignmentDialog = (book: EnrichedBook, role: AssignmentRole) => {
-    setAssignState({ open: true, book, role });
+  const openAssignmentDialog = (bookId: string, bookName: string, projectId: string, role: AssignmentRole) => {
+    setAssignmentState({ open: true, bookId, bookName, projectId, role, selectedUserId: '' });
   };
   
   const closeAssignmentDialog = () => {
-    setAssignState({ open: false, book: null, role: null });
-    setSelectedUserId("");
+    setAssignmentState({ open: false, bookId: null, bookName: null, projectId: null, role: null, selectedUserId: '' });
   };
 
   const handleConfirmAssignment = () => {
-    if (assignState.book && selectedUserId && assignState.role) {
-      handleAssignUser(assignState.book.id, selectedUserId, assignState.role);
+    if (assignmentState.bookId && assignmentState.selectedUserId && assignmentState.role) {
+      handleAssignUser(assignmentState.bookId, assignmentState.selectedUserId, assignmentState.role);
       closeAssignmentDialog();
     } else {
       toast({ title: "No User Selected", description: "Please select a user to assign the task.", variant: "destructive" });
@@ -536,35 +523,6 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     });
   };
 
-  const handleMainAction = (book: EnrichedBook) => {
-    if (!book.projectId) {
-        toast({ title: "Error", description: "Project ID not found for this book.", variant: "destructive" });
-        return;
-    }
-    
-    const workflow = projectWorkflows[book.projectId] || [];
-    const currentStageKey = findStageKeyFromStatus(book.status);
-    if (!currentStageKey) {
-        toast({ title: "Workflow Error", description: `Cannot find a workflow stage for status: "${book.status}"`, variant: "destructive" });
-        return;
-    }
-    
-    const nextStage = getNextEnabledStage(currentStageKey, workflow);
-    
-    if (!nextStage) {
-      handleMoveBookToNextStage(book.id, book.status);
-      return;
-    }
-    
-    const nextStageConfig = STAGE_CONFIG[nextStage];
-
-    if (nextStageConfig?.assigneeRole) {
-      openAssignmentDialog(book, nextStageConfig.assigneeRole);
-    } else {
-       handleMoveBookToNextStage(book.id, book.status);
-    }
-  }
-
   const handleActionClick = (book: EnrichedBook) => {
     if (stage === 'confirm-reception') {
       openConfirmationDialog({
@@ -579,7 +537,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
       const projectWorkflow = projectWorkflows[book.projectId!] || [];
       const isScanningEnabled = projectWorkflow.includes('to-scan');
       if (isScanningEnabled) {
-        openAssignmentDialog(book, 'scanner');
+        openAssignmentDialog(book.id, book.name, book.projectId, 'scanner');
       } else {
         setScanState({ open: true, book, folderName: null, fileCount: null });
       }
@@ -635,6 +593,35 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
       });
     }
 };
+
+const handleMainAction = (book: EnrichedBook) => {
+  if (!book.projectId) {
+      toast({ title: "Error", description: "Project ID not found for this book.", variant: "destructive" });
+      return;
+  }
+  
+  const workflow = projectWorkflows[book.projectId] || [];
+  const currentStageKey = findStageKeyFromStatus(book.status);
+  if (!currentStageKey) {
+      toast({ title: "Workflow Error", description: `Cannot find a workflow stage for status: "${book.status}"`, variant: "destructive" });
+      return;
+  }
+  
+  const nextStage = getNextEnabledStage(currentStageKey, workflow);
+  
+  if (!nextStage) {
+    handleMoveBookToNextStage(book.id, book.status);
+    return;
+  }
+  
+  const nextStageConfig = STAGE_CONFIG[nextStage];
+
+  if (nextStageConfig?.assigneeRole) {
+    openAssignmentDialog(book.id, book.name, book.projectId, nextStageConfig.assigneeRole);
+  } else {
+     handleMoveBookToNextStage(book.id, book.status);
+  }
+}
 
   const getDynamicActionButtonLabel = React.useCallback((book: EnrichedBook) => {
     if (config.actionButtonLabel) {
@@ -891,27 +878,6 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     closeTaggingDialog();
   };
 
-  const setBookColumns = (bookId: string, cols: number) => {
-    setColumnStates(prev => ({ ...prev, [bookId]: { cols } }));
-  };
-  
-  const getPagesForBook = (bookId: string) => {
-    const getPageNum = (name: string): number => {
-        const match = name.match(/ - Page (\d+)/);
-        return match ? parseInt(match[1], 10) : 9999; 
-    }
-
-    return documents
-        .filter(doc => doc.bookId === bookId)
-        .sort((a, b) => getPageNum(a.name) - getPageNum(b.name));
-  }
-  
-  const gridClasses: { [key: number]: string } = {
-    1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4', 5: 'grid-cols-5', 6: 'grid-cols-6',
-    7: 'grid-cols-7', 8: 'grid-cols-8', 9: 'grid-cols-9', 10: 'grid-cols-10', 11: 'grid-cols-11', 12: 'grid-cols-12'
-  };
-
-
   const isScanFolderMatch = scanState.book?.name === scanState.folderName;
 
   const tableColSpan = React.useMemo(() => {
@@ -919,6 +885,117 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     if (config.assigneeRole && canViewAll) count++;
     return count;
   }, [dataType, stage, config.assigneeRole, canViewAll]);
+  
+  const renderBulkActions = () => {
+    if (selection.length === 0) return null;
+    
+    if (stage === 'pending-deliveries') {
+      return (
+         <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">{selection.length} selected</span>
+            <Button size="sm" onClick={() => openConfirmationDialog({
+              title: `Approve ${selection.length} books?`,
+              description: 'This will approve all selected books and finalize them.',
+              onConfirm: () => {
+                selection.forEach(bookId => handleClientAction(bookId, 'approve'));
+                setSelection([]);
+              }
+            })}>
+              <ThumbsUp className="mr-2 h-4 w-4" /> Approve Selected
+            </Button>
+         </div>
+      );
+    } else if (stage === 'corrected') {
+      return (
+        <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">{selection.length} selected</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm">
+                  <Send className="mr-2 h-4 w-4" /> Resubmit Selected To...
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => handleBulkResubmit('To Indexing')}>Indexing</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleBulkResubmit('To Checking')}>Quality Control</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleBulkResubmit('Delivery')}>Delivery</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
+      );
+    } else if (stage === 'client-rejections') {
+      return (
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">{selection.length} selected</span>
+           <Button size="sm" onClick={() => openConfirmationDialog({
+             title: `Mark ${selection.length} books as corrected?`,
+             description: `This will move all selected books to the next stage.`,
+             onConfirm: () => {
+               selection.forEach(bookId => handleMarkAsCorrected(bookId));
+               setSelection([]);
+             }
+           })}>
+            <Undo2 className="mr-2 h-4 w-4" />
+            Mark Selected as Corrected
+          </Button>
+        </div>
+      )
+    } else if (SIMPLE_BULK_ACTION_STAGES.includes(stage)) {
+       const firstBook = allDisplayItems.find(item => item.id === selection[0]) as EnrichedBook;
+       if (!firstBook) return null;
+
+       const actionType = determineNextActionType(firstBook);
+
+       if(actionType === 'ASSIGN') {
+          const role = STAGE_CONFIG[getNextEnabledStage(findStageKeyFromStatus(firstBook.status)!, projectWorkflows[firstBook.projectId] || [])!]?.assigneeRole;
+          if(!role) return null;
+           return (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">{selection.length} selected</span>
+                <Button size="sm" onClick={() => openBulkAssignmentDialog(role)}>
+                  <UserPlus className="mr-2 h-4 w-4" /> Assign Selected
+                </Button>
+              </div>
+            );
+       } else {
+          return (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">{selection.length} selected</span>
+              <Button size="sm" onClick={handleBulkComplete}>
+                <CheckCheck className="mr-2 h-4 w-4" /> Complete Selected
+              </Button>
+            </div>
+          )
+       }
+    } else if (isCancelable) {
+       return (
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">{selection.length} selected</span>
+          <Button size="sm" variant="destructive" onClick={handleBulkCancel}>
+            <X className="mr-2 h-4 w-4" /> Cancel Selected Tasks
+          </Button>
+        </div>
+      )
+    }
+
+    return null;
+  }
+  const handleBulkResubmit = (targetStage: string) => {
+    const stageKey = findStageKeyFromStatus(targetStage);
+    if (!stageKey) {
+      toast({ title: "Workflow Error", description: `Could not find configuration for stage: ${targetStage}`, variant: "destructive" });
+      return;
+    }
+    const stageConfig = STAGE_CONFIG[stageKey];
+    openConfirmationDialog({
+      title: `Resubmit ${selection.length} books?`,
+      description: `This will resubmit all selected books to the "${stageConfig.title}" stage.`,
+      onConfirm: () => {
+        selection.forEach(bookId => handleResubmit(bookId, targetStage));
+        setSelection([]);
+      }
+    });
+  }
 
   return (
     <>
@@ -1148,32 +1225,32 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     </Dialog>
 
     <Dialog open={assignState.open} onOpenChange={closeAssignmentDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{assignState.role ? assignmentConfig[assignState.role].title : 'Assign User'} for "{assignState.book?.name}"</DialogTitle>
-            <DialogDescription>{assignState.role ? assignmentConfig[assignState.role].description : ''}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-              <SelectTrigger>
-                <SelectValue placeholder={`Select an ${assignState.role}...`} />
-              </SelectTrigger>
-              <SelectContent>
-                {assignState.role && assignState.book && 
-                  getAssignableUsers(assignState.role, assignState.book.projectId).map(user => (
-                    <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={closeAssignmentDialog}>Cancel</Button>
-            <Button onClick={handleConfirmAssignment} disabled={!selectedUserId}>
-              Assign and Confirm
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{assignState.role ? assignmentConfig[assignState.role].title : 'Assign User'} for "{assignState.book?.name}"</DialogTitle>
+          <DialogDescription>{assignState.role ? assignmentConfig[assignState.role].description : ''}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+            <SelectTrigger>
+              <SelectValue placeholder={`Select an ${assignState.role}...`} />
+            </SelectTrigger>
+            <SelectContent>
+              {assignState.role && assignState.book && 
+                getAssignableUsers(assignState.role, assignState.book.projectId).map(user => (
+                  <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={closeAssignmentDialog}>Cancel</Button>
+          <Button onClick={handleConfirmAssignment} disabled={!selectedUserId}>
+            Assign and Confirm
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     
     <Dialog open={bulkAssignState.open} onOpenChange={closeBulkAssignmentDialog}>
         <DialogContent>
@@ -1242,7 +1319,9 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
             <Separator />
             <DetailItem label="Author" value={detailsState.book?.author || '—'} />
             <DetailItem label="ISBN" value={detailsState.book?.isbn || '—'} />
+            <DetailItem label="Publication Year" value={detailsState.book?.publicationYear || '—'} />
             <Separator />
+            <DetailItem label="Priority" value={detailsState.book?.priority || '—'} />
             <DetailItem label="Expected Pages" value={detailsState.book?.expectedDocuments} />
             <DetailItem label="Scanned Pages" value={detailsState.book?.documentCount} />
           </div>
