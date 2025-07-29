@@ -1,5 +1,4 @@
 
-
 "use client"
 
 import * as React from "react"
@@ -18,6 +17,7 @@ import { useAppContext } from "@/context/workflow-context";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import type { EnrichedBook } from "@/lib/data";
 
 interface ProcessingViewClientProps {
   stage: string;
@@ -37,7 +37,7 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
     selectedProjectId
   } = useAppContext();
   
-  const [confirmationState, setConfirmationState] = React.useState({ open: false, title: '', description: '', onConfirm: () => {} });
+  const [confirmationState, setConfirmationState] = React.useState<{ open: boolean; book: EnrichedBook | null }>({ open: false, book: null });
   
   const booksInProcessing = React.useMemo(() => {
     if (!config.dataStatus) return [];
@@ -50,8 +50,19 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
     return baseBooks;
   }, [books, config.dataStatus, selectedProjectId]);
   
-  const openConfirmationDialog = ({ title, description, onConfirm}: Omit<typeof confirmationState, 'open'>) => {
-    setConfirmationState({ open: true, title, description, onConfirm });
+  const openConfirmationDialog = (book: EnrichedBook) => {
+    setConfirmationState({ open: true, book });
+  }
+
+  const closeConfirmationDialog = () => {
+    setConfirmationState({ open: false, book: null });
+  }
+
+  const handleConfirm = () => {
+    if (confirmationState.book) {
+        handleCompleteProcessing(confirmationState.book.id);
+    }
+    closeConfirmationDialog();
   }
 
   return (
@@ -79,11 +90,7 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
                         </div>
                     </AccordionTrigger>
                     <div className="px-4">
-                       <Button size="sm" onClick={() => openConfirmationDialog({
-                         title: "Complete Processing?",
-                         description: `This will mark all pages for "${book.name}" as processed and move it to the next stage.`,
-                         onConfirm: () => handleCompleteProcessing(book.id)
-                       })}>
+                       <Button size="sm" onClick={() => openConfirmationDialog(book)}>
                          Mark as Complete
                        </Button>
                     </div>
@@ -124,18 +131,17 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
       </CardFooter>
     </Card>
 
-    <Dialog open={confirmationState.open} onOpenChange={(open) => !open && setConfirmationState(prev => ({...prev, open: false}))}>
+    <Dialog open={confirmationState.open} onOpenChange={closeConfirmationDialog}>
         <DialogContent>
             <DialogHeader>
-                <DialogTitle>{confirmationState.title}</DialogTitle>
-                <DialogDescription>{confirmationState.description}</DialogDescription>
+                <DialogTitle>Complete Processing?</DialogTitle>
+                <DialogDescription>
+                    {`This will mark all pages for "${confirmationState.book?.name}" as processed and move it to the next stage.`}
+                </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-                <Button variant="outline" onClick={() => setConfirmationState(prev => ({...prev, open: false}))}>Cancel</Button>
-                <Button onClick={() => {
-                    confirmationState.onConfirm();
-                    setConfirmationState({ open: false, title: '', description: '', onConfirm: () => {} });
-                }}>Confirm</Button>
+                <Button variant="outline" onClick={closeConfirmationDialog}>Cancel</Button>
+                <Button onClick={handleConfirm}>Confirm</Button>
             </DialogFooter>
         </DialogContent>
     </Dialog>
