@@ -17,7 +17,7 @@ import { Loader2, BookOpen } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface ProcessingViewClientProps {
   stage: string;
@@ -124,21 +124,21 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
       </CardFooter>
     </Card>
 
-    <AlertDialog open={confirmationState.open} onOpenChange={(open) => !open && setConfirmationState(prev => ({...prev, open: false}))}>
-        <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>{confirmationState.title}</AlertDialogTitle>
-                <AlertDialogDescription>{confirmationState.description}</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setConfirmationState(prev => ({...prev, open: false}))}>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={() => {
+    <Dialog open={confirmationState.open} onOpenChange={(open) => !open && setConfirmationState(prev => ({...prev, open: false}))}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>{confirmationState.title}</DialogTitle>
+                <DialogDescription>{confirmationState.description}</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setConfirmationState(prev => ({...prev, open: false}))}>Cancel</Button>
+                <Button onClick={() => {
                     confirmationState.onConfirm();
                     setConfirmationState({ open: false, title: '', description: '', onConfirm: () => {} });
-                }}>Confirm</AlertDialogAction>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-    </AlertDialog>
+                }}>Confirm</Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
     </>
   )
 }
