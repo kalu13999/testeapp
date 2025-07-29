@@ -37,7 +37,8 @@
     "/admin/default-projects",
     "/admin/overview",
     "/dashboard",
-    "/workflow/view-all"
+    "/workflow/view-all",
+    "/processing-batches/[id]"
   ],
   "Multi-Operator": [
     "/profile",
@@ -48,7 +49,8 @@
     "/workflow/to-indexing",
     "/workflow/indexing-started",
     "/workflow/to-checking",
-    "/workflow/checking-started"
+    "/workflow/checking-started",
+    "/processing-batches/[id]"
   ],
   "QC Specialist": [
     "/profile",
@@ -58,7 +60,8 @@
     "/workflow/to-checking",
     "/workflow/checking-started",
     "/workflow/final-quality-control",
-    "/workflow/client-rejections"
+    "/workflow/client-rejections",
+    "/processing-batches/[id]"
   ],
   "Client": [
     "/dashboard",
@@ -98,7 +101,8 @@
     "/workflow/in-processing",
     "/workflow/processed",
     "/books/[id]",
-    "/documents/[id]"
+    "/documents/[id]",
+    "/processing-batches/[id]"
   ],
   "Delivery": [
     "/profile",
@@ -137,6 +141,7 @@
     "/workflow/corrected",
     "/finalized",
     "/archive",
-    "/admin/reassign-user"
+    "/admin/reassign-user",
+    "/processing-batches/[id]"
   ]
 }

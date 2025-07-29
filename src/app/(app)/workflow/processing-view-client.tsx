@@ -107,7 +107,9 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
                           {batch.status === 'Complete' && <CheckCircle className="h-5 w-5 text-green-600" />}
                           {batch.status === 'Failed' && <XCircle className="h-5 w-5 text-destructive" />}
                           <div>
-                            <p className="font-semibold text-base">{batch.timestampStr}</p>
+                            <Link href={`/processing-batches/${batch.id}`} className="hover:underline">
+                                <p className="font-semibold text-base">{batch.timestampStr}</p>
+                            </Link>
                             <p className="text-sm text-muted-foreground">{batch.items.length} book(s) in this batch</p>
                           </div>
                         </div>

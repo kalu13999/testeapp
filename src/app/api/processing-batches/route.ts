@@ -8,14 +8,8 @@ export async function GET() {
   try {
     connection = await getConnection();
     const [batches] = await connection.execute('SELECT * FROM processing_batches ORDER BY startTime DESC');
-    const [items] = await connection.execute('SELECT * FROM processing_batch_items');
-
-    const enrichedBatches = (batches as any[]).map(batch => {
-      const batchItems = (items as any[]).filter(item => item.batchId === batch.id);
-      return { ...batch, items: batchItems };
-    });
     
-    return NextResponse.json(enrichedBatches);
+    return NextResponse.json(batches);
   } catch (error) {
     console.error("Error fetching processing batches:", error);
     return NextResponse.json({ error: 'Failed to fetch processing batches' }, { status: 500 });

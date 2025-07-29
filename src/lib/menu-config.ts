@@ -32,6 +32,7 @@ import {
   Star,
   Globe,
   LucideIcon,
+  ServerCog
 } from "lucide-react";
 
 interface MenuItem {

@@ -178,7 +178,7 @@ export const WORKFLOW_PHASES = [
     name: "Automated Processing",
     toggleable: true,
     description: "Automated OCR, data extraction, and other scripts.",
-    stages: ["ready-for-processing", "in-processing", "processed"],
+    stages: ["ready-for-processing", "in-processing", "processed", "processing-batches/[id]"],
     config: {
       'ready-for-processing': {
         title: "Ready for Processing",
@@ -208,6 +208,13 @@ export const WORKFLOW_PHASES = [
         dataStatus: "Processed",
         viewType: 'folder',
       },
+       'processing-batches/[id]': {
+        title: "Batch Details",
+        description: "Detailed view of a specific processing batch.",
+        viewType: 'list', 
+        dataType: 'book',
+        emptyStateText: "",
+      }
     }
   },
   {
