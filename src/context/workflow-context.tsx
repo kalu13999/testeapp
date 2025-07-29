@@ -300,7 +300,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     details: string, 
     ids: { bookId?: string, documentId?: string, userId?: string }
   ) => {
-    const actorId = currentUser?.id;
+    const actorId = ids.userId || currentUser?.id;
     if (!actorId) return;
 
     const mysqlDate = getDbSafeDate();
@@ -940,18 +940,18 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   }, [statuses]);
 
   const moveBookFolder = React.useCallback(async (bookName: string, fromStatusName: string, toStatusName: string): Promise<boolean> => {
+    console.log(`WORKFLOW: Attempting to move folder for book: ${bookName} from ${fromStatusName} to ${toStatusName}`);
     const fromStatus = statuses.find(s => s.name === fromStatusName);
     const toStatus = statuses.find(s => s.name === toStatusName);
     
-    // Only move if both statuses have a physical folder representation
     if (!fromStatus?.folderName || !toStatus?.folderName) {
-        console.log(`Logical move from ${fromStatusName} to ${toStatusName}. No physical folder move needed.`);
+        console.log(`WORKFLOW: Logical move from ${fromStatusName} to ${toStatusName}. No physical folder move needed.`);
         return true; 
     }
     
     const apiUrl = process.env.NEXT_PUBLIC_WORKFLOW_API_URL;
     if (!apiUrl) {
-      console.warn("Workflow API URL not configured. Physical folder move will be skipped.");
+      console.warn("WORKFLOW: API URL not configured. Physical folder move will be skipped.");
       return true;
     }
     
@@ -972,17 +972,19 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
                     variant: "destructive",
                     duration: 10000,
                 });
-                return false; // Return false to halt the status change
             }
+            logAction('System Alert', `Failed to move folder for book "${bookName}" from ${fromStatusName} to ${toStatusName}. Reason: ${errorMessage}`, { userId: 'u_system' });
             throw new Error(errorMessage);
         }
+        console.log(`WORKFLOW: Successfully moved folder for ${bookName}.`);
         return true;
     } catch (error: any) {
-        console.error("Error calling workflow API to move folder:", error);
+        console.error("WORKFLOW: Error calling workflow API to move folder:", error);
         toast({ title: "Folder Move Error", description: `Could not move folder for "${bookName}". Please check API logs.`, variant: "destructive" });
-        return false; // Return false to indicate the operation should halt
+        logAction('System Alert', `Error moving folder for book "${bookName}". Reason: ${error.message}`, { userId: 'u_system' });
+        return false;
     }
-  }, [statuses, toast]);
+  }, [statuses, toast, logAction]);
   
   const handleMarkAsShipped = (bookIds: string[]) => {
     withMutation(async () => {
@@ -1251,19 +1253,23 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       if (!book || !book.projectId || !log) return;
 
       const workflow = projectWorkflows[book.projectId] || [];
-      const nextStage = getNextEnabledStage('in-processing', workflow) || 'processed';
+      const nextStage = getNextEnabledStage('in-processing', workflow);
+      if(!nextStage) {
+        toast({ title: "Workflow End", description: "This is the final step for this project.", variant: "default" });
+        return;
+      }
+      
       const newStatus = STAGE_CONFIG[nextStage]?.dataStatus || 'Processed';
       const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
       if (!currentStatusName) return;
 
-      console.log(`Attempting to move folder for book: ${book.name} from ${currentStatusName} to ${newStatus}`);
+      console.log(`WORKFLOW: Calling moveBookFolder from handleCompleteProcessing for ${book.name}`);
       const moveResult = await moveBookFolder(book.name, currentStatusName, newStatus);
-      console.log(`Move result for ${book.name}:`, moveResult);
       if (moveResult !== true) return;
   
       try {
-        const updatedLogData = {
-          status: 'Complete' as 'Complete',
+        const updatedLogData: Partial<ProcessingLog> = {
+          status: 'Complete',
           progress: 100,
           log: `${log.log}\n[${new Date().toLocaleTimeString()}] Processing complete.`,
           lastUpdate: getDbSafeDate()
@@ -1275,7 +1281,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         });
         if (!response.ok) throw new Error('Failed to update processing log');
         
-        setProcessingLogs(prev => prev.map(l => l.id === log.id ? { ...l, ...updatedLogData } : l));
+        setProcessingLogs(prev => prev.map(l => l.id === log.id ? { ...l, ...updatedLogData } as ProcessingLog : l));
         
         const updatedBook = await updateBookStatus(bookId, newStatus);
         setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
@@ -1436,3 +1442,4 @@ export function useAppContext() {
   }
   return context;
 }
+
