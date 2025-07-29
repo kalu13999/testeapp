@@ -25,7 +25,9 @@ const tableFields = {
   ],
   rejection_tags: ['id','clientId','label','description'],
   audit_logs: ['id','bookId','action','userId','date','details'],
-  processing_logs: ['id','bookId','status','progress','log','startTime','lastUpdate']
+  processing_batches: ['id', 'startTime', 'endTime', 'status', 'progress', 'timestampStr', 'info', 'obs'],
+  processing_batch_items: ['id', 'batchId', 'bookId', 'itemStartTime', 'itemEndTime', 'processedPages', 'status', 'info', 'obs'],
+  processing_logs: ['id', 'batchId', 'message', 'timestamp', 'level', 'info', 'obs']
 };
 
 const files = Object.keys(tableFields);
