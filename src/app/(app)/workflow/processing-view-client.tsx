@@ -45,7 +45,8 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
     processingBatchItems,
     processingLogs,
     handleCompleteProcessing,
-    selectedProjectId
+    selectedProjectId,
+    books
   } = useAppContext();
 
   const [confirmationState, setConfirmationState] = React.useState<{ open: boolean; batch: ProcessingBatch | null }>({ open: false, batch: null });
@@ -67,9 +68,7 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
       });
 
     return batches;
-  }, [processingBatches, processingBatchItems, selectedProjectId]);
-  
-  const books = useAppContext().books;
+  }, [processingBatches, processingBatchItems, selectedProjectId, books]);
 
   const openConfirmationDialog = (batch: ProcessingBatch) => {
     setConfirmationState({ open: true, batch });
