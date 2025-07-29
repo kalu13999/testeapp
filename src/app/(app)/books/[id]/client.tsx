@@ -41,6 +41,7 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
   const [columns, setColumns] = React.useState(8);
 
   const book = books.find(b => b.id === bookId);
+  
   const pages = React.useMemo(() => {
     const getPageNum = (name: string): number => {
         const match = name.match(/ - Page (\d+)/);
@@ -52,6 +53,9 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
   }, [documents, bookId]);
   
   const scanner = users.find(u => u.id === book?.scannerUserId);
+  const indexer = users.find(u => u.id === book?.indexerUserId);
+  const qc = users.find(u => u.id === book?.qcUserId);
+
 
   const bookAuditLogs = React.useMemo(() => {
     let logs = auditLogs.filter(log => log.bookId === bookId);
@@ -197,7 +201,9 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
                   <DetailItem label="Expected Pages" value={book.expectedDocuments} />
                   <DetailItem label="Scanned Pages" value={book.documentCount} />
                   <Separator />
-                  <DetailItem label="Scanner" value={book.scannerName || '—'} />
+                  <DetailItem label="Scanner" value={scanner?.name || '—'} />
+                  <DetailItem label="Indexer" value={indexer?.name || '—'} />
+                  <DetailItem label="QC Specialist" value={qc?.name || '—'} />
                   <DetailItem label="Storage" value={book.storageName || '—'} />
                   <Separator />
                   <DetailItem label="Scan Started" value={book.scanStartTime ? new Date(book.scanStartTime).toLocaleString() : '—'} />
