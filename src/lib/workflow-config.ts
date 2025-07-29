@@ -20,7 +20,7 @@ type StageConfig = {
 
 export const MANDATORY_STAGES = [
   "pending-shipment", "confirm-reception", "already-received", "storage",
-  "delivery", "client-rejections", "corrected",
+  "delivery", "pending-deliveries", "client-rejections", "corrected",
   "finalized", "archive"
 ];
 
