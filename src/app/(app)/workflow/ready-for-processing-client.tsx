@@ -24,7 +24,6 @@ import { useAppContext } from "@/context/workflow-context"
 import type { EnrichedBook } from "@/lib/data"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
-import { Badge } from "@/components/ui/badge"
 import { AnimatePresence, motion } from "framer-motion"
 import { Checkbox } from "@/components/ui/checkbox"
 
@@ -62,6 +61,10 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
   const selectedBooksInfo = React.useMemo(() => {
       return selection.map(id => books.find(b => b.id === id)).filter((b): b is EnrichedBook => !!b);
   }, [selection, books]);
+
+  const totalSelectedPages = React.useMemo(() => {
+    return selectedBooksInfo.reduce((sum, book) => sum + book.expectedDocuments, 0);
+  }, [selectedBooksInfo]);
   
   const toggleSelection = (bookId: string) => {
     setSelection(prev => 
@@ -201,6 +204,7 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
                         </CardTitle>
                         <CardDescription>
                             {selection.length} book(s) selected for processing.
+                            Total pages: {totalSelectedPages.toLocaleString()}
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
