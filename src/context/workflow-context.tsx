@@ -974,7 +974,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
                 });
             }
             logAction('System Alert', `Failed to move folder for book "${bookName}" from ${fromStatusName} to ${toStatusName}. Reason: ${errorMessage}`, { userId: 'u_system' });
-            throw new Error(errorMessage);
+            return false;
         }
         console.log(`WORKFLOW: Successfully moved folder for ${bookName}.`);
         return true;
