@@ -1218,9 +1218,10 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const handleStartProcessing = async (bookId: string) => {
-    withMutation(async () => {
+    await withMutation(async () => {
       const book = rawBooks.find(b => b.id === bookId);
       if (!book || !book.projectId) return;
+
       const workflow = projectWorkflows[book.projectId] || [];
       const nextStage = getNextEnabledStage('ready-for-processing', workflow) || 'in-processing';
       const newStatus = STAGE_CONFIG[nextStage]?.dataStatus || 'In Processing';
@@ -1231,12 +1232,19 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       if (moveResult !== true) return;
 
       try {
-          const response = await fetch('/api/processing-logs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookId }) });
+          const response = await fetch('/api/processing-logs', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ bookId })
+          });
           if (!response.ok) throw new Error('Failed to start processing log');
+          
           const newLog = await response.json();
-          setProcessingLogs(prev => [...prev.filter(l => l.bookId !== bookId), newLog]);
+          setProcessingLogs(prev => [...prev, newLog]);
+          
           const updatedBook = await updateBookStatus(bookId, newStatus);
           setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
+          
           logAction('Processing Started', `Automated processing started for book "${book?.name}".`, { bookId });
           toast({ title: 'Processing Started' });
       } catch (error) {
@@ -1247,51 +1255,55 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
   
   const handleCompleteProcessing = async (bookId: string) => {
-    withMutation(async () => {
-      const book = rawBooks.find(b => b.id === bookId);
-      const log = processingLogs.find(l => l.bookId === bookId);
-      if (!book || !book.projectId || !log) return;
-
-      const workflow = projectWorkflows[book.projectId] || [];
-      const nextStage = getNextEnabledStage('in-processing', workflow);
-      if(!nextStage) {
-        toast({ title: "Workflow End", description: "This is the final step for this project.", variant: "default" });
-        return;
-      }
-      
-      const newStatus = STAGE_CONFIG[nextStage]?.dataStatus || 'Processed';
-      const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
-      if (!currentStatusName) return;
-
-      console.log(`WORKFLOW: Calling moveBookFolder from handleCompleteProcessing for ${book.name}`);
-      const moveResult = await moveBookFolder(book.name, currentStatusName, newStatus);
-      if (moveResult !== true) return;
-  
-      try {
-        const updatedLogData: Partial<ProcessingLog> = {
-          status: 'Complete',
-          progress: 100,
-          log: `${log.log}\n[${new Date().toLocaleTimeString()}] Processing complete.`,
-          lastUpdate: getDbSafeDate()
-        };
-        const response = await fetch(`/api/processing-logs/${log.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updatedLogData)
-        });
-        if (!response.ok) throw new Error('Failed to update processing log');
+    await withMutation(async () => {
+        const book = rawBooks.find(b => b.id === bookId);
+        const log = processingLogs.find(l => l.bookId === bookId);
         
-        setProcessingLogs(prev => prev.map(l => l.id === log.id ? { ...l, ...updatedLogData } as ProcessingLog : l));
+        if (!book || !book.projectId) return;
+
+        console.log(`WORKFLOW: Completing processing for book ${book.name}`);
+        const workflow = projectWorkflows[book.projectId] || [];
+        const nextStage = getNextEnabledStage('in-processing', workflow);
+        if (!nextStage) {
+            toast({ title: "Workflow End", description: "This is the final step for this project.", variant: "default" });
+            return;
+        }
+
+        const newStatus = STAGE_CONFIG[nextStage]?.dataStatus || 'Processed';
+        const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
+        if (!currentStatusName) return;
+
+        console.log(`WORKFLOW: Calling moveBookFolder from handleCompleteProcessing for ${book.name}`);
+        const moveResult = await moveBookFolder(book.name, currentStatusName, newStatus);
+        if (moveResult !== true) return;
         
-        const updatedBook = await updateBookStatus(bookId, newStatus);
-        setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
-  
-        logAction('Processing Completed', `Automated processing finished for book "${book.name}".`, { bookId });
-        toast({ title: 'Processing Complete' });
-      } catch (error) {
-        console.error(error);
-        toast({ title: "Error", description: "Could not complete processing.", variant: "destructive" });
-      }
+        try {
+            if (log) {
+                const updatedLogData: Partial<ProcessingLog> = {
+                    status: 'Complete',
+                    progress: 100,
+                    log: `${log.log}\n[${new Date().toLocaleTimeString()}] Processing marked as complete.`,
+                    lastUpdate: getDbSafeDate()
+                };
+                const response = await fetch(`/api/processing-logs/${log.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedLogData)
+                });
+                if (!response.ok) throw new Error('Failed to update processing log');
+                const updatedLog = await response.json();
+                setProcessingLogs(prev => prev.map(l => (l.id === log.id ? updatedLog : l)));
+            }
+
+            const updatedBook = await updateBookStatus(bookId, newStatus);
+            setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
+
+            logAction('Processing Completed', `Automated processing finished for book "${book.name}".`, { bookId });
+            toast({ title: 'Processing Complete' });
+        } catch (error) {
+            console.error(error);
+            toast({ title: "Error", description: "Could not complete processing.", variant: "destructive" });
+        }
     });
   };
 
@@ -1442,4 +1454,3 @@ export function useAppContext() {
   }
   return context;
 }
-
