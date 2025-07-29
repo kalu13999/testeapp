@@ -1225,6 +1225,25 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     });
   };
 
+  const logProcessingEvent = React.useCallback(async (
+    batchId: string, 
+    message: string, 
+    level: 'INFO' | 'ERROR' | 'WARN' = 'INFO'
+  ) => {
+    try {
+        const response = await fetch('/api/processing-logs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ batchId, message, level }),
+        });
+        if (!response.ok) throw new Error('Failed to create processing log');
+        const newLog = await response.json();
+        setProcessingLogs(prev => [...prev, newLog]);
+    } catch (error) {
+        console.error("Failed to save processing log:", error);
+    }
+  }, []);
+
   const startProcessingBatch = async (bookIds: string[]) => {
     await withMutation(async () => {
       try {
@@ -1244,6 +1263,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         }
         
         logAction('Processing Batch Started', `Batch ${newBatch.id} started with ${bookIds.length} books.`, {});
+        await logProcessingEvent(newBatch.id, `Batch ${newBatch.id} started with ${bookIds.length} books.`);
         toast({ title: "Processing Batch Started" });
       } catch (error) {
         console.error(error);
@@ -1276,6 +1296,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         }
 
         logAction('Processing Batch Completed', `Batch ${batchId} was completed.`, {});
+        await logProcessingEvent(batchId, `Batch ${batchId} marked as completed by user.`);
         toast({ title: "Processing Batch Completed" });
       } catch(error) {
         console.error(error);
@@ -1431,4 +1452,5 @@ export function useAppContext() {
   }
   return context;
 }
+
 
