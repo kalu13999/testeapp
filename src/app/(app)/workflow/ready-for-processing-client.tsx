@@ -20,7 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { PlusCircle, X, ListPlus, PlayCircle, BookOpen } from "lucide-react"
+import { PlusCircle, X, ListPlus, PlayCircle, BookOpen, ChevronsUpDown, ArrowUp, ArrowDown } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import type { EnrichedBook } from "@/lib/data"
 import { Input } from "@/components/ui/input"
@@ -43,6 +43,32 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
   const [selection, setSelection] = React.useState<string[]>([]);
   const [multiSelection, setMultiSelection] = React.useState<string[]>([]);
   const [columnFilters, setColumnFilters] = React.useState<{ [key: string]: string }>({});
+  const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
+    { id: 'name', desc: false }
+  ]);
+
+  const handleColumnFilterChange = (columnId: string, value: string) => {
+    setColumnFilters(prev => ({ ...prev, [columnId]: value }));
+  };
+
+  const handleClearFilters = () => {
+    setColumnFilters({});
+  };
+  
+  const handleSort = (columnId: string) => {
+    setSorting(currentSorting => {
+      if (currentSorting.length > 0 && currentSorting[0].id === columnId) {
+        return [{ id: columnId, desc: !currentSorting[0].desc }];
+      }
+      return [{ id: columnId, desc: false }];
+    });
+  };
+  
+  const getSortIndicator = (columnId: string) => {
+    const sort = sorting.find(s => s.id === columnId);
+    if (!sort) return <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-0 group-hover:opacity-50" />;
+    return sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />;
+  };
 
   const availableBooks = React.useMemo(() => {
     let baseBooks = books.filter(book => book.status === config.dataStatus);
@@ -59,9 +85,28 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
         });
       }
     });
+    
+    if (sorting.length > 0) {
+        filtered.sort((a, b) => {
+            const s = sorting[0];
+            const valA = a[s.id as keyof EnrichedBook];
+            const valB = b[s.id as keyof EnrichedBook];
+
+            let result = 0;
+            if (typeof valA === 'number' && typeof valB === 'number') {
+                result = valA - valB;
+            } else {
+                result = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' });
+            }
+            if (result !== 0) {
+                return s.desc ? -result : result;
+            }
+            return 0;
+        });
+    }
 
     return filtered;
-  }, [books, config.dataStatus, selectedProjectId, columnFilters]);
+  }, [books, config.dataStatus, selectedProjectId, columnFilters, sorting]);
 
   const selectedBooksInfo = React.useMemo(() => {
       return selection.map(id => books.find(b => b.id === id)).filter((b): b is EnrichedBook => !!b);
@@ -94,14 +139,6 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
       setMultiSelection(availableBooks.filter(b => !selection.includes(b.id)).map(b => b.id));
     }
   }
-  
-  const handleColumnFilterChange = (columnId: string, value: string) => {
-    setColumnFilters(prev => ({ ...prev, [columnId]: value }));
-  };
-
-  const handleClearFilters = () => {
-    setColumnFilters({});
-  };
 
   const availableForMultiSelectCount = availableBooks.filter(b => !selection.includes(b.id)).length;
 
@@ -138,9 +175,9 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
                       />
                   </TableHead>
                   <TableHead className="w-[120px]">Action</TableHead>
-                  <TableHead>Book Name</TableHead>
-                  <TableHead>Project</TableHead>
-                  <TableHead className="text-right">Pages</TableHead>
+                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name')}>Book Name {getSortIndicator('name')}</div></TableHead>
+                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('projectName')}>Project {getSortIndicator('projectName')}</div></TableHead>
+                  <TableHead className="text-right"><div className="flex items-center justify-end gap-2 cursor-pointer select-none group" onClick={() => handleSort('expectedDocuments')}>Pages {getSortIndicator('expectedDocuments')}</div></TableHead>
                 </TableRow>
                  <TableRow>
                     <TableHead />
