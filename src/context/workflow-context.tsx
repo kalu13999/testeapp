@@ -968,11 +968,11 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             if (response.status === 404) {
                  toast({
                     title: "Folder Not Found",
-                    description: `Could not physically move "${bookName}". The folder was not found in the expected location. The book's status has still been updated.`,
+                    description: `Could not physically move "${bookName}". The folder was not found in the expected location. The book’s status still hasn’t been updated.`,
                     variant: "destructive",
                     duration: 10000,
                 });
-                return true; // Return true to allow logical status change despite physical move failure
+                return false; // Return false to halt the status change
             }
             throw new Error(errorMessage);
         }
@@ -980,7 +980,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     } catch (error: any) {
         console.error("Error calling workflow API to move folder:", error);
         toast({ title: "Folder Move Error", description: `Could not move folder for "${bookName}". Please check API logs.`, variant: "destructive" });
-        return false; // Return false to indicate the operation should probably halt
+        return false; // Return false to indicate the operation should halt
     }
   }, [statuses, toast]);
   
@@ -1004,13 +1004,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       const book = rawBooks.find(b => b.id === bookId);
       if (!book) return;
 
-      const currentStatus = statuses.find(s => s.id === book.statusId)?.name || 'Unknown';
-      const newStatus = 'Received';
+      const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
+      const newStatusName = 'Received';
+      if (!currentStatusName) return;
 
-      const moveResult = await moveBookFolder(book.name, currentStatus, newStatus);
+      const moveResult = await moveBookFolder(book.name, currentStatusName, newStatusName);
       if (moveResult !== true) return;
 
-      const updatedBook = await updateBookStatus(bookId, newStatus);
+      const updatedBook = await updateBookStatus(bookId, newStatusName);
       setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
       logAction('Reception Confirmed', `Book "${updatedBook.name}" has been marked as received.`, { bookId });
       toast({ title: "Reception Confirmed" });
@@ -1220,7 +1221,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       if (!book || !book.projectId) return;
       const workflow = projectWorkflows[book.projectId] || [];
       const nextStage = getNextEnabledStage('ready-for-processing', workflow) || 'in-processing';
-      const newStatus = STAGE_CONFIG[nextStage]?.dataStatus || STAGE_CONFIG[nextStage]?.dataStage || 'In Processing';
+      const newStatus = STAGE_CONFIG[nextStage]?.dataStatus || 'In Processing';
       const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
       if (!currentStatusName) return;
       
@@ -1250,27 +1251,36 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       if (!book || !book.projectId || !log) return;
       const workflow = projectWorkflows[book.projectId] || [];
       const nextStage = getNextEnabledStage('in-processing', workflow) || 'processed';
-      const newStatus = STAGE_CONFIG[nextStage]?.dataStatus || STAGE_CONFIG[nextStage]?.dataStage || 'Processed';
+      const newStatus = STAGE_CONFIG[nextStage]?.dataStatus || 'Processed';
       const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
       if (!currentStatusName) return;
-
+  
       const moveResult = await moveBookFolder(book.name, currentStatusName, newStatus);
       if (moveResult !== true) return;
-
+  
       try {
-          const updatedLogData = { status: 'Complete', progress: 100, log: `${log.log}\n[${new Date().toLocaleTimeString()}] Processing complete.`, lastUpdate: getDbSafeDate() };
-          const response = await fetch(`/api/processing-logs/${log.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updatedLogData) });
-          if (!response.ok) throw new Error('Failed to update processing log');
-          setProcessingLogs(prev => prev.map(l => l.id === log.id ? { ...l, ...updatedLogData } : l));
-          
-          const updatedBook = await updateBookStatus(bookId, newStatus);
-          setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
-
-          logAction('Processing Completed', `Automated processing finished for book "${book?.name}".`, { bookId });
-          toast({ title: 'Processing Complete' });
+        const updatedLogData = {
+          status: 'Complete',
+          progress: 100,
+          log: `${log.log}\n[${new Date().toLocaleTimeString()}] Processing complete.`,
+          lastUpdate: getDbSafeDate()
+        };
+        const response = await fetch(`/api/processing-logs/${log.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedLogData)
+        });
+        if (!response.ok) throw new Error('Failed to update processing log');
+        setProcessingLogs(prev => prev.map(l => l.id === log.id ? { ...l, ...updatedLogData } : l));
+        
+        const updatedBook = await updateBookStatus(bookId, newStatus);
+        setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
+  
+        logAction('Processing Completed', `Automated processing finished for book "${book.name}".`, { bookId });
+        toast({ title: 'Processing Complete' });
       } catch (error) {
-           console.error(error);
-          toast({ title: "Error", description: "Could not complete processing.", variant: "destructive" });
+        console.error(error);
+        toast({ title: "Error", description: "Could not complete processing.", variant: "destructive" });
       }
     });
   };
@@ -1298,7 +1308,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       if (!book || !book.projectId) return;
       const workflow = projectWorkflows[book.projectId] || [];
       const nextStageKey = getNextEnabledStage('finalized', workflow) || 'archive';
-      const newStatus = STAGE_CONFIG[nextStageKey]?.dataStatus || STAGE_CONFIG[nextStageKey]?.dataStage || 'Archived';
+      const newStatus = STAGE_CONFIG[nextStageKey]?.dataStatus || 'Archived';
       const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
       if (!currentStatusName) return;
 
@@ -1318,7 +1328,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       if (!book || !book.projectId) return;
       const workflow = projectWorkflows[book.projectId] || [];
       const nextStageKey = getNextEnabledStage('client-rejections', workflow) || 'corrected';
-      const newStatus = STAGE_CONFIG[nextStageKey]?.dataStatus || STAGE_CONFIG[nextStageKey]?.dataStage || 'Corrected';
+      const newStatus = STAGE_CONFIG[nextStageKey]?.dataStatus || 'Corrected';
       const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
       if (!currentStatusName) return;
       
