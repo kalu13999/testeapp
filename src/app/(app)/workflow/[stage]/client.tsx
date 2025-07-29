@@ -548,21 +548,6 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     });
   };
 
-  const handleBulkComplete = () => {
-    if (selection.length === 0) return;
-    openConfirmationDialog({
-      title: `Complete ${selection.length} tasks?`,
-      description: "This will mark all selected books as complete and move them to the next stage.",
-      onConfirm: () => {
-        selection.forEach(bookId => {
-          const book = allDisplayItems.find(b => b.id === bookId) as EnrichedBook;
-          if (book) handleMoveBookToNextStage(book.id, book.status);
-        });
-        setSelection([]);
-      }
-    });
-  };
-
   const handleActionClick = (book: EnrichedBook) => {
     if (stage === 'confirm-reception') {
       openConfirmationDialog({
@@ -1052,6 +1037,27 @@ const handleMainAction = (book: EnrichedBook) => {
   const gridClasses: { [key: number]: string } = {
     1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4', 5: 'grid-cols-5', 6: 'grid-cols-6',
     7: 'grid-cols-7', 8: 'grid-cols-8', 9: 'grid-cols-9', 10: 'grid-cols-10', 11: 'grid-cols-11', 12: 'grid-cols-12'
+  };
+
+  const openFlagDialog = (doc: AppDocument, flag: NonNullable<AppDocument['flag']>) => {
+    setFlagDialogState({
+      open: true,
+      docId: doc.id,
+      docName: doc.name,
+      flag: flag,
+      comment: doc.flagComment || '',
+    });
+  };
+
+  const closeFlagDialog = () => {
+    setFlagDialogState({ open: false, docId: null, docName: null, flag: null, comment: '' });
+  };
+
+  const handleFlagSubmit = () => {
+    if (flagDialogState.docId && flagDialogState.flag) {
+      updateDocumentFlag(flagDialogState.docId, flagDialogState.flag, flagDialogState.comment);
+    }
+    closeFlagDialog();
   };
 
   return (
