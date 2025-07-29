@@ -3,6 +3,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -20,7 +21,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import type { EnrichedBook, ProcessingBatch, ProcessingBatchItem, ProcessingLog } from "@/lib/data";
 import { format } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import Link from "next/link";
 import {
   Table,
   TableBody,
@@ -46,7 +46,7 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
     processingBatches,
     processingBatchItems,
     processingLogs,
-    handleCompleteProcessing,
+    handleCompleteProcessing: completeProcessingBatch,
     selectedProjectId,
   } = useAppContext();
 
@@ -62,10 +62,9 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
       .filter(batch => {
         if (!selectedProjectId) return true; // Show all if no project is selected
         // Check if any book in the batch belongs to the selected project
-        return batch.items.some(item => {
-            const book = books.find(b => b.id === item.bookId);
-            return book?.projectId === selectedProjectId;
-        });
+        const projectBooks = books.filter(b => b.projectId === selectedProjectId).map(b => b.id);
+        const projectBookSet = new Set(projectBooks);
+        return batch.items.some(item => projectBookSet.has(item.bookId));
       });
 
     return batches;
@@ -81,7 +80,7 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
 
   const handleConfirm = () => {
     if (confirmationState.batch) {
-      handleCompleteProcessing(confirmationState.batch.id);
+      completeProcessingBatch(confirmationState.batch.id);
     }
     closeConfirmationDialog();
   }
@@ -107,10 +106,8 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
                           {batch.status === 'Complete' && <CheckCircle className="h-5 w-5 text-green-600" />}
                           {batch.status === 'Failed' && <XCircle className="h-5 w-5 text-destructive" />}
                           <div>
-                            <Link href={`/processing-batches/${batch.id}`} className="hover:underline">
-                                <p className="font-semibold text-base">{batch.timestampStr}</p>
-                            </Link>
-                            <p className="text-sm text-muted-foreground">{batch.items.length} book(s) in this batch</p>
+                              <p className="font-semibold text-base">{batch.timestampStr}</p>
+                              <p className="text-sm text-muted-foreground">{batch.items.length} book(s) in this batch</p>
                           </div>
                         </div>
                       </AccordionTrigger>
@@ -129,6 +126,12 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
                               <span className="text-sm text-muted-foreground">{batch.progress || 0}%</span>
                           </div>
                            <Progress value={batch.progress || 0} />
+                      </div>
+                      
+                      <div className="text-right">
+                          <Button asChild variant="link" size="sm">
+                              <Link href={`/processing-batches/${batch.id}`}>View Full Details</Link>
+                          </Button>
                       </div>
 
                        <div>
