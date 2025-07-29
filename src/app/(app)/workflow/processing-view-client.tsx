@@ -62,9 +62,10 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
       .filter(batch => {
         if (!selectedProjectId) return true; // Show all if no project is selected
         // Check if any book in the batch belongs to the selected project
-        const projectBooks = books.filter(b => b.projectId === selectedProjectId).map(b => b.id);
-        const projectBookSet = new Set(projectBooks);
-        return batch.items.some(item => projectBookSet.has(item.bookId));
+        return batch.items.some(item => {
+            const book = books.find(b => b.id === item.bookId);
+            return book?.projectId === selectedProjectId;
+        });
       });
 
     return batches;
@@ -111,6 +112,13 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
                           </div>
                         </div>
                       </AccordionTrigger>
+                      <div className="px-4 w-1/3">
+                        <div className="flex justify-between items-center mb-1">
+                            <span className="text-sm font-medium">Overall Progress</span>
+                            <span className="text-sm text-muted-foreground">{batch.progress || 0}%</span>
+                        </div>
+                         <Progress value={batch.progress || 0} />
+                      </div>
                       <div className="px-4">
                         {batch.status === 'In Progress' && (
                            <Button size="sm" onClick={() => openConfirmationDialog(batch)}>
@@ -120,15 +128,7 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
                       </div>
                     </div>
                     <AccordionContent className="px-4 py-4 space-y-4">
-                      <div className="space-y-1">
-                          <div className="flex justify-between items-center mb-1">
-                              <span className="text-sm font-medium">Overall Progress</span>
-                              <span className="text-sm text-muted-foreground">{batch.progress || 0}%</span>
-                          </div>
-                           <Progress value={batch.progress || 0} />
-                      </div>
-                      
-                      <div className="text-right">
+                       <div className="text-right">
                           <Button asChild variant="link" size="sm">
                               <Link href={`/processing-batches/${batch.id}`}>View Full Details</Link>
                           </Button>
