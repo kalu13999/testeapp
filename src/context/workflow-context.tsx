@@ -1249,18 +1249,21 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       const book = rawBooks.find(b => b.id === bookId);
       const log = processingLogs.find(l => l.bookId === bookId);
       if (!book || !book.projectId || !log) return;
+
       const workflow = projectWorkflows[book.projectId] || [];
       const nextStage = getNextEnabledStage('in-processing', workflow) || 'processed';
       const newStatus = STAGE_CONFIG[nextStage]?.dataStatus || 'Processed';
       const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
       if (!currentStatusName) return;
-  
+
+      console.log(`Attempting to move folder for book: ${book.name} from ${currentStatusName} to ${newStatus}`);
       const moveResult = await moveBookFolder(book.name, currentStatusName, newStatus);
+      console.log(`Move result for ${book.name}:`, moveResult);
       if (moveResult !== true) return;
   
       try {
         const updatedLogData = {
-          status: 'Complete',
+          status: 'Complete' as 'Complete',
           progress: 100,
           log: `${log.log}\n[${new Date().toLocaleTimeString()}] Processing complete.`,
           lastUpdate: getDbSafeDate()
@@ -1271,6 +1274,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
           body: JSON.stringify(updatedLogData)
         });
         if (!response.ok) throw new Error('Failed to update processing log');
+        
         setProcessingLogs(prev => prev.map(l => l.id === log.id ? { ...l, ...updatedLogData } : l));
         
         const updatedBook = await updateBookStatus(bookId, newStatus);
