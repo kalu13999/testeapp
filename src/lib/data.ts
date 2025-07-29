@@ -199,6 +199,7 @@ export interface EnrichedBook extends RawBook {
     documentCount: number;
     progress: number;
     storageName?: string;
+    scannerName?: string;
 }
 
 
@@ -264,7 +265,7 @@ export const getProcessingLogs = () => fetchData<ProcessingLog[]>('/processing-l
 
 // Enriched data fetching functions
 export async function getEnrichedProjects(): Promise<EnrichedProject[]> {
-    const [projects, clients, books, documents, statuses, transferLogs, storages] = await Promise.all([
+    const [projects, clients, books, documents, statuses, transferLogs, storages, users] = await Promise.all([
       getRawProjects(),
       getClients(),
       getRawBooks(),
@@ -272,16 +273,23 @@ export async function getEnrichedProjects(): Promise<EnrichedProject[]> {
       getDocumentStatuses(),
       getTransferLogs(),
       getStorages(),
+      getUsers(),
     ]);
 
     const storageMap = new Map(storages.map(s => [s.id, s.nome]));
-    const bookStorageMap = new Map<string, string>();
+    const userMap = new Map(users.map(u => [u.id, u.name]));
+    const bookInfoMap = new Map<string, { storageName?: string, scannerName?: string }>();
 
     transferLogs.forEach(log => {
-      if (log.bookId && log.status === 'sucesso' && storageMap.has(log.storage_id)) {
-          // A lógica pode precisar de ser mais robusta, por exemplo, pegar o mais recente.
-          // Por agora, o último registo de sucesso para um livro define o seu storage.
-          bookStorageMap.set(log.bookId, storageMap.get(log.storage_id)!);
+      if (log.bookId && log.status === 'sucesso') {
+          const currentInfo = bookInfoMap.get(log.bookId) || {};
+          if (storageMap.has(log.storage_id)) {
+              currentInfo.storageName = storageMap.get(log.storage_id)!;
+          }
+          if (userMap.has(log.scanner_id)) {
+              currentInfo.scannerName = userMap.get(log.scanner_id)!;
+          }
+          bookInfoMap.set(log.bookId, currentInfo);
       }
     });
   
@@ -291,6 +299,7 @@ export async function getEnrichedProjects(): Promise<EnrichedProject[]> {
       const projectBooks = books.filter(b => b.projectId === project.id).map(book => {
         const bookDocuments = documents.filter(d => d.bookId === book.id);
         const bookProgress = book.expectedDocuments > 0 ? (bookDocuments.length / book.expectedDocuments) * 100 : 0;
+        const extraInfo = bookInfoMap.get(book.id);
         return {
           ...book,
           status: statuses.find(s => s.id === book.statusId)?.name || 'Unknown',
@@ -299,7 +308,8 @@ export async function getEnrichedProjects(): Promise<EnrichedProject[]> {
           clientName: client?.name || 'Unknown Client',
           documentCount: bookDocuments.length,
           progress: Math.min(100, bookProgress),
-          storageName: bookStorageMap.get(book.id),
+          storageName: extraInfo?.storageName,
+          scannerName: extraInfo?.scannerName,
         };
       });
   

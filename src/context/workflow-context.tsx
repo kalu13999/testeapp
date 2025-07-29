@@ -375,11 +375,19 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
   const allEnrichedProjects: EnrichedProject[] = React.useMemo(() => {
     const storageMap = new Map(storages.map(s => [s.id, s.nome]));
-    const bookStorageMap = new Map<string, string>();
+    const userMap = new Map(users.map(u => [u.id, u.name]));
+    const bookInfoMap = new Map<string, { storageName?: string, scannerName?: string }>();
 
     transferLogs.forEach(log => {
-      if (log.bookId && log.status === 'sucesso' && storageMap.has(log.storage_id)) {
-          bookStorageMap.set(log.bookId, storageMap.get(log.storage_id)!);
+      if (log.bookId && log.status === 'sucesso') {
+          const currentInfo = bookInfoMap.get(log.bookId) || {};
+          if (storageMap.has(log.storage_id)) {
+              currentInfo.storageName = storageMap.get(log.storage_id)!;
+          }
+          if (userMap.has(log.scanner_id)) {
+              currentInfo.scannerName = userMap.get(log.scanner_id)!;
+          }
+          bookInfoMap.set(log.bookId, currentInfo);
       }
     });
 
@@ -389,6 +397,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         const projectBooks = rawBooks.filter(b => b.projectId === project.id).map(book => {
             const bookDocuments = rawDocuments.filter(d => d.bookId === book.id);
             const bookProgress = book.expectedDocuments > 0 ? (bookDocuments.length / book.expectedDocuments) * 100 : 0;
+            const extraInfo = bookInfoMap.get(book.id);
             return {
                 ...book,
                 status: statuses.find(s => s.id === book.statusId)?.name || 'Unknown',
@@ -397,7 +406,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
                 clientName: client?.name || 'Unknown Client',
                 documentCount: bookDocuments.length,
                 progress: Math.min(100, bookProgress),
-                storageName: bookStorageMap.get(book.id),
+                storageName: extraInfo?.storageName,
+                scannerName: extraInfo?.scannerName,
             };
         });
 
@@ -414,7 +424,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         books: projectBooks,
       };
     });
-  }, [rawProjects, clients, rawBooks, rawDocuments, statuses, storages, transferLogs]);
+  }, [rawProjects, clients, rawBooks, rawDocuments, statuses, storages, transferLogs, users]);
   
   const enrichedBooks: EnrichedBook[] = React.useMemo(() => {
       return allEnrichedProjects.flatMap(p => p.books);

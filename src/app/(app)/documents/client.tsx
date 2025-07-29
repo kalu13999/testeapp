@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import * as React from "react";
@@ -184,7 +185,7 @@ export default function DocumentsClient() {
 
   const exportCSV = (data: EnrichedBook[]) => {
     if (data.length === 0) return;
-    const headers = ['id', 'name', 'status', 'priority', 'projectName', 'clientName', 'expectedDocuments', 'documentCount', 'progress', 'author', 'isbn', 'publicationYear', 'info'];
+    const headers = ['id', 'name', 'status', 'priority', 'projectName', 'clientName', 'expectedDocuments', 'documentCount', 'progress', 'author', 'isbn', 'publicationYear', 'info', 'storageName', 'scannerName'];
     const csvContent = [
         headers.join(','),
         ...data.map(book => 
@@ -222,7 +223,7 @@ export default function DocumentsClient() {
 
   const copyToClipboardCSV = (data: EnrichedBook[]) => {
     if (data.length === 0) return;
-    const headers = ['id', 'name', 'status', 'priority', 'projectName', 'clientName', 'expectedDocuments', 'documentCount', 'progress', 'author', 'isbn', 'publicationYear', 'info'];
+    const headers = ['id', 'name', 'status', 'priority', 'projectName', 'clientName', 'expectedDocuments', 'documentCount', 'progress', 'author', 'isbn', 'publicationYear', 'info', 'storageName', 'scannerName'];
     const csvContent = [
         headers.join(','),
         ...data.map(book => 
@@ -401,6 +402,16 @@ export default function DocumentsClient() {
                     </div>
                 </TableHead>
                 <TableHead>
+                    <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('scannerName', e.shiftKey)}>
+                        Scanner {getSortIndicator('scannerName')}
+                    </div>
+                </TableHead>
+                <TableHead>
+                    <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('storageName', e.shiftKey)}>
+                        Storage {getSortIndicator('storageName')}
+                    </div>
+                </TableHead>
+                <TableHead>
                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>
                         Status {getSortIndicator('status')}
                     </div>
@@ -427,6 +438,12 @@ export default function DocumentsClient() {
                 </TableHead>
                 <TableHead>
                     <Input placeholder="Filter Client..." value={columnFilters['clientName'] || ''} onChange={(e) => handleColumnFilterChange('clientName', e.target.value)} className="h-8"/>
+                </TableHead>
+                 <TableHead>
+                    <Input placeholder="Filter Scanner..." value={columnFilters['scannerName'] || ''} onChange={(e) => handleColumnFilterChange('scannerName', e.target.value)} className="h-8"/>
+                </TableHead>
+                <TableHead>
+                    <Input placeholder="Filter Storage..." value={columnFilters['storageName'] || ''} onChange={(e) => handleColumnFilterChange('storageName', e.target.value)} className="h-8"/>
                 </TableHead>
                 <TableHead>
                     <Input placeholder="Filter Status..." value={columnFilters['status'] || ''} onChange={(e) => handleColumnFilterChange('status', e.target.value)} className="h-8"/>
@@ -461,6 +478,8 @@ export default function DocumentsClient() {
                   </TableCell>
                   <TableCell>{book.projectName}</TableCell>
                   <TableCell>{book.clientName}</TableCell>
+                  <TableCell>{book.scannerName || '—'}</TableCell>
+                  <TableCell>{book.storageName || '—'}</TableCell>
                   <TableCell>
                     <Badge variant={book.status === 'Complete' ? "default" : "outline"}>{book.status}</Badge>
                   </TableCell>
@@ -472,7 +491,7 @@ export default function DocumentsClient() {
                 </TableRow>
               )) : (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center">
+                  <TableCell colSpan={10} className="h-24 text-center">
                     No books found matching your filters.
                   </TableCell>
                 </TableRow>
@@ -490,5 +509,3 @@ export default function DocumentsClient() {
     </div>
   )
 }
-
-    
