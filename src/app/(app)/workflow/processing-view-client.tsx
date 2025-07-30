@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { useAppContext } from "@/context/workflow-context";
-import { Loader2, CheckCircle, XCircle, Clock, Book, FileText, Timer } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Clock, Book, FileText, Timer, BookOpen } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
