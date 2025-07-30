@@ -91,7 +91,6 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
     if (selectedStorageId) {
       baseBooks = baseBooks.filter(book => book.storageName === storages.find(s => s.id === selectedStorageId)?.nome);
     } else {
-      // If no storage is selected, show nothing initially or handle as needed
       return [];
     }
     
@@ -170,37 +169,34 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
       <div className="lg:col-span-2">
         <Card>
           <CardHeader>
-             <div className="flex justify-between items-start mb-4">
+            <div className="flex justify-between items-start">
                 <div>
                     <CardTitle>{config.title}</CardTitle>
                     <CardDescription>{config.description}</CardDescription>
                 </div>
-                <div className="flex items-center gap-4">
-                  <div className="w-[250px]">
-                    <Label htmlFor="storage-select">Storage Location</Label>
-                     <Select value={selectedStorageId || ''} onValueChange={setSelectedStorageId}>
-                        <SelectTrigger id="storage-select">
-                            <SelectValue placeholder="Select a storage..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {storages.map(storage => (
-                                <SelectItem key={storage.id} value={storage.id}>{storage.nome}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                  </div>
-                  <Button 
-                      variant="secondary" 
-                      size="sm" 
-                      disabled={multiSelection.length === 0}
-                      onClick={handleAddMultiple}
-                      className="self-end"
-                  >
-                      <ListPlus className="mr-2 h-4 w-4" />
-                      Add to Batch
-                  </Button>
-                </div>
-             </div>
+                 <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    disabled={multiSelection.length === 0}
+                    onClick={handleAddMultiple}
+                >
+                    <ListPlus className="mr-2 h-4 w-4" />
+                    Add to Batch
+                </Button>
+            </div>
+            <div className="pt-4">
+              <Label htmlFor="storage-select">Storage Location</Label>
+               <Select value={selectedStorageId || ''} onValueChange={setSelectedStorageId}>
+                  <SelectTrigger id="storage-select" className="w-[300px]">
+                      <SelectValue placeholder="Select a storage..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                      {storages.map(storage => (
+                          <SelectItem key={storage.id} value={storage.id}>{storage.nome}</SelectItem>
+                      ))}
+                  </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
           <CardContent>
             <Table>
