@@ -61,18 +61,29 @@ export default function BatchDetailClient({ batchId }: BatchDetailClientProps) {
     
     const start = new Date(batch.startTime);
     const end = new Date(batch.endTime);
-    const duration = formatDistance(end, start);
+    
+    const totalDurationInSeconds = (end.getTime() - start.getTime()) / 1000;
+    const hours = Math.floor(totalDurationInSeconds / 3600);
+    const minutes = Math.floor((totalDurationInSeconds % 3600) / 60);
+    const seconds = Math.floor(totalDurationInSeconds % 60);
+
+    const durationParts = [];
+    if (hours > 0) durationParts.push(`${hours}h`);
+    if (minutes > 0) durationParts.push(`${minutes}m`);
+    if (seconds > 0 || durationParts.length === 0) durationParts.push(`${seconds}s`);
+    const duration = durationParts.join(' ');
     
     const totalPages = items.reduce((acc, item) => acc + (books.find(b => b.id === item.bookId)?.expectedDocuments || 0), 0);
-    const totalDurationInSeconds = (end.getTime() - start.getTime()) / 1000;
     
     const avgPerBookSeconds = items.length > 0 ? totalDurationInSeconds / items.length : 0;
     const avgPerPageSeconds = totalPages > 0 ? totalDurationInSeconds / totalPages : 0;
     
-    const formatAvg = (seconds: number) => {
-        if (seconds < 1) return `${(seconds * 1000).toFixed(0)}ms`;
-        if (seconds < 60) return `${seconds.toFixed(2)}s`;
-        return formatDistance(new Date(0), new Date(seconds * 1000));
+    const formatAvg = (secs: number) => {
+        if (secs < 1) return `${(secs * 1000).toFixed(0)}ms`;
+        if (secs < 60) return `${secs.toFixed(2)}s`;
+        const avgMinutes = Math.floor(secs / 60);
+        const avgSeconds = Math.floor(secs % 60);
+        return `${avgMinutes}m ${avgSeconds}s`;
     }
     
     return {
