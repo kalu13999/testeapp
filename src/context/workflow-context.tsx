@@ -3,12 +3,13 @@
 "use client"
 
 import * as React from 'react';
-import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions, ProjectWorkflows, RejectionTag, DocumentStatus, ProcessingBatch, ProcessingBatchItem, Storage, LogTransferencia, ProjectStorage } from '@/lib/data';
+import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions, ProjectWorkflows, RejectionTag, DocumentStatus, ProcessingBatch, ProcessingBatchItem, Storage, LogTransferencia, ProjectStorage, Scanner } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { WORKFLOW_SEQUENCE, STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage } from '@/lib/workflow-config';
 import * as dataApi from '@/lib/data';
 import { UserFormValues } from '@/app/(app)/users/user-form';
 import { StorageFormValues } from '@/app/(app)/admin/general-configs/storage-form';
+import { ScannerFormValues } from '@/app/(app)/admin/general-configs/scanner-form';
 
 // Define the shape of the book data when importing
 export interface BookImport {
@@ -62,6 +63,7 @@ type AppContextType = {
   projectStorages: ProjectStorage[];
   rejectionTags: RejectionTag[];
   storages: Storage[];
+  scanners: Scanner[];
   
   // Global Project Filter
   allProjects: EnrichedProject[];
@@ -104,13 +106,16 @@ type AppContextType = {
   deleteRejectionTag: (tagId: string) => Promise<void>;
   tagPageForRejection: (pageId: string, tags: string[]) => Promise<void>;
 
-  // Storage & Project-Storage Actions
+  // Storage, Scanner & Project-Storage Actions
   addStorage: (storageData: StorageFormValues) => Promise<void>;
   updateStorage: (storageId: string, storageData: StorageFormValues) => Promise<void>;
   deleteStorage: (storageId: string) => Promise<void>;
+  addScanner: (scannerData: ScannerFormValues) => Promise<void>;
+  updateScanner: (scannerId: number, scannerData: ScannerFormValues) => Promise<void>;
+  deleteScanner: (scannerId: number) => Promise<void>;
   addProjectStorage: (associationData: ProjectStorage) => Promise<void>;
   updateProjectStorage: (associationData: ProjectStorage) => Promise<void>;
-  deleteProjectStorage: (projectId: string, storageId: string) => Promise<void>;
+  deleteProjectStorage: (projectId: string, storageId: number) => Promise<void>;
 
   // Workflow Actions
   getNextEnabledStage: (currentStage: string, workflow: string[]) => string | null;
@@ -170,6 +175,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const [rejectionTags, setRejectionTags] = React.useState<RejectionTag[]>([]);
   const [statuses, setStatuses] = React.useState<DocumentStatus[]>([]);
   const [storages, setStorages] = React.useState<Storage[]>([]);
+  const [scanners, setScanners] = React.useState<Scanner[]>([]);
   const [projectStorages, setProjectStorages] = React.useState<ProjectStorage[]>([]);
   const [transferLogs, setTransferLogs] = React.useState<LogTransferencia[]>([]);
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
@@ -197,14 +203,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
                 clientsData, usersData, projectsData, booksData, 
                 docsData, auditData, batchesData, batchItemsData, logsData,
                 permissionsData, rolesData, workflowsData, rejectionData, statusesData,
-                storagesData, transferLogsData, projectStoragesData,
+                storagesData, scannersData, transferLogsData, projectStoragesData,
             ] = await Promise.all([
                 dataApi.getClients(), dataApi.getUsers(), dataApi.getRawProjects(),
                 dataApi.getRawBooks(), dataApi.getRawDocuments(), dataApi.getAuditLogs(),
                 dataApi.getProcessingBatches(), dataApi.getProcessingBatchItems(), dataApi.getProcessingLogs(),
                 dataApi.getPermissions(), dataApi.getRoles(),
                 dataApi.getProjectWorkflows(), dataApi.getRejectionTags(), dataApi.getDocumentStatuses(),
-                dataApi.getStorages(), dataApi.getTransferLogs(), dataApi.getProjectStorages(),
+                dataApi.getStorages(), dataApi.getScanners(), dataApi.getTransferLogs(), dataApi.getProjectStorages(),
             ]);
 
             setClients(clientsData);
@@ -214,6 +220,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             setStatuses(statusesData);
             setRawDocuments(docsData);
             setStorages(storagesData);
+            setScanners(scannersData);
             setTransferLogs(transferLogsData);
             setProjectStorages(projectStoragesData);
 
@@ -395,8 +402,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     transferLogs.forEach(log => {
       if (log.bookId && log.status === 'sucesso') {
           const currentInfo = bookInfoMap.get(log.bookId) || {};
-          if (storageMap.has(log.storage_id)) {
-              currentInfo.storageName = storageMap.get(log.storage_id)!;
+          if (storageMap.has(Number(log.storage_id))) {
+              currentInfo.storageName = storageMap.get(Number(log.storage_id))!;
           }
           if (userMap.has(log.scanner_id)) {
               currentInfo.scannerName = userMap.get(log.scanner_id)!;
@@ -404,7 +411,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
           bookInfoMap.set(log.bookId, currentInfo);
       }
     });
-
+  
     return rawProjects.map(project => {
         const client = clients.find(c => c.id === project.clientId);
         
@@ -919,7 +926,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
           });
           if (!response.ok) throw new Error('Failed to update storage');
           const updatedStorage = await response.json();
-          setStorages(prev => prev.map(s => s.id === storageId ? updatedStorage : s));
+          setStorages(prev => prev.map(s => s.id === Number(storageId) ? updatedStorage : s));
           logAction('Storage Updated', `Storage location "${updatedStorage.nome}" updated.`, {});
           toast({ title: "Storage Updated" });
       } catch (error) {
@@ -931,11 +938,11 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
   const deleteStorage = async (storageId: string) => {
     await withMutation(async () => {
-      const storage = storages.find(s => s.id === storageId);
+      const storage = storages.find(s => s.id === Number(storageId));
       try {
           const response = await fetch(`/api/storages/${storageId}`, { method: 'DELETE' });
           if (!response.ok) throw new Error('Failed to delete storage');
-          setStorages(prev => prev.filter(s => s.id !== storageId));
+          setStorages(prev => prev.filter(s => s.id !== Number(storageId)));
           logAction('Storage Deleted', `Storage location "${storage?.nome}" deleted.`, {});
           toast({ title: "Storage Deleted", variant: "destructive" });
       } catch (error) {
@@ -945,7 +952,63 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     });
   };
   
-  const addProjectStorage = async (associationData: ProjectStorage) => {
+  const addScanner = async (scannerData: ScannerFormValues) => {
+    await withMutation(async () => {
+      try {
+          const response = await fetch('/api/scanners', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(scannerData),
+          });
+          if (!response.ok) throw new Error('Failed to create scanner');
+          const newScanner = await response.json();
+          setScanners(prev => [...prev, newScanner]);
+          logAction('Scanner Created', `New scanner "${newScanner.nome}" added.`, {});
+          toast({ title: "Scanner Added" });
+      } catch (error) {
+          console.error(error);
+          toast({ title: "Error", description: "Could not create scanner.", variant: "destructive" });
+      }
+    });
+  };
+
+  const updateScanner = async (scannerId: number, scannerData: ScannerFormValues) => {
+    await withMutation(async () => {
+      try {
+          const response = await fetch(`/api/scanners/${scannerId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(scannerData),
+          });
+          if (!response.ok) throw new Error('Failed to update scanner');
+          const updatedScanner = await response.json();
+          setScanners(prev => prev.map(s => s.id === scannerId ? updatedScanner : s));
+          logAction('Scanner Updated', `Scanner "${updatedScanner.nome}" updated.`, {});
+          toast({ title: "Scanner Updated" });
+      } catch (error) {
+          console.error(error);
+          toast({ title: "Error", description: "Could not update scanner.", variant: "destructive" });
+      }
+    });
+  };
+
+  const deleteScanner = async (scannerId: number) => {
+    await withMutation(async () => {
+      const scanner = scanners.find(s => s.id === scannerId);
+      try {
+          const response = await fetch(`/api/scanners/${scannerId}`, { method: 'DELETE' });
+          if (!response.ok) throw new Error('Failed to delete scanner');
+          setScanners(prev => prev.filter(s => s.id !== scannerId));
+          logAction('Scanner Deleted', `Scanner "${scanner?.nome}" deleted.`, {});
+          toast({ title: "Scanner Deleted", variant: "destructive" });
+      } catch (error) {
+          console.error(error);
+          toast({ title: "Error", description: "Could not delete scanner.", variant: "destructive" });
+      }
+    });
+  };
+  
+  const addProjectStorage = async (associationData: Omit<ProjectStorage, 'projectId'> & {projectId: string}) => {
     await withMutation(async () => {
       try {
         const response = await fetch('/api/project-storages', {
@@ -964,7 +1027,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     });
   };
 
-  const updateProjectStorage = async (associationData: ProjectStorage) => {
+  const updateProjectStorage = async (associationData: Omit<ProjectStorage, 'projectId'> & {projectId: string}) => {
     await withMutation(async () => {
       try {
         const response = await fetch('/api/project-storages', {
@@ -987,7 +1050,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     });
   };
 
-  const deleteProjectStorage = async (projectId: string, storageId: string) => {
+  const deleteProjectStorage = async (projectId: string, storageId: number) => {
     await withMutation(async () => {
       try {
         const response = await fetch('/api/project-storages', {
@@ -1599,6 +1662,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     projectStorages,
     rejectionTags,
     storages,
+    scanners,
     allProjects: allEnrichedProjects,
     accessibleProjectsForUser,
     selectedProjectId,
@@ -1612,6 +1676,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     addRejectionTag, updateRejectionTag, deleteRejectionTag,
     tagPageForRejection,
     addStorage, updateStorage, deleteStorage,
+    addScanner, updateScanner, deleteScanner,
     addProjectStorage, updateProjectStorage, deleteProjectStorage,
     getNextEnabledStage,
     handleMarkAsShipped,
@@ -1639,3 +1704,4 @@ export function useAppContext() {
   }
   return context;
 }
+
