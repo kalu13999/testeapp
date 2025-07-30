@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { useAppContext } from "@/context/workflow-context";
-import { Loader2, CheckCircle, XCircle, Clock, Book, FileText, Timer, Hourglass } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Clock, Book, FileText, Timer, Hourglass, Warehouse } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
@@ -57,8 +57,13 @@ export default function BatchDetailClient({ batchId }: BatchDetailClientProps) {
   }, [processingLogs, batchId]);
 
   const stats = React.useMemo(() => {
-    if (!batch || !batch.endTime) return { duration: 'In Progress', totalPages: 0, avgPerBook: 'N/A', avgPerPage: 'N/A' };
+    if (!batch) return { duration: 'In Progress', totalPages: 0, avgPerBook: 'N/A', avgPerPage: 'N/A', storageName: 'N/A' };
     
+    const firstBook = items.length > 0 ? books.find(b => b.id === items[0].bookId) : null;
+    const storageName = firstBook?.storageName || 'N/A';
+    
+    if(!batch.endTime) return { duration: 'In Progress', totalPages: 0, avgPerBook: 'N/A', avgPerPage: 'N/A', storageName };
+
     const start = new Date(batch.startTime);
     const end = new Date(batch.endTime);
     
@@ -90,7 +95,8 @@ export default function BatchDetailClient({ batchId }: BatchDetailClientProps) {
         duration,
         totalPages,
         avgPerBook: formatAvg(avgPerBookSeconds),
-        avgPerPage: formatAvg(avgPerPageSeconds)
+        avgPerPage: formatAvg(avgPerPageSeconds),
+        storageName,
     }
 
   }, [batch, items, books]);
@@ -143,8 +149,10 @@ export default function BatchDetailClient({ batchId }: BatchDetailClientProps) {
                     <DetailItem label="End Time" value={batch.endTime ? format(new Date(batch.endTime), 'dd/MM/yyyy HH:mm') : '—'} />
                     <DetailItem label="Total Duration" value={stats.duration} />
                     
+                    <DetailItem label="Storage Location" value={stats.storageName} icon={Warehouse} />
                     <DetailItem label="Books in Batch" value={items.length} icon={Book} />
                     <DetailItem label="Total Pages" value={stats.totalPages.toLocaleString()} icon={FileText} />
+                    
                     <DetailItem label="Avg. Time / Book" value={stats.avgPerBook} icon={Hourglass} />
                     <DetailItem label="Avg. Time / Page" value={stats.avgPerPage} icon={Timer} />
 
