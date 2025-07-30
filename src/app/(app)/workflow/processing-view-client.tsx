@@ -66,7 +66,7 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
     processingBatches,
     processingBatchItems,
     processingLogs,
-    completeProcessingBatch,
+    handleMoveBookToNextStage,
     selectedProjectId,
     storages,
   } = useAppContext();
@@ -113,7 +113,12 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
 
   const handleConfirm = () => {
     if (confirmationState.batch) {
-      completeProcessingBatch(confirmationState.batch.id);
+      // This is a placeholder as the logic might be more complex
+      // For now, we assume completing means moving all books to the next stage
+      const items = processingBatchItems.filter(item => item.batchId === confirmationState.batch!.id);
+      items.forEach(item => {
+        handleMoveBookToNextStage(item.bookId, "In Processing");
+      });
     }
     closeConfirmationDialog();
   }

@@ -11,12 +11,12 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { useAppContext } from "@/context/workflow-context";
-import { Loader2, CheckCircle, XCircle, Clock, Book, FileText, Timer } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Clock, Book, FileText, Timer, Hourglass } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { format, formatDistanceToNow } from "date-fns";
+import { format, formatDistance } from "date-fns";
 
 import {
   Table,
@@ -55,6 +55,34 @@ export default function BatchDetailClient({ batchId }: BatchDetailClientProps) {
   const logs = React.useMemo(() => {
       return processingLogs.filter(log => log.batchId === batchId).sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [processingLogs, batchId]);
+
+  const stats = React.useMemo(() => {
+    if (!batch || !batch.endTime) return { duration: 'In Progress', totalPages: 0, avgPerBook: 'N/A', avgPerPage: 'N/A' };
+    
+    const start = new Date(batch.startTime);
+    const end = new Date(batch.endTime);
+    const duration = formatDistance(end, start);
+    
+    const totalPages = items.reduce((acc, item) => acc + (books.find(b => b.id === item.bookId)?.expectedDocuments || 0), 0);
+    const totalDurationInSeconds = (end.getTime() - start.getTime()) / 1000;
+    
+    const avgPerBookSeconds = items.length > 0 ? totalDurationInSeconds / items.length : 0;
+    const avgPerPageSeconds = totalPages > 0 ? totalDurationInSeconds / totalPages : 0;
+    
+    const formatAvg = (seconds: number) => {
+        if (seconds < 1) return `${(seconds * 1000).toFixed(0)}ms`;
+        if (seconds < 60) return `${seconds.toFixed(2)}s`;
+        return formatDistance(new Date(0), new Date(seconds * 1000));
+    }
+    
+    return {
+        duration,
+        totalPages,
+        avgPerBook: formatAvg(avgPerBookSeconds),
+        avgPerPage: formatAvg(avgPerPageSeconds)
+    }
+
+  }, [batch, items, books]);
 
   if (!batch) {
     return (
@@ -98,15 +126,19 @@ export default function BatchDetailClient({ batchId }: BatchDetailClientProps) {
                 <CardTitle>Batch Summary</CardTitle>
             </CardHeader>
             <CardContent>
-                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-8">
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-8">
                     <DetailItem label="Status" value={<Badge className="text-base" variant={batch.status === 'Complete' ? 'default' : (batch.status === 'Failed' ? 'destructive' : 'secondary')}>{batch.status}</Badge>} />
                     <DetailItem label="Start Time" value={format(new Date(batch.startTime), 'PPP p')} />
                     <DetailItem label="End Time" value={batch.endTime ? format(new Date(batch.endTime), 'PPP p') : '—'} />
-                    <DetailItem label="Duration" value={batch.endTime ? `${formatDistanceToNow(new Date(batch.startTime), { addSuffix: false })}` : 'In Progress'} />
-                    <DetailItem label="Books" value={items.length} icon={Book} />
-                    <DetailItem label="Total Pages" value={items.reduce((acc, item) => acc + (books.find(b => b.id === item.bookId)?.expectedDocuments || 0), 0).toLocaleString()} icon={FileText} />
+                    <DetailItem label="Total Duration" value={stats.duration} />
+                    
+                    <DetailItem label="Books in Batch" value={items.length} icon={Book} />
+                    <DetailItem label="Total Pages" value={stats.totalPages.toLocaleString()} icon={FileText} />
+                    <DetailItem label="Avg. Time / Book" value={stats.avgPerBook} icon={Hourglass} />
+                    <DetailItem label="Avg. Time / Page" value={stats.avgPerPage} icon={Timer} />
+
                     <div className="col-span-full">
-                        <DetailItem label="Overall Progress" value={`${batch.progress || 0}%`} icon={Timer} />
+                        <DetailItem label="Overall Progress" value={`${batch.progress || 0}%`} />
                         <Progress value={batch.progress || 0} className="mt-2 h-2" />
                     </div>
                 </div>
