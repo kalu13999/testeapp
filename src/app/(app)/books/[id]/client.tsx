@@ -210,6 +210,10 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
                   <Separator />
                   <DetailItem label="Scan Started" value={book.scanStartTime ? new Date(book.scanStartTime).toLocaleString() : '—'} />
                   <DetailItem label="Scan Ended" value={book.scanEndTime ? new Date(book.scanEndTime).toLocaleString() : '—'} />
+                  <DetailItem label="Indexing Started" value={book.indexingStartTime ? new Date(book.indexingStartTime).toLocaleString() : '—'} />
+                  <DetailItem label="Indexing Ended" value={book.indexingEndTime ? new Date(book.indexingEndTime).toLocaleString() : '—'} />
+                  <DetailItem label="Checking Started" value={book.qcStartTime ? new Date(book.qcStartTime).toLocaleString() : '—'} />
+                  <DetailItem label="Checking Ended" value={book.qcEndTime ? new Date(book.qcEndTime).toLocaleString() : '—'} />
             </CardContent>
              {book.info && (
                 <>
