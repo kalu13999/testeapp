@@ -1,5 +1,4 @@
 
-
 "use client"
 
 import * as React from "react"
@@ -317,7 +316,13 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                     <CardDescription className="text-base">{project.clientName}</CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="outline" onClick={() => setIsEditDialogOpen(true)}>
+                    <Button variant="outline" size="sm" onClick={() => setIsStorageDialogOpen(true)}>
+                        <Warehouse className="mr-2 h-4 w-4" /> Manage Storages
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setIsWorkflowDialogOpen(true)}>
+                        <Settings2 className="mr-2 h-4 w-4"/> Edit Workflow
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setIsEditDialogOpen(true)}>
                       <Edit className="mr-2 h-4 w-4"/>
                       Edit Project
                     </Button>
