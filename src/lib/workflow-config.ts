@@ -199,14 +199,14 @@ export const WORKFLOW_PHASES = [
         dataType: 'book'
       },
       'processed': {
-        title: "Processed",
-        description: "Documents that have completed automated processing and are ready for final review.",
+        title: "Processed Batches",
+        description: "Batches that have completed automated processing and are ready for final review.",
         actionButtonLabel: "Send to Final QC",
         actionButtonIcon: "Send",
-        emptyStateText: "No documents have been processed.",
+        emptyStateText: "No batches have been processed.",
         dataType: 'book',
         dataStatus: "Processed",
-        viewType: 'folder',
+        viewType: 'list', // This will now use the new processed-view-client
       },
        'processing-batches/[id]': {
         title: "Batch Details",

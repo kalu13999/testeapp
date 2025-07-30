@@ -1,4 +1,5 @@
 
+
 import { notFound } from "next/navigation";
 import WorkflowClient from "./client";
 import FolderViewClient from "../folder-view-client";
@@ -6,6 +7,7 @@ import CorrectionViewClient from "../correction-view-client";
 import ProcessingViewClient from "../processing-view-client";
 import { STAGE_CONFIG } from "@/lib/workflow-config";
 import ReadyForProcessingClient from "../ready-for-processing-client";
+import ProcessedViewClient from "../processed-view-client";
 
 
 export default async function WorkflowStagePage(props: any) {
@@ -19,6 +21,10 @@ export default async function WorkflowStagePage(props: any) {
     return <ReadyForProcessingClient config={config} stage={stage} />;
   }
 
+  if (stage === 'processed') {
+    return <ProcessedViewClient config={config} stage={stage} />;
+  }
+
   switch (config.viewType) {
     case "folder":
       return <FolderViewClient config={config} stage={stage} />;
@@ -30,3 +36,4 @@ export default async function WorkflowStagePage(props: any) {
       return <WorkflowClient config={config} stage={stage} />;
   }
 }
+

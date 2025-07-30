@@ -115,6 +115,7 @@ type AppContextType = {
   handleAdminStatusOverride: (bookId: string, newStatusName: string, reason: string) => void;
   startProcessingBatch: (bookIds: string[]) => void;
   completeProcessingBatch: (batchId: string) => void;
+  handleSendBatchToNextStage: (batchIds: string[]) => void;
   handleClientAction: (bookId: string, action: 'approve' | 'reject', reason?: string) => void;
   handleFinalize: (bookId: string) => void;
   handleMarkAsCorrected: (bookId: string) => void;
@@ -1344,6 +1345,20 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     });
   };
 
+  const handleSendBatchToNextStage = async (batchIds: string[]) => {
+    await withMutation(async () => {
+        for (const batchId of batchIds) {
+            const itemsInBatch = processingBatchItems.filter(i => i.batchId === batchId);
+            const bookIdsInBatch = itemsInBatch.map(i => i.bookId);
+            for (const bookId of bookIdsInBatch) {
+                handleMoveBookToNextStage(bookId, 'Processed');
+            }
+        }
+        logAction('Batch Sent to Next Stage', `${batchIds.length} batch(es) sent to Final Quality Control.`, {});
+        toast({ title: "Batches Sent to Final QC", description: `${batchIds.length} batch(es) have been moved.` });
+    });
+  };
+
   const handleClientAction = (bookId: string, action: 'approve' | 'reject', reason?: string) => {
     withMutation(async () => {
       const book = enrichedBooks.find(b => b.id === bookId);
@@ -1473,7 +1488,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     handleMoveBookToNextStage, handleClientAction,
     handleFinalize, handleMarkAsCorrected, handleResubmit,
     addPageToBook, deletePageFromBook,
-    updateDocumentFlag, startProcessingBatch, completeProcessingBatch,
+    updateDocumentFlag, startProcessingBatch, completeProcessingBatch, handleSendBatchToNextStage,
     handleAssignUser, reassignUser, handleStartTask, handleCancelTask,
     handleAdminStatusOverride,
   };
