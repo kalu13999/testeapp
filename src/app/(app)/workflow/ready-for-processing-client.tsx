@@ -157,6 +157,7 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
     if (!selectedStorageId) return;
     startProcessingBatch(selection);
     setSelectionByStorage(prev => ({ ...prev, [selectedStorageId]: [] }));
+    setMultiSelection([]);
   }
 
   const handleAddMultiple = () => {
