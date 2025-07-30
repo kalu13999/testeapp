@@ -19,6 +19,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -77,7 +78,8 @@ export function ScannerConfigTab() {
   }
 
   const sortedAndFilteredScanners = React.useMemo(() => {
-    let filtered = scanners;
+    let filtered = [...(scanners || [])];
+    
     Object.entries(columnFilters).forEach(([columnId, value]) => {
       if (value) {
         filtered = filtered.filter(scanner => {
