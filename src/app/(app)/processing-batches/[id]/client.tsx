@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import * as React from "react"
@@ -11,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { useAppContext } from "@/context/workflow-context";
-import { Loader2, CheckCircle, XCircle, Clock, Book, FileText, Timer, Hourglass, Warehouse } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Clock, Book, FileText, Timer, Hourglass, Warehouse, Calendar, CheckSquare, GanttChartSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
@@ -143,21 +144,31 @@ export default function BatchDetailClient({ batchId }: BatchDetailClientProps) {
                 <CardTitle>Batch Summary</CardTitle>
             </CardHeader>
             <CardContent>
-                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-8">
-                    <DetailItem label="Status" value={<Badge className="text-base" variant={batch.status === 'Complete' ? 'default' : (batch.status === 'Failed' ? 'destructive' : 'secondary')}>{batch.status}</Badge>} />
-                    <DetailItem label="Start Time" value={format(new Date(batch.startTime), 'dd/MM/yyyy HH:mm')} />
-                    <DetailItem label="End Time" value={batch.endTime ? format(new Date(batch.endTime), 'dd/MM/yyyy HH:mm') : '—'} />
-                    <DetailItem label="Total Duration" value={stats.duration} />
-                    
-                    <DetailItem label="Storage Location" value={stats.storageName} icon={Warehouse} />
-                    <DetailItem label="Books in Batch" value={items.length} icon={Book} />
-                    <DetailItem label="Total Pages" value={stats.totalPages.toLocaleString()} icon={FileText} />
-                    
-                    <DetailItem label="Avg. Time / Book" value={stats.avgPerBook} icon={Hourglass} />
-                    <DetailItem label="Avg. Time / Page" value={stats.avgPerPage} icon={Timer} />
-
+                 <div className="space-y-8">
+                    {/* Group 1 */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <DetailItem label="Status" icon={CheckSquare} value={<Badge className="text-base" variant={batch.status === 'Complete' ? 'default' : (batch.status === 'Failed' ? 'destructive' : 'secondary')}>{batch.status}</Badge>} />
+                        <DetailItem label="Storage Location" icon={Warehouse} value={stats.storageName} />
+                    </div>
+                    <Separator />
+                    {/* Group 2 */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <DetailItem label="Start Time" icon={Calendar} value={format(new Date(batch.startTime), 'dd/MM/yyyy HH:mm')} />
+                        <DetailItem label="End Time" icon={Calendar} value={batch.endTime ? format(new Date(batch.endTime), 'dd/MM/yyyy HH:mm') : '—'} />
+                        <DetailItem label="Total Duration" icon={Timer} value={stats.duration} />
+                    </div>
+                    <Separator />
+                    {/* Group 3 */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <DetailItem label="Books in Batch" icon={Book} value={items.length} />
+                        <DetailItem label="Avg. Time / Book" icon={Hourglass} value={stats.avgPerBook} />
+                        <DetailItem label="Total Pages" icon={FileText} value={stats.totalPages.toLocaleString()} />
+                        <DetailItem label="Avg. Time / Page" icon={Timer} value={stats.avgPerPage} />
+                    </div>
+                     <Separator />
+                    {/* Progress */}
                     <div className="col-span-full">
-                        <DetailItem label="Overall Progress" value={`${batch.progress || 0}%`} />
+                        <DetailItem label="Overall Progress" icon={GanttChartSquare} value={`${batch.progress || 0}%`} />
                         <Progress value={batch.progress || 0} className="mt-2 h-2" />
                     </div>
                 </div>
