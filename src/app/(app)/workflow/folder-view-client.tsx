@@ -43,36 +43,32 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 
-interface FolderViewClientProps {
-  stage: string;
-  config: {
-    title: string;
-    description: string;
-    actionButtonLabel?: string;
-    actionButtonIcon?: keyof typeof iconMap;
-    emptyStateText: string;
-    dataStatus?: string;
-  };
-}
-
-type GroupedDocuments = {
-  [bookId: string]: {
-    book: EnrichedBook;
-    pages: AppDocument[];
-    hasError: boolean;
-    hasWarning: boolean;
-    batchInfo?: { id: string, timestampStr: string };
-  };
-};
-
-const DetailItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
-  <div className="grid grid-cols-3 items-center gap-x-4">
-    <p className="text-muted-foreground">{label}</p>
-    <p className="col-span-2 font-medium">{value}</p>
-  </div>
-);
+const ITEMS_PER_PAGE = 10;
+const SIMPLE_BULK_ACTION_STAGES = [
+  'confirm-reception', 'to-scan', 'to-indexing', 'to-checking',
+  'indexing-started', 'checking-started', 'ready-for-processing',
+  'processed', 'final-quality-control', 'delivery', 'finalized',
+];
 
 const iconMap: { [key: string]: LucideIcon } = {
     Check,
@@ -87,9 +83,71 @@ const iconMap: { [key: string]: LucideIcon } = {
     CheckCheck,
     Archive,
     ThumbsUp,
+    ThumbsDown,
     Undo2,
+    MoreHorizontal,
 };
 
+interface WorkflowClientProps {
+  config: {
+    title: string;
+    description: string;
+    dataType: 'book' | 'document';
+    actionButtonLabel?: string;
+    actionButtonIcon?: keyof typeof iconMap;
+    emptyStateText: string;
+    dataStatus?: string; // For books
+    dataStage?: string; // For documents
+    assigneeRole?: 'scanner' | 'indexer' | 'qc';
+  };
+  stage: string;
+}
+
+type BadgeVariant = "default" | "destructive" | "secondary" | "outline";
+type AssignmentRole = 'scanner' | 'indexer' | 'qc';
+
+const assignmentConfig: { [key in AssignmentRole]: { title: string, description: string, permission: string } } = {
+    scanner: { title: "Assign Scanner", description: "Select a scanner operator to process this book.", permission: '/workflow/to-scan' },
+    indexer: { title: "Assign Indexer", description: "Select an indexer to process this book.", permission: '/workflow/to-indexing' },
+    qc: { title: "Assign for QC", description: "Select a QC specialist to review this book.", permission: '/workflow/to-checking' }
+};
+
+const getBadgeVariant = (status: string): BadgeVariant => {
+    switch (status) {
+        case "Delivery":
+        case "Finalized":
+        case "Processed":
+        case "Archived":
+            return "default";
+        case "Client Rejected":
+            return "destructive";
+        case "Scanning Started":
+        case "Indexing Started":
+        case "Checking Started":
+        case "In Processing":
+        case "Final Quality Control":
+            return "secondary"
+        default:
+            return "outline";
+    }
+}
+
+const DetailItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
+  <div className="grid grid-cols-3 items-center gap-x-4">
+    <p className="text-muted-foreground">{label}</p>
+    <p className="col-span-2 font-medium">{value}</p>
+  </div>
+);
+
+type GroupedDocuments = {
+  [bookId: string]: {
+    book: EnrichedBook;
+    pages: AppDocument[];
+    hasError: boolean;
+    hasWarning: boolean;
+    batchInfo?: { id: string, timestampStr: string };
+  };
+};
 
 export default function FolderViewClient({ stage, config }: FolderViewClientProps) {
   const { 
@@ -112,7 +170,8 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     projectWorkflows,
     processingBookIds,
     processingBatches, 
-    processingBatchItems 
+    processingBatchItems,
+    storages,
   } = useAppContext();
   const { toast } = useToast();
   const ActionIcon = config.actionButtonIcon ? iconMap[config.actionButtonIcon] : FolderSync;
@@ -152,6 +211,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   
   const [columnStates, setColumnStates] = React.useState<{ [key: string]: { cols: number } }>({});
   const [selectedBatchId, setSelectedBatchId] = React.useState<string>('all');
+  const [selectedStorageId, setSelectedStorageId] = React.useState<string>('all');
 
   const setBookColumns = (bookId: string, cols: number) => {
     setColumnStates(prev => ({ ...prev, [bookId]: { cols } }));
@@ -184,6 +244,13 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
       booksInStage = booksInStage.filter(book => bookToBatchMap.get(book.id)?.id === selectedBatchId);
     }
     
+    if (stage === 'storage' && selectedStorageId !== 'all') {
+      const selectedStorageName = storages.find(s => s.id === selectedStorageId)?.nome;
+      if (selectedStorageName) {
+        booksInStage = booksInStage.filter(book => book.storageName === selectedStorageName);
+      }
+    }
+    
     return booksInStage.reduce<GroupedDocuments>((acc, book) => {
         const pages = documents.filter(doc => doc.bookId === book.id);
         acc[book.id] = {
@@ -195,7 +262,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
         };
         return acc;
     }, {});
-  }, [books, documents, config.dataStatus, selectedProjectId, currentUser, bookToBatchMap, selectedBatchId, stage]);
+  }, [books, documents, config.dataStatus, selectedProjectId, currentUser, bookToBatchMap, selectedBatchId, stage, selectedStorageId, storages]);
   
   const availableBatches = React.useMemo(() => {
     if (stage !== 'final-quality-control') return [];
@@ -217,7 +284,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   
   React.useEffect(() => {
     setSelection([]);
-  }, [selectedProjectId, selectedBatchId]);
+  }, [selectedProjectId, selectedBatchId, selectedStorageId]);
 
   const handleRejectSubmit = () => {
     if (!currentBook) return;
@@ -424,7 +491,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
         setSelection([]);
       }
     });
-  }
+  };
   
   const handleBulkResubmit = (targetStage: string) => {
     const stageKey = findStageKeyFromStatus(targetStage);
@@ -688,6 +755,22 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                   </Select>
                 </div>
               )}
+              {stage === 'storage' && (
+                <div className="pt-4">
+                  <Label htmlFor="storage-select">Filter by Storage Location</Label>
+                  <Select value={selectedStorageId} onValueChange={setSelectedStorageId}>
+                    <SelectTrigger id="storage-select" className="w-[300px]">
+                        <SelectValue placeholder="Select a storage..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Storages</SelectItem>
+                        {storages.map(storage => (
+                            <SelectItem key={storage.id} value={storage.id}>{storage.nome}</SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
           </CardHeader>
           <CardContent>
             {Object.keys(groupedByBook).length > 0 ? (
@@ -729,6 +812,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                                         <span className="flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin"/> Loading pages...</span> 
                                         : <span>{pageCount} pages</span>
                                       }
+                                      {stage === 'storage' && book.storageName && <span className="text-xs text-muted-foreground/80 hidden md:inline-block"> (Storage: {book.storageName})</span>}
                                       {batchInfo && <span className="text-xs text-muted-foreground/80 hidden md:inline-block"> (Batch: {batchInfo.timestampStr.replace('Process started on ', '').replace(/ (AM|PM)$/, '')})</span>}
                                     </p>
                                 </div>
