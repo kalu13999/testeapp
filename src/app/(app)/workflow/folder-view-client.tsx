@@ -180,7 +180,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
       booksInStage = booksInStage.filter(b => b.clientId === currentUser.clientId);
     }
     
-    if (selectedBatchId !== 'all') {
+    if (stage === 'final-quality-control' && selectedBatchId !== 'all') {
       booksInStage = booksInStage.filter(book => bookToBatchMap.get(book.id)?.id === selectedBatchId);
     }
     
@@ -195,19 +195,25 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
         };
         return acc;
     }, {});
-  }, [books, documents, config.dataStatus, selectedProjectId, currentUser, bookToBatchMap, selectedBatchId]);
+  }, [books, documents, config.dataStatus, selectedProjectId, currentUser, bookToBatchMap, selectedBatchId, stage]);
   
   const availableBatches = React.useMemo(() => {
-      const batchIdsInStage = new Set<string>();
-      books
-        .filter(book => book.status === config.dataStatus)
-        .forEach(book => {
-            const batchInfo = bookToBatchMap.get(book.id);
-            if (batchInfo) batchIdsInStage.add(batchInfo.id);
-        });
-        
-      return Array.from(batchIdsInStage).map(batchId => bookToBatchMap.get(Object.values(groupedByBook).find(g => g.batchInfo?.id === batchId)?.book.id!)!).filter(Boolean);
-  }, [books, config.dataStatus, bookToBatchMap, groupedByBook]);
+    if (stage !== 'final-quality-control') return [];
+    
+    const batchIdToBooks = new Map<string, { timestamp: string, books: string[] }>();
+    books
+      .filter(book => book.status === config.dataStatus)
+      .forEach(book => {
+        const batchInfo = bookToBatchMap.get(book.id);
+        if (batchInfo) {
+          if (!batchIdToBooks.has(batchInfo.id)) {
+            batchIdToBooks.set(batchInfo.id, { timestamp: batchInfo.timestampStr, books: [] });
+          }
+          batchIdToBooks.get(batchInfo.id)!.books.push(book.name);
+        }
+    });
+    return Array.from(batchIdToBooks.entries()).map(([id, data]) => ({ id, ...data }));
+  }, [books, config.dataStatus, bookToBatchMap, stage]);
   
   React.useEffect(() => {
     setSelection([]);
@@ -334,7 +340,6 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     const book = Object.values(groupedByBook).map(g => g.book).find(b => b.id === doc.bookId);
     if (!book) return;
     
-    // Always load tags based on the book's client.
     const availableTags = rejectionTags.filter(tag => tag.clientId === book.clientId);
 
     setTaggingState({
@@ -675,7 +680,9 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                     <SelectContent>
                         <SelectItem value="all">All Batches</SelectItem>
                         {availableBatches.map(batch => (
-                            <SelectItem key={batch.id} value={batch.id}>{batch.timestampStr}</SelectItem>
+                            <SelectItem key={batch.id} value={batch.id}>
+                                {batch.timestamp.replace('Process started on ', '')}
+                            </SelectItem>
                         ))}
                     </SelectContent>
                   </Select>
@@ -722,7 +729,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                                         <span className="flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin"/> Loading pages...</span> 
                                         : <span>{pageCount} pages</span>
                                       }
-                                      {batchInfo && <span className="text-xs text-muted-foreground/80 hidden md:inline-block"> (Batch: {batchInfo.timestampStr})</span>}
+                                      {batchInfo && <span className="text-xs text-muted-foreground/80 hidden md:inline-block"> (Batch: {batchInfo.timestampStr.replace('Process started on ', '').replace(/ (AM|PM)$/, '')})</span>}
                                     </p>
                                 </div>
                             </div>
@@ -740,6 +747,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                             </CardHeader>
                             <CardContent className="text-sm space-y-4">
                                 <DetailItem label="Book" value={<Link href={`/books/${book.id}`} className="text-primary hover:underline">{book.name}</Link>} />
+                                {batchInfo && <DetailItem label="Batch" value={<Link href={`/processing-batches/${batchInfo.id}`} className="text-primary hover:underline">{batchInfo.timestampStr.replace('Process started on ', '').replace(/ (AM|PM)$/, '')}</Link>} />}
                                 <DetailItem label="Project" value={book.projectName} />
                                 <DetailItem label="Client" value={book.clientName} />
                                 <Separator />
