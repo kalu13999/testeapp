@@ -5,6 +5,7 @@ import * as React from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { StorageConfigTab } from "./storage-config-tab"
 import { ProjectStorageAssociationsTab } from "./project-storage-associations-tab"
+import { ScannerConfigTab } from "./scanner-config-tab"
 
 export default function GeneralConfigsClient() {
   return (
@@ -18,17 +19,17 @@ export default function GeneralConfigsClient() {
       <Tabs defaultValue="storages">
         <TabsList>
           <TabsTrigger value="storages">Storages</TabsTrigger>
+           <TabsTrigger value="scanners">Scanners</TabsTrigger>
           <TabsTrigger value="project-storages">Project-Storage</TabsTrigger>
-          <TabsTrigger value="scanners" disabled>Scanners (coming soon)</TabsTrigger>
         </TabsList>
         <TabsContent value="storages" className="pt-4">
           <StorageConfigTab />
         </TabsContent>
+         <TabsContent value="scanners" className="pt-4">
+          <ScannerConfigTab />
+        </TabsContent>
         <TabsContent value="project-storages" className="pt-4">
           <ProjectStorageAssociationsTab />
-        </TabsContent>
-        <TabsContent value="scanners">
-          {/* Scanner configuration component will go here */}
         </TabsContent>
       </Tabs>
     </div>
