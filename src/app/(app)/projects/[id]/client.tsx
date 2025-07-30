@@ -62,6 +62,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Book, Edit, DollarSign, Calendar, Info, ArrowUp, ArrowDown, ChevronsUpDown, Settings2, Package, LucideIcon, BookCopy, AlertTriangle, CheckCircle, Download, Loader2, XCircle, Warehouse } from "lucide-react";
 import { ProjectStorageForm } from "../project-storage-form";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 
 interface ProjectDetailClientProps {
@@ -438,19 +440,17 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
         </Card>
 
         <Card>
-            <CardHeader>
-                <div className="flex items-center justify-between">
-                    <div>
-                        <CardTitle>Workflow Configuration</CardTitle>
-                        <CardDescription>
-                            The sequence of stages enabled for this project. Disabled phases are skipped.
-                        </CardDescription>
-                    </div>
-                    <Button variant="outline" size="sm" onClick={() => setIsWorkflowDialogOpen(true)}>
-                        <Settings2 className="mr-2 h-4 w-4"/>
-                        Edit Workflow
-                    </Button>
+            <CardHeader className="flex flex-row items-start justify-between">
+                <div>
+                    <CardTitle>Workflow Configuration</CardTitle>
+                    <CardDescription>
+                        The sequence of stages enabled for this project. Disabled phases are skipped.
+                    </CardDescription>
                 </div>
+                 <Button variant="outline" size="sm" onClick={() => setIsWorkflowDialogOpen(true)}>
+                    <Settings2 className="mr-2 h-4 w-4"/>
+                    Edit Workflow
+                </Button>
             </CardHeader>
             <CardContent>
                 <div className="space-y-6">
