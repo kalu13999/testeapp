@@ -1,6 +1,5 @@
 
 
-
 "use client"
 
 import * as React from "react"
@@ -13,15 +12,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Button } from "@/components/ui/button";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Loader2, BookOpen, Clock, CheckCircle, XCircle } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
+import { Loader2, CheckCircle, XCircle, Clock, Book, FileText, Timer } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import type { EnrichedBook, ProcessingBatch, ProcessingBatchItem, ProcessingLog } from "@/lib/data";
-import { format } from "date-fns";
+import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { format, formatDistanceToNow } from "date-fns";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 import {
   Table,
   TableBody,
@@ -30,6 +33,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import type { ProcessingBatch } from "@/lib/data";
 
 interface ProcessingViewClientProps {
   stage: string;
@@ -40,6 +46,16 @@ interface ProcessingViewClientProps {
     dataStatus?: string;
   };
 }
+
+const DetailItem = ({ label, value, icon: Icon }: { label: string; value: React.ReactNode, icon?: React.ElementType }) => (
+  <div className="flex flex-col space-y-1">
+    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        {Icon && <Icon className="h-4 w-4" />}
+        <span>{label}</span>
+    </div>
+    <div className="font-medium text-base pl-6">{value}</div>
+  </div>
+);
 
 export default function ProcessingViewClient({ config }: ProcessingViewClientProps) {
   const {
@@ -58,7 +74,9 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
       .map(batch => {
         const items = processingBatchItems.filter(item => item.batchId === batch.id);
         const bookIds = new Set(items.map(item => item.bookId));
-        return { ...batch, items, bookIds };
+        const firstBook = items.length > 0 ? books.find(b => b.id === items[0].bookId) : null;
+        const storageName = firstBook?.storageName || 'N/A';
+        return { ...batch, items, bookIds, storageName };
       })
       .filter(batch => {
         if (!selectedProjectId) return true; // Show all if no project is selected
@@ -86,6 +104,15 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
     }
     closeConfirmationDialog();
   }
+  
+  const getStatusInfo = (status: 'In Progress' | 'Complete' | 'Failed') => {
+      switch (status) {
+          case 'In Progress': return { icon: Loader2, color: 'text-primary', className: 'animate-spin' };
+          case 'Complete': return { icon: CheckCircle, color: 'text-green-600' };
+          case 'Failed': return { icon: XCircle, color: 'text-destructive' };
+          default: return { icon: Clock, color: 'text-muted-foreground' };
+      }
+  }
 
   return (
     <>
@@ -99,17 +126,19 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
             <Accordion type="multiple" className="w-full">
               {batchesForDisplay.map(batch => {
                 const logsForBatch = processingLogs.filter(log => log.batchId === batch.id);
+                const StatusIcon = getStatusInfo(batch.status).icon;
+                const statusColor = getStatusInfo(batch.status).color;
+                const statusAnimation = getStatusInfo(batch.status).className;
                 return (
                   <AccordionItem value={batch.id} key={batch.id}>
                     <div className="flex items-center justify-between hover:bg-muted/50 rounded-md">
                       <AccordionTrigger className="flex-1 px-4 py-2">
                         <div className="flex items-center gap-3 text-left">
-                          {batch.status === 'In Progress' && <Loader2 className="h-5 w-5 text-primary animate-spin" />}
-                          {batch.status === 'Complete' && <CheckCircle className="h-5 w-5 text-green-600" />}
-                          {batch.status === 'Failed' && <XCircle className="h-5 w-5 text-destructive" />}
+                          <StatusIcon className={`h-5 w-5 ${statusColor} ${statusAnimation}`} />
                           <div>
                               <p className="font-semibold text-base">{batch.timestampStr}</p>
                               <p className="text-sm text-muted-foreground">{batch.items.length} book(s) in this batch</p>
+                              <p className="text-xs text-muted-foreground">Storage: {batch.storageName}</p>
                           </div>
                         </div>
                       </AccordionTrigger>
