@@ -66,7 +66,7 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
     processingBatches,
     processingBatchItems,
     processingLogs,
-    handleCompleteProcessing: completeProcessingBatch,
+    completeProcessingBatch,
     selectedProjectId,
     storages,
   } = useAppContext();
