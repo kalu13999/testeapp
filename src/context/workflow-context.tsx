@@ -59,6 +59,7 @@ type AppContextType = {
   permissions: Permissions;
   projectWorkflows: ProjectWorkflows;
   rejectionTags: RejectionTag[];
+  storages: Storage[];
   
   // Global Project Filter
   allProjects: EnrichedProject[];
@@ -1452,6 +1453,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     permissions,
     projectWorkflows,
     rejectionTags,
+    storages,
     allProjects: allEnrichedProjects,
     accessibleProjectsForUser,
     selectedProjectId,

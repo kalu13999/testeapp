@@ -27,6 +27,8 @@ import { Input } from "@/components/ui/input"
 import Link from "next/link"
 import { AnimatePresence, motion } from "framer-motion"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
 
 interface ReadyForProcessingClientProps {
   stage: string;
@@ -39,13 +41,26 @@ interface ReadyForProcessingClientProps {
 }
 
 export default function ReadyForProcessingClient({ config }: ReadyForProcessingClientProps) {
-  const { books, startProcessingBatch, selectedProjectId } = useAppContext();
+  const { books, startProcessingBatch, selectedProjectId, storages } = useAppContext();
   const [selection, setSelection] = React.useState<string[]>([]);
   const [multiSelection, setMultiSelection] = React.useState<string[]>([]);
   const [columnFilters, setColumnFilters] = React.useState<{ [key: string]: string }>({});
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
     { id: 'name', desc: false }
   ]);
+  const [selectedStorageId, setSelectedStorageId] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (storages.length > 0 && !selectedStorageId) {
+      setSelectedStorageId(storages[0].id);
+    }
+  }, [storages, selectedStorageId]);
+
+  React.useEffect(() => {
+    setSelection([]);
+    setMultiSelection([]);
+  }, [selectedStorageId]);
+
 
   const handleColumnFilterChange = (columnId: string, value: string) => {
     setColumnFilters(prev => ({ ...prev, [columnId]: value }));
@@ -72,6 +87,14 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
 
   const availableBooks = React.useMemo(() => {
     let baseBooks = books.filter(book => book.status === config.dataStatus);
+    
+    if (selectedStorageId) {
+      baseBooks = baseBooks.filter(book => book.storageName === storages.find(s => s.id === selectedStorageId)?.nome);
+    } else {
+      // If no storage is selected, show nothing initially or handle as needed
+      return [];
+    }
+    
     if (selectedProjectId) {
       baseBooks = baseBooks.filter(book => book.projectId === selectedProjectId);
     }
@@ -106,7 +129,7 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
     }
 
     return filtered;
-  }, [books, config.dataStatus, selectedProjectId, columnFilters, sorting]);
+  }, [books, config.dataStatus, selectedProjectId, columnFilters, sorting, selectedStorageId, storages]);
 
   const selectedBooksInfo = React.useMemo(() => {
       return selection.map(id => books.find(b => b.id === id)).filter((b): b is EnrichedBook => !!b);
@@ -147,20 +170,36 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
       <div className="lg:col-span-2">
         <Card>
           <CardHeader>
-             <div className="flex justify-between items-center mb-4">
+             <div className="flex justify-between items-start mb-4">
                 <div>
                     <CardTitle>{config.title}</CardTitle>
                     <CardDescription>{config.description}</CardDescription>
                 </div>
-                <Button 
-                    variant="secondary" 
-                    size="sm" 
-                    disabled={multiSelection.length === 0}
-                    onClick={handleAddMultiple}
-                >
-                    <ListPlus className="mr-2 h-4 w-4" />
-                    Add {multiSelection.length} Selected to Batch
-                </Button>
+                <div className="flex items-center gap-4">
+                  <div className="w-[250px]">
+                    <Label htmlFor="storage-select">Storage Location</Label>
+                     <Select value={selectedStorageId || ''} onValueChange={setSelectedStorageId}>
+                        <SelectTrigger id="storage-select">
+                            <SelectValue placeholder="Select a storage..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {storages.map(storage => (
+                                <SelectItem key={storage.id} value={storage.id}>{storage.nome}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                  </div>
+                  <Button 
+                      variant="secondary" 
+                      size="sm" 
+                      disabled={multiSelection.length === 0}
+                      onClick={handleAddMultiple}
+                      className="self-end"
+                  >
+                      <ListPlus className="mr-2 h-4 w-4" />
+                      Add to Batch
+                  </Button>
+                </div>
              </div>
           </CardHeader>
           <CardContent>
@@ -246,7 +285,7 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
                 ) : (
                   <TableRow>
                     <TableCell colSpan={6} className="h-24 text-center">
-                        <p>{Object.values(columnFilters).some(v=>v) ? "No books match your filters." : config.emptyStateText}</p>
+                        <p>{!selectedStorageId ? "Please select a storage location to view books." : (Object.values(columnFilters).some(v=>v) ? "No books match your filters." : config.emptyStateText)}</p>
                     </TableCell>
                   </TableRow>
                 )}
