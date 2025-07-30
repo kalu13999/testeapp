@@ -1,31 +1,5 @@
 
 
-export interface Storage {
-    id: string;
-    nome: string;
-    ip: string;
-    root_path: string;
-    thumbs_path: string;
-    percentual_minimo_diario: number;
-    minimo_diario_fixo: number;
-    peso: number;
-    status: 'ativo' | 'inativo';
-}
-
-export interface LogTransferencia {
-    id: number;
-    nome_pasta: string;
-    bookId: string;
-    total_tifs: number;
-    storage_id: string;
-    scanner_id: string;
-    status: 'sucesso' | 'erro';
-    data_inicio: string;
-    data_fim: string;
-    detalhes?: string;
-}
-
-
 // Define types for our data structures
 export interface Client {
     id: string;
@@ -168,6 +142,31 @@ export interface ProcessingLog {
   level: 'INFO' | 'ERROR' | 'WARN';
   info: string | null;
   obs: string | null;
+}
+
+export interface Storage {
+    id: string;
+    nome: string;
+    ip: string;
+    root_path: string;
+    thumbs_path: string;
+    percentual_minimo_diario: number;
+    minimo_diario_fixo: number;
+    peso: number;
+    status: 'ativo' | 'inativo';
+}
+
+export interface LogTransferencia {
+    id: number;
+    nome_pasta: string;
+    bookId: string;
+    total_tifs: number;
+    storage_id: string;
+    scanner_id: string;
+    status: 'sucesso' | 'erro';
+    data_inicio: string;
+    data_fim: string;
+    detalhes?: string;
 }
 
 

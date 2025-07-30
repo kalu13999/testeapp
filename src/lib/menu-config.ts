@@ -1,3 +1,4 @@
+
 import {
   Archive,
   ArrowDownToLine,
@@ -81,6 +82,7 @@ export const allMenuItems: MenuSection[] = [
     items: [
       { href: "/admin/status-override", label: "Status Override", icon: Sliders },
       { href: "/book-management", label: "Book Management", icon: BookUp },
+      { href: "/admin/general-configs", label: "General Configs", icon: ServerCog },
     ]
   },
   {

@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { WORKFLOW_SEQUENCE, STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage } from '@/lib/workflow-config';
 import * as dataApi from '@/lib/data';
 import { UserFormValues } from '@/app/(app)/users/user-form';
+import { StorageFormValues } from '@/app/(app)/admin/general-configs/storage-form';
 
 // Define the shape of the book data when importing
 export interface BookImport {
@@ -101,6 +102,11 @@ type AppContextType = {
   updateRejectionTag: (tagId: string, tagData: Partial<Omit<RejectionTag, 'id' | 'clientId'>>) => Promise<void>;
   deleteRejectionTag: (tagId: string) => Promise<void>;
   tagPageForRejection: (pageId: string, tags: string[]) => Promise<void>;
+
+  // Storage Actions
+  addStorage: (storageData: StorageFormValues) => Promise<void>;
+  updateStorage: (storageId: string, storageData: StorageFormValues) => Promise<void>;
+  deleteStorage: (storageId: string) => Promise<void>;
 
   // Workflow Actions
   getNextEnabledStage: (currentStage: string, workflow: string[]) => string | null;
@@ -877,6 +883,63 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     });
   };
 
+  const addStorage = async (storageData: StorageFormValues) => {
+    await withMutation(async () => {
+      try {
+          const response = await fetch('/api/storages', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(storageData),
+          });
+          if (!response.ok) throw new Error('Failed to create storage');
+          const newStorage = await response.json();
+          setStorages(prev => [...prev, newStorage]);
+          logAction('Storage Created', `New storage location "${newStorage.nome}" added.`, {});
+          toast({ title: "Storage Added" });
+      } catch (error) {
+          console.error(error);
+          toast({ title: "Error", description: "Could not create storage.", variant: "destructive" });
+      }
+    });
+  };
+
+  const updateStorage = async (storageId: string, storageData: StorageFormValues) => {
+    await withMutation(async () => {
+      try {
+          const response = await fetch(`/api/storages/${storageId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(storageData),
+          });
+          if (!response.ok) throw new Error('Failed to update storage');
+          const updatedStorage = await response.json();
+          setStorages(prev => prev.map(s => s.id === storageId ? updatedStorage : s));
+          logAction('Storage Updated', `Storage location "${updatedStorage.nome}" updated.`, {});
+          toast({ title: "Storage Updated" });
+      } catch (error) {
+          console.error(error);
+          toast({ title: "Error", description: "Could not update storage.", variant: "destructive" });
+      }
+    });
+  };
+
+  const deleteStorage = async (storageId: string) => {
+    await withMutation(async () => {
+      const storage = storages.find(s => s.id === storageId);
+      try {
+          const response = await fetch(`/api/storages/${storageId}`, { method: 'DELETE' });
+          if (!response.ok) throw new Error('Failed to delete storage');
+          setStorages(prev => prev.filter(s => s.id !== storageId));
+          logAction('Storage Deleted', `Storage location "${storage?.nome}" deleted.`, {});
+          toast({ title: "Storage Deleted", variant: "destructive" });
+      } catch (error) {
+          console.error(error);
+          toast({ title: "Error", description: "Could not delete storage.", variant: "destructive" });
+      }
+    });
+  };
+
+
   const updateDocument = async (docId: string, data: Partial<AppDocument>) => {
     return await withMutation(async () => {
       const doc = rawDocuments.find(d => d.id === docId);
@@ -1481,6 +1544,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     addBook, updateBook, deleteBook, importBooks,
     addRejectionTag, updateRejectionTag, deleteRejectionTag,
     tagPageForRejection,
+    addStorage, updateStorage, deleteStorage,
     getNextEnabledStage,
     handleMarkAsShipped,
     handleConfirmReception,
