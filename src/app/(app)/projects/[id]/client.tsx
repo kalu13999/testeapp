@@ -63,7 +63,7 @@ import {
 } from "@/components/ui/pagination"
 import { useToast } from "@/hooks/use-toast";
 import { Book, Edit, DollarSign, Calendar, Info, ArrowUp, ArrowDown, ChevronsUpDown, Settings2, Package, LucideIcon, BookCopy, AlertTriangle, CheckCircle, Download, Loader2, XCircle, Warehouse } from "lucide-react";
-import { ProjectStorageForm } from "./project-storage-form";
+import { ProjectStorageForm } from "../project-storage-form";
 
 
 interface ProjectDetailClientProps {
@@ -502,60 +502,6 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
             {totalPages > 1 && <CardFooter className="justify-between"><div className="text-xs text-muted-foreground">{selection.length} of {sortedBooks.length} selected</div><PaginationNav /></CardFooter>}
         </Card>
 
-        <Card>
-            <CardHeader className="flex flex-row items-start justify-between">
-                <div>
-                    <CardTitle>Workflow Configuration</CardTitle>
-                    <CardDescription>
-                        The sequence of stages enabled for this project. Disabled phases are skipped.
-                    </CardDescription>
-                </div>
-                 <Button variant="outline" size="sm" onClick={() => setIsWorkflowDialogOpen(true)}>
-                    <Settings2 className="mr-2 h-4 w-4"/>
-                    Edit Workflow
-                </Button>
-            </CardHeader>
-            <CardContent>
-                <div className="space-y-6">
-                {WORKFLOW_PHASES.map(group => (
-                    <div key={group.name}>
-                        <h4 className="font-semibold text-base mb-3 border-b pb-2">{group.name}</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
-                        {group.stages.map(stageKey => {
-                            const stageConfig = STAGE_CONFIG[stageKey as keyof typeof STAGE_CONFIG];
-                            if (!stageConfig) return null;
-
-                            const isMandatory = MANDATORY_STAGES.includes(stageKey);
-                            const isEnabled = isMandatory || projectWorkflow.includes(stageKey);
-
-                            return (
-                                <div key={stageKey} className={cn(
-                                    "flex items-center space-x-3",
-                                    !isEnabled && !group.toggleable && "opacity-60"
-                                )}>
-                                    {isEnabled ? (
-                                        <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
-                                    ) : (
-                                        <XCircle className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                                    )}
-                                    <div className="flex flex-col">
-                                        <span className={cn(
-                                            "font-medium text-sm",
-                                            !isEnabled && "line-through"
-                                        )}>
-                                            {stageConfig.title}
-                                        </span>
-                                        <span className="text-xs text-muted-foreground">{stageConfig.description}</span>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                        </div>
-                    </div>
-                ))}
-                </div>
-            </CardContent>
-        </Card>
       </div>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
