@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { format, formatDistance } from "date-fns";
+import { format } from "date-fns";
 
 import {
   Table,
@@ -139,8 +139,8 @@ export default function BatchDetailClient({ batchId }: BatchDetailClientProps) {
             <CardContent>
                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-8">
                     <DetailItem label="Status" value={<Badge className="text-base" variant={batch.status === 'Complete' ? 'default' : (batch.status === 'Failed' ? 'destructive' : 'secondary')}>{batch.status}</Badge>} />
-                    <DetailItem label="Start Time" value={format(new Date(batch.startTime), 'PPP p')} />
-                    <DetailItem label="End Time" value={batch.endTime ? format(new Date(batch.endTime), 'PPP p') : '—'} />
+                    <DetailItem label="Start Time" value={format(new Date(batch.startTime), 'dd/MM/yyyy HH:mm')} />
+                    <DetailItem label="End Time" value={batch.endTime ? format(new Date(batch.endTime), 'dd/MM/yyyy HH:mm') : '—'} />
                     <DetailItem label="Total Duration" value={stats.duration} />
                     
                     <DetailItem label="Books in Batch" value={items.length} icon={Book} />
@@ -205,7 +205,7 @@ export default function BatchDetailClient({ batchId }: BatchDetailClientProps) {
             <div className="p-4 font-mono text-xs">
               {logs.length > 0 ? logs.map(log => (
                 <p key={log.id}>
-                  <span className="text-muted-foreground">{format(new Date(log.timestamp), 'yyyy-MM-dd HH:mm:ss.SSS')}</span>
+                  <span className="text-muted-foreground">{format(new Date(log.timestamp), 'dd/MM/yyyy HH:mm:ss')}</span>
                   <span className={`ml-2 font-semibold ${log.level === 'ERROR' ? 'text-destructive' : (log.level === 'WARN' ? 'text-orange-500' : 'text-primary')}`}>{log.level}</span>
                   <span className="ml-2">{log.message}</span>
                 </p>
