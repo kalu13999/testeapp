@@ -104,10 +104,13 @@ type AppContextType = {
   deleteRejectionTag: (tagId: string) => Promise<void>;
   tagPageForRejection: (pageId: string, tags: string[]) => Promise<void>;
 
-  // Storage Actions
+  // Storage & Project-Storage Actions
   addStorage: (storageData: StorageFormValues) => Promise<void>;
   updateStorage: (storageId: string, storageData: StorageFormValues) => Promise<void>;
   deleteStorage: (storageId: string) => Promise<void>;
+  addProjectStorage: (associationData: ProjectStorage) => Promise<void>;
+  updateProjectStorage: (associationData: ProjectStorage) => Promise<void>;
+  deleteProjectStorage: (projectId: string, storageId: string) => Promise<void>;
 
   // Workflow Actions
   getNextEnabledStage: (currentStage: string, workflow: string[]) => string | null;
@@ -941,6 +944,66 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       }
     });
   };
+  
+  const addProjectStorage = async (associationData: ProjectStorage) => {
+    await withMutation(async () => {
+      try {
+        const response = await fetch('/api/project-storages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(associationData),
+        });
+        if (!response.ok) throw new Error('Failed to add project-storage association');
+        const newAssociation = await response.json();
+        setProjectStorages(prev => [...prev, newAssociation]);
+        logAction('Project Storage Added', `Storage associated with project.`, {});
+      } catch (error) {
+        console.error(error);
+        toast({ title: "Error", description: "Could not add association.", variant: "destructive" });
+      }
+    });
+  };
+
+  const updateProjectStorage = async (associationData: ProjectStorage) => {
+    await withMutation(async () => {
+      try {
+        const response = await fetch('/api/project-storages', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(associationData),
+        });
+        if (!response.ok) throw new Error('Failed to update project-storage association');
+        const updatedAssociation = await response.json();
+        setProjectStorages(prev => prev.map(ps => 
+            (ps.projectId === updatedAssociation.projectId && ps.storageId === updatedAssociation.storageId)
+            ? updatedAssociation
+            : ps
+        ));
+        logAction('Project Storage Updated', `Association for project ${associationData.projectId} updated.`, {});
+      } catch (error) {
+        console.error(error);
+        toast({ title: "Error", description: "Could not update association.", variant: "destructive" });
+      }
+    });
+  };
+
+  const deleteProjectStorage = async (projectId: string, storageId: string) => {
+    await withMutation(async () => {
+      try {
+        const response = await fetch('/api/project-storages', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ projectId, storageId }),
+        });
+        if (!response.ok) throw new Error('Failed to delete project-storage association');
+        setProjectStorages(prev => prev.filter(ps => !(ps.projectId === projectId && ps.storageId === storageId)));
+        logAction('Project Storage Removed', `Association between project ${projectId} and storage ${storageId} removed.`, {});
+      } catch (error) {
+        console.error(error);
+        toast({ title: "Error", description: "Could not remove association.", variant: "destructive" });
+      }
+    });
+  };
 
 
   const updateDocument = async (docId: string, data: Partial<AppDocument>) => {
@@ -1549,6 +1612,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     addRejectionTag, updateRejectionTag, deleteRejectionTag,
     tagPageForRejection,
     addStorage, updateStorage, deleteStorage,
+    addProjectStorage, updateProjectStorage, deleteProjectStorage,
     getNextEnabledStage,
     handleMarkAsShipped,
     handleConfirmReception,
@@ -1575,5 +1639,3 @@ export function useAppContext() {
   }
   return context;
 }
-
-    
