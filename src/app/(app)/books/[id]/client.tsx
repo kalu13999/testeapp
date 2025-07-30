@@ -33,6 +33,17 @@ const DetailItem = ({ label, value }: { label: string; value: React.ReactNode })
   </div>
 );
 
+const StageDetailItem = ({ stage, user, startTime, endTime }: { stage: string, user?: string, startTime?: string, endTime?: string }) => (
+  <div>
+    <p className="text-sm font-medium">{stage}</p>
+    <div className="text-sm text-muted-foreground pl-4 border-l-2 ml-2 py-1 space-y-1">
+      <p>User: <span className="font-semibold">{user || '—'}</span></p>
+      <p>Start: <span className="font-semibold">{startTime ? new Date(startTime).toLocaleString() : '—'}</span></p>
+      <p>End: <span className="font-semibold">{endTime ? new Date(endTime).toLocaleString() : '—'}</span></p>
+    </div>
+  </div>
+);
+
 export default function BookDetailClient({ bookId }: BookDetailClientProps) {
   const { books, documents, users, auditLogs } = useAppContext();
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
@@ -193,37 +204,38 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
                   <DetailItem label="Client" value={book.clientName} />
                   <DetailItem label="Status" value={<Badge variant="outline">{book.status}</Badge>} />
                   <Separator />
-                  <DetailItem label="Priority" value={book.priority || '—'} />
                   <DetailItem label="Author" value={book.author || '—'} />
                   <DetailItem label="ISBN" value={book.isbn || '—'} />
-                  <Separator />
                   <DetailItem label="Publication Year" value={book.publicationYear || '—'} />
+                  <DetailItem label="Priority" value={book.priority || '—'} />
+                  <Separator />
                   <DetailItem label="Expected Pages" value={book.expectedDocuments} />
                   <DetailItem label="Scanned Pages" value={book.documentCount} />
                   <Separator />
-                  <DetailItem label="Scanner (User)" value={scanner?.name || '—'} />
-                  <DetailItem label="Indexer" value={indexer?.name || '—'} />
-                  <DetailItem label="QC Specialist" value={qc?.name || '—'} />
-                  <Separator />
                   <DetailItem label="Storage" value={book.storageName || '—'} />
                   <DetailItem label="Scanner (Device)" value={book.scannerName || '—'} />
-                  <Separator />
-                  <DetailItem label="Scan Started" value={book.scanStartTime ? new Date(book.scanStartTime).toLocaleString() : '—'} />
-                  <DetailItem label="Scan Ended" value={book.scanEndTime ? new Date(book.scanEndTime).toLocaleString() : '—'} />
-                  <DetailItem label="Indexing Started" value={book.indexingStartTime ? new Date(book.indexingStartTime).toLocaleString() : '—'} />
-                  <DetailItem label="Indexing Ended" value={book.indexingEndTime ? new Date(book.indexingEndTime).toLocaleString() : '—'} />
-                  <DetailItem label="Checking Started" value={book.qcStartTime ? new Date(book.qcStartTime).toLocaleString() : '—'} />
-                  <DetailItem label="Checking Ended" value={book.qcEndTime ? new Date(book.qcEndTime).toLocaleString() : '—'} />
             </CardContent>
-             {book.info && (
-                <>
-                <Separator />
-                <CardContent className="pt-4">
-                  <DetailItem label="Additional Info" value={book.info} />
-                </CardContent>
-                </>
-             )}
         </Card>
+        
+        <Card>
+            <CardHeader><CardTitle>Workflow Details</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+                <StageDetailItem stage="Scanning" user={scanner?.name} startTime={book.scanStartTime} endTime={book.scanEndTime} />
+                <StageDetailItem stage="Indexing" user={indexer?.name} startTime={book.indexingStartTime} endTime={book.indexingEndTime} />
+                <StageDetailItem stage="Quality Control" user={qc?.name} startTime={book.qcStartTime} endTime={book.qcEndTime} />
+            </CardContent>
+        </Card>
+
+        {book.info && (
+          <Card>
+            <CardHeader className="pb-2">
+                <CardTitle className="text-base">Additional Info</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">{book.info}</p>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
             <CardHeader>
