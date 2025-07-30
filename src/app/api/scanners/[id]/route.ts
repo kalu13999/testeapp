@@ -9,7 +9,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     try {
         const scannerData = await request.json();
         
-        const query = 'UPDATE scanners SET nome = ?, ip = ?, scanner_root_folder = ?, error_folder = ?, success_folder = ?, local_thumbs_path = ?, status = ? WHERE id = ?';
+        const query = 'UPDATE scanners SET nome = ?, ip = ?, scanner_root_folder = ?, error_folder = ?, success_folder = ?, local_thumbs_path = ?, status = ?, obs = ? WHERE id = ?';
         const values = [
             scannerData.nome, 
             scannerData.ip, 
@@ -18,6 +18,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
             scannerData.success_folder,
             scannerData.local_thumbs_path,
             scannerData.status,
+            scannerData.obs,
             id
         ];
         

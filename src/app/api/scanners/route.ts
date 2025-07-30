@@ -1,7 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import { getConnection, releaseConnection } from '@/lib/db';
-import type { PoolConnection } from 'mysql2/promise';
+import type { PoolConnection, ResultSetHeader } from 'mysql2/promise';
 
 export async function GET() {
   let connection: PoolConnection | null = null;
@@ -24,20 +24,20 @@ export async function POST(request: Request) {
     try {
         const scannerData = await request.json();
         
-        const { nome, ip, scanner_root_folder, error_folder, success_folder, local_thumbs_path, status } = scannerData;
+        const { nome, ip, scanner_root_folder, error_folder, success_folder, local_thumbs_path, status, obs } = scannerData;
 
         if (!nome || !ip || !scanner_root_folder || !error_folder || !success_folder || !local_thumbs_path || !status) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
         
-        const newId = `sc_${Date.now()}`;
-        const newScanner = { id: newId, ...scannerData };
-        
         connection = await getConnection();
-        const query = 'INSERT INTO scanners (id, nome, ip, scanner_root_folder, error_folder, success_folder, local_thumbs_path, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
-        const values = [newId, nome, ip, scanner_root_folder, error_folder, success_folder, local_thumbs_path, status];
+        const query = 'INSERT INTO scanners (nome, ip, scanner_root_folder, error_folder, success_folder, local_thumbs_path, status, obs) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
+        const values = [nome, ip, scanner_root_folder, error_folder, success_folder, local_thumbs_path, status, obs || null];
         
-        await connection.execute(query, values);
+        const [result] = await connection.execute<ResultSetHeader>(query, values);
+        const newId = result.insertId;
+
+        const newScanner = { id: newId, ...scannerData };
         
         releaseConnection(connection);
         return NextResponse.json(newScanner, { status: 201 });

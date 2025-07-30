@@ -113,7 +113,7 @@ export interface Project {
 
 export interface ProjectStorage {
     projectId: string;
-    storageId: string;
+    storageId: number;
     percentual_minimo_diario: number;
     minimo_diario_fixo: number;
     peso: number;
@@ -155,7 +155,7 @@ export interface ProcessingLog {
 }
 
 export interface Storage {
-    id: string;
+    id: number;
     nome: string;
     ip: string;
     root_path: string;
@@ -163,8 +163,21 @@ export interface Storage {
     percentual_minimo_diario: number;
     minimo_diario_fixo: number;
     peso: number;
-    status: 'ativo' | 'inativo';
+    status: 'ativo' | 'inativo' | 'manutencao';
 }
+
+export interface Scanner {
+  id: number;
+  nome: string;
+  ip: string;
+  scanner_root_folder: string;
+  error_folder: string;
+  success_folder: string;
+  local_thumbs_path: string;
+  status: 'ativo' | 'inativo';
+  obs?: string;
+}
+
 
 export interface LogTransferencia {
     id: number;
@@ -263,6 +276,7 @@ export const getRejectionTags = () => fetchData<RejectionTag[]>('/rejection-tags
 export const getDocumentStatuses = () => fetchData<DocumentStatus[]>('/document-statuses');
 export const getFolders = () => fetchData<Folder[]>('/folders');
 export const getStorages = () => fetchData<Storage[]>('/storages');
+export const getScanners = () => fetchData<Scanner[]>('/scanners');
 export const getTransferLogs = () => fetchData<LogTransferencia[]>('/log-transferencias');
 export const getProjectStorages = () => fetchData<ProjectStorage[]>('/project-storages');
 
@@ -293,8 +307,8 @@ export async function getEnrichedProjects(): Promise<EnrichedProject[]> {
     transferLogs.forEach(log => {
       if (log.bookId && log.status === 'sucesso') {
           const currentInfo = bookInfoMap.get(log.bookId) || {};
-          if (storageMap.has(log.storage_id)) {
-              currentInfo.storageName = storageMap.get(log.storage_id)!;
+          if (storageMap.has(Number(log.storage_id))) {
+              currentInfo.storageName = storageMap.get(Number(log.storage_id))!;
           }
           if (userMap.has(log.scanner_id)) {
               currentInfo.scannerName = userMap.get(log.scanner_id)!;
