@@ -63,6 +63,7 @@ type GroupedDocuments = {
     pages: AppDocument[];
     hasError: boolean;
     hasWarning: boolean;
+    batchInfo?: { id: string, timestampStr: string };
   };
 };
 
@@ -109,7 +110,9 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     tagPageForRejection,
     getNextEnabledStage,
     projectWorkflows,
-    processingBookIds
+    processingBookIds,
+    processingBatches, 
+    processingBatchItems 
   } = useAppContext();
   const { toast } = useToast();
   const ActionIcon = config.actionButtonIcon ? iconMap[config.actionButtonIcon] : FolderSync;
@@ -148,10 +151,22 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   }>({ open: false, docId: null, docName: null, selectedTags: [], availableTags: [] });
   
   const [columnStates, setColumnStates] = React.useState<{ [key: string]: { cols: number } }>({});
+  const [selectedBatchId, setSelectedBatchId] = React.useState<string>('all');
 
   const setBookColumns = (bookId: string, cols: number) => {
     setColumnStates(prev => ({ ...prev, [bookId]: { cols } }));
   };
+  
+  const bookToBatchMap = React.useMemo(() => {
+    const map = new Map<string, { id: string, timestampStr: string }>();
+    processingBatchItems.forEach(item => {
+        const batch = processingBatches.find(b => b.id === item.batchId);
+        if (batch) {
+            map.set(item.bookId, { id: batch.id, timestampStr: batch.timestampStr });
+        }
+    });
+    return map;
+  }, [processingBatchItems, processingBatches]);
 
   const groupedByBook = React.useMemo(() => {
     if (!config.dataStatus) return {};
@@ -160,9 +175,13 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     if (selectedProjectId) {
       booksInStage = booksInStage.filter(book => book.projectId === selectedProjectId);
     }
-
+    
     if (currentUser?.role === 'Client' && currentUser.clientId) {
       booksInStage = booksInStage.filter(b => b.clientId === currentUser.clientId);
+    }
+    
+    if (selectedBatchId !== 'all') {
+      booksInStage = booksInStage.filter(book => bookToBatchMap.get(book.id)?.id === selectedBatchId);
     }
     
     return booksInStage.reduce<GroupedDocuments>((acc, book) => {
@@ -171,15 +190,28 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
             book,
             pages,
             hasError: pages.some(p => p.flag === 'error'),
-            hasWarning: pages.some(p => p.flag === 'warning')
+            hasWarning: pages.some(p => p.flag === 'warning'),
+            batchInfo: bookToBatchMap.get(book.id)
         };
         return acc;
     }, {});
-  }, [books, documents, config.dataStatus, selectedProjectId, currentUser]);
+  }, [books, documents, config.dataStatus, selectedProjectId, currentUser, bookToBatchMap, selectedBatchId]);
+  
+  const availableBatches = React.useMemo(() => {
+      const batchIdsInStage = new Set<string>();
+      books
+        .filter(book => book.status === config.dataStatus)
+        .forEach(book => {
+            const batchInfo = bookToBatchMap.get(book.id);
+            if (batchInfo) batchIdsInStage.add(batchInfo.id);
+        });
+        
+      return Array.from(batchIdsInStage).map(batchId => bookToBatchMap.get(Object.values(groupedByBook).find(g => g.batchInfo?.id === batchId)?.book.id!)!).filter(Boolean);
+  }, [books, config.dataStatus, bookToBatchMap, groupedByBook]);
   
   React.useEffect(() => {
     setSelection([]);
-  }, [selectedProjectId]);
+  }, [selectedProjectId, selectedBatchId]);
 
   const handleRejectSubmit = () => {
     if (!currentBook) return;
@@ -216,7 +248,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   const openAssignmentDialog = (bookId: string, bookName: string, projectId: string, role: 'indexer' | 'qc' | 'scanner') => {
     setAssignmentState({ open: true, bookId, bookName, projectId, role, selectedUserId: '' });
   };
-
+  
   const closeAssignmentDialog = () => {
     setAssignmentState({ open: false, bookId: null, bookName: null, projectId: null, role: null, selectedUserId: '' });
   };
@@ -256,15 +288,15 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   };
 
   const getAssignableUsers = (role: 'indexer' | 'qc' | 'scanner', projectId?: string) => {
-    const requiredPermission = assignmentConfig[role].permission;
-    return users.filter(user => {
-      if (user.role === 'Admin') return false; 
-      const userPermissions = permissions[user.role] || [];
-      const hasPermission = userPermissions.includes('*') || userPermissions.includes(requiredPermission);
-      if (!projectId) return hasPermission; // For bulk assignment before knowing project
-      const hasProjectAccess = !user.projectIds || user.projectIds.length === 0 || user.projectIds.includes(projectId);
-      return hasPermission && hasProjectAccess;
-    });
+      const requiredPermission = assignmentConfig[role].permission;
+      return users.filter(user => {
+        if (user.role === 'Admin') return false; 
+        const userPermissions = permissions[user.role] || [];
+        const hasPermission = userPermissions.includes('*') || userPermissions.includes(requiredPermission);
+        if (!projectId) return hasPermission; // For bulk assignment before knowing project
+        const hasProjectAccess = !user.projectIds || user.projectIds.length === 0 || user.projectIds.includes(projectId);
+        return hasPermission && hasProjectAccess;
+      });
   }
   
   const handleMainAction = (book: EnrichedBook) => {
@@ -633,12 +665,28 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                 </div>
                 {renderBulkActions()}
             </div>
+             {stage === 'final-quality-control' && (
+                <div className="pt-4">
+                  <Label htmlFor="batch-select">Filter by Processing Batch</Label>
+                  <Select value={selectedBatchId} onValueChange={setSelectedBatchId}>
+                    <SelectTrigger id="batch-select" className="w-[300px]">
+                        <SelectValue placeholder="Select a batch..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Batches</SelectItem>
+                        {availableBatches.map(batch => (
+                            <SelectItem key={batch.id} value={batch.id}>{batch.timestampStr}</SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
           </CardHeader>
           <CardContent>
             {Object.keys(groupedByBook).length > 0 ? (
               <Accordion type="multiple" className="w-full">
                 {Object.values(groupedByBook).map((bookGroup) => {
-                  const { book, pages, hasError, hasWarning } = bookGroup;
+                  const { book, pages, hasError, hasWarning, batchInfo } = bookGroup;
                   const isProcessing = processingBookIds.includes(book.id);
                   const pageCount = pages.length;
                   const bookCols = columnStates[book.id]?.cols || 8;
@@ -674,6 +722,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                                         <span className="flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin"/> Loading pages...</span> 
                                         : <span>{pageCount} pages</span>
                                       }
+                                      {batchInfo && <span className="text-xs text-muted-foreground/80 hidden md:inline-block"> (Batch: {batchInfo.timestampStr})</span>}
                                     </p>
                                 </div>
                             </div>
