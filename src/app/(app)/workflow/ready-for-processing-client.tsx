@@ -42,13 +42,18 @@ interface ReadyForProcessingClientProps {
 
 export default function ReadyForProcessingClient({ config }: ReadyForProcessingClientProps) {
   const { books, startProcessingBatch, selectedProjectId, storages } = useAppContext();
-  const [selection, setSelection] = React.useState<string[]>([]);
+  const [selectionByStorage, setSelectionByStorage] = React.useState<Record<string, string[]>>({});
   const [multiSelection, setMultiSelection] = React.useState<string[]>([]);
   const [columnFilters, setColumnFilters] = React.useState<{ [key: string]: string }>({});
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
     { id: 'name', desc: false }
   ]);
   const [selectedStorageId, setSelectedStorageId] = React.useState<string | null>(null);
+  
+  const selection = React.useMemo(() => {
+    if (!selectedStorageId) return [];
+    return selectionByStorage[selectedStorageId] || [];
+  }, [selectionByStorage, selectedStorageId]);
 
   React.useEffect(() => {
     if (storages.length > 0 && !selectedStorageId) {
@@ -57,7 +62,6 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
   }, [storages, selectedStorageId]);
 
   React.useEffect(() => {
-    setSelection([]);
     setMultiSelection([]);
   }, [selectedStorageId]);
 
@@ -139,18 +143,29 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
   }, [selectedBooksInfo]);
   
   const toggleSelection = (bookId: string) => {
-    setSelection(prev => 
-        prev.includes(bookId) ? prev.filter(id => id !== bookId) : [...prev, bookId]
-    );
+    if (!selectedStorageId) return;
+    setSelectionByStorage(prev => {
+        const currentSelection = prev[selectedStorageId] || [];
+        const newSelection = currentSelection.includes(bookId)
+            ? currentSelection.filter(id => id !== bookId)
+            : [...currentSelection, bookId];
+        return { ...prev, [selectedStorageId]: newSelection };
+    });
   }
 
   const handleStartProcess = () => {
+    if (!selectedStorageId) return;
     startProcessingBatch(selection);
-    setSelection([]);
+    setSelectionByStorage(prev => ({ ...prev, [selectedStorageId]: [] }));
   }
 
   const handleAddMultiple = () => {
-    setSelection(prev => [...new Set([...prev, ...multiSelection])]);
+    if (!selectedStorageId) return;
+    setSelectionByStorage(prev => {
+        const currentSelection = prev[selectedStorageId] || [];
+        const newSelection = [...new Set([...currentSelection, ...multiSelection])];
+        return { ...prev, [selectedStorageId]: newSelection };
+    });
     setMultiSelection([]);
   }
 
@@ -161,6 +176,11 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
       setMultiSelection(availableBooks.filter(b => !selection.includes(b.id)).map(b => b.id));
     }
   }
+  
+  const clearSelectionForCurrentStorage = () => {
+    if (!selectedStorageId) return;
+    setSelectionByStorage(prev => ({ ...prev, [selectedStorageId]: [] }));
+  };
 
   const availableForMultiSelectCount = availableBooks.filter(b => !selection.includes(b.id)).length;
 
@@ -330,7 +350,7 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
                             <PlayCircle className="mr-2 h-4 w-4" />
                             Start Processing Batch
                         </Button>
-                         <Button variant="outline" className="w-full" onClick={() => setSelection([])}>
+                         <Button variant="outline" className="w-full" onClick={clearSelectionForCurrentStorage}>
                             Clear Selection
                         </Button>
                     </CardFooter>
