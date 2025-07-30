@@ -36,6 +36,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { ProcessingBatch } from "@/lib/data";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+
 
 interface ProcessingViewClientProps {
   stage: string;
@@ -65,9 +68,11 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
     processingLogs,
     handleCompleteProcessing: completeProcessingBatch,
     selectedProjectId,
+    storages,
   } = useAppContext();
 
   const [confirmationState, setConfirmationState] = React.useState<{ open: boolean; batch: ProcessingBatch | null }>({ open: false, batch: null });
+  const [selectedStorageId, setSelectedStorageId] = React.useState<string>('all');
 
   const batchesForDisplay = React.useMemo(() => {
     let batches = processingBatches
@@ -87,8 +92,15 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
         });
       });
 
+      if (selectedStorageId !== 'all') {
+        const selectedStorage = storages.find(s => s.id === selectedStorageId);
+        if (selectedStorage) {
+            batches = batches.filter(batch => batch.storageName === selectedStorage.nome);
+        }
+      }
+
     return batches;
-  }, [processingBatches, processingBatchItems, selectedProjectId, books]);
+  }, [processingBatches, processingBatchItems, selectedProjectId, books, selectedStorageId, storages]);
 
   const openConfirmationDialog = (batch: ProcessingBatch) => {
     setConfirmationState({ open: true, batch });
@@ -120,6 +132,20 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
         <CardHeader>
           <CardTitle className="font-headline">{config.title}</CardTitle>
           <CardDescription>{config.description}</CardDescription>
+            <div className="pt-4">
+              <Label htmlFor="storage-select">Filter by Storage Location</Label>
+               <Select value={selectedStorageId} onValueChange={setSelectedStorageId}>
+                  <SelectTrigger id="storage-select" className="w-[300px]">
+                      <SelectValue placeholder="Select a storage..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="all">All Storages</SelectItem>
+                      {storages.map(storage => (
+                          <SelectItem key={storage.id} value={storage.id}>{storage.nome}</SelectItem>
+                      ))}
+                  </SelectContent>
+              </Select>
+            </div>
         </CardHeader>
         <CardContent>
           {batchesForDisplay.length > 0 ? (
