@@ -76,6 +76,7 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
 
   const batchesForDisplay = React.useMemo(() => {
     let batches = processingBatches
+      .filter(batch => batch.status !== 'Complete') // Filter out completed batches
       .map(batch => {
         const items = processingBatchItems.filter(item => item.batchId === batch.id);
         const bookIds = new Set(items.map(item => item.bookId));
@@ -99,7 +100,7 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
         }
       }
 
-    return batches;
+    return batches.sort((a,b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
   }, [processingBatches, processingBatchItems, selectedProjectId, books, selectedStorageId, storages]);
 
   const openConfirmationDialog = (batch: ProcessingBatch) => {

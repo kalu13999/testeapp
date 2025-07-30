@@ -13,7 +13,12 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { useAppContext } from "@/context/workflow-context";
-import { CheckCircle, BookOpen, Send } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Clock, Book, FileText, Timer, BookOpen } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { format, formatDistanceToNow } from "date-fns";
 import {
   Accordion,
   AccordionContent,
@@ -34,8 +39,6 @@ import type { ProcessingBatch } from "@/lib/data";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { format } from "date-fns";
-import { Progress } from "@/components/ui/progress";
 
 interface ProcessedViewClientProps {
   stage: string;
@@ -194,6 +197,39 @@ export default function ProcessedViewClient({ config }: ProcessedViewClientProps
                               <Link href={`/processing-batches/${batch.id}`}>View Full Details</Link>
                           </Button>
                       </div>
+                      <div>
+                         <h4 className="text-sm font-medium mb-2">Books in Batch</h4>
+                         <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Book Name</TableHead>
+                              <TableHead>Project</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Start Time</TableHead>
+                              <TableHead>End Time</TableHead>
+                              <TableHead className="text-right">Pages</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {batch.items.map(item => {
+                              const book = books.find(b => b.id === item.bookId);
+                              if (!book) return null;
+                              return (
+                                <TableRow key={item.id}>
+                                  <TableCell className="font-medium">
+                                    <Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link>
+                                  </TableCell>
+                                  <TableCell>{book.projectName}</TableCell>
+                                  <TableCell><Badge variant="secondary">{item.status}</Badge></TableCell>
+                                  <TableCell>{item.itemStartTime ? format(new Date(item.itemStartTime), 'p') : '—'}</TableCell>
+                                  <TableCell>{item.itemEndTime ? format(new Date(item.itemEndTime), 'p') : '—'}</TableCell>
+                                  <TableCell className="text-right">{book.expectedDocuments?.toLocaleString() || '—'}</TableCell>
+                                </TableRow>
+                              )
+                            })}
+                          </TableBody>
+                         </Table>
+                       </div>
                     </AccordionContent>
                   </AccordionItem>
                 )
