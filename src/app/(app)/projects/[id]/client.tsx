@@ -63,6 +63,7 @@ import {
 } from "@/components/ui/pagination"
 import { useToast } from "@/hooks/use-toast";
 import { Book, Edit, DollarSign, Calendar, Info, ArrowUp, ArrowDown, ChevronsUpDown, Settings2, Package, LucideIcon, BookCopy, AlertTriangle, CheckCircle, Download, Loader2, XCircle, Warehouse } from "lucide-react";
+import { ProjectStorageForm } from "./project-storage-form";
 
 
 interface ProjectDetailClientProps {
@@ -91,6 +92,7 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
   const { allProjects, clients, updateProject, projectWorkflows, updateProjectWorkflow, documents, projectStorages, storages } = useAppContext();
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isWorkflowDialogOpen, setIsWorkflowDialogOpen] = React.useState(false);
+  const [isStorageDialogOpen, setIsStorageDialogOpen] = React.useState(false);
   const [columnFilters, setColumnFilters] = React.useState<{ [key: string]: string }>({});
   const [currentPage, setCurrentPage] = React.useState(1);
   const [selection, setSelection] = React.useState<string[]>([]);
@@ -110,7 +112,7 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
     return projectStorages
       .filter(ps => ps.projectId === project.id)
       .map(ps => {
-        const storageDetails = storages.find(s => s.id === String(ps.storageId)); // Ensure ID matching is correct
+        const storageDetails = storages.find(s => s.id === ps.storageId);
         return {
           ...ps,
           storageName: storageDetails?.nome || 'Unknown Storage',
@@ -399,8 +401,15 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
         
         <Card>
           <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Warehouse className="h-5 w-5" /> Associated Storages</CardTitle>
-              <CardDescription>Storages assigned to this project and their specific configurations.</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2"><Warehouse className="h-5 w-5" /> Associated Storages</CardTitle>
+                  <CardDescription>Storages assigned to this project and their specific configurations.</CardDescription>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setIsStorageDialogOpen(true)}>
+                    <Edit className="mr-2 h-4 w-4" /> Manage Storages
+                </Button>
+              </div>
           </CardHeader>
           <CardContent>
             <Table>
@@ -425,7 +434,7 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                     )) : (
                         <TableRow>
                             <TableCell colSpan={5} className="h-24 text-center">
-                                No storages associated with this project yet.
+                                No storages associated with this project yet. Use the "Manage Storages" button to add one.
                             </TableCell>
                         </TableRow>
                     )}
@@ -614,6 +623,12 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
             </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      <ProjectStorageForm 
+        open={isStorageDialogOpen}
+        onOpenChange={setIsStorageDialogOpen}
+        project={project}
+      />
 
       <WorkflowConfigDialog 
         open={isWorkflowDialogOpen}
@@ -727,5 +742,3 @@ function WorkflowConfigDialog({ open, onOpenChange, projectName, currentWorkflow
     </Dialog>
   )
 }
-
-    
