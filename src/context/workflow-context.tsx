@@ -3,7 +3,7 @@
 "use client"
 
 import * as React from 'react';
-import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions, ProjectWorkflows, RejectionTag, DocumentStatus, ProcessingBatch, ProcessingBatchItem, Storage, LogTransferencia } from '@/lib/data';
+import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions, ProjectWorkflows, RejectionTag, DocumentStatus, ProcessingBatch, ProcessingBatchItem, Storage, LogTransferencia, ProjectStorage } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { WORKFLOW_SEQUENCE, STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage } from '@/lib/workflow-config';
 import * as dataApi from '@/lib/data';
@@ -59,6 +59,7 @@ type AppContextType = {
   roles: string[];
   permissions: Permissions;
   projectWorkflows: ProjectWorkflows;
+  projectStorages: ProjectStorage[];
   rejectionTags: RejectionTag[];
   storages: Storage[];
   
@@ -166,6 +167,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const [rejectionTags, setRejectionTags] = React.useState<RejectionTag[]>([]);
   const [statuses, setStatuses] = React.useState<DocumentStatus[]>([]);
   const [storages, setStorages] = React.useState<Storage[]>([]);
+  const [projectStorages, setProjectStorages] = React.useState<ProjectStorage[]>([]);
   const [transferLogs, setTransferLogs] = React.useState<LogTransferencia[]>([]);
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
   const [navigationHistory, setNavigationHistory] = React.useState<NavigationHistoryItem[]>([]);
@@ -192,14 +194,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
                 clientsData, usersData, projectsData, booksData, 
                 docsData, auditData, batchesData, batchItemsData, logsData,
                 permissionsData, rolesData, workflowsData, rejectionData, statusesData,
-                storagesData, transferLogsData,
+                storagesData, transferLogsData, projectStoragesData,
             ] = await Promise.all([
                 dataApi.getClients(), dataApi.getUsers(), dataApi.getRawProjects(),
                 dataApi.getRawBooks(), dataApi.getRawDocuments(), dataApi.getAuditLogs(),
                 dataApi.getProcessingBatches(), dataApi.getProcessingBatchItems(), dataApi.getProcessingLogs(),
                 dataApi.getPermissions(), dataApi.getRoles(),
                 dataApi.getProjectWorkflows(), dataApi.getRejectionTags(), dataApi.getDocumentStatuses(),
-                dataApi.getStorages(), dataApi.getTransferLogs(),
+                dataApi.getStorages(), dataApi.getTransferLogs(), dataApi.getProjectStorages(),
             ]);
 
             setClients(clientsData);
@@ -210,6 +212,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             setRawDocuments(docsData);
             setStorages(storagesData);
             setTransferLogs(transferLogsData);
+            setProjectStorages(projectStoragesData);
 
             const enrichedAuditLogs = auditData
                 .map(log => ({ ...log, user: usersData.find(u => u.id === log.userId)?.name || 'Unknown' }))
@@ -1530,6 +1533,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     roles,
     permissions,
     projectWorkflows,
+    projectStorages,
     rejectionTags,
     storages,
     allProjects: allEnrichedProjects,
@@ -1571,3 +1575,5 @@ export function useAppContext() {
   }
   return context;
 }
+
+    

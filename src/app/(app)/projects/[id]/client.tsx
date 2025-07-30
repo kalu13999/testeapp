@@ -33,7 +33,7 @@ import { type EnrichedBook, type Project } from "@/lib/data";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { WORKFLOW_PHASES, MANDATORY_STAGES, STAGE_CONFIG, findStageKeyFromStatus } from "@/lib/workflow-config";
+import { WORKFLOW_PHASES, MANDATORY_STAGES, STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage } from "@/lib/workflow-config";
 import { cn } from "@/lib/utils";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Pie, PieChart, Cell, Legend, Tooltip } from "recharts"
 import {
@@ -62,7 +62,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"
 import { useToast } from "@/hooks/use-toast";
-import { Book, Edit, DollarSign, Calendar, Info, ArrowUp, ArrowDown, ChevronsUpDown, Settings2, Package, LucideIcon, BookCopy, AlertTriangle, CheckCircle, Download, Loader2, XCircle } from "lucide-react";
+import { Book, Edit, DollarSign, Calendar, Info, ArrowUp, ArrowDown, ChevronsUpDown, Settings2, Package, LucideIcon, BookCopy, AlertTriangle, CheckCircle, Download, Loader2, XCircle, Warehouse } from "lucide-react";
 
 
 interface ProjectDetailClientProps {
@@ -88,7 +88,7 @@ const DetailItem = ({ label, value }: { label: string; value: React.ReactNode })
 );
 
 export default function ProjectDetailClient({ projectId }: ProjectDetailClientProps) {
-  const { allProjects, clients, updateProject, projectWorkflows, updateProjectWorkflow, documents } = useAppContext();
+  const { allProjects, clients, updateProject, projectWorkflows, updateProjectWorkflow, documents, projectStorages, storages } = useAppContext();
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isWorkflowDialogOpen, setIsWorkflowDialogOpen] = React.useState(false);
   const [columnFilters, setColumnFilters] = React.useState<{ [key: string]: string }>({});
@@ -104,6 +104,19 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
 
   const project = allProjects.find(p => p.id === projectId);
   const projectWorkflow = projectWorkflows[projectId] || [];
+
+  const associatedStorages = React.useMemo(() => {
+    if (!project) return [];
+    return projectStorages
+      .filter(ps => ps.projectId === project.id)
+      .map(ps => {
+        const storageDetails = storages.find(s => s.id === String(ps.storageId)); // Ensure ID matching is correct
+        return {
+          ...ps,
+          storageName: storageDetails?.nome || 'Unknown Storage',
+        };
+      });
+  }, [project, projectStorages, storages]);
 
   const handleSave = (values: Omit<Project, 'id'>) => {
     updateProject(projectId, values);
@@ -382,6 +395,43 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                     </PieChart>
                 </ChartContainer>
             </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Warehouse className="h-5 w-5" /> Associated Storages</CardTitle>
+              <CardDescription>Storages assigned to this project and their specific configurations.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Storage Name</TableHead>
+                        <TableHead className="text-center">Weight</TableHead>
+                        <TableHead className="text-center">Daily Fixed Min.</TableHead>
+                        <TableHead className="text-center">Daily Percent Min.</TableHead>
+                        <TableHead>Description</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {associatedStorages.length > 0 ? associatedStorages.map(assoc => (
+                        <TableRow key={assoc.storageId}>
+                            <TableCell className="font-medium">{assoc.storageName}</TableCell>
+                            <TableCell className="text-center">{assoc.peso}</TableCell>
+                            <TableCell className="text-center">{assoc.minimo_diario_fixo}</TableCell>
+                            <TableCell className="text-center">{assoc.percentual_minimo_diario}%</TableCell>
+                            <TableCell>{assoc.descricao}</TableCell>
+                        </TableRow>
+                    )) : (
+                        <TableRow>
+                            <TableCell colSpan={5} className="h-24 text-center">
+                                No storages associated with this project yet.
+                            </TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+          </CardContent>
         </Card>
 
         <Card>
@@ -677,3 +727,5 @@ function WorkflowConfigDialog({ open, onOpenChange, projectName, currentWorkflow
     </Dialog>
   )
 }
+
+    

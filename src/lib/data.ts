@@ -111,6 +111,16 @@ export interface Project {
     info?: string;
 }
 
+export interface ProjectStorage {
+    projectId: string;
+    storageId: string;
+    percentual_minimo_diario: number;
+    minimo_diario_fixo: number;
+    peso: number;
+    descricao?: string;
+    obs?: string;
+}
+
 export interface ProcessingBatch {
   id: string;
   startTime: string;
@@ -254,6 +264,7 @@ export const getDocumentStatuses = () => fetchData<DocumentStatus[]>('/document-
 export const getFolders = () => fetchData<Folder[]>('/folders');
 export const getStorages = () => fetchData<Storage[]>('/storages');
 export const getTransferLogs = () => fetchData<LogTransferencia[]>('/log-transferencias');
+export const getProjectStorages = () => fetchData<ProjectStorage[]>('/project-storages');
 
 
 // New functions for processing batches
@@ -345,3 +356,5 @@ export async function getPagesByBookId(bookId: string): Promise<Document[]> {
     const documents = await getRawDocuments();
     return documents.filter(d => d.bookId === bookId);
 }
+
+    
