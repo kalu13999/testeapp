@@ -1,5 +1,4 @@
 
-
 "use client"
 
 import * as React from "react"
@@ -28,6 +27,8 @@ import { Input } from "@/components/ui/input"
 import Link from "next/link"
 import { AnimatePresence, motion } from "framer-motion"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
 
 interface DeliveryBatchCreationClientProps {
   stage: string;
@@ -188,7 +189,8 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
                   <TableHead className="w-[120px]">Action</TableHead>
                   <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name')}>Book Name {getSortIndicator('name')}</div></TableHead>
                   <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('projectName')}>Project {getSortIndicator('projectName')}</div></TableHead>
-                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('clientName')}>Client {getSortIndicator('clientName')}</div></TableHead>
+                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('scannerName')}>Scanner {getSortIndicator('scannerName')}</div></TableHead>
+                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('storageName')}>Storage {getSortIndicator('storageName')}</div></TableHead>
                   <TableHead className="text-right"><div className="flex items-center justify-end gap-2 cursor-pointer select-none group" onClick={() => handleSort('expectedDocuments')}>Pages {getSortIndicator('expectedDocuments')}</div></TableHead>
                 </TableRow>
                  <TableRow>
@@ -200,8 +202,11 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
                      <TableHead>
                         <Input placeholder="Filter by project..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/>
                     </TableHead>
-                     <TableHead>
-                        <Input placeholder="Filter by client..." value={columnFilters['clientName'] || ''} onChange={(e) => handleColumnFilterChange('clientName', e.target.value)} className="h-8"/>
+                    <TableHead>
+                        <Input placeholder="Filter by scanner..." value={columnFilters['scannerName'] || ''} onChange={(e) => handleColumnFilterChange('scannerName', e.target.value)} className="h-8"/>
+                    </TableHead>
+                    <TableHead>
+                        <Input placeholder="Filter by storage..." value={columnFilters['storageName'] || ''} onChange={(e) => handleColumnFilterChange('storageName', e.target.value)} className="h-8"/>
                     </TableHead>
                     <TableHead className="text-right">
                         <div className="flex items-center justify-end gap-2">
@@ -249,14 +254,15 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
                             <Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link>
                           </TableCell>
                           <TableCell>{book.projectName}</TableCell>
-                          <TableCell>{book.clientName}</TableCell>
+                          <TableCell>{book.scannerName || '—'}</TableCell>
+                          <TableCell>{book.storageName || '—'}</TableCell>
                           <TableCell className="text-right">{book.expectedDocuments}</TableCell>
                         </TableRow>
                     )
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
+                    <TableCell colSpan={7} className="h-24 text-center">
                       <p>{config.emptyStateText}</p>
                     </TableCell>
                   </TableRow>
@@ -325,3 +331,5 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
     </div>
   )
 }
+
+    
