@@ -168,7 +168,7 @@ export const allMenuItems: MenuSection[] = [
       { href: "/dashboard", label: "Project Dashboard", icon: Home, roles: ['Client'] },
       { href: "/shipments", label: "Prepare Shipment", icon: Send },
       { href: "/pending-deliveries", label: "Pending Deliveries", icon: FileClock },
-      { href: "/validated-history", label: "Validated History", icon: FileCheck },
+      { href: "/validated-history", label: "Validated History", icon: History },
       { href: "/reasons", label: "Rejection Reasons", icon: Tags },
     ],
   },
