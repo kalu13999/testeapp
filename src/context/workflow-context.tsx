@@ -1575,9 +1575,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         
         if (status === 'rejected') {
           await updateBook(bookId, { rejectionReason: reason });
+        } else if (status === 'approved') {
+          const book = rawBooks.find(b => b.id === bookId);
+          if (book?.rejectionReason) {
+            await updateBook(bookId, { rejectionReason: null });
+          }
         }
         
-        const book = books.find(b => b.id === bookId);
+        const book = enrichedBooks.find(b => b.id === bookId);
         logAction(`Client Provisional Status`, `Book "${book?.name}" marked as '${status}'. Reason: ${reason || 'N/A'}`, { bookId });
         toast({ title: `Book Marked as ${status}` });
       } catch (error: any) {
@@ -1596,14 +1601,19 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         if (!response.ok) throw new Error('Failed to finalize batch.');
 
         // Refetch data to ensure consistency after batch finalization
-        const [booksData, batchesData, itemsData] = await Promise.all([
+        const [booksData, batchesData, itemsData, auditData] = await Promise.all([
           dataApi.getRawBooks(),
           dataApi.getDeliveryBatches(),
-          dataApi.getDeliveryBatchItems()
+          dataApi.getDeliveryBatchItems(),
+          dataApi.getAuditLogs(),
         ]);
         setRawBooks(booksData);
         setDeliveryBatches(batchesData);
         setDeliveryBatchItems(itemsData);
+        const enrichedAuditLogs = auditData
+            .map(log => ({ ...log, user: users.find(u => u.id === log.userId)?.name || 'Unknown' }))
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setAuditLogs(enrichedAuditLogs);
         
         logAction('Delivery Batch Finalized', `Batch ${deliveryId} was finalized by client.`, {});
         toast({ title: "Validation Confirmed", description: "All books in the batch have been processed." });
@@ -1620,7 +1630,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         for (const item of itemsToApprove) {
             await setProvisionalDeliveryStatus(item.id, item.bookId, 'approved');
         }
-        toast({ title: "Batch Approved", description: `${itemsToApprove.length} books have been marked as approved.` });
+        await finalizeDeliveryBatch(deliveryId);
     });
   };
 
@@ -1808,5 +1818,6 @@ export function useAppContext() {
 
 
     
+
 
 
