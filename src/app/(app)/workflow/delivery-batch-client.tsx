@@ -1,9 +1,9 @@
 
-
 "use client"
 
 import * as React from "react"
 import * as XLSX from 'xlsx';
+import Link from "next/link";
 import {
   Table,
   TableBody,
@@ -25,12 +25,12 @@ import { ListPlus, PlayCircle, BookOpen, ChevronsUpDown, ArrowUp, ArrowDown, Sen
 import { useAppContext } from "@/context/workflow-context"
 import type { EnrichedBook } from "@/lib/data"
 import { Input } from "@/components/ui/input"
-import Link from "next/link"
 import { AnimatePresence, motion } from "framer-motion"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 interface DeliveryBatchCreationClientProps {
   stage: string;
@@ -169,7 +169,7 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
                     <CardDescription>{config.description}</CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
-                     <Button variant="outline" size="sm" onClick={() => setIsBatchPanelOpen(p => !p)}>
+                    <Button variant="outline" size="sm" onClick={() => setIsBatchPanelOpen(p => !p)}>
                         Batch Panel
                         <Badge variant="secondary" className="ml-2">{selection.length}</Badge>
                     </Button>
