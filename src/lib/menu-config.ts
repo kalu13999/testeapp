@@ -13,6 +13,7 @@ import {
   FileText,
   Files,
   Home,
+  History,
   Loader2,
   ScanLine,
   Send,
