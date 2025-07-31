@@ -20,14 +20,14 @@ import { useAppContext } from "@/context/workflow-context";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { type AppDocument, type EnrichedBook, type RejectionTag, type DeliveryBatchItem } from "@/context/workflow-context";
+import { type AppDocument, type EnrichedBook, type RejectionTag } from "@/context/workflow-context";
 import { Textarea } from "@/components/ui/textarea";
-import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
-import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
 
 interface DeliveryValidationClientProps {
   config: {
@@ -77,7 +77,7 @@ export default function DeliveryValidationClient({ config }: DeliveryValidationC
             const itemsInBatch = deliveryBatchItems.filter(item => item.deliveryId === batch.id);
             const bookIdsInBatch = new Set(itemsInBatch.map(item => item.bookId));
             
-            let booksInBatch = books.filter(book => batchBookIds.has(book.id));
+            let booksInBatch = books.filter(book => bookIdsInBatch.has(book.id));
 
             if (currentUser?.clientId) {
                 booksInBatch = booksInBatch.filter(book => book.clientId === currentUser.clientId);
@@ -168,7 +168,7 @@ export default function DeliveryValidationClient({ config }: DeliveryValidationC
         <CardContent>
           {batchesToValidate.length > 0 ? (
             <Accordion type="multiple" className="w-full">
-              {batchesToValidate.map(({ batchId, creationDate, books }) => (
+              {batchesToValidate.map(({ batchId, creationDate, books: booksInBatch }) => (
                 <AccordionItem value={batchId} key={batchId}>
                    <div className="flex items-center justify-between hover:bg-muted/50 rounded-md">
                     <AccordionTrigger className="flex-1 px-4 py-2">
@@ -178,7 +178,7 @@ export default function DeliveryValidationClient({ config }: DeliveryValidationC
                                 <p className="font-semibold text-base">
                                   Delivery Batch - {new Date(creationDate).toLocaleDateString()}
                                 </p>
-                                <p className="text-sm text-muted-foreground">{books.length} book(s) ready for review</p>
+                                <p className="text-sm text-muted-foreground">{booksInBatch.length} book(s) ready for review</p>
                             </div>
                         </div>
                     </AccordionTrigger>
@@ -190,14 +190,14 @@ export default function DeliveryValidationClient({ config }: DeliveryValidationC
                   </div>
                   <AccordionContent className="p-4 space-y-4">
                      <Accordion type="multiple" className="w-full">
-                        {books.map(book => {
+                        {booksInBatch.map(book => {
                             const pages = getPagesForBook(book.id);
                             const bookCols = columnStates[book.id]?.cols || 8;
                             return (
-                                <AccordionItem value={book.id} key={book.id} className={
-                                  book.itemStatus === 'approved' ? 'bg-green-500/10 border-green-500/30' :
-                                  book.itemStatus === 'rejected' ? 'bg-red-500/10 border-red-500/30' : ''
-                                }>
+                                <AccordionItem value={book.id} key={book.id} className={cn(
+                                  book.itemStatus === 'approved' && 'bg-green-500/10 border-green-500/30',
+                                  book.itemStatus === 'rejected' && 'bg-red-500/10 border-red-500/30'
+                                )}>
                                     <div className="flex items-center justify-between hover:bg-muted/50 rounded-md">
                                         <AccordionTrigger className="flex-1 px-4 py-2">
                                             <div className="flex items-center gap-3 text-left">
@@ -243,7 +243,9 @@ export default function DeliveryValidationClient({ config }: DeliveryValidationC
                                                         </Card>
                                                     </Link>
                                                     <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <Button variant="secondary" size="icon" className="h-7 w-7" onClick={() => openTaggingDialog(page)}><Tag className="h-4 w-4" /></Button>
+                                                        <Button variant="secondary" size="icon" className="h-7 w-7" onClick={() => openTaggingDialog(page)}>
+                                                            <Tag className="h-4 w-4" />
+                                                        </Button>
                                                         <DropdownMenu>
                                                           <DropdownMenuTrigger asChild><Button variant="secondary" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                                           <DropdownMenuContent align="end">
@@ -340,7 +342,9 @@ export default function DeliveryValidationClient({ config }: DeliveryValidationC
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>Tag "{taggingState.docName}"</DialogTitle>
-                <DialogDescription>Select one or more rejection reasons for this page.</DialogDescription>
+                <DialogDescription>
+                    Select one or more rejection reasons for this page.
+                </DialogDescription>
             </DialogHeader>
             <div className="py-4">
                 <ScrollArea className="h-64">
