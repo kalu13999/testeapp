@@ -7,7 +7,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const { id } = params;
     let connection: PoolConnection | null = null;
     try {
-        const { status } = await request.json();
+        const { status, userId } = await request.json();
 
         if (!status || !['pending', 'approved', 'rejected'].includes(status)) {
             return NextResponse.json({ error: 'A valid status ("pending", "approved", or "rejected") is required.' }, { status: 400 });
@@ -15,8 +15,16 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         
         connection = await getConnection();
         
-        const query = 'UPDATE delivery_batch_items SET status = ? WHERE id = ?';
-        const values = [status, id];
+        let query: string;
+        let values: (string | null)[];
+
+        if (userId) {
+            query = 'UPDATE delivery_batch_items SET status = ?, user_id = ? WHERE id = ?';
+            values = [status, userId, id];
+        } else {
+            query = 'UPDATE delivery_batch_items SET status = ? WHERE id = ?';
+            values = [status, id];
+        }
         
         await connection.execute(query, values);
         

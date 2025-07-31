@@ -1,4 +1,3 @@
-
 -- A despejar estrutura para tabela testebdbnp.audit_logs
 CREATE TABLE IF NOT EXISTS `audit_logs` (
   `id` varchar(191) COLLATE utf8mb4_general_ci NOT NULL,
@@ -91,14 +90,17 @@ CREATE TABLE IF NOT EXISTS `delivery_batch_items` (
   `id` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
   `deliveryId` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
   `bookId` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `user_id` varchar(191) COLLATE utf8mb4_general_ci NOT NULL,
   `status` enum('pending','approved','rejected') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'pending',
   `info` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
   `obs` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
   PRIMARY KEY (`id`),
   KEY `fk_delivery_items_batch` (`deliveryId`),
   KEY `fk_delivery_items_book` (`bookId`),
+  KEY `fk_user_id` (`user_id`),
   CONSTRAINT `fk_delivery_items_batch` FOREIGN KEY (`deliveryId`) REFERENCES `delivery_batches` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_delivery_items_book` FOREIGN KEY (`bookId`) REFERENCES `books` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+  CONSTRAINT `fk_delivery_items_book` FOREIGN KEY (`bookId`) REFERENCES `books` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Exportação de dados não seleccionada.
@@ -341,10 +343,10 @@ CREATE TABLE IF NOT EXISTS `scanners` (
   `id` int NOT NULL AUTO_INCREMENT,
   `nome` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
   `ip` varchar(45) COLLATE utf8mb4_general_ci NOT NULL,
-  `scanner_root_folder` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Ex: \\192.168.1.10\\Scans',
-  `error_folder` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Ex: \\192.168.1.10\\Scans\\_ERROS',
-  `success_folder` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Ex: \\192.168.1.10\\Scans\\_CONCLUIDOS',
-  `local_thumbs_path` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Ex: C:\\Temp\\Thumbs (no próprio scanner)',
+  `scanner_root_folder` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Ex: \\192.168.1.10Scans',
+  `error_folder` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Ex: \\192.168.1.10Scans\\_ERROS',
+  `success_folder` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Ex: \\192.168.1.10Scans\\_CONCLUIDOS',
+  `local_thumbs_path` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Ex: C:TempThumbs (no próprio scanner)',
   `status` enum('ativo','inativo') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'ativo',
   `obs` text COLLATE utf8mb4_general_ci,
   `criado_em` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
@@ -360,8 +362,8 @@ CREATE TABLE IF NOT EXISTS `storages` (
   `id` int NOT NULL AUTO_INCREMENT,
   `nome` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
   `ip` varchar(45) COLLATE utf8mb4_general_ci NOT NULL,
-  `root_path` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Ex: \\\\192.168.1.20\\DATA\\scans',
-  `thumbs_path` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Ex: \\\\192.168.1.20\\DATA\\thumbs',
+  `root_path` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Ex: \\192.168.1.20DATAscans',
+  `thumbs_path` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Ex: \\192.168.1.20DATA	humbs',
   `status` enum('ativo','inativo','manutencao') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'ativo',
   `percentual_minimo_diario` decimal(5,2) NOT NULL DEFAULT '0.00',
   `minimo_diario_fixo` int NOT NULL DEFAULT '0',

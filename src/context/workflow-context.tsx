@@ -1563,14 +1563,16 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
   const setProvisionalDeliveryStatus = async (deliveryItemId: string, bookId: string, status: 'approved' | 'rejected', reason?: string) => {
     await withMutation(async () => {
+      if (!currentUser) return;
       try {
-        const itemResponse = await fetch(`/api/delivery-batch-items/${deliveryItemId}`, {
+        const response = await fetch(`/api/delivery-batch-items/${deliveryItemId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status })
+            body: JSON.stringify({ status: status, userId: currentUser.id })
         });
-        if (!itemResponse.ok) throw new Error('Failed to update delivery item status.');
-        const updatedItem = await itemResponse.json();
+        if (!response.ok) throw new Error('Failed to update delivery item status.');
+        
+        const updatedItem = await response.json();
         setDeliveryBatchItems(prev => prev.map(i => i.id === updatedItem.id ? updatedItem : i));
         
         if (status === 'rejected') {
@@ -1708,7 +1710,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             id: `del_item_${newBatch.id}_${bookId}`,
             deliveryId: newBatch.id,
             bookId: bookId,
-            status: 'pending',
+            userId: currentUser!.id,
+            status: 'pending' as const,
             info: null,
             obs: null
         }));
@@ -1818,6 +1821,7 @@ export function useAppContext() {
 
 
     
+
 
 
 

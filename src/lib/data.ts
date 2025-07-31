@@ -145,6 +145,7 @@ export interface DeliveryBatchItem {
   id: string;
   deliveryId: string;
   bookId: string;
+  userId: string;
   status: 'pending' | 'approved' | 'rejected';
   info: string | null;
   obs: string | null;

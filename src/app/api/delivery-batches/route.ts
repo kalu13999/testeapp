@@ -25,6 +25,10 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'An array of bookIds is required.' }, { status: 400 });
         }
 
+        if (!userId) {
+            return NextResponse.json({ error: 'A userId is required.' }, { status: 400 });
+        }
+
         connection = await getConnection();
         await connection.beginTransaction();
 
@@ -33,7 +37,7 @@ export async function POST(request: Request) {
             creationDate: new Date().toISOString().slice(0, 19).replace('T', ' '),
             deliveryDate: null,
             status: 'Ready',
-            userId: userId || null,
+            userId: userId,
             info: `${bookIds.length} books added to delivery batch.`,
         };
 
@@ -47,12 +51,13 @@ export async function POST(request: Request) {
                 id: `del_item_${newBatch.id}_${bookId}`,
                 deliveryId: newBatch.id,
                 bookId: bookId,
+                userId: userId, // Set the initial user ID here
                 status: 'pending', // Explicitly setting status on creation
                 info: null,
                 obs: null
             };
             await connection.execute(
-                'INSERT INTO delivery_batch_items (id, deliveryId, bookId, status, info, obs) VALUES (?, ?, ?, ?, ?, ?)',
+                'INSERT INTO delivery_batch_items (id, deliveryId, bookId, user_id, status, info, obs) VALUES (?, ?, ?, ?, ?, ?, ?)',
                 Object.values(newItem)
             );
         }
