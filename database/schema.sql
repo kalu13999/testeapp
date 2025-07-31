@@ -1,3 +1,5 @@
+
+-- A despejar estrutura para tabela testebdbnp.audit_logs
 CREATE TABLE IF NOT EXISTS `audit_logs` (
   `id` varchar(191) COLLATE utf8mb4_general_ci NOT NULL,
   `bookId` varchar(191) COLLATE utf8mb4_general_ci DEFAULT NULL,
@@ -14,8 +16,6 @@ CREATE TABLE IF NOT EXISTS `audit_logs` (
   CONSTRAINT `audit_logs_ibfk_2` FOREIGN KEY (`userId`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_audit_doc` FOREIGN KEY (`documentId`) REFERENCES `documents` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Exportação de dados não seleccionada.
 
 -- A despejar estrutura para tabela testebdbnp.books
 CREATE TABLE IF NOT EXISTS `books` (
@@ -52,8 +52,6 @@ CREATE TABLE IF NOT EXISTS `books` (
   CONSTRAINT `fk_books_status` FOREIGN KEY (`statusId`) REFERENCES `document_statuses` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Exportação de dados não seleccionada.
-
 -- A despejar estrutura para tabela testebdbnp.clients
 CREATE TABLE IF NOT EXISTS `clients` (
   `id` varchar(191) COLLATE utf8mb4_general_ci NOT NULL,
@@ -66,8 +64,6 @@ CREATE TABLE IF NOT EXISTS `clients` (
   `info` text COLLATE utf8mb4_general_ci,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Exportação de dados não seleccionada.
 
 -- A despejar estrutura para tabela testebdbnp.documents
 CREATE TABLE IF NOT EXISTS `documents` (
@@ -97,8 +93,6 @@ CREATE TABLE IF NOT EXISTS `documents` (
   CONSTRAINT `fk_doc_folder` FOREIGN KEY (`folderId`) REFERENCES `folders` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Exportação de dados não seleccionada.
-
 -- A despejar estrutura para tabela testebdbnp.document_statuses
 CREATE TABLE IF NOT EXISTS `document_statuses` (
   `id` varchar(191) COLLATE utf8mb4_general_ci NOT NULL,
@@ -107,8 +101,6 @@ CREATE TABLE IF NOT EXISTS `document_statuses` (
   `folderName` varchar(191) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Nome da pasta física no sistema de ficheiros para este estado',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Exportação de dados não seleccionada.
 
 -- A despejar estrutura para tabela testebdbnp.envio_diario
 CREATE TABLE IF NOT EXISTS `envio_diario` (
@@ -124,8 +116,6 @@ CREATE TABLE IF NOT EXISTS `envio_diario` (
   CONSTRAINT `envio_diario_ibfk_1` FOREIGN KEY (`storage_id`) REFERENCES `storages` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Exportação de dados não seleccionada.
-
 -- A despejar estrutura para tabela testebdbnp.folders
 CREATE TABLE IF NOT EXISTS `folders` (
   `id` varchar(191) COLLATE utf8mb4_general_ci NOT NULL,
@@ -135,8 +125,6 @@ CREATE TABLE IF NOT EXISTS `folders` (
   KEY `parentId` (`parentId`),
   CONSTRAINT `folders_ibfk_1` FOREIGN KEY (`parentId`) REFERENCES `folders` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Exportação de dados não seleccionada.
 
 -- A despejar estrutura para tabela testebdbnp.log_transferencias
 CREATE TABLE IF NOT EXISTS `log_transferencias` (
@@ -161,8 +149,6 @@ CREATE TABLE IF NOT EXISTS `log_transferencias` (
   CONSTRAINT `log_transferencias_ibfk_2` FOREIGN KEY (`scanner_id`) REFERENCES `scanners` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Exportação de dados não seleccionada.
-
 -- A despejar estrutura para tabela testebdbnp.permissions
 CREATE TABLE IF NOT EXISTS `permissions` (
   `role` varchar(191) COLLATE utf8mb4_general_ci NOT NULL,
@@ -170,8 +156,6 @@ CREATE TABLE IF NOT EXISTS `permissions` (
   PRIMARY KEY (`role`,`route`),
   CONSTRAINT `permissions_ibfk_1` FOREIGN KEY (`role`) REFERENCES `roles` (`name`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Exportação de dados não seleccionada.
 
 -- A despejar estrutura para tabela testebdbnp.processing_batches
 CREATE TABLE IF NOT EXISTS `processing_batches` (
@@ -185,8 +169,6 @@ CREATE TABLE IF NOT EXISTS `processing_batches` (
   `obs` text COLLATE utf8mb4_general_ci,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Exportação de dados não seleccionada.
 
 -- A despejar estrutura para tabela testebdbnp.processing_batch_items
 CREATE TABLE IF NOT EXISTS `processing_batch_items` (
@@ -206,8 +188,6 @@ CREATE TABLE IF NOT EXISTS `processing_batch_items` (
   CONSTRAINT `fk_batch_items_book` FOREIGN KEY (`bookId`) REFERENCES `books` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Exportação de dados não seleccionada.
-
 -- A despejar estrutura para tabela testebdbnp.processing_logs
 CREATE TABLE IF NOT EXISTS `processing_logs` (
   `id` varchar(191) COLLATE utf8mb4_general_ci NOT NULL,
@@ -221,8 +201,6 @@ CREATE TABLE IF NOT EXISTS `processing_logs` (
   KEY `fk_logs_batch` (`batchId`),
   CONSTRAINT `fk_logs_batch` FOREIGN KEY (`batchId`) REFERENCES `processing_batches` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Exportação de dados não seleccionada.
 
 -- A despejar estrutura para tabela testebdbnp.projects
 CREATE TABLE IF NOT EXISTS `projects` (
@@ -240,8 +218,6 @@ CREATE TABLE IF NOT EXISTS `projects` (
   CONSTRAINT `projects_ibfk_1` FOREIGN KEY (`clientId`) REFERENCES `clients` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Exportação de dados não seleccionada.
-
 -- A despejar estrutura para tabela testebdbnp.project_storages
 CREATE TABLE IF NOT EXISTS `project_storages` (
   `projectId` varchar(191) COLLATE utf8mb4_general_ci NOT NULL,
@@ -257,8 +233,6 @@ CREATE TABLE IF NOT EXISTS `project_storages` (
   CONSTRAINT `fk_project_storages_storage` FOREIGN KEY (`storageId`) REFERENCES `storages` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Exportação de dados não seleccionada.
-
 -- A despejar estrutura para tabela testebdbnp.project_workflows
 CREATE TABLE IF NOT EXISTS `project_workflows` (
   `projectId` varchar(191) COLLATE utf8mb4_general_ci NOT NULL,
@@ -266,8 +240,6 @@ CREATE TABLE IF NOT EXISTS `project_workflows` (
   PRIMARY KEY (`projectId`,`stage`),
   CONSTRAINT `project_workflows_ibfk_1` FOREIGN KEY (`projectId`) REFERENCES `projects` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Exportação de dados não seleccionada.
 
 -- A despejar estrutura para tabela testebdbnp.rejection_tags
 CREATE TABLE IF NOT EXISTS `rejection_tags` (
@@ -280,8 +252,6 @@ CREATE TABLE IF NOT EXISTS `rejection_tags` (
   CONSTRAINT `rejection_tags_ibfk_1` FOREIGN KEY (`clientId`) REFERENCES `clients` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Exportação de dados não seleccionada.
-
 -- A despejar estrutura para tabela testebdbnp.rejection_tag_projects
 CREATE TABLE IF NOT EXISTS `rejection_tag_projects` (
   `tagId` varchar(191) COLLATE utf8mb4_general_ci NOT NULL,
@@ -292,25 +262,21 @@ CREATE TABLE IF NOT EXISTS `rejection_tag_projects` (
   CONSTRAINT `rejection_tag_projects_ibfk_2` FOREIGN KEY (`projectId`) REFERENCES `projects` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Exportação de dados não seleccionada.
-
 -- A despejar estrutura para tabela testebdbnp.roles
 CREATE TABLE IF NOT EXISTS `roles` (
   `name` varchar(191) COLLATE utf8mb4_general_ci NOT NULL,
   PRIMARY KEY (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Exportação de dados não seleccionada.
-
 -- A despejar estrutura para tabela testebdbnp.scanners
 CREATE TABLE IF NOT EXISTS `scanners` (
   `id` int NOT NULL AUTO_INCREMENT,
   `nome` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
   `ip` varchar(45) COLLATE utf8mb4_general_ci NOT NULL,
-  `scanner_root_folder` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Ex: \\\\192.168.1.10\\Scans',
-  `error_folder` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Ex: \\\\192.168.1.10\\Scans\\\\_ERROS',
-  `success_folder` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Ex: \\\\192.168.1.10\\Scans\\\\_CONCLUIDOS',
-  `local_thumbs_path` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Ex: C:\\Temp\\Thumbs (no próprio scanner)',
+  `scanner_root_folder` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Ex: \\192.168.1.10Scans',
+  `error_folder` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Ex: \\192.168.1.10Scans\\_ERROS',
+  `success_folder` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Ex: \\192.168.1.10Scans\\_CONCLUIDOS',
+  `local_thumbs_path` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Ex: C:TempThumbs (no próprio scanner)',
   `status` enum('ativo','inativo') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'ativo',
   `obs` text COLLATE utf8mb4_general_ci,
   `criado_em` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
@@ -319,15 +285,13 @@ CREATE TABLE IF NOT EXISTS `scanners` (
   UNIQUE KEY `nome` (`nome`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Exportação de dados não seleccionada.
-
 -- A despejar estrutura para tabela testebdbnp.storages
 CREATE TABLE IF NOT EXISTS `storages` (
   `id` int NOT NULL AUTO_INCREMENT,
   `nome` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
   `ip` varchar(45) COLLATE utf8mb4_general_ci NOT NULL,
-  `root_path` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Ex: \\\\192.168.1.20\\DATA\\scans',
-  `thumbs_path` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Ex: \\\\192.168.1.20\\DATA\\thumbs',
+  `root_path` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Ex: \\192.168.1.20DATAscans',
+  `thumbs_path` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Ex: \\192.168.1.20DATA	humbs',
   `status` enum('ativo','inativo','manutencao') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'ativo',
   `percentual_minimo_diario` decimal(5,2) NOT NULL DEFAULT '0.00',
   `minimo_diario_fixo` int NOT NULL DEFAULT '0',
@@ -339,8 +303,6 @@ CREATE TABLE IF NOT EXISTS `storages` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `nome` (`nome`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Exportação de dados não seleccionada.
 
 -- A despejar estrutura para tabela testebdbnp.users
 CREATE TABLE IF NOT EXISTS `users` (
@@ -369,8 +331,6 @@ CREATE TABLE IF NOT EXISTS `users` (
   CONSTRAINT `users_ibfk_3` FOREIGN KEY (`clientId`) REFERENCES `clients` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Exportação de dados não seleccionada.
-
 -- A despejar estrutura para tabela testebdbnp.user_projects
 CREATE TABLE IF NOT EXISTS `user_projects` (
   `userId` varchar(191) COLLATE utf8mb4_general_ci NOT NULL,
@@ -379,4 +339,31 @@ CREATE TABLE IF NOT EXISTS `user_projects` (
   KEY `projectId` (`projectId`),
   CONSTRAINT `user_projects_ibfk_1` FOREIGN KEY (`userId`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `user_projects_ibfk_2` FOREIGN KEY (`projectId`) REFERENCES `projects` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- A despejar estrutura para tabela testebdbnp.delivery_batches
+CREATE TABLE IF NOT EXISTS `delivery_batches` (
+  `id` varchar(191) COLLATE utf8mb4_general_ci NOT NULL,
+  `creationDate` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `deliveryDate` datetime DEFAULT NULL,
+  `status` varchar(50) COLLATE utf8mb4_general_ci NOT NULL COMMENT '''Ready for Delivery'', ''Delivered''',
+  `userId` varchar(191) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `info` text COLLATE utf8mb4_general_ci,
+  PRIMARY KEY (`id`),
+  KEY `fk_delivery_batches_user` (`userId`),
+  CONSTRAINT `fk_delivery_batches_user` FOREIGN KEY (`userId`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- A despejar estrutura para tabela testebdbnp.delivery_batch_items
+CREATE TABLE IF NOT EXISTS `delivery_batch_items` (
+  `id` varchar(191) COLLATE utf8mb4_general_ci NOT NULL,
+  `deliveryId` varchar(191) COLLATE utf8mb4_general_ci NOT NULL,
+  `bookId` varchar(191) COLLATE utf8mb4_general_ci NOT NULL,
+  `info` text COLLATE utf8mb4_general_ci,
+  `obs` text COLLATE utf8mb4_general_ci,
+  PRIMARY KEY (`id`),
+  KEY `fk_delivery_items_batch` (`deliveryId`),
+  KEY `fk_delivery_items_book` (`bookId`),
+  CONSTRAINT `fk_delivery_items_batch` FOREIGN KEY (`deliveryId`) REFERENCES `delivery_batches` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_delivery_items_book` FOREIGN KEY (`bookId`) REFERENCES `books` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
