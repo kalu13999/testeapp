@@ -133,12 +133,13 @@ type AppContextType = {
   startProcessingBatch: (bookIds: string[]) => void;
   completeProcessingBatch: (batchId: string) => void;
   handleSendBatchToNextStage: (batchIds: string[]) => void;
-  handleClientAction: (bookId: string, action: 'approve' | 'reject', deliveryId: string, reason?: string) => void;
+  setProvisionalDeliveryStatus: (deliveryItemId: string, bookId: string, status: 'approved' | 'rejected', reason?: string) => Promise<void>;
   approveBatch: (deliveryId: string) => void;
   handleFinalize: (bookId: string) => void;
   handleMarkAsCorrected: (bookId: string) => void;
   handleResubmit: (bookId: string, targetStage: string) => void;
   handleCreateDeliveryBatch: (bookIds: string[]) => Promise<void>;
+  finalizeDeliveryBatch: (deliveryId: string) => Promise<void>;
   addPageToBook: (bookId: string, position: number) => Promise<void>;
   deletePageFromBook: (pageId: string, bookId: string) => Promise<void>;
   updateDocumentFlag: (docId: string, flag: AppDocument['flag'], comment?: string) => Promise<void>;
@@ -1560,55 +1561,66 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     });
   };
 
-  const handleClientAction = (bookId: string, action: 'approve' | 'reject', deliveryId: string, reason?: string) => {
-    withMutation(async () => {
-      const book = enrichedBooks.find(b => b.id === bookId);
-      if (!book) return;
-
-      const isApproval = action === 'approve';
-      const newStatus = isApproval ? 'Finalized' : 'Client Rejected';
-
-      const deliveryItem = deliveryBatchItems.find(item => item.deliveryId === deliveryId && item.bookId === bookId);
-      if (!deliveryItem) return;
-
-      const [bookUpdateResponse, itemUpdateResponse] = await Promise.all([
-        fetch(`/api/books/${bookId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            statusId: statuses.find(s => s.name === newStatus)?.id,
-            rejectionReason: isApproval ? null : reason,
-          }),
-        }),
-        fetch(`/api/delivery-batch-items/${deliveryItem.id}`, {
+  const setProvisionalDeliveryStatus = async (deliveryItemId: string, bookId: string, status: 'approved' | 'rejected', reason?: string) => {
+    await withMutation(async () => {
+      try {
+        const itemResponse = await fetch(`/api/delivery-batch-items/${deliveryItemId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: action === 'approve' ? 'approved' : 'rejected' })
-        })
-      ]);
-      
-      if (!bookUpdateResponse.ok || !itemUpdateResponse.ok) {
-        throw new Error('Failed to complete client action.');
+            body: JSON.stringify({ status })
+        });
+        if (!itemResponse.ok) throw new Error('Failed to update delivery item status.');
+        const updatedItem = await itemResponse.json();
+        setDeliveryBatchItems(prev => prev.map(i => i.id === updatedItem.id ? updatedItem : i));
+        
+        if (status === 'rejected') {
+          await updateBook(bookId, { rejectionReason: reason });
+        }
+        
+        const book = books.find(b => b.id === bookId);
+        logAction(`Client Provisional Status`, `Book "${book?.name}" marked as '${status}'. Reason: ${reason || 'N/A'}`, { bookId });
+        toast({ title: `Book Marked as ${status}` });
+      } catch (error: any) {
+        console.error(error);
+        toast({ title: "Error", description: error.message, variant: "destructive" });
       }
-      
-      const updatedBook = await bookUpdateResponse.json();
-      const updatedItem = await itemUpdateResponse.json();
+    });
+  };
 
-      setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
-      setDeliveryBatchItems(prev => prev.map(i => i.id === updatedItem.id ? updatedItem : i));
-      
-      logAction(`Client ${isApproval ? 'Approval' : 'Rejection'}`, isApproval ? `Book "${book?.name}" approved.` : `Book "${book?.name}" rejected. Reason: ${reason}`, { bookId });
-      toast({ title: `Book ${isApproval ? 'Approved' : 'Rejected'}` });
+  const finalizeDeliveryBatch = async (deliveryId: string) => {
+    await withMutation(async () => {
+      try {
+        const response = await fetch(`/api/delivery-batches/${deliveryId}/finalize`, {
+          method: 'POST'
+        });
+        if (!response.ok) throw new Error('Failed to finalize batch.');
+
+        // Refetch data to ensure consistency after batch finalization
+        const [booksData, batchesData, itemsData] = await Promise.all([
+          dataApi.getRawBooks(),
+          dataApi.getDeliveryBatches(),
+          dataApi.getDeliveryBatchItems()
+        ]);
+        setRawBooks(booksData);
+        setDeliveryBatches(batchesData);
+        setDeliveryBatchItems(itemsData);
+        
+        logAction('Delivery Batch Finalized', `Batch ${deliveryId} was finalized by client.`, {});
+        toast({ title: "Validation Confirmed", description: "All books in the batch have been processed." });
+      } catch (error: any) {
+        console.error(error);
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+      }
     });
   };
 
   const approveBatch = async (deliveryId: string) => {
     withMutation(async () => {
-        const batchItemsToApprove = deliveryBatchItems.filter(item => item.deliveryId === deliveryId && item.status === 'pending');
-        for (const item of batchItemsToApprove) {
-            await handleClientAction(item.bookId, 'approve', deliveryId);
+        const itemsToApprove = deliveryBatchItems.filter(item => item.deliveryId === deliveryId && item.status === 'pending');
+        for (const item of itemsToApprove) {
+            await setProvisionalDeliveryStatus(item.id, item.bookId, 'approved');
         }
-        toast({ title: "Batch Approved", description: `All remaining books in the batch have been approved.` });
+        toast({ title: "Batch Approved", description: `${itemsToApprove.length} books have been marked as approved.` });
     });
   };
 
@@ -1645,7 +1657,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       const moveResult = await moveBookFolder(book.name, currentStatusName, newStatus);
       if (moveResult !== true) return;
       
-      const updatedBook = await updateBookStatus(bookId, newStatus);
+      const updatedBook = await updateBookStatus(bookId, newStatus, { rejectionReason: null });
       setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
       logAction('Marked as Corrected', `Book "${book.name}" marked as corrected after client rejection.`, { bookId });
       toast({ title: "Book Corrected" });
@@ -1767,13 +1779,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     handleMarkAsShipped,
     handleConfirmReception,
     handleSendToStorage,
-    handleMoveBookToNextStage, handleClientAction,
+    handleMoveBookToNextStage, 
+    setProvisionalDeliveryStatus,
     approveBatch,
     handleFinalize, handleMarkAsCorrected, handleResubmit,
     addPageToBook, deletePageFromBook,
     updateDocumentFlag, startProcessingBatch, completeProcessingBatch, handleSendBatchToNextStage,
     handleAssignUser, reassignUser, handleStartTask, handleCancelTask,
-    handleAdminStatusOverride, handleCreateDeliveryBatch,
+    handleAdminStatusOverride, handleCreateDeliveryBatch, finalizeDeliveryBatch,
   };
 
   return (
@@ -1795,4 +1808,5 @@ export function useAppContext() {
 
 
     
+
 
