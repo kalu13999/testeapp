@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import * as React from "react"
@@ -20,7 +21,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { ListPlus, PlayCircle, BookOpen, ChevronsUpDown, ArrowUp, ArrowDown, Send, X, PlusCircle } from "lucide-react"
+import { ListPlus, PlayCircle, BookOpen, ChevronsUpDown, ArrowUp, ArrowDown, Send, X, PlusCircle, Download } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import type { EnrichedBook } from "@/lib/data"
 import { Input } from "@/components/ui/input"
@@ -29,6 +30,7 @@ import { AnimatePresence, motion } from "framer-motion"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge";
 
 interface DeliveryBatchCreationClientProps {
   stage: string;
@@ -48,6 +50,8 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
     { id: 'name', desc: false }
   ]);
+  const [isBatchPanelOpen, setIsBatchPanelOpen] = React.useState(true);
+
 
   const handleColumnFilterChange = (columnId: string, value: string) => {
     setColumnFilters(prev => ({ ...prev, [columnId]: value }));
@@ -156,7 +160,7 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-      <div className="lg:col-span-2">
+      <div className={cn("transition-all duration-300", isBatchPanelOpen ? "lg:col-span-2" : "lg:col-span-3")}>
         <Card>
           <CardHeader>
             <div className="flex justify-between items-start">
@@ -164,15 +168,21 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
                     <CardTitle>{config.title}</CardTitle>
                     <CardDescription>{config.description}</CardDescription>
                 </div>
-                 <Button 
-                    variant="secondary" 
-                    size="sm" 
-                    disabled={multiSelection.length === 0}
-                    onClick={handleAddMultiple}
-                >
-                    <ListPlus className="mr-2 h-4 w-4" />
-                    Add to Batch
-                </Button>
+                <div className="flex items-center gap-2">
+                     <Button variant="outline" size="sm" onClick={() => setIsBatchPanelOpen(p => !p)}>
+                        Batch Panel
+                        <Badge variant="secondary" className="ml-2">{selection.length}</Badge>
+                    </Button>
+                    <Button 
+                        variant="secondary" 
+                        size="sm" 
+                        disabled={multiSelection.length === 0}
+                        onClick={handleAddMultiple}
+                    >
+                        <ListPlus className="mr-2 h-4 w-4" />
+                        Add to Batch
+                    </Button>
+                </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -273,63 +283,62 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
         </Card>
       </div>
 
-      <div className="lg:col-span-1 sticky top-20">
-        <AnimatePresence>
-        {selection.length > 0 && (
+      <AnimatePresence>
+        {isBatchPanelOpen && (
             <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
+                className="lg:col-span-1 sticky top-20"
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: '100%' }}
+                exit={{ opacity: 0, width: 0 }}
+                transition={{ duration: 0.3 }}
             >
-                <Card className="bg-secondary/50">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <ListPlus className="h-5 w-5"/>
-                            Delivery Batch
-                        </CardTitle>
-                        <CardDescription>
-                            {selection.length} book(s) selected for delivery.
-                            Total pages: {totalSelectedPages.toLocaleString()}
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
-                           {selectedBooksInfo.map(book => (
-                               <div key={book.id} className="flex items-center justify-between p-2 rounded-md bg-background text-sm">
-                                    <div>
-                                        <p className="font-medium">{book.name}</p>
-                                        <p className="text-xs text-muted-foreground">{book.projectName}</p>
-                                    </div>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleSelection(book.id)}>
-                                        <X className="h-4 w-4"/>
-                                    </Button>
-                               </div>
-                           ))}
-                        </div>
-                    </CardContent>
-                    <CardFooter className="flex-col gap-2">
-                        <Button className="w-full" onClick={handleStartProcess}>
-                            <Send className="mr-2 h-4 w-4" />
-                            Create Delivery Batch
-                        </Button>
-                         <Button variant="outline" className="w-full" onClick={clearSelection}>
-                            Clear Selection
-                        </Button>
-                    </CardFooter>
-                </Card>
+                {selection.length > 0 ? (
+                    <Card className="bg-secondary/50">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <ListPlus className="h-5 w-5"/>
+                                Delivery Batch
+                            </CardTitle>
+                            <CardDescription>
+                                {selection.length} book(s) selected for delivery.
+                                Total pages: {totalSelectedPages.toLocaleString()}
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
+                               {selectedBooksInfo.map(book => (
+                                   <div key={book.id} className="flex items-center justify-between p-2 rounded-md bg-background text-sm">
+                                        <div>
+                                            <p className="font-medium">{book.name}</p>
+                                            <p className="text-xs text-muted-foreground">{book.projectName}</p>
+                                        </div>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleSelection(book.id)}>
+                                            <X className="h-4 w-4"/>
+                                        </Button>
+                                   </div>
+                               ))}
+                            </div>
+                        </CardContent>
+                        <CardFooter className="flex-col gap-2">
+                            <Button className="w-full" onClick={handleStartProcess}>
+                                <Send className="mr-2 h-4 w-4" />
+                                Create Delivery Batch
+                            </Button>
+                             <Button variant="outline" className="w-full" onClick={clearSelection}>
+                                Clear Selection
+                            </Button>
+                        </CardFooter>
+                    </Card>
+                ) : (
+                    <div className="text-center py-10 text-muted-foreground flex flex-col items-center gap-4 border-2 border-dashed rounded-lg">
+                        <BookOpen className="h-12 w-12"/>
+                        <h3 className="font-semibold">No Books Selected</h3>
+                        <p className="text-sm">Add books from the table to create a new delivery batch.</p>
+                    </div>
+                )}
             </motion.div>
         )}
-        </AnimatePresence>
-         {selection.length === 0 && (
-              <div className="text-center py-10 text-muted-foreground flex flex-col items-center gap-4 border-2 border-dashed rounded-lg">
-                  <BookOpen className="h-12 w-12"/>
-                  <h3 className="font-semibold">No Books Selected</h3>
-                  <p className="text-sm">Add books from the table to create a new delivery batch.</p>
-              </div>
-        )}
-      </div>
+      </AnimatePresence>
     </div>
   )
 }
-
-    
