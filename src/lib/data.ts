@@ -132,6 +132,23 @@ export interface ProcessingBatch {
   obs: string | null;
 }
 
+export interface DeliveryBatch {
+  id: string;
+  creationDate: string;
+  deliveryDate: string | null;
+  status: 'Ready' | 'Delivered';
+  userId: string | null;
+  info: string | null;
+}
+
+export interface DeliveryBatchItem {
+  id: string;
+  deliveryId: string;
+  bookId: string;
+  info: string | null;
+  obs: string | null;
+}
+
 export interface ProcessingBatchItem {
   id: string;
   batchId: string;
@@ -286,6 +303,9 @@ export const getProcessingBatches = () => fetchData<ProcessingBatch[]>('/process
 export const getProcessingBatchItems = () => fetchData<ProcessingBatchItem[]>('/processing-batch-items');
 export const getProcessingLogs = () => fetchData<ProcessingLog[]>('/processing-logs');
 
+// New functions for delivery batches
+export const getDeliveryBatches = () => fetchData<DeliveryBatch[]>('/delivery-batches');
+export const getDeliveryBatchItems = () => fetchData<DeliveryBatchItem[]>('/delivery-batch-items');
 
 // Enriched data fetching functions
 export async function getEnrichedProjects(): Promise<EnrichedProject[]> {
@@ -318,24 +338,24 @@ export async function getEnrichedProjects(): Promise<EnrichedProject[]> {
     });
   
     return projects.map(project => {
-      const client = clients.find(c => c.id === project.clientId);
-      
-      const projectBooks = books.filter(b => b.projectId === project.id).map(book => {
-        const bookDocuments = documents.filter(d => d.bookId === book.id);
-        const bookProgress = book.expectedDocuments > 0 ? (bookDocuments.length / book.expectedDocuments) * 100 : 0;
-        const extraInfo = bookInfoMap.get(book.id);
-        return {
-          ...book,
-          status: statuses.find(s => s.id === book.statusId)?.name || 'Unknown',
-          clientId: project.clientId,
-          projectName: project.name,
-          clientName: client?.name || 'Unknown Client',
-          documentCount: bookDocuments.length,
-          progress: Math.min(100, bookProgress),
-          storageName: extraInfo?.storageName,
-          scannerName: extraInfo?.scannerName,
-        };
-      });
+        const client = clients.find(c => c.id === project.clientId);
+        
+        const projectBooks = books.filter(b => b.projectId === project.id).map(book => {
+            const bookDocuments = documents.filter(d => d.bookId === book.id);
+            const bookProgress = book.expectedDocuments > 0 ? (bookDocuments.length / book.expectedDocuments) * 100 : 0;
+            const extraInfo = bookInfoMap.get(book.id);
+            return {
+                ...book,
+                status: statuses.find(s => s.id === book.statusId)?.name || 'Unknown',
+                clientId: project.clientId,
+                projectName: project.name,
+                clientName: client?.name || 'Unknown Client',
+                documentCount: bookDocuments.length,
+                progress: Math.min(100, bookProgress),
+                storageName: extraInfo?.storageName,
+                scannerName: extraInfo?.scannerName,
+            };
+        });
   
       const totalExpected = projectBooks.reduce((sum, book) => sum + book.expectedDocuments, 0);
       const documentCount = projectBooks.reduce((sum, book) => sum + book.documentCount, 0);
