@@ -28,6 +28,15 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 interface DeliveryValidationClientProps {
   config: {
@@ -138,10 +147,27 @@ export default function DeliveryValidationClient({ config }: DeliveryValidationC
   const openTaggingDialog = (doc: AppDocument) => {
     const book = books.find(b => b.id === doc.bookId);
     if (!book) return;
-    const availableTags = rejectionTags.filter(tag => tag.clientId === book.clientId);
-    setTaggingState({ open: true, docId: doc.id, docName: doc.name, selectedTags: doc.tags || [], availableTags });
+    
+    let availableTags: RejectionTag[];
+    if (currentUser?.role === 'Admin' || currentUser?.role === 'Correction Specialist') {
+        availableTags = rejectionTags.filter(tag => tag.clientId === book.clientId);
+    } else {
+        availableTags = rejectionTags.filter(tag => tag.clientId === currentUser?.clientId);
+    }
+    
+    setTaggingState({
+      open: true,
+      docId: doc.id,
+      docName: doc.name,
+      selectedTags: doc.tags || [],
+      availableTags: availableTags
+    });
   };
-  const closeTaggingDialog = () => setTaggingState({ open: false, docId: null, docName: null, selectedTags: [], availableTags: [] });
+  
+  const closeTaggingDialog = () => {
+    setTaggingState({ open: false, docId: null, docName: null, selectedTags: [], availableTags: [] });
+  };
+  
   const handleTaggingSubmit = () => {
     if (taggingState.docId) {
       tagPageForRejection(taggingState.docId, taggingState.selectedTags);
@@ -195,6 +221,7 @@ export default function DeliveryValidationClient({ config }: DeliveryValidationC
                             const bookCols = columnStates[book.id]?.cols || 8;
                             return (
                                 <AccordionItem value={book.id} key={book.id} className={cn(
+                                  "border-b",
                                   book.itemStatus === 'approved' && 'bg-green-500/10 border-green-500/30',
                                   book.itemStatus === 'rejected' && 'bg-red-500/10 border-red-500/30'
                                 )}>
