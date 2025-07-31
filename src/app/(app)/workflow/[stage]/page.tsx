@@ -8,6 +8,7 @@ import ProcessingViewClient from "../processing-view-client";
 import { STAGE_CONFIG } from "@/lib/workflow-config";
 import ReadyForProcessingClient from "../ready-for-processing-client";
 import ProcessedViewClient from "../processed-view-client";
+import DeliveryBatchCreationClient from "../delivery-batch-client";
 
 
 export default async function WorkflowStagePage(props: any) {
@@ -32,8 +33,9 @@ export default async function WorkflowStagePage(props: any) {
       return <CorrectionViewClient config={config} stage={stage} />;
     case "processing":
       return <ProcessingViewClient config={config} stage={stage} />;
+    case "delivery-batch":
+      return <DeliveryBatchCreationClient config={config} stage={stage} />;
     default:
       return <WorkflowClient config={config} stage={stage} />;
   }
 }
-

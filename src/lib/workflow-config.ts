@@ -5,7 +5,7 @@ import { LucideIcon } from "lucide-react";
 type StageConfigItem = {
   title: string;
   description: string;
-  viewType: 'list' | 'folder' | 'correction' | 'processing';
+  viewType: 'list' | 'folder' | 'correction' | 'processing' | 'delivery-batch';
   emptyStateText: string;
   dataType: 'book' | 'document';
   actionButtonLabel?: string;
@@ -245,13 +245,11 @@ export const WORKFLOW_PHASES = [
     config: {
       'delivery': {
         title: "Delivery",
-        description: "Documents approved and ready for delivery to the client.",
-        actionButtonLabel: "Send to Client",
-        actionButtonIcon: "Send",
-        emptyStateText: "No documents to deliver.",
+        description: "Group books into a batch to be sent to the client for validation.",
+        emptyStateText: "No documents are ready for delivery.",
         dataType: 'book',
         dataStatus: "Delivery",
-        viewType: 'folder',
+        viewType: 'delivery-batch',
       },
       'pending-deliveries': {
         title: "Pending Deliveries",
