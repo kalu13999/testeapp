@@ -21,7 +21,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { ListPlus, PlayCircle, BookOpen, ChevronsUpDown, ArrowUp, ArrowDown, Send, X } from "lucide-react"
+import { ListPlus, PlayCircle, BookOpen, ChevronsUpDown, ArrowUp, ArrowDown, Send, X, PlusCircle } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import type { EnrichedBook } from "@/lib/data"
 import { Input } from "@/components/ui/input"
