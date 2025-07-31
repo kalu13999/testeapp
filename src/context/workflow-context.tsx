@@ -3,7 +3,7 @@
 "use client"
 
 import * as React from 'react';
-import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions, ProjectWorkflows, RejectionTag, DocumentStatus, ProcessingBatch, ProcessingBatchItem, Storage, LogTransferencia, ProjectStorage, Scanner } from '@/lib/data';
+import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions, ProjectWorkflows, RejectionTag, DocumentStatus, ProcessingBatch, ProcessingBatchItem, Storage, LogTransferencia, ProjectStorage, Scanner, DeliveryBatch, DeliveryBatchItem } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { WORKFLOW_SEQUENCE, STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage } from '@/lib/workflow-config';
 import * as dataApi from '@/lib/data';
@@ -57,6 +57,8 @@ type AppContextType = {
   processingBatches: ProcessingBatch[];
   processingBatchItems: ProcessingBatchItem[];
   processingLogs: ProcessingLog[];
+  deliveryBatches: DeliveryBatch[];
+  deliveryBatchItems: DeliveryBatchItem[];
   roles: string[];
   permissions: Permissions;
   projectWorkflows: ProjectWorkflows;
@@ -135,6 +137,7 @@ type AppContextType = {
   handleFinalize: (bookId: string) => void;
   handleMarkAsCorrected: (bookId: string) => void;
   handleResubmit: (bookId: string, targetStage: string) => void;
+  handleCreateDeliveryBatch: (bookIds: string[]) => Promise<void>;
   addPageToBook: (bookId: string, position: number) => Promise<void>;
   deletePageFromBook: (pageId: string, bookId: string) => Promise<void>;
   updateDocumentFlag: (docId: string, flag: AppDocument['flag'], comment?: string) => Promise<void>;
@@ -169,6 +172,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const [processingBatches, setProcessingBatches] = React.useState<ProcessingBatch[]>([]);
   const [processingBatchItems, setProcessingBatchItems] = React.useState<ProcessingBatchItem[]>([]);
   const [processingLogs, setProcessingLogs] = React.useState<ProcessingLog[]>([]);
+  const [deliveryBatches, setDeliveryBatches] = React.useState<DeliveryBatch[]>([]);
+  const [deliveryBatchItems, setDeliveryBatchItems] = React.useState<DeliveryBatchItem[]>([]);
   const [roles, setRoles] = React.useState<string[]>([]);
   const [permissions, setPermissions] = React.useState<Permissions>({});
   const [projectWorkflows, setProjectWorkflows] = React.useState<ProjectWorkflows>({});
@@ -204,6 +209,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
                 docsData, auditData, batchesData, batchItemsData, logsData,
                 permissionsData, rolesData, workflowsData, rejectionData, statusesData,
                 storagesData, scannersData, transferLogsData, projectStoragesData,
+                deliveryBatchesData, deliveryBatchItemsData,
             ] = await Promise.all([
                 dataApi.getClients(), dataApi.getUsers(), dataApi.getRawProjects(),
                 dataApi.getRawBooks(), dataApi.getRawDocuments(), dataApi.getAuditLogs(),
@@ -211,6 +217,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
                 dataApi.getPermissions(), dataApi.getRoles(),
                 dataApi.getProjectWorkflows(), dataApi.getRejectionTags(), dataApi.getDocumentStatuses(),
                 dataApi.getStorages(), dataApi.getScanners(), dataApi.getTransferLogs(), dataApi.getProjectStorages(),
+                dataApi.getDeliveryBatches(), dataApi.getDeliveryBatchItems(),
             ]);
 
             setClients(clientsData);
@@ -232,6 +239,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             setProcessingBatches(batchesData);
             setProcessingBatchItems(batchItemsData);
             setProcessingLogs(logsData);
+            setDeliveryBatches(deliveryBatchesData);
+            setDeliveryBatchItems(deliveryBatchItemsData);
             setPermissions(permissionsData);
             setRoles(rolesData);
             setProjectWorkflows(workflowsData);
@@ -1624,6 +1633,42 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       toast({ title: "Book Resubmitted" });
     });
   };
+
+  const handleCreateDeliveryBatch = async (bookIds: string[]) => {
+    await withMutation(async () => {
+      try {
+        const response = await fetch('/api/delivery-batches', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bookIds, userId: currentUser?.id }),
+        });
+        if (!response.ok) throw new Error('Failed to create delivery batch');
+        
+        const newBatch = await response.json();
+        setDeliveryBatches(prev => [newBatch, ...prev]);
+
+        const newItems = bookIds.map(bookId => ({
+            id: `del_item_${newBatch.id}_${bookId}`,
+            deliveryId: newBatch.id,
+            bookId: bookId,
+            info: null,
+            obs: null
+        }));
+        setDeliveryBatchItems(prev => [...prev, ...newItems]);
+        
+        const pendingValidationStatusId = statuses.find(s => s.name === 'Pending Validation')?.id;
+        if (pendingValidationStatusId) {
+            setRawBooks(prev => prev.map(b => bookIds.includes(b.id) ? { ...b, statusId: pendingValidationStatusId } : b));
+        }
+
+        logAction('Delivery Batch Created', `Batch ${newBatch.id} created with ${bookIds.length} books.`, {});
+        toast({ title: "Delivery Batch Created" });
+      } catch (error) {
+        console.error(error);
+        toast({ title: "Error", description: "Could not create delivery batch.", variant: "destructive" });
+      }
+    });
+  };
   
   const scannerUsers = React.useMemo(() => users.filter(user => user.role === 'Scanning'), [users]);
   const indexerUsers = React.useMemo(() => users.filter(user => user.role === 'Indexing'), [users]);
@@ -1656,6 +1701,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     documents: documentsForContext, 
     auditLogs,
     processingBatches, processingBatchItems, processingLogs,
+    deliveryBatches, deliveryBatchItems,
     roles,
     permissions,
     projectWorkflows,
@@ -1687,7 +1733,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     addPageToBook, deletePageFromBook,
     updateDocumentFlag, startProcessingBatch, completeProcessingBatch, handleSendBatchToNextStage,
     handleAssignUser, reassignUser, handleStartTask, handleCancelTask,
-    handleAdminStatusOverride,
+    handleAdminStatusOverride, handleCreateDeliveryBatch,
   };
 
   return (
@@ -1704,4 +1750,5 @@ export function useAppContext() {
   }
   return context;
 }
+
 
