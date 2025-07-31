@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import * as React from "react"
@@ -21,7 +22,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { ListPlus, PlayCircle, BookOpen, ChevronsUpDown, ArrowUp, ArrowDown, Send, X, PlusCircle, Download } from "lucide-react"
+import { ListPlus, PlayCircle, BookOpen, ChevronsUpDown, ArrowUp, ArrowDown, Send, X, PlusCircle, Download, Badge } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import type { EnrichedBook } from "@/lib/data"
 import { Input } from "@/components/ui/input"
@@ -29,7 +30,6 @@ import { AnimatePresence, motion } from "framer-motion"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 interface DeliveryBatchCreationClientProps {
@@ -43,7 +43,7 @@ interface DeliveryBatchCreationClientProps {
 }
 
 export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCreationClientProps) {
-  const { books, handleCreateDeliveryBatch, selectedProjectId } = useAppContext();
+  const { books, handleCreateDeliveryBatch, selectedProjectId, processingBatchItems, processingBatches } = useAppContext();
   const [selection, setSelection] = React.useState<string[]>([]);
   const [multiSelection, setMultiSelection] = React.useState<string[]>([]);
   const [columnFilters, setColumnFilters] = React.useState<{ [key: string]: string }>({});
@@ -51,6 +51,17 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
     { id: 'name', desc: false }
   ]);
   const [isBatchPanelOpen, setIsBatchPanelOpen] = React.useState(true);
+  
+  const bookToBatchMap = React.useMemo(() => {
+    const map = new Map<string, { id: string; timestampStr: string }>();
+    processingBatchItems.forEach(item => {
+        const batch = processingBatches.find(b => b.id === item.batchId);
+        if (batch) {
+            map.set(item.bookId, { id: batch.id, timestampStr: batch.timestampStr });
+        }
+    });
+    return map;
+  }, [processingBatchItems, processingBatches]);
 
 
   const handleColumnFilterChange = (columnId: string, value: string) => {
@@ -77,7 +88,9 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
   };
 
   const availableBooks = React.useMemo(() => {
-    let baseBooks = books.filter(book => book.status === config.dataStatus);
+    let baseBooks = books
+      .filter(book => book.status === config.dataStatus)
+      .map(book => ({ ...book, batchId: bookToBatchMap.get(book.id)?.id }));
     
     if (selectedProjectId) {
       baseBooks = baseBooks.filter(book => book.projectId === selectedProjectId);
@@ -87,7 +100,7 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
     Object.entries(columnFilters).forEach(([columnId, value]) => {
       if (value) {
         filtered = filtered.filter(book => {
-          const bookValue = book[columnId as keyof EnrichedBook];
+          const bookValue = book[columnId as keyof typeof book];
           return String(bookValue).toLowerCase().includes(value.toLowerCase());
         });
       }
@@ -96,8 +109,8 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
     if (sorting.length > 0) {
         filtered.sort((a, b) => {
             const s = sorting[0];
-            const valA = a[s.id as keyof EnrichedBook];
-            const valB = b[s.id as keyof EnrichedBook];
+            const valA = a[s.id as keyof typeof a];
+            const valB = b[s.id as keyof typeof b];
 
             let result = 0;
             if (typeof valA === 'number' && typeof valB === 'number') {
@@ -113,7 +126,7 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
     }
 
     return filtered;
-  }, [books, config.dataStatus, selectedProjectId, columnFilters, sorting]);
+  }, [books, config.dataStatus, selectedProjectId, columnFilters, sorting, bookToBatchMap]);
 
   const selectedBooksInfo = React.useMemo(() => {
       return selection.map(id => books.find(b => b.id === id)).filter((b): b is EnrichedBook => !!b);
@@ -199,6 +212,7 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
                   <TableHead className="w-[120px]">Action</TableHead>
                   <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name')}>Book Name {getSortIndicator('name')}</div></TableHead>
                   <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('projectName')}>Project {getSortIndicator('projectName')}</div></TableHead>
+                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('batchId')}>Processing Batch {getSortIndicator('batchId')}</div></TableHead>
                   <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('scannerName')}>Scanner {getSortIndicator('scannerName')}</div></TableHead>
                   <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('storageName')}>Storage {getSortIndicator('storageName')}</div></TableHead>
                   <TableHead className="text-right"><div className="flex items-center justify-end gap-2 cursor-pointer select-none group" onClick={() => handleSort('expectedDocuments')}>Pages {getSortIndicator('expectedDocuments')}</div></TableHead>
@@ -211,6 +225,9 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
                     </TableHead>
                      <TableHead>
                         <Input placeholder="Filter by project..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/>
+                    </TableHead>
+                    <TableHead>
+                        <Input placeholder="Filter by batch..." value={columnFilters['batchId'] || ''} onChange={(e) => handleColumnFilterChange('batchId', e.target.value)} className="h-8"/>
                     </TableHead>
                     <TableHead>
                         <Input placeholder="Filter by scanner..." value={columnFilters['scannerName'] || ''} onChange={(e) => handleColumnFilterChange('scannerName', e.target.value)} className="h-8"/>
@@ -264,6 +281,7 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
                             <Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link>
                           </TableCell>
                           <TableCell>{book.projectName}</TableCell>
+                          <TableCell>{book.batchId ? <Link href={`/processing-batches/${book.batchId}`} className="hover:underline text-primary">{book.batchId.split('_').pop()}</Link> : '—'}</TableCell>
                           <TableCell>{book.scannerName || '—'}</TableCell>
                           <TableCell>{book.storageName || '—'}</TableCell>
                           <TableCell className="text-right">{book.expectedDocuments}</TableCell>
@@ -272,7 +290,7 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center">
+                    <TableCell colSpan={8} className="h-24 text-center">
                       <p>{config.emptyStateText}</p>
                     </TableCell>
                   </TableRow>
