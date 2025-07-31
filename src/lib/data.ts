@@ -201,8 +201,8 @@ export interface LogTransferencia {
     nome_pasta: string;
     bookId: string;
     total_tifs: number;
-    storage_id: number;
-    scanner_id: number;
+    storage_id: string;
+    scanner_id: string;
     status: 'sucesso' | 'erro';
     data_inicio: string;
     data_fim: string;
