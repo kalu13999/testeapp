@@ -1531,7 +1531,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         const updatedBatch = await response.json();
         setProcessingBatches(prev => prev.map(b => b.id === batchId ? updatedBatch : b));
 
-        // Move all books to the next stage
         for (const bookId of bookIdsInBatch) {
             handleMoveBookToNextStage(bookId, 'In Processing');
         }
