@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import * as React from "react"
@@ -213,7 +214,7 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
                   <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name')}>Book Name {getSortIndicator('name')}</div></TableHead>
                   <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('projectName')}>Project {getSortIndicator('projectName')}</div></TableHead>
                   <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('batchInfo')}>Processing Batch {getSortIndicator('batchInfo')}</div></TableHead>
-                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('scannerName')}>Scanner {getSortIndicator('scannerName')}</div></TableHead>
+                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('scannerDeviceName')}>Scanner {getSortIndicator('scannerDeviceName')}</div></TableHead>
                   <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('storageName')}>Storage {getSortIndicator('storageName')}</div></TableHead>
                   <TableHead className="text-right"><div className="flex items-center justify-end gap-2 cursor-pointer select-none group" onClick={() => handleSort('expectedDocuments')}>Pages {getSortIndicator('expectedDocuments')}</div></TableHead>
                 </TableRow>
@@ -230,7 +231,7 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
                         <Input placeholder="Filter by batch..." value={columnFilters['batchInfo'] || ''} onChange={(e) => handleColumnFilterChange('batchInfo', e.target.value)} className="h-8"/>
                     </TableHead>
                     <TableHead>
-                        <Input placeholder="Filter by scanner..." value={columnFilters['scannerName'] || ''} onChange={(e) => handleColumnFilterChange('scannerName', e.target.value)} className="h-8"/>
+                        <Input placeholder="Filter by scanner..." value={columnFilters['scannerDeviceName'] || ''} onChange={(e) => handleColumnFilterChange('scannerDeviceName', e.target.value)} className="h-8"/>
                     </TableHead>
                     <TableHead>
                         <Input placeholder="Filter by storage..." value={columnFilters['storageName'] || ''} onChange={(e) => handleColumnFilterChange('storageName', e.target.value)} className="h-8"/>
@@ -282,7 +283,7 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
                           </TableCell>
                           <TableCell>{book.projectName}</TableCell>
                           <TableCell>{book.batchInfo ? <Link href={`/processing-batches/${book.batchInfo.id}`} className="hover:underline text-primary">{book.batchInfo.timestampStr.replace('Process started on ', '')}</Link> : '—'}</TableCell>
-                          <TableCell>{book.scannerName || '—'}</TableCell>
+                          <TableCell>{book.scannerDeviceName || '—'}</TableCell>
                           <TableCell>{book.storageName || '—'}</TableCell>
                           <TableCell className="text-right">{book.expectedDocuments}</TableCell>
                         </TableRow>

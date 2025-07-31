@@ -201,8 +201,8 @@ export interface LogTransferencia {
     nome_pasta: string;
     bookId: string;
     total_tifs: number;
-    storage_id: string;
-    scanner_id: string;
+    storage_id: number;
+    scanner_id: number;
     status: 'sucesso' | 'erro';
     data_inicio: string;
     data_fim: string;
@@ -238,7 +238,7 @@ export interface EnrichedBook extends RawBook {
     documentCount: number;
     progress: number;
     storageName?: string;
-    scannerName?: string;
+    scannerDeviceName?: string;
 }
 
 
@@ -309,7 +309,7 @@ export const getDeliveryBatchItems = () => fetchData<DeliveryBatchItem[]>('/deli
 
 // Enriched data fetching functions
 export async function getEnrichedProjects(): Promise<EnrichedProject[]> {
-    const [projects, clients, books, documents, statuses, transferLogs, storages, users] = await Promise.all([
+    const [projects, clients, books, documents, statuses, transferLogs, storages, scanners] = await Promise.all([
       getRawProjects(),
       getClients(),
       getRawBooks(),
@@ -317,12 +317,12 @@ export async function getEnrichedProjects(): Promise<EnrichedProject[]> {
       getDocumentStatuses(),
       getTransferLogs(),
       getStorages(),
-      getUsers(),
+      getScanners(),
     ]);
 
     const storageMap = new Map(storages.map(s => [s.id, s.nome]));
-    const userMap = new Map(users.map(u => [u.id, u.name]));
-    const bookInfoMap = new Map<string, { storageName?: string, scannerName?: string }>();
+    const scannerDeviceMap = new Map(scanners.map(s => [s.id, s.nome]));
+    const bookInfoMap = new Map<string, { storageName?: string, scannerDeviceName?: string }>();
 
     transferLogs.forEach(log => {
       if (log.bookId && log.status === 'sucesso') {
@@ -330,8 +330,8 @@ export async function getEnrichedProjects(): Promise<EnrichedProject[]> {
           if (storageMap.has(Number(log.storage_id))) {
               currentInfo.storageName = storageMap.get(Number(log.storage_id))!;
           }
-          if (userMap.has(log.scanner_id)) {
-              currentInfo.scannerName = userMap.get(log.scanner_id)!;
+           if (scannerDeviceMap.has(Number(log.scanner_id))) {
+              currentInfo.scannerDeviceName = scannerDeviceMap.get(Number(log.scanner_id))!;
           }
           bookInfoMap.set(log.bookId, currentInfo);
       }
@@ -353,7 +353,7 @@ export async function getEnrichedProjects(): Promise<EnrichedProject[]> {
                 documentCount: bookDocuments.length,
                 progress: Math.min(100, bookProgress),
                 storageName: extraInfo?.storageName,
-                scannerName: extraInfo?.scannerName,
+                scannerDeviceName: extraInfo?.scannerDeviceName,
             };
         });
   

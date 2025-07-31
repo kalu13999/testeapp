@@ -185,7 +185,7 @@ export default function DocumentsClient() {
 
   const exportCSV = (data: EnrichedBook[]) => {
     if (data.length === 0) return;
-    const headers = ['id', 'name', 'status', 'priority', 'projectName', 'clientName', 'expectedDocuments', 'documentCount', 'progress', 'author', 'isbn', 'publicationYear', 'info', 'storageName', 'scannerName'];
+    const headers = ['id', 'name', 'status', 'priority', 'projectName', 'clientName', 'expectedDocuments', 'documentCount', 'progress', 'author', 'isbn', 'publicationYear', 'info', 'storageName', 'scannerDeviceName'];
     const csvContent = [
         headers.join(','),
         ...data.map(book => 
@@ -223,7 +223,7 @@ export default function DocumentsClient() {
 
   const copyToClipboardCSV = (data: EnrichedBook[]) => {
     if (data.length === 0) return;
-    const headers = ['id', 'name', 'status', 'priority', 'projectName', 'clientName', 'expectedDocuments', 'documentCount', 'progress', 'author', 'isbn', 'publicationYear', 'info', 'storageName', 'scannerName'];
+    const headers = ['id', 'name', 'status', 'priority', 'projectName', 'clientName', 'expectedDocuments', 'documentCount', 'progress', 'author', 'isbn', 'publicationYear', 'info', 'storageName', 'scannerDeviceName'];
     const csvContent = [
         headers.join(','),
         ...data.map(book => 
@@ -332,34 +332,22 @@ export default function DocumentsClient() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                   <DropdownMenuLabel>Export Selected ({selection.length})</DropdownMenuLabel>
-                  <DropdownMenuItem onSelect={() => exportXLSX(selectedBooks)} disabled={selection.length === 0}>
-                      Export as XLSX
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => exportJSON(selectedBooks)} disabled={selection.length === 0}>
-                      Export as JSON
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => exportCSV(selectedBooks)} disabled={selection.length === 0}>
-                      Export as CSV
-                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportXLSX(selectedBooks)} disabled={selection.length === 0}>Export as XLSX</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportJSON(selectedBooks)} disabled={selection.length === 0}>Export as JSON</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportCSV(selectedBooks)} disabled={selection.length === 0}>Export as CSV</DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuLabel>Copy Selected ({selection.length})</DropdownMenuLabel>
                   <DropdownMenuItem onSelect={() => copyToClipboardJSON(selectedBooks)} disabled={selection.length === 0}>
                       Copy as JSON
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => copyToClipboardCSV(selectedBooks)} disabled={selection.length === 0}>
+                   </DropdownMenuItem>
+                   <DropdownMenuItem onSelect={() => copyToClipboardCSV(selectedBooks)} disabled={selection.length === 0}>
                       Copy as CSV
-                  </DropdownMenuItem>
+                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuLabel>Export All ({sortedAndFilteredBooks.length})</DropdownMenuLabel>
-                  <DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>
-                      Export as XLSX
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>
-                      Export as JSON
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>
-                      Export as CSV
-                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Export as XLSX</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Export as JSON</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Export as CSV</DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuLabel>Copy All ({sortedAndFilteredBooks.length})</DropdownMenuLabel>
                    <DropdownMenuItem onSelect={() => copyToClipboardJSON(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>
@@ -402,8 +390,8 @@ export default function DocumentsClient() {
                     </div>
                 </TableHead>
                 <TableHead>
-                    <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('scannerName', e.shiftKey)}>
-                        Scanner {getSortIndicator('scannerName')}
+                    <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('scannerDeviceName', e.shiftKey)}>
+                        Scanner Device {getSortIndicator('scannerDeviceName')}
                     </div>
                 </TableHead>
                 <TableHead>
@@ -440,7 +428,7 @@ export default function DocumentsClient() {
                     <Input placeholder="Filter Client..." value={columnFilters['clientName'] || ''} onChange={(e) => handleColumnFilterChange('clientName', e.target.value)} className="h-8"/>
                 </TableHead>
                  <TableHead>
-                    <Input placeholder="Filter Scanner..." value={columnFilters['scannerName'] || ''} onChange={(e) => handleColumnFilterChange('scannerName', e.target.value)} className="h-8"/>
+                    <Input placeholder="Filter Scanner..." value={columnFilters['scannerDeviceName'] || ''} onChange={(e) => handleColumnFilterChange('scannerDeviceName', e.target.value)} className="h-8"/>
                 </TableHead>
                 <TableHead>
                     <Input placeholder="Filter Storage..." value={columnFilters['storageName'] || ''} onChange={(e) => handleColumnFilterChange('storageName', e.target.value)} className="h-8"/>
@@ -478,7 +466,7 @@ export default function DocumentsClient() {
                   </TableCell>
                   <TableCell>{book.projectName}</TableCell>
                   <TableCell>{book.clientName}</TableCell>
-                  <TableCell>{book.scannerName || '—'}</TableCell>
+                  <TableCell>{book.scannerDeviceName || '—'}</TableCell>
                   <TableCell>{book.storageName || '—'}</TableCell>
                   <TableCell>
                     <Badge variant={book.status === 'Complete' ? "default" : "outline"}>{book.status}</Badge>
