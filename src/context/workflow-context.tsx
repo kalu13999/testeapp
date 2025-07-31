@@ -1444,7 +1444,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       if (newStageConfig?.assigneeRole !== 'indexer') { updates.indexerUserId = undefined; updates.indexingStartTime = undefined; updates.indexingEndTime = undefined; }
       if (newStageConfig?.assigneeRole !== 'qc') { updates.qcUserId = undefined; updates.qcStartTime = undefined; updates.qcEndTime = undefined; }
       
-      const moveResult = await moveBookFolder(book.name, currentStatusName, newStatusName);
+      const moveResult = await moveBookFolder(book.name, currentStatusName, newStatus);
       if (moveResult !== true) return;
 
       const updatedBook = await updateBookStatus(bookId, newStatus.name, updates);
@@ -1656,13 +1656,16 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         }));
         setDeliveryBatchItems(prev => [...prev, ...newItems]);
         
-        const pendingValidationStatusId = statuses.find(s => s.name === 'Pending Validation')?.id;
-        if (pendingValidationStatusId) {
-            setRawBooks(prev => prev.map(b => bookIds.includes(b.id) ? { ...b, statusId: pendingValidationStatusId } : b));
+        // Move all books to the next stage
+        for (const bookId of bookIds) {
+          const book = rawBooks.find(b => b.id === bookId);
+          if (book) {
+              await handleMoveBookToNextStage(book.id, 'Delivery');
+          }
         }
-
-        logAction('Delivery Batch Created', `Batch ${newBatch.id} created with ${bookIds.length} books.`, {});
-        toast({ title: "Delivery Batch Created" });
+        
+        logAction('Delivery Batch Created', `Batch ${newBatch.id} created with ${bookIds.length} books and sent to client.`, {});
+        toast({ title: "Delivery Batch Created & Sent" });
       } catch (error) {
         console.error(error);
         toast({ title: "Error", description: "Could not create delivery batch.", variant: "destructive" });
@@ -1752,3 +1755,6 @@ export function useAppContext() {
 }
 
 
+
+
+    
