@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import { getConnection, releaseConnection } from '@/lib/db';
 import type { PoolConnection } from 'mysql2/promise';
@@ -46,7 +47,7 @@ export async function POST(request: Request) {
                 id: `del_item_${newBatch.id}_${bookId}`,
                 deliveryId: newBatch.id,
                 bookId: bookId,
-                status: 'pending', // Set default status
+                status: 'pending', // Explicitly setting status on creation
                 info: null,
                 obs: null
             };
