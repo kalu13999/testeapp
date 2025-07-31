@@ -1,5 +1,4 @@
 
-
 "use client"
 
 import * as React from "react"
@@ -91,7 +90,7 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
   const availableBooks = React.useMemo(() => {
     let baseBooks = books
       .filter(book => book.status === config.dataStatus)
-      .map(book => ({ ...book, batchId: bookToBatchMap.get(book.id)?.id }));
+      .map(book => ({ ...book, batchInfo: bookToBatchMap.get(book.id) }));
     
     if (selectedProjectId) {
       baseBooks = baseBooks.filter(book => book.projectId === selectedProjectId);
@@ -101,7 +100,7 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
     Object.entries(columnFilters).forEach(([columnId, value]) => {
       if (value) {
         filtered = filtered.filter(book => {
-          const bookValue = book[columnId as keyof typeof book];
+          const bookValue = columnId === 'batchInfo' ? book.batchInfo?.timestampStr : book[columnId as keyof typeof book];
           return String(bookValue).toLowerCase().includes(value.toLowerCase());
         });
       }
@@ -110,8 +109,8 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
     if (sorting.length > 0) {
         filtered.sort((a, b) => {
             const s = sorting[0];
-            const valA = a[s.id as keyof typeof a];
-            const valB = b[s.id as keyof typeof b];
+            const valA = s.id === 'batchInfo' ? a.batchInfo?.timestampStr : a[s.id as keyof typeof a];
+            const valB = s.id === 'batchInfo' ? b.batchInfo?.timestampStr : b[s.id as keyof typeof b];
 
             let result = 0;
             if (typeof valA === 'number' && typeof valB === 'number') {
@@ -213,7 +212,7 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
                   <TableHead className="w-[120px]">Action</TableHead>
                   <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name')}>Book Name {getSortIndicator('name')}</div></TableHead>
                   <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('projectName')}>Project {getSortIndicator('projectName')}</div></TableHead>
-                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('batchId')}>Processing Batch {getSortIndicator('batchId')}</div></TableHead>
+                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('batchInfo')}>Processing Batch {getSortIndicator('batchInfo')}</div></TableHead>
                   <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('scannerName')}>Scanner {getSortIndicator('scannerName')}</div></TableHead>
                   <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('storageName')}>Storage {getSortIndicator('storageName')}</div></TableHead>
                   <TableHead className="text-right"><div className="flex items-center justify-end gap-2 cursor-pointer select-none group" onClick={() => handleSort('expectedDocuments')}>Pages {getSortIndicator('expectedDocuments')}</div></TableHead>
@@ -228,7 +227,7 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
                         <Input placeholder="Filter by project..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/>
                     </TableHead>
                     <TableHead>
-                        <Input placeholder="Filter by batch..." value={columnFilters['batchId'] || ''} onChange={(e) => handleColumnFilterChange('batchId', e.target.value)} className="h-8"/>
+                        <Input placeholder="Filter by batch..." value={columnFilters['batchInfo'] || ''} onChange={(e) => handleColumnFilterChange('batchInfo', e.target.value)} className="h-8"/>
                     </TableHead>
                     <TableHead>
                         <Input placeholder="Filter by scanner..." value={columnFilters['scannerName'] || ''} onChange={(e) => handleColumnFilterChange('scannerName', e.target.value)} className="h-8"/>
@@ -282,7 +281,7 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
                             <Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link>
                           </TableCell>
                           <TableCell>{book.projectName}</TableCell>
-                          <TableCell>{book.batchId ? <Link href={`/processing-batches/${book.batchId}`} className="hover:underline text-primary">{book.batchId.split('_').pop()}</Link> : '—'}</TableCell>
+                          <TableCell>{book.batchInfo ? <Link href={`/processing-batches/${book.batchInfo.id}`} className="hover:underline text-primary">{book.batchInfo.timestampStr.replace('Process started on ', '')}</Link> : '—'}</TableCell>
                           <TableCell>{book.scannerName || '—'}</TableCell>
                           <TableCell>{book.storageName || '—'}</TableCell>
                           <TableCell className="text-right">{book.expectedDocuments}</TableCell>
