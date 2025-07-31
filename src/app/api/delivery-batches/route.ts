@@ -46,11 +46,12 @@ export async function POST(request: Request) {
                 id: `del_item_${newBatch.id}_${bookId}`,
                 deliveryId: newBatch.id,
                 bookId: bookId,
+                status: 'pending', // Set default status
                 info: null,
                 obs: null
             };
             await connection.execute(
-                'INSERT INTO delivery_batch_items (id, deliveryId, bookId, info, obs) VALUES (?, ?, ?, ?, ?)',
+                'INSERT INTO delivery_batch_items (id, deliveryId, bookId, status, info, obs) VALUES (?, ?, ?, ?, ?, ?)',
                 Object.values(newItem)
             );
         }
