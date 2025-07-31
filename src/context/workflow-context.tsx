@@ -133,7 +133,8 @@ type AppContextType = {
   startProcessingBatch: (bookIds: string[]) => void;
   completeProcessingBatch: (batchId: string) => void;
   handleSendBatchToNextStage: (batchIds: string[]) => void;
-  handleClientAction: (bookId: string, action: 'approve' | 'reject', reason?: string) => void;
+  handleClientAction: (bookId: string, action: 'approve' | 'reject', deliveryId: string, reason?: string) => void;
+  approveBatch: (deliveryId: string) => void;
   handleFinalize: (bookId: string) => void;
   handleMarkAsCorrected: (bookId: string) => void;
   handleResubmit: (bookId: string, targetStage: string) => void;
@@ -405,8 +406,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
   const allEnrichedProjects: EnrichedProject[] = React.useMemo(() => {
     const storageMap = new Map(storages.map(s => [s.id, s.nome]));
-    const userMap = new Map(users.map(u => [u.id, u.name]));
-    const bookInfoMap = new Map<string, { storageName?: string, scannerName?: string }>();
+    const scannerDeviceMap = new Map(scanners.map(s => [s.id, s.nome]));
+    const bookInfoMap = new Map<string, { storageName?: string, scannerDeviceName?: string }>();
 
     transferLogs.forEach(log => {
       if (log.bookId && log.status === 'sucesso') {
@@ -414,8 +415,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
           if (storageMap.has(Number(log.storage_id))) {
               currentInfo.storageName = storageMap.get(Number(log.storage_id))!;
           }
-          if (userMap.has(log.scanner_id)) {
-              currentInfo.scannerName = userMap.get(log.scanner_id)!;
+           if (scannerDeviceMap.has(Number(log.scanner_id))) {
+              currentInfo.scannerDeviceName = scannerDeviceMap.get(Number(log.scanner_id))!;
           }
           bookInfoMap.set(log.bookId, currentInfo);
       }
@@ -437,7 +438,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
                 documentCount: bookDocuments.length,
                 progress: Math.min(100, bookProgress),
                 storageName: extraInfo?.storageName,
-                scannerName: extraInfo?.scannerName,
+                scannerDeviceName: extraInfo?.scannerDeviceName,
             };
         });
 
@@ -454,7 +455,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         books: projectBooks,
       };
     });
-  }, [rawProjects, clients, rawBooks, rawDocuments, statuses, storages, transferLogs, users]);
+  }, [rawProjects, clients, rawBooks, rawDocuments, statuses, storages, transferLogs, users, scanners]);
   
   const enrichedBooks: EnrichedBook[] = React.useMemo(() => {
       return allEnrichedProjects.flatMap(p => p.books);
@@ -1444,7 +1445,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       if (newStageConfig?.assigneeRole !== 'indexer') { updates.indexerUserId = undefined; updates.indexingStartTime = undefined; updates.indexingEndTime = undefined; }
       if (newStageConfig?.assigneeRole !== 'qc') { updates.qcUserId = undefined; updates.qcStartTime = undefined; updates.qcEndTime = undefined; }
       
-      const moveResult = await moveBookFolder(book.name, currentStatusName, newStatus);
+      const moveResult = await moveBookFolder(book.name, currentStatusName, newStatus.name);
       if (moveResult !== true) return;
 
       const updatedBook = await updateBookStatus(bookId, newStatus.name, updates);
@@ -1559,20 +1560,55 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     });
   };
 
-  const handleClientAction = (bookId: string, action: 'approve' | 'reject', reason?: string) => {
+  const handleClientAction = (bookId: string, action: 'approve' | 'reject', deliveryId: string, reason?: string) => {
     withMutation(async () => {
       const book = enrichedBooks.find(b => b.id === bookId);
       if (!book) return;
+
       const isApproval = action === 'approve';
       const newStatus = isApproval ? 'Finalized' : 'Client Rejected';
+
+      const deliveryItem = deliveryBatchItems.find(item => item.deliveryId === deliveryId && item.bookId === bookId);
+      if (!deliveryItem) return;
+
+      const [bookUpdateResponse, itemUpdateResponse] = await Promise.all([
+        fetch(`/api/books/${bookId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            statusId: statuses.find(s => s.name === newStatus)?.id,
+            rejectionReason: isApproval ? null : reason,
+          }),
+        }),
+        fetch(`/api/delivery-batch-items/${deliveryItem.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: action === 'approve' ? 'approved' : 'rejected' })
+        })
+      ]);
       
-      const moveResult = await moveBookFolder(book.name, book.status, newStatus);
-      if (moveResult !== true) return;
+      if (!bookUpdateResponse.ok || !itemUpdateResponse.ok) {
+        throw new Error('Failed to complete client action.');
+      }
       
-      const updatedBook = await updateBookStatus(bookId, newStatus, { rejectionReason: isApproval ? undefined : reason });
+      const updatedBook = await bookUpdateResponse.json();
+      const updatedItem = await itemUpdateResponse.json();
+
       setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
+      setDeliveryBatchItems(prev => prev.map(i => i.id === updatedItem.id ? updatedItem : i));
+      
       logAction(`Client ${isApproval ? 'Approval' : 'Rejection'}`, isApproval ? `Book "${book?.name}" approved.` : `Book "${book?.name}" rejected. Reason: ${reason}`, { bookId });
       toast({ title: `Book ${isApproval ? 'Approved' : 'Rejected'}` });
+    });
+  };
+
+  const approveBatch = async (deliveryId: string) => {
+    withMutation(async () => {
+        const batchItemsToApprove = deliveryBatchItems.filter(item => item.deliveryId === deliveryId && item.status === 'pending');
+        for (const item of batchItemsToApprove) {
+            await handleClientAction(item.bookId, 'approve', deliveryId);
+        }
+        toast({ title: "Batch Approved", description: `All remaining books in the batch have been approved.` });
     });
   };
 
@@ -1650,6 +1686,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             id: `del_item_${newBatch.id}_${bookId}`,
             deliveryId: newBatch.id,
             bookId: bookId,
+            status: 'pending',
             info: null,
             obs: null
         }));
@@ -1731,6 +1768,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     handleConfirmReception,
     handleSendToStorage,
     handleMoveBookToNextStage, handleClientAction,
+    approveBatch,
     handleFinalize, handleMarkAsCorrected, handleResubmit,
     addPageToBook, deletePageFromBook,
     updateDocumentFlag, startProcessingBatch, completeProcessingBatch, handleSendBatchToNextStage,
@@ -1757,3 +1795,4 @@ export function useAppContext() {
 
 
     
+
