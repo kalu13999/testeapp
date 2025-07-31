@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import * as React from "react";
@@ -38,7 +39,11 @@ import { format } from "date-fns";
 
 const ITEMS_PER_PAGE = 15;
 
-type ValidatedBook = EnrichedBook & { validationDate: string, validationStatus: 'Approved' | 'Rejected' };
+type ValidatedBook = EnrichedBook & { 
+  validationDate: string; 
+  validationStatus: 'Approved' | 'Rejected';
+  deliveryBatchInfo?: { id: string; creationDate: string };
+};
 
 const DetailItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
   <div className="grid grid-cols-3 items-center gap-x-4">
@@ -48,7 +53,7 @@ const DetailItem = ({ label, value }: { label: string; value: React.ReactNode })
 );
 
 export default function ValidatedHistoryClient() {
-    const { books, auditLogs, currentUser } = useAppContext();
+    const { books, auditLogs, currentUser, deliveryBatches, deliveryBatchItems } = useAppContext();
     const { toast } = useToast();
 
     const [columnFilters, setColumnFilters] = React.useState<{ [key: string]: string }>({});
@@ -124,13 +129,16 @@ export default function ValidatedHistoryClient() {
             const validationLog = auditLogs.find(log =>
                 log.bookId === book.id && (log.action === 'Client Approval' || log.action === 'Client Rejection')
             );
+            const deliveryItem = deliveryBatchItems.find(item => item.bookId === book.id);
+            const deliveryBatch = deliveryItem ? deliveryBatches.find(batch => batch.id === deliveryItem.deliveryId) : undefined;
             return {
                 ...book,
                 validationDate: validationLog ? new Date(validationLog.date).toISOString() : 'N/A',
-                validationStatus: book.status === 'Client Rejected' ? 'Rejected' : 'Approved'
+                validationStatus: book.status === 'Client Rejected' ? 'Rejected' : 'Approved',
+                deliveryBatchInfo: deliveryBatch ? { id: deliveryBatch.id, creationDate: deliveryBatch.creationDate } : undefined,
             };
         });
-    }, [books, auditLogs, currentUser]);
+    }, [books, auditLogs, currentUser, deliveryBatches, deliveryBatchItems]);
 
 
     const sortedAndFilteredHistory = React.useMemo(() => {
@@ -153,7 +161,12 @@ export default function ValidatedHistoryClient() {
                     const valB = b[key];
 
                     let result = 0;
-                    if (valA === null || valA === undefined || valA === 'N/A') result = -1;
+                    if (key === 'deliveryBatchInfo') {
+                        const dateA = a.deliveryBatchInfo ? new Date(a.deliveryBatchInfo.creationDate).getTime() : 0;
+                        const dateB = b.deliveryBatchInfo ? new Date(b.deliveryBatchInfo.creationDate).getTime() : 0;
+                        result = dateA - dateB;
+                    }
+                    else if (valA === null || valA === undefined || valA === 'N/A') result = -1;
                     else if (valB === null || valB === undefined || valB === 'N/A') result = 1;
                     else if (typeof valA === 'number' && typeof valB === 'number') {
                         result = valA - valB;
@@ -207,7 +220,7 @@ export default function ValidatedHistoryClient() {
 
     const exportCSV = (data: ValidatedBook[]) => {
         if (data.length === 0) return;
-        const headers = ['id', 'name', 'clientName', 'projectName', 'validationStatus', 'validationDate', 'rejectionReason'];
+        const headers = ['id', 'name', 'projectName', 'validationStatus', 'validationDate', 'rejectionReason'];
         const csvContent = [
             headers.join(','),
             ...data.map(item => 
@@ -310,11 +323,11 @@ export default function ValidatedHistoryClient() {
                                         Batch Name {getSortIndicator('name')}
                                     </div>
                                 </TableHead>
-                                {currentUser?.role === 'Admin' && <TableHead>
-                                    <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('clientName', e.shiftKey)}>
-                                        Client {getSortIndicator('clientName')}
+                                <TableHead>
+                                    <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('deliveryBatchInfo', e.shiftKey)}>
+                                        Delivery Batch {getSortIndicator('deliveryBatchInfo')}
                                     </div>
-                                </TableHead>}
+                                </TableHead>
                                 <TableHead>
                                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('projectName', e.shiftKey)}>
                                         Project {getSortIndicator('projectName')}
@@ -338,9 +351,9 @@ export default function ValidatedHistoryClient() {
                                 <TableHead>
                                     <Input placeholder="Filter name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/>
                                 </TableHead>
-                                {currentUser?.role === 'Admin' && <TableHead>
-                                    <Input placeholder="Filter client..." value={columnFilters['clientName'] || ''} onChange={(e) => handleColumnFilterChange('clientName', e.target.value)} className="h-8"/>
-                                </TableHead>}
+                                 <TableHead>
+                                    <Input placeholder="Filter batch..." value={columnFilters['deliveryBatchInfo'] || ''} onChange={(e) => handleColumnFilterChange('deliveryBatchInfo', e.target.value)} className="h-8"/>
+                                </TableHead>
                                 <TableHead>
                                     <Input placeholder="Filter project..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/>
                                 </TableHead>
@@ -375,7 +388,9 @@ export default function ValidatedHistoryClient() {
                                         <TableCell className="font-medium">
                                             <Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link>
                                         </TableCell>
-                                        {currentUser?.role === 'Admin' && <TableCell>{book.clientName}</TableCell>}
+                                        <TableCell>
+                                          {book.deliveryBatchInfo ? new Date(book.deliveryBatchInfo.creationDate).toLocaleDateString() : 'N/A'}
+                                        </TableCell>
                                         <TableCell>{book.projectName}</TableCell>
                                         <TableCell>
                                             {book.validationStatus === 'Approved' ? (
@@ -424,7 +439,7 @@ export default function ValidatedHistoryClient() {
                                     </TableRow>
                                 ))
                             ) : (
-                            <TableRow><TableCell colSpan={currentUser?.role === 'Admin' ? 8 : 7} className="h-24 text-center">
+                            <TableRow><TableCell colSpan={8} className="h-24 text-center">
                                     No validated history found matching your filters.
                                 </TableCell>
                             </TableRow>
