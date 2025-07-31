@@ -171,7 +171,7 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
                 <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm" onClick={() => setIsBatchPanelOpen(p => !p)}>
                         Batch Panel
-                        <Badge variant="secondary" className="ml-2">{selection.length}</Badge>
+                        <Badge variant="destructive" className="ml-2">{selection.length}</Badge>
                     </Button>
                     <Button 
                         variant="secondary" 
