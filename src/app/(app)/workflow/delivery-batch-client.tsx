@@ -1,7 +1,9 @@
 
+
 "use client"
 
 import * as React from "react"
+import * as XLSX from 'xlsx';
 import {
   Table,
   TableBody,
@@ -19,7 +21,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { ListPlus, PlayCircle, BookOpen, ChevronsUpDown, ArrowUp, ArrowDown, Send } from "lucide-react"
+import { ListPlus, PlayCircle, BookOpen, ChevronsUpDown, ArrowUp, ArrowDown, Send, X } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import type { EnrichedBook } from "@/lib/data"
 import { Input } from "@/components/ui/input"
@@ -235,7 +237,11 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
                               onClick={() => toggleSelection(book.id)}
                               className="w-[100px]"
                             >
-                              <ListPlus className="mr-2 h-4 w-4" />
+                              {isSelected ? (
+                                <X className="mr-2 h-4 w-4" />
+                              ) : (
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                              )}
                               {isSelected ? 'Remove' : 'Add'}
                             </Button>
                           </TableCell>
