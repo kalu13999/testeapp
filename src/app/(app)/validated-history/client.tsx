@@ -43,6 +43,7 @@ type ValidatedBook = EnrichedBook & {
   validationDate: string; 
   validationStatus: 'Approved' | 'Rejected';
   deliveryBatchInfo?: { id: string; creationDate: string };
+  validatorName?: string;
 };
 
 const DetailItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
@@ -53,7 +54,7 @@ const DetailItem = ({ label, value }: { label: string; value: React.ReactNode })
 );
 
 export default function ValidatedHistoryClient() {
-    const { books, auditLogs, currentUser, deliveryBatches, deliveryBatchItems } = useAppContext();
+    const { books, auditLogs, currentUser, deliveryBatches, deliveryBatchItems, users } = useAppContext();
     const { toast } = useToast();
 
     const [columnFilters, setColumnFilters] = React.useState<{ [key: string]: string }>({});
@@ -131,14 +132,17 @@ export default function ValidatedHistoryClient() {
             );
             const deliveryItem = deliveryBatchItems.find(item => item.bookId === book.id);
             const deliveryBatch = deliveryItem ? deliveryBatches.find(batch => batch.id === deliveryItem.deliveryId) : undefined;
+            const validator = users.find(u => u.id === deliveryItem?.userId);
+
             return {
                 ...book,
                 validationDate: validationLog ? new Date(validationLog.date).toISOString() : 'N/A',
                 validationStatus: book.status === 'Client Rejected' ? 'Rejected' : 'Approved',
                 deliveryBatchInfo: deliveryBatch ? { id: deliveryBatch.id, creationDate: deliveryBatch.creationDate } : undefined,
+                validatorName: validator?.name || 'N/A',
             };
         });
-    }, [books, auditLogs, currentUser, deliveryBatches, deliveryBatchItems]);
+    }, [books, auditLogs, currentUser, deliveryBatches, deliveryBatchItems, users]);
 
 
     const sortedAndFilteredHistory = React.useMemo(() => {
@@ -220,7 +224,7 @@ export default function ValidatedHistoryClient() {
 
     const exportCSV = (data: ValidatedBook[]) => {
         if (data.length === 0) return;
-        const headers = ['id', 'name', 'projectName', 'validationStatus', 'validationDate', 'rejectionReason'];
+        const headers = ['id', 'name', 'projectName', 'validationStatus', 'validationDate', 'rejectionReason', 'validatorName'];
         const csvContent = [
             headers.join(','),
             ...data.map(item => 
@@ -339,6 +343,11 @@ export default function ValidatedHistoryClient() {
                                     </div>
                                 </TableHead>
                                 <TableHead>
+                                    <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('validatorName', e.shiftKey)}>
+                                        Validator {getSortIndicator('validatorName')}
+                                    </div>
+                                </TableHead>
+                                <TableHead>
                                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('validationDate', e.shiftKey)}>
                                         Date {getSortIndicator('validationDate')}
                                     </div>
@@ -359,6 +368,9 @@ export default function ValidatedHistoryClient() {
                                 </TableHead>
                                 <TableHead>
                                     <Input placeholder="Filter outcome..." value={columnFilters['validationStatus'] || ''} onChange={(e) => handleColumnFilterChange('validationStatus', e.target.value)} className="h-8"/>
+                                </TableHead>
+                                 <TableHead>
+                                    <Input placeholder="Filter validator..." value={columnFilters['validatorName'] || ''} onChange={(e) => handleColumnFilterChange('validatorName', e.target.value)} className="h-8"/>
                                 </TableHead>
                                 <TableHead>
                                     <Input placeholder="Filter date..." value={columnFilters['validationDate'] || ''} onChange={(e) => handleColumnFilterChange('validationDate', e.target.value)} className="h-8"/>
@@ -405,6 +417,7 @@ export default function ValidatedHistoryClient() {
                                                 </Badge>
                                             )}
                                         </TableCell>
+                                        <TableCell>{book.validatorName}</TableCell>
                                         <TableCell>{book.validationDate !== 'N/A' ? new Date(book.validationDate).toLocaleDateString() : 'N/A'}</TableCell>
                                         <TableCell className="text-center">
                                             {book.rejectionReason ? (
@@ -439,7 +452,7 @@ export default function ValidatedHistoryClient() {
                                     </TableRow>
                                 ))
                             ) : (
-                            <TableRow><TableCell colSpan={8} className="h-24 text-center">
+                            <TableRow><TableCell colSpan={9} className="h-24 text-center">
                                     No validated history found matching your filters.
                                 </TableCell>
                             </TableRow>
@@ -463,7 +476,6 @@ export default function ValidatedHistoryClient() {
                 </DialogHeader>
                 <div className="space-y-4 py-4 text-sm">
                     <DetailItem label="Project" value={detailsState.book?.projectName} />
-                    <DetailItem label="Client" value={detailsState.book?.clientName} />
                     <Separator />
                     <DetailItem label="Author" value={detailsState.book?.author || '—'} />
                     <DetailItem label="ISBN" value={detailsState.book?.isbn || '—'} />
@@ -471,6 +483,7 @@ export default function ValidatedHistoryClient() {
                     <Separator />
                     <DetailItem label="Priority" value={detailsState.book?.priority || '—'} />
                     <DetailItem label="Outcome" value={detailsState.book?.validationStatus} />
+                    <DetailItem label="Validator" value={detailsState.book?.validatorName || 'N/A'} />
                     <DetailItem label="Validated On" value={detailsState.book?.validationDate ? format(new Date(detailsState.book.validationDate), "PPP") : 'N/A'} />
                     {detailsState.book?.info && (
                     <>
