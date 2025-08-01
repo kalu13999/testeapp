@@ -27,6 +27,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -374,7 +375,18 @@ export default function DeliveryValidationClient({ config }: DeliveryValidationC
                          {taggingState.availableTags.length > 0 ? (
                             taggingState.availableTags.map(tag => (
                                 <div key={tag.id} className="flex items-center space-x-2">
-                                    <Checkbox id={`tag-${tag.id}`} checked={taggingState.selectedTags.includes(tag.label)} onCheckedChange={(checked) => { setTaggingState(prev => ({ ...prev, selectedTags: checked ? [...prev.selectedTags, tag.label] : prev.selectedTags.filter(t => t !== tag.label) })); }} />
+                                    <Checkbox
+                                        id={`tag-${tag.id}`}
+                                        checked={taggingState.selectedTags.includes(tag.label)}
+                                        onCheckedChange={(checked) => {
+                                            setTaggingState(prev => ({
+                                                ...prev,
+                                                selectedTags: checked
+                                                    ? [...prev.selectedTags, tag.label]
+                                                    : prev.selectedTags.filter(t => t !== tag.label)
+                                            }));
+                                        }}
+                                    />
                                     <Label htmlFor={`tag-${tag.id}`} className="flex flex-col gap-1 w-full">
                                         <span className="font-medium">{tag.label}</span>
                                         <span className="text-xs text-muted-foreground">{tag.description}</span>
