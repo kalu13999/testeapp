@@ -1403,6 +1403,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       
       const baseArgs = {
         userId: currentUser.id,
+        bookId: book.id,
       };
 
       if (role === 'scanner') {
@@ -1856,6 +1857,7 @@ export function useAppContext() {
 
 
     
+
 
 
 
