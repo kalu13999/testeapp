@@ -1379,6 +1379,19 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     withMutation(async () => {
       const book = rawBooks.find(b => b.id === bookId);
       if (!book || !book.projectId || !currentUser) return;
+
+      const log = transferLogs.find(l => l.bookId === bookId && l.status === 'sucesso');
+      if (!log) {
+        toast({ title: "Transfer Log Not Found", description: `Cannot find a successful transfer log for book "${book.name}".`, variant: "destructive" });
+        return;
+      }
+
+      const storage = storages.find(s => s.id === Number(log.storage_id));
+      if (!storage) {
+        toast({ title: "Storage Not Found", description: `Cannot find storage with ID ${log.storage_id}.`, variant: "destructive" });
+        return;
+      }
+
       const workflow = projectWorkflows[book.projectId] || [];
       const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
       if (!currentStatusName) return;
@@ -1386,10 +1399,34 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       if (!currentStageKey) return;
       const nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
       let newStatusName = '', logMsg = '', updates: Partial<RawBook> = {};
-      if (role === 'scanner') { newStatusName = STAGE_CONFIG[nextStatusKey || 'scanning-started']?.dataStatus || 'Scanning Started'; updates.scanStartTime = getDbSafeDate(); logMsg = 'Scanning Started'; }
-      else if (role === 'indexing') { newStatusName = STAGE_CONFIG[nextStatusKey || 'indexing-started']?.dataStatus || 'Indexing Started'; updates.indexingStartTime = getDbSafeDate(); logMsg = 'Indexing Started'; }
-      else if (role === 'qc') { newStatusName = STAGE_CONFIG[nextStatusKey || 'checking-started']?.dataStatus || 'Checking Started'; updates.qcStartTime = getDbSafeDate(); logMsg = 'Checking Started'; }
+      let appProtocol = '';
       
+      const baseArgs = {
+        userId: currentUser.id,
+      };
+
+      if (role === 'scanner') {
+        // This case is handled by handleSendToStorage now
+        return;
+      } else if (role === 'indexing') {
+        newStatusName = STAGE_CONFIG[nextStatusKey || 'indexing-started']?.dataStatus || 'Indexing Started';
+        updates.indexingStartTime = getDbSafeDate();
+        logMsg = 'Indexing Started';
+        appProtocol = 'rfs-indexing-app';
+      } else if (role === 'qc') {
+        newStatusName = STAGE_CONFIG[nextStatusKey || 'checking-started']?.dataStatus || 'Checking Started';
+        updates.qcStartTime = getDbSafeDate();
+        logMsg = 'Checking Started';
+        appProtocol = 'rfs-check-app';
+      }
+      
+      const newStageFolder = statuses.find(s => s.name === newStatusName)?.folderName;
+      if (!newStageFolder) {
+        toast({ title: "Workflow Error", description: `Folder for status "${newStatusName}" is not defined.`, variant: "destructive" });
+        return;
+      }
+      const bookDirectory = `${storage.root_path}/${newStageFolder}/${book.name}`;
+
       const moveResult = await moveBookFolder(book.name, currentStatusName, newStatusName);
       if (moveResult !== true) return;
 
@@ -1399,10 +1436,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       logAction(logMsg, `${logMsg} process initiated for book.`, { bookId });
       toast({ title: logMsg });
 
-      if (role === 'indexing') {
-        openLocalApp('rfs-indexing-app', { bookId: book.id, userId: currentUser.id });
-      } else if (role === 'qc') {
-        openLocalApp('rfs-check-app', { bookId: book.id, userId: currentUser.id });
+      if (appProtocol) {
+        openLocalApp(appProtocol, { ...baseArgs, bookDirectory });
       }
     });
   };
@@ -1821,6 +1856,7 @@ export function useAppContext() {
 
 
     
+
 
 
 
