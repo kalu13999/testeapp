@@ -226,6 +226,21 @@ app.post('/api/workflow/move', async (req, res) => {
     try {
         connection = await dbPool.getConnection();
         
+        const [bookDetailsRows] = await connection.query(
+            `SELECT b.projectId, p.name as projectName 
+             FROM books b
+             JOIN projects p ON b.projectId = p.id
+             WHERE b.name = ?`,
+            [bookName]
+        );
+
+        if (bookDetailsRows.length === 0) {
+             const errorMessage = `Livro '${bookName}' ou seu projeto associado não foi encontrado.`;
+             console.error(errorMessage);
+             return res.status(404).json({ error: errorMessage });
+        }
+        const { projectName } = bookDetailsRows[0];
+
         const [statusRows] = await connection.query(
             `SELECT name, folderName FROM document_statuses WHERE name IN (?, ?)`,
             [fromStatus, toStatus]
@@ -235,7 +250,7 @@ app.post('/api/workflow/move', async (req, res) => {
         const toFolder = statusRows.find(r => r.name === toStatus)?.folderName;
 
         if (!fromFolder || !toFolder) {
-            logging.info(`Transição de '${fromStatus}' para '${toStatus}' é puramente lógica. Nenhum ficheiro movido.`);
+            console.info(`Transição de '${fromStatus}' para '${toStatus}' é puramente lógica. Nenhum ficheiro movido.`);
             return res.status(200).json({ message: "Transição lógica, nenhuma pasta movida." });
         }
         
@@ -256,21 +271,40 @@ app.post('/api/workflow/move', async (req, res) => {
         }
 
         const { root_path } = logRows[0];
-        const sourcePath = path.join(root_path, fromFolder, bookName);
-        const destinationPath = path.join(root_path, toFolder, bookName);
+        const sourcePath = path.join(root_path, fromFolder, projectName, bookName);
+        const destinationPath = path.join(root_path, toFolder, projectName, bookName);
 
         if (!fs.existsSync(sourcePath)) {
-            const errorMessage = `A pasta de origem '${sourcePath}' não foi encontrada no storage. O movimento foi abortado.`;
-            console.error(errorMessage);
-            return res.status(404).json({ error: errorMessage });
+            // Tenta o caminho antigo para retrocompatibilidade
+            const oldSourcePath = path.join(root_path, fromFolder, bookName);
+            if (fs.existsSync(oldSourcePath)) {
+                 console.warn(`Aviso: A pasta foi encontrada no caminho antigo sem a pasta do projeto: ${oldSourcePath}. A usar este caminho como origem.`);
+                 // Cria a pasta de destino do projeto se ela não existir
+                 if (!fs.existsSync(path.dirname(destinationPath))) {
+                    fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
+                 }
+                 fs.renameSync(oldSourcePath, destinationPath);
+                 console.log(`Pasta '${bookName}' movida de '${oldSourcePath}' para '${destinationPath}'.`);
+                 return res.status(200).json({ message: `Pasta '${bookName}' movida com sucesso para a nova estrutura de projeto.` });
+            } else {
+                 const errorMessage = `A pasta de origem '${sourcePath}' (e a versão antiga) não foi encontrada no storage. O movimento foi abortado.`;
+                 console.error(errorMessage);
+                 return res.status(404).json({ error: errorMessage });
+            }
         }
         
+        // Se a pasta de destino já existir, não faz nada para evitar erros.
         if (fs.existsSync(destinationPath)) {
             const warningMessage = `A pasta de destino '${destinationPath}' já existe. A pasta de origem não será movida para evitar sobreposição.`;
             console.warn(warningMessage);
             return res.status(200).json({ message: warningMessage });
         }
         
+        // Cria a pasta de destino do projeto se ela não existir
+        if (!fs.existsSync(path.dirname(destinationPath))) {
+            fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
+        }
+
         fs.renameSync(sourcePath, destinationPath);
         console.log(`Pasta '${bookName}' movida de '${sourcePath}' para '${destinationPath}'.`);
         return res.status(200).json({ message: `Pasta '${bookName}' movida com sucesso de '${fromFolder}' para '${toFolder}'.` });
@@ -354,10 +388,6 @@ app.post('/api/scan/complete', async (req, res) => {
     }
 });
 
-
-
-// --- NOVOS ENDPOINTS PARA MANIPULAR FLAGS ---
-
 // Função auxiliar para encontrar o documento
 async function findDocumentByImageName(connection, bookId, imageName) {
     const [documents] = await connection.query(
@@ -374,6 +404,52 @@ async function findDocumentByImageName(connection, bookId, imageName) {
 }
 
 // Endpoint para definir/atualizar a flag de um documento
+app.post('/api/documents/:id/flag', async (req, res) => {
+    const { id } = req.params;
+    const { flag, comment } = req.body;
+
+    if (!flag) {
+        return res.status(400).json({ error: 'Campo "flag" é obrigatório.' });
+    }
+    if (!['error', 'warning', 'info'].includes(flag)) {
+        return res.status(400).json({ error: 'O valor da flag é inválido.' });
+    }
+
+    let connection;
+    try {
+        connection = await dbPool.getConnection();
+        await connection.query(
+            'UPDATE documents SET flag = ?, flagComment = ? WHERE id = ?',
+            [flag, comment || null, id]
+        );
+        res.status(200).json({ message: `Flag do documento '${id}' atualizada com sucesso para '${flag}'.` });
+    } catch (err) {
+        console.error("Erro ao definir a flag do documento:", err);
+        res.status(500).json({ error: "Erro interno do servidor." });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+app.delete('/api/documents/:id/flag', async (req, res) => {
+    const { id } = req.params;
+    let connection;
+    try {
+        connection = await dbPool.getConnection();
+        await connection.query(
+            'UPDATE documents SET flag = NULL, flagComment = NULL WHERE id = ?',
+            [id]
+        );
+        res.status(200).json({ message: `Flag do documento '${id}' removida com sucesso.` });
+    } catch (err) {
+        console.error("Erro ao limpar a flag do documento:", err);
+        res.status(500).json({ error: "Erro interno do servidor." });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// Endpoint para definir/atualizar a flag de um documento por nome de imagem
 app.post('/api/documents/flag-by-image', async (req, res) => {
     const { bookId, imageName, flag, comment } = req.body;
 
@@ -408,7 +484,7 @@ app.post('/api/documents/flag-by-image', async (req, res) => {
     }
 });
 
-// Endpoint para limpar a flag de um documento
+// Endpoint para limpar a flag de um documento por nome de imagem
 app.delete('/api/documents/flag-by-image', async (req, res) => {
     const { bookId, imageName } = req.body;
 
@@ -440,6 +516,49 @@ app.delete('/api/documents/flag-by-image', async (req, res) => {
     }
 });
 
+app.post('/api/documents/:id/tags', async (req, res) => {
+    const { id } = req.params;
+    const { tags } = req.body;
+
+    if (!Array.isArray(tags)) {
+        return res.status(400).json({ error: 'O campo "tags" é obrigatório e deve ser um array.' });
+    }
+
+    let connection;
+    try {
+        connection = await dbPool.getConnection();
+        await connection.query(
+            'UPDATE documents SET tags = ? WHERE id = ?',
+            [JSON.stringify(tags), id]
+        );
+        res.status(200).json({ message: `Tags do documento '${id}' atualizadas com sucesso.` });
+    } catch (err) {
+        console.error("Erro ao atualizar as tags do documento:", err);
+        res.status(500).json({ error: "Erro interno do servidor." });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+app.delete('/api/documents/:id/tags', async (req, res) => {
+    const { id } = req.params;
+    let connection;
+    try {
+        connection = await dbPool.getConnection();
+        await connection.query(
+            "UPDATE documents SET tags = '[]' WHERE id = ?",
+            [id]
+        );
+        res.status(200).json({ message: `Tags do documento '${id}' removidas com sucesso.` });
+    } catch (err) {
+        console.error("Erro ao limpar as tags do documento:", err);
+        res.status(500).json({ error: "Erro interno do servidor." });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+
 // --- Inicialização do Servidor ---
 async function startServer() {
     await initializeDbPool();
@@ -451,3 +570,5 @@ async function startServer() {
 }
 
 startServer();
+
+    
