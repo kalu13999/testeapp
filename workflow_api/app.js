@@ -15,7 +15,7 @@ if (!fs.existsSync(configPath)) {
 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
 const app = express();
-app.use(cors()); // Ativa o CORS para todos os pedidos
+app.use(cors()); 
 app.use(express.json());
 
 // --- Configuração de Pastas e Rota Estática ---
@@ -128,6 +128,44 @@ app.get('/api/storages/stats', async (req, res) => {
     }
 });
 
+app.post('/api/storages/writestats', async (req, res) => {
+    const {
+        storage_id: inputStorageId,
+        data: inputData,
+        total_tifs_enviados: inputTotalTifs,
+        obs: inputObs
+    } = req.body;
+
+    if (!inputStorageId || !inputData || inputTotalTifs === undefined) {
+        return res.status(400).json({
+            error: 'Campos obrigatórios: storage_id, data, total_tifs_enviados.'
+        });
+    }
+
+    try {
+        const query = `
+            INSERT INTO envio_diario (storage_id, data, total_tifs_enviados, obs)
+            VALUES (?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                total_tifs_enviados = total_tifs_enviados + VALUES(total_tifs_enviados),
+                obs = CONCAT_WS(' | ', obs, VALUES(obs)),
+                atualizado_em = CURRENT_TIMESTAMP
+        `;
+
+        await dbPool.query(query, [
+            inputStorageId,
+            inputData,
+            inputTotalTifs,
+            inputObs || null
+        ]);
+
+        res.status(200).json({ message: 'Registro inserido ou atualizado com sucesso.' });
+    } catch (err) {
+        console.error('Erro ao inserir/atualizar envio_diario:', err);
+        res.status(500).json({ error: 'Erro interno ao inserir/atualizar estatísticas.' });
+    }
+});
+
 app.post('/api/books/byname', async (req, res) => {
   const { bookName } = req.body;
   if (!bookName) {
@@ -136,8 +174,8 @@ app.post('/api/books/byname', async (req, res) => {
 
   try {
     const [rows] = await dbPool.query(
-        'SELECT id FROM books WHERE name = ?', 
-        [bookName]
+        'SELECT id FROM books WHERE name = ? and statusId IN (SELECT id FROM document_statuses WHERE name = ?)', 
+        [bookName, 'Scanning Started']
     );
 
     if (rows.length === 0) {
@@ -316,6 +354,8 @@ app.post('/api/scan/complete', async (req, res) => {
     }
 });
 
+
+
 // --- NOVOS ENDPOINTS PARA MANIPULAR FLAGS ---
 
 // Função auxiliar para encontrar o documento
@@ -326,7 +366,7 @@ async function findDocumentByImageName(connection, bookId, imageName) {
     );
 
     for (const doc of documents) {
-        if (doc.imageUrl && path.basename(doc.imageUrl) === imageName) {
+        if (doc.imageUrl && path.parse(path.basename(doc.imageUrl)).name === path.parse(imageName).name) {
             return doc.id;
         }
     }
@@ -399,7 +439,6 @@ app.delete('/api/documents/flag-by-image', async (req, res) => {
         if (connection) connection.release();
     }
 });
-
 
 // --- Inicialização do Servidor ---
 async function startServer() {
