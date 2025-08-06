@@ -1404,28 +1404,10 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         const currentStageKey = findStageKeyFromStatus(currentStatusName);
         if (!currentStageKey) return;
         const nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
-        let newStatusName = '', logMsg = '', updates: Partial<RawBook> = {};
-        let appProtocol = '';
-        
-        const baseArgs = {
-            userId: currentUser.id,
-            bookId: book.id,
-        };
+        if (!nextStatusKey) return;
 
-        if (role === 'scanner') {
-            // This case is handled by handleSendToStorage now
-            return;
-        } else if (role === 'indexing') {
-            newStatusName = STAGE_CONFIG[nextStatusKey || 'indexing-started']?.dataStatus || 'Indexing Started';
-            updates.indexingStartTime = getDbSafeDate();
-            logMsg = 'Indexing Started';
-            appProtocol = 'rfs-indexing-app';
-        } else if (role === 'qc') {
-            newStatusName = STAGE_CONFIG[nextStatusKey || 'checking-started']?.dataStatus || 'Checking Started';
-            updates.qcStartTime = getDbSafeDate();
-            logMsg = 'Checking Started';
-            appProtocol = 'rfs-check-app';
-        }
+        const newStatusName = STAGE_CONFIG[nextStatusKey]?.dataStatus || 'Unknown';
+        if(newStatusName === 'Unknown') return;
         
         const newStageFolder = statuses.find(s => s.name === newStatusName)?.folderName;
         if (!newStageFolder) {
@@ -1438,12 +1420,29 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
              toast({ title: "Project Not Found", description: `Cannot find project for book "${book.name}".`, variant: "destructive" });
             return;
         }
-        
-        const bookDirectory = `${storage.root_path}/${newStageFolder}/${project.name}/${scanner.nome}/${book.name}`;
 
         const moveResult = await moveBookFolder(book.name, currentStatusName, newStatusName);
         if (moveResult !== true) return;
 
+        let logMsg = '', updates: Partial<RawBook> = {}, appProtocol = '', bookDirectory = '';
+        
+        const baseArgs = {
+            userId: currentUser.id,
+            bookId: book.id,
+        };
+
+        if (role === 'indexing') {
+            updates.indexingStartTime = getDbSafeDate();
+            logMsg = 'Indexing Started';
+            appProtocol = 'rfs-indexing-app';
+            bookDirectory = `${storage.root_path}/${newStageFolder}/${project.name}/${book.name}`;
+        } else if (role === 'qc') {
+            updates.qcStartTime = getDbSafeDate();
+            logMsg = 'Checking Started';
+            appProtocol = 'rfs-check-app';
+            bookDirectory = `${storage.root_path}/${newStageFolder}/${project.name}/${scanner.nome}/${book.name}`;
+        }
+        
         const updatedBook = await updateBookStatus(bookId, newStatusName, updates);
         setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
         
@@ -1871,6 +1870,7 @@ export function useAppContext() {
 
 
     
+
 
 
 
