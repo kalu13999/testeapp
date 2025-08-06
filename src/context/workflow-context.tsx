@@ -1377,71 +1377,85 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
   const handleStartTask = (bookId: string, role: 'scanner' | 'indexing' | 'qc') => {
     withMutation(async () => {
-      const book = rawBooks.find(b => b.id === bookId);
-      if (!book || !book.projectId || !currentUser) return;
+        const book = rawBooks.find(b => b.id === bookId);
+        if (!book || !book.projectId || !currentUser) return;
 
-      const log = transferLogs.find(l => l.bookId === bookId && l.status === 'sucesso');
-      if (!log) {
-        toast({ title: "Transfer Log Not Found", description: `Cannot find a successful transfer log for book "${book.name}".`, variant: "destructive" });
-        return;
-      }
+        const log = transferLogs.find(l => l.bookId === bookId && l.status === 'sucesso');
+        if (!log) {
+            toast({ title: "Transfer Log Not Found", description: `Cannot find a successful transfer log for book "${book.name}".`, variant: "destructive" });
+            return;
+        }
 
-      const storage = storages.find(s => s.id === Number(log.storage_id));
-      if (!storage) {
-        toast({ title: "Storage Not Found", description: `Cannot find storage with ID ${log.storage_id}.`, variant: "destructive" });
-        return;
-      }
+        const storage = storages.find(s => s.id === Number(log.storage_id));
+        if (!storage) {
+            toast({ title: "Storage Not Found", description: `Cannot find storage with ID ${log.storage_id}.`, variant: "destructive" });
+            return;
+        }
+        
+        const scanner = scanners.find(s => s.id === Number(log.scanner_id));
+        if (!scanner) {
+            toast({ title: "Scanner Not Found", description: `Cannot find scanner with ID ${log.scanner_id}.`, variant: "destructive" });
+            return;
+        }
 
-      const workflow = projectWorkflows[book.projectId] || [];
-      const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
-      if (!currentStatusName) return;
-      const currentStageKey = findStageKeyFromStatus(currentStatusName);
-      if (!currentStageKey) return;
-      const nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
-      let newStatusName = '', logMsg = '', updates: Partial<RawBook> = {};
-      let appProtocol = '';
-      
-      const baseArgs = {
-        userId: currentUser.id,
-        bookId: book.id,
-      };
+        const workflow = projectWorkflows[book.projectId] || [];
+        const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
+        if (!currentStatusName) return;
+        const currentStageKey = findStageKeyFromStatus(currentStatusName);
+        if (!currentStageKey) return;
+        const nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
+        let newStatusName = '', logMsg = '', updates: Partial<RawBook> = {};
+        let appProtocol = '';
+        
+        const baseArgs = {
+            userId: currentUser.id,
+            bookId: book.id,
+        };
 
-      if (role === 'scanner') {
-        // This case is handled by handleSendToStorage now
-        return;
-      } else if (role === 'indexing') {
-        newStatusName = STAGE_CONFIG[nextStatusKey || 'indexing-started']?.dataStatus || 'Indexing Started';
-        updates.indexingStartTime = getDbSafeDate();
-        logMsg = 'Indexing Started';
-        appProtocol = 'rfs-indexing-app';
-      } else if (role === 'qc') {
-        newStatusName = STAGE_CONFIG[nextStatusKey || 'checking-started']?.dataStatus || 'Checking Started';
-        updates.qcStartTime = getDbSafeDate();
-        logMsg = 'Checking Started';
-        appProtocol = 'rfs-check-app';
-      }
-      
-      const newStageFolder = statuses.find(s => s.name === newStatusName)?.folderName;
-      if (!newStageFolder) {
-        toast({ title: "Workflow Error", description: `Folder for status "${newStatusName}" is not defined.`, variant: "destructive" });
-        return;
-      }
-      const bookDirectory = `${storage.root_path}/${newStageFolder}/${book.name}`;
+        if (role === 'scanner') {
+            // This case is handled by handleSendToStorage now
+            return;
+        } else if (role === 'indexing') {
+            newStatusName = STAGE_CONFIG[nextStatusKey || 'indexing-started']?.dataStatus || 'Indexing Started';
+            updates.indexingStartTime = getDbSafeDate();
+            logMsg = 'Indexing Started';
+            appProtocol = 'rfs-indexing-app';
+        } else if (role === 'qc') {
+            newStatusName = STAGE_CONFIG[nextStatusKey || 'checking-started']?.dataStatus || 'Checking Started';
+            updates.qcStartTime = getDbSafeDate();
+            logMsg = 'Checking Started';
+            appProtocol = 'rfs-check-app';
+        }
+        
+        const newStageFolder = statuses.find(s => s.name === newStatusName)?.folderName;
+        if (!newStageFolder) {
+            toast({ title: "Workflow Error", description: `Folder for status "${newStatusName}" is not defined.`, variant: "destructive" });
+            return;
+        }
 
-      const moveResult = await moveBookFolder(book.name, currentStatusName, newStatusName);
-      if (moveResult !== true) return;
+        const project = rawProjects.find(p => p.id === book.projectId);
+        if (!project) {
+             toast({ title: "Project Not Found", description: `Cannot find project for book "${book.name}".`, variant: "destructive" });
+            return;
+        }
+        
+        const bookDirectory = `${storage.root_path}/${newStageFolder}/${project.name}/${scanner.nome}/${book.name}`;
 
-      const updatedBook = await updateBookStatus(bookId, newStatusName, updates);
-      setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
-      
-      logAction(logMsg, `${logMsg} process initiated for book.`, { bookId });
-      toast({ title: logMsg });
+        const moveResult = await moveBookFolder(book.name, currentStatusName, newStatusName);
+        if (moveResult !== true) return;
 
-      if (appProtocol) {
-        openLocalApp(appProtocol, { ...baseArgs, bookDirectory });
-      }
+        const updatedBook = await updateBookStatus(bookId, newStatusName, updates);
+        setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
+        
+        logAction(logMsg, `${logMsg} process initiated for book.`, { bookId });
+        toast({ title: logMsg });
+
+        if (appProtocol) {
+            openLocalApp(appProtocol, { ...baseArgs, bookDirectory });
+        }
     });
-  };
+};
+
 
   const handleCancelTask = (bookId: string, currentStatus: string) => {
     withMutation(async () => {
@@ -1857,6 +1871,7 @@ export function useAppContext() {
 
 
     
+
 
 
 
