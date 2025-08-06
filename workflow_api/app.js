@@ -316,6 +316,90 @@ app.post('/api/scan/complete', async (req, res) => {
     }
 });
 
+// --- NOVOS ENDPOINTS PARA MANIPULAR FLAGS ---
+
+// Função auxiliar para encontrar o documento
+async function findDocumentByImageName(connection, bookId, imageName) {
+    const [documents] = await connection.query(
+        'SELECT id, imageUrl FROM documents WHERE bookId = ?',
+        [bookId]
+    );
+
+    for (const doc of documents) {
+        if (doc.imageUrl && path.basename(doc.imageUrl) === imageName) {
+            return doc.id;
+        }
+    }
+    return null;
+}
+
+// Endpoint para definir/atualizar a flag de um documento
+app.post('/api/documents/flag-by-image', async (req, res) => {
+    const { bookId, imageName, flag, comment } = req.body;
+
+    if (!bookId || !imageName || !flag) {
+        return res.status(400).json({ error: 'Campos bookId, imageName, e flag são obrigatórios.' });
+    }
+    if (!['error', 'warning', 'info'].includes(flag)) {
+        return res.status(400).json({ error: 'O valor da flag é inválido. Use "error", "warning", ou "info".' });
+    }
+
+    let connection;
+    try {
+        connection = await dbPool.getConnection();
+        const documentId = await findDocumentByImageName(connection, bookId, imageName);
+
+        if (!documentId) {
+            return res.status(404).json({ error: 'Documento não encontrado com o bookId e imageName fornecidos.' });
+        }
+
+        await connection.query(
+            'UPDATE documents SET flag = ?, flagComment = ? WHERE id = ?',
+            [flag, comment || null, documentId]
+        );
+
+        res.status(200).json({ message: `Flag do documento '${documentId}' atualizada com sucesso para '${flag}'.` });
+
+    } catch (err) {
+        console.error("Erro ao definir a flag do documento:", err);
+        res.status(500).json({ error: "Erro interno do servidor." });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// Endpoint para limpar a flag de um documento
+app.delete('/api/documents/flag-by-image', async (req, res) => {
+    const { bookId, imageName } = req.body;
+
+    if (!bookId || !imageName) {
+        return res.status(400).json({ error: 'Campos bookId e imageName são obrigatórios.' });
+    }
+
+    let connection;
+    try {
+        connection = await dbPool.getConnection();
+        const documentId = await findDocumentByImageName(connection, bookId, imageName);
+
+        if (!documentId) {
+            return res.status(404).json({ error: 'Documento não encontrado com o bookId e imageName fornecidos.' });
+        }
+
+        await connection.query(
+            'UPDATE documents SET flag = NULL, flagComment = NULL WHERE id = ?',
+            [documentId]
+        );
+
+        res.status(200).json({ message: `Flag do documento '${documentId}' removida com sucesso.` });
+
+    } catch (err) {
+        console.error("Erro ao limpar a flag do documento:", err);
+        res.status(500).json({ error: "Erro interno do servidor." });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
 
 // --- Inicialização do Servidor ---
 async function startServer() {
