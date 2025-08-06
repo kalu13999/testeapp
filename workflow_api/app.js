@@ -256,9 +256,10 @@ app.post('/api/workflow/move', async (req, res) => {
         }
         
         const [logRows] = await connection.query(
-            `SELECT s.root_path 
+            `SELECT s.root_path, sc.nome as scannerName
              FROM log_transferencias lt
              JOIN storages s ON lt.storage_id = s.id
+             JOIN scanners sc ON lt.scanner_id = sc.id
              WHERE lt.nome_pasta = ? AND lt.status = 'sucesso'
              ORDER BY lt.data_fim DESC
              LIMIT 1`,
@@ -271,9 +272,9 @@ app.post('/api/workflow/move', async (req, res) => {
             return res.status(404).json({ error: errorMessage });
         }
 
-        const { root_path } = logRows[0];
-        const sourcePath = path.join(root_path, fromFolder, projectName, bookName);
-        const destinationPath = path.join(root_path, toFolder, projectName, bookName);
+        const { root_path, scannerName } = logRows[0];
+        const sourcePath = path.join(root_path, fromFolder, projectName, scannerName, bookName);
+        const destinationPath = path.join(root_path, toFolder, projectName, scannerName, bookName);
 
         if (!fs.existsSync(sourcePath)) {
             const errorMessage = `A pasta de origem '${sourcePath}' não foi encontrada no storage. O movimento foi abortado.`;
@@ -287,7 +288,6 @@ app.post('/api/workflow/move', async (req, res) => {
             return res.status(200).json({ message: warningMessage });
         }
         
-        // Cria a pasta de destino do projeto se ela não existir
         if (!fs.existsSync(path.dirname(destinationPath))) {
             fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
         }
