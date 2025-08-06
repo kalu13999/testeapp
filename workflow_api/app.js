@@ -192,6 +192,34 @@ app.post('/api/books/byname', async (req, res) => {
   }
 });
 
+app.get('/api/project/bybookname', async (req, res) => {
+    const { bookName } = req.query;
+    if (!bookName) {
+        return res.status(400).json({ error: 'O parâmetro "bookName" é obrigatório.' });
+    }
+
+    try {
+        const [rows] = await dbPool.query(
+            `SELECT p.name as projectName 
+             FROM books b
+             JOIN projects p ON b.projectId = p.id
+             WHERE b.name = ?`,
+            [bookName]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: `Projeto não encontrado para o livro '${bookName}'.` });
+        }
+        
+        return res.json({ projectName: rows[0].projectName });
+
+    } catch (err) {
+        console.error(`Erro ao buscar projeto para o livro '${bookName}':`, err);
+        res.status(500).json({ error: 'Erro interno ao comunicar com a base de dados.' });
+    }
+});
+
+
 app.post('/api/upload/thumbnail', upload.single('thumbnail'), (req, res) => {
     const file = req.file;
     const { originalName, bookName } = req.body;
