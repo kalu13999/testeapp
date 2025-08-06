@@ -1,5 +1,4 @@
 
-
 "use client"
 
 import * as React from "react"
@@ -16,11 +15,13 @@ import {
 import type { EnrichedBook } from "@/lib/data";
 import type { AppDocument, EnrichedAuditLog } from "@/context/workflow-context";
 import { useAppContext } from "@/context/workflow-context";
-import { Info, BookOpen, History, InfoIcon, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
+import { Info, BookOpen, History, InfoIcon, ArrowUp, ArrowDown, ChevronsUpDown, ShieldAlert, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 
 interface BookDetailClientProps {
   bookId: string;
@@ -167,7 +168,7 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
             <div className={`grid gap-4 ${gridClasses[columns] || 'grid-cols-8'}`}>
                 {pages.map(page => (
                     <Link href={`/documents/${page.id}`} key={page.id}>
-                        <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+                        <Card className="overflow-hidden hover:shadow-lg transition-shadow relative border-2 border-transparent group-hover:border-primary">
                             <CardContent className="p-0">
                                 <Image
                                     src={page.imageUrl || "https://placehold.co/400x550.png"}
@@ -177,9 +178,35 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
                                     height={550}
                                     className="aspect-[4/5.5] object-cover w-full h-full"
                                 />
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <div className="absolute inset-0">
+                                                {page.flag === 'error' && <div className="absolute inset-0 bg-destructive/20 border-2 border-destructive"></div>}
+                                                {page.flag === 'warning' && <div className="absolute inset-0 bg-orange-500/20 border-2 border-orange-500"></div>}
+                                            </div>
+                                        </TooltipTrigger>
+                                        {page.flagComment && <TooltipContent><p>{page.flagComment}</p></TooltipContent>}
+                                    </Tooltip>
+                                </TooltipProvider>
                             </CardContent>
-                             <CardFooter className="p-2">
-                                <p className="text-xs font-medium break-words">{page.name}</p>
+                             <CardFooter className="p-2 flex-col items-start gap-1">
+                                <p className="text-xs font-medium whitespace-pre-wrap">{page.name}</p>
+                                {page.flag && page.flagComment && (
+                                    <div className="flex items-start gap-1.5 text-xs w-full text-muted-foreground">
+                                        {page.flag === 'error' && <ShieldAlert className="h-3 w-3 mt-0.5 flex-shrink-0 text-destructive"/>}
+                                        {page.flag === 'warning' && <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0 text-orange-500"/>}
+                                        {page.flag === 'info' && <Info className="h-3 w-3 mt-0.5 flex-shrink-0 text-primary"/>}
+                                        <p className="break-words">{page.flagComment}</p>
+                                    </div>
+                                )}
+                                {page.tags && page.tags.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 pt-1">
+                                        {page.tags.map(tag => (
+                                            <Badge key={tag} variant={'outline'} className="text-xs">{tag}</Badge>
+                                        ))}
+                                    </div>
+                                )}
                             </CardFooter>
                         </Card>
                     </Link>
@@ -267,4 +294,3 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
       </div>
     </div>
   )
-}
