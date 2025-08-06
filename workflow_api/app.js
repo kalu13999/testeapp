@@ -1,4 +1,5 @@
 
+
 const express = require('express');
 const mysql = require('mysql2/promise');
 const fs = require('fs');
@@ -227,7 +228,7 @@ app.post('/api/workflow/move', async (req, res) => {
         connection = await dbPool.getConnection();
         
         const [bookDetailsRows] = await connection.query(
-            `SELECT b.projectId, p.name as projectName 
+            `SELECT p.name as projectName 
              FROM books b
              JOIN projects p ON b.projectId = p.id
              WHERE b.name = ?`,
@@ -275,25 +276,11 @@ app.post('/api/workflow/move', async (req, res) => {
         const destinationPath = path.join(root_path, toFolder, projectName, bookName);
 
         if (!fs.existsSync(sourcePath)) {
-            // Tenta o caminho antigo para retrocompatibilidade
-            const oldSourcePath = path.join(root_path, fromFolder, bookName);
-            if (fs.existsSync(oldSourcePath)) {
-                 console.warn(`Aviso: A pasta foi encontrada no caminho antigo sem a pasta do projeto: ${oldSourcePath}. A usar este caminho como origem.`);
-                 // Cria a pasta de destino do projeto se ela não existir
-                 if (!fs.existsSync(path.dirname(destinationPath))) {
-                    fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
-                 }
-                 fs.renameSync(oldSourcePath, destinationPath);
-                 console.log(`Pasta '${bookName}' movida de '${oldSourcePath}' para '${destinationPath}'.`);
-                 return res.status(200).json({ message: `Pasta '${bookName}' movida com sucesso para a nova estrutura de projeto.` });
-            } else {
-                 const errorMessage = `A pasta de origem '${sourcePath}' (e a versão antiga) não foi encontrada no storage. O movimento foi abortado.`;
-                 console.error(errorMessage);
-                 return res.status(404).json({ error: errorMessage });
-            }
+            const errorMessage = `A pasta de origem '${sourcePath}' não foi encontrada no storage. O movimento foi abortado.`;
+            console.error(errorMessage);
+            return res.status(404).json({ error: errorMessage });
         }
         
-        // Se a pasta de destino já existir, não faz nada para evitar erros.
         if (fs.existsSync(destinationPath)) {
             const warningMessage = `A pasta de destino '${destinationPath}' já existe. A pasta de origem não será movida para evitar sobreposição.`;
             console.warn(warningMessage);
