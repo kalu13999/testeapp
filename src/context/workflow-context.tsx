@@ -1379,7 +1379,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     withMutation(async () => {
         const book = rawBooks.find(b => b.id === bookId);
         if (!book || !book.projectId || !currentUser) return;
-
+        
         if (role === 'scanner') {
             const updatedBook = await updateBookStatus(bookId, 'Scanning Started', { scanStartTime: getDbSafeDate() });
             setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
@@ -1534,6 +1534,10 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
   const startProcessingBatch = async (bookIds: string[]) => {
     await withMutation(async () => {
+      if (!currentUser) {
+        toast({ title: "Error", description: "Current user not found.", variant: "destructive" });
+        return;
+      }
       try {
         const fromStatusName = 'Ready for Processing';
         const toStatusName = 'In Processing';
@@ -1565,6 +1569,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         logAction('Processing Batch Started', `Batch ${newBatch.id} started with ${bookIds.length} books.`, {});
         await logProcessingEvent(newBatch.id, `Batch ${newBatch.id} started with ${bookIds.length} books.`);
         toast({ title: "Processing Batch Started" });
+        
+        // Open local application
+        openLocalApp('rfs-processa-app', {
+          batchId: newBatch.id,
+          userId: currentUser.id,
+          batchName: newBatch.timestampStr,
+        });
+
       } catch (error: any) {
         console.error(error);
         toast({ title: "Error", description: error.message || "Could not start processing batch.", variant: "destructive" });
@@ -1878,6 +1890,7 @@ export function useAppContext() {
 
 
     
+
 
 
 
