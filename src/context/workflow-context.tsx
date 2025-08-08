@@ -1380,6 +1380,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         const book = rawBooks.find(b => b.id === bookId);
         if (!book || !book.projectId || !currentUser) return;
 
+        if (role === 'scanner') {
+            const updatedBook = await updateBookStatus(bookId, 'Scanning Started', { scanStartTime: getDbSafeDate() });
+            setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
+            logAction('Scanning Started', `Scanning process initiated for book.`, { bookId });
+            toast({ title: "Scanning Started" });
+            return;
+        }
+
         const log = transferLogs.find(l => l.bookId === bookId && l.status === 'sucesso');
         if (!log) {
             toast({ title: "Transfer Log Not Found", description: `Cannot find a successful transfer log for book "${book.name}".`, variant: "destructive" });
@@ -1870,6 +1878,7 @@ export function useAppContext() {
 
 
     
+
 
 
 
