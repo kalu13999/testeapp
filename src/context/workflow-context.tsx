@@ -130,7 +130,7 @@ type AppContextType = {
   handleStartTask: (bookId: string, role: 'scanner' | 'indexing' | 'qc') => void;
   handleCancelTask: (bookId: string, currentStatus: string) => void;
   handleAdminStatusOverride: (bookId: string, newStatusName: string, reason: string) => void;
-  startProcessingBatch: (bookIds: string[]) => void;
+  startProcessingBatch: (bookIds: string[], storageId: string) => void;
   completeProcessingBatch: (batchId: string) => void;
   handleSendBatchToNextStage: (batchIds: string[]) => void;
   setProvisionalDeliveryStatus: (deliveryItemId: string, bookId: string, status: 'approved' | 'rejected', reason?: string) => Promise<void>;
@@ -1377,91 +1377,91 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
   const handleStartTask = (bookId: string, role: 'scanner' | 'indexing' | 'qc') => {
     withMutation(async () => {
-        const book = rawBooks.find(b => b.id === bookId);
-        if (!book || !book.projectId || !currentUser) return;
-        
-        if (role === 'scanner') {
-            const updatedBook = await updateBookStatus(bookId, 'Scanning Started', { scanStartTime: getDbSafeDate() });
-            setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
-            logAction('Scanning Started', `Scanning process initiated for book.`, { bookId });
-            toast({ title: "Scanning Started" });
-            return;
-        }
-
-        const log = transferLogs.find(l => l.bookId === bookId && l.status === 'sucesso');
-        if (!log) {
-            toast({ title: "Transfer Log Not Found", description: `Cannot find a successful transfer log for book "${book.name}".`, variant: "destructive" });
-            return;
-        }
-
-        const storage = storages.find(s => s.id === Number(log.storage_id));
-        if (!storage) {
-            toast({ title: "Storage Not Found", description: `Cannot find storage with ID ${log.storage_id}.`, variant: "destructive" });
-            return;
-        }
-        
-        const scanner = scanners.find(s => s.id === Number(log.scanner_id));
-        if (!scanner) {
-            toast({ title: "Scanner Not Found", description: `Cannot find scanner with ID ${log.scanner_id}.`, variant: "destructive" });
-            return;
-        }
-
-        const workflow = projectWorkflows[book.projectId] || [];
-        const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
-        if (!currentStatusName) return;
-        const currentStageKey = findStageKeyFromStatus(currentStatusName);
-        if (!currentStageKey) return;
-        const nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
-        if (!nextStatusKey) return;
-
-        const newStatusName = STAGE_CONFIG[nextStatusKey]?.dataStatus || 'Unknown';
-        if(newStatusName === 'Unknown') return;
-        
-        const newStageFolder = statuses.find(s => s.name === newStatusName)?.folderName;
-        if (!newStageFolder) {
-            toast({ title: "Workflow Error", description: `Folder for status "${newStatusName}" is not defined.`, variant: "destructive" });
-            return;
-        }
-
-        const project = rawProjects.find(p => p.id === book.projectId);
-        if (!project) {
-             toast({ title: "Project Not Found", description: `Cannot find project for book "${book.name}".`, variant: "destructive" });
-            return;
-        }
-
-        const moveResult = await moveBookFolder(book.name, currentStatusName, newStatusName);
-        if (moveResult !== true) return;
-
-        let logMsg = '', updates: Partial<RawBook> = {}, appProtocol = '', bookDirectory = '';
-        
-        const baseArgs = {
-            userId: currentUser.id,
-            bookId: book.id,
-        };
-
-        if (role === 'indexing') {
-            updates.indexingStartTime = getDbSafeDate();
-            logMsg = 'Indexing Started';
-            appProtocol = 'rfs-indexing-app';
-            bookDirectory = `${storage.root_path}/${newStageFolder}/${project.name}/${book.name}`;
-        } else if (role === 'qc') {
-            updates.qcStartTime = getDbSafeDate();
-            logMsg = 'Checking Started';
-            appProtocol = 'rfs-check-app';
-            bookDirectory = `${storage.root_path}/${newStageFolder}/${project.name}/${scanner.nome}/${book.name}`;
-        }
-        
-        const updatedBook = await updateBookStatus(bookId, newStatusName, updates);
+      const book = rawBooks.find(b => b.id === bookId);
+      if (!book || !book.projectId || !currentUser) return;
+  
+      if (role === 'scanner') {
+        const updatedBook = await updateBookStatus(bookId, 'Scanning Started', { scanStartTime: getDbSafeDate() });
         setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
-        
-        logAction(logMsg, `${logMsg} process initiated for book.`, { bookId });
-        toast({ title: logMsg });
-
-        if (appProtocol) {
-            openLocalApp(appProtocol, { ...baseArgs, bookDirectory });
-        }
+        logAction('Scanning Started', `Scanning process initiated for book.`, { bookId });
+        toast({ title: "Scanning Started" });
+        return;
+      }
+  
+      const log = transferLogs.find(l => l.bookId === bookId && l.status === 'sucesso');
+      if (!log) {
+        toast({ title: "Transfer Log Not Found", description: `Cannot find a successful transfer log for book "${book.name}".`, variant: "destructive" });
+        return;
+      }
+  
+      const storage = storages.find(s => s.id === Number(log.storage_id));
+      if (!storage) {
+        toast({ title: "Storage Not Found", description: `Cannot find storage with ID ${log.storage_id}.`, variant: "destructive" });
+        return;
+      }
+      
+      const scanner = scanners.find(s => s.id === Number(log.scanner_id));
+      if (!scanner) {
+        toast({ title: "Scanner Not Found", description: `Cannot find scanner with ID ${log.scanner_id}.`, variant: "destructive" });
+        return;
+      }
+  
+      const workflow = projectWorkflows[book.projectId] || [];
+      const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
+      if (!currentStatusName) return;
+      const currentStageKey = findStageKeyFromStatus(currentStatusName);
+      if (!currentStageKey) return;
+      const nextStatusKey = getNextEnabledStage(currentStageKey, workflow);
+      if (!nextStatusKey) return;
+  
+      const newStatusName = STAGE_CONFIG[nextStatusKey]?.dataStatus || 'Unknown';
+      if(newStatusName === 'Unknown') return;
+      
+      const newStageFolder = statuses.find(s => s.name === newStatusName)?.folderName;
+      if (!newStageFolder) {
+        toast({ title: "Workflow Error", description: `Folder for status "${newStatusName}" is not defined.`, variant: "destructive" });
+        return;
+      }
+  
+      const project = rawProjects.find(p => p.id === book.projectId);
+      if (!project) {
+           toast({ title: "Project Not Found", description: `Cannot find project for book "${book.name}".`, variant: "destructive" });
+          return;
+      }
+  
+      const moveResult = await moveBookFolder(book.name, currentStatusName, newStatusName);
+      if (moveResult !== true) return;
+  
+      let logMsg = '', updates: Partial<RawBook> = {}, appProtocol = '', bookDirectory = '';
+      
+      const baseArgs = {
+          userId: currentUser.id,
+          bookId: book.id,
+      };
+  
+      if (role === 'indexing') {
+          updates.indexingStartTime = getDbSafeDate();
+          logMsg = 'Indexing Started';
+          appProtocol = 'rfs-indexing-app';
+          bookDirectory = `${storage.root_path}/${newStageFolder}/${project.name}/${book.name}`;
+      } else if (role === 'qc') {
+          updates.qcStartTime = getDbSafeDate();
+          logMsg = 'Checking Started';
+          appProtocol = 'rfs-check-app';
+          bookDirectory = `${storage.root_path}/${newStageFolder}/${project.name}/${scanner.nome}/${book.name}`;
+      }
+      
+      const updatedBook = await updateBookStatus(bookId, newStatusName, updates);
+      setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
+      
+      logAction(logMsg, `${logMsg} process initiated for book.`, { bookId });
+      toast({ title: logMsg });
+  
+      if (appProtocol) {
+          openLocalApp(appProtocol, { ...baseArgs, bookDirectory });
+      }
     });
-};
+  };
 
 
   const handleCancelTask = (bookId: string, currentStatus: string) => {
@@ -1532,7 +1532,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     }
   }, []);
 
-  const startProcessingBatch = async (bookIds: string[]) => {
+  const startProcessingBatch = async (bookIds: string[], storageId: string) => {
     await withMutation(async () => {
       if (!currentUser) {
         toast({ title: "Error", description: "Current user not found.", variant: "destructive" });
@@ -1575,6 +1575,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
           batchId: newBatch.id,
           userId: currentUser.id,
           batchName: newBatch.timestampStr,
+          storageId: storageId,
         });
 
       } catch (error: any) {
@@ -1890,6 +1891,7 @@ export function useAppContext() {
 
 
     
+
 
 
 

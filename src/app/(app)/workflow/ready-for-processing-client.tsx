@@ -3,6 +3,8 @@
 "use client"
 
 import * as React from "react"
+import * as XLSX from 'xlsx';
+import Link from "next/link";
 import {
   Table,
   TableBody,
@@ -24,11 +26,12 @@ import { PlusCircle, X, ListPlus, PlayCircle, BookOpen, ChevronsUpDown, ArrowUp,
 import { useAppContext } from "@/context/workflow-context"
 import type { EnrichedBook } from "@/lib/data"
 import { Input } from "@/components/ui/input"
-import Link from "next/link"
 import { AnimatePresence, motion } from "framer-motion"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 interface ReadyForProcessingClientProps {
   stage: string;
@@ -155,7 +158,7 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
 
   const handleStartProcess = () => {
     if (!selectedStorageId) return;
-    startProcessingBatch(selection);
+    startProcessingBatch(selection, selectedStorageId);
     setSelectionByStorage(prev => ({ ...prev, [selectedStorageId]: [] }));
     setMultiSelection([]);
   }
@@ -324,7 +327,7 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <ListPlus className="h-5 w-5"/>
-                            Processing Batch
+                            New Processing Batch
                         </CardTitle>
                         <CardDescription>
                             {selection.length} book(s) selected for processing.
