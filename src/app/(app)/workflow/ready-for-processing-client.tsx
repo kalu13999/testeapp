@@ -174,10 +174,11 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
   }
 
   const toggleAllMultiSelection = () => {
-    if (multiSelection.length === availableBooks.filter(b => !selection.includes(b.id)).length) {
+    const availableForMulti = availableBooks.filter(b => !selection.includes(b.id));
+    if (multiSelection.length === availableForMulti.length) {
       setMultiSelection([]);
     } else {
-      setMultiSelection(availableBooks.filter(b => !selection.includes(b.id)).map(b => b.id));
+      setMultiSelection(availableForMulti.map(b => b.id));
     }
   }
   
@@ -216,7 +217,7 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
                   </SelectTrigger>
                   <SelectContent>
                       {storages.map(storage => (
-                          <SelectItem key={storage.id} value={storage.id}>{storage.nome}</SelectItem>
+                          <SelectItem key={storage.id} value={String(storage.id)}>{storage.nome}</SelectItem>
                       ))}
                   </SelectContent>
               </Select>
@@ -248,7 +249,7 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
                      <TableHead>
                         <Input placeholder="Filter by project..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/>
                     </TableHead>
-                     <TableHead>
+                    <TableHead>
                         <Input placeholder="Filter by storage..." value={columnFilters['storageName'] || ''} onChange={(e) => handleColumnFilterChange('storageName', e.target.value)} className="h-8"/>
                     </TableHead>
                     <TableHead className="text-right">
