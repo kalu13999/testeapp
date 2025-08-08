@@ -22,7 +22,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { PlusCircle, X, ListPlus, PlayCircle, BookOpen, ChevronsUpDown, ArrowUp, ArrowDown } from "lucide-react"
+import { PlusCircle, X, ListPlus, PlayCircle, BookOpen, ChevronsUpDown, ArrowUp, ArrowDown, Send } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import type { EnrichedBook } from "@/lib/data"
 import { Input } from "@/components/ui/input"
@@ -60,7 +60,7 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
 
   React.useEffect(() => {
     if (storages.length > 0 && !selectedStorageId) {
-      setSelectedStorageId(storages[0].id);
+      setSelectedStorageId(String(storages[0].id));
     }
   }, [storages, selectedStorageId]);
 
@@ -96,9 +96,14 @@ export default function ReadyForProcessingClient({ config }: ReadyForProcessingC
     let baseBooks = books.filter(book => book.status === config.dataStatus);
     
     if (selectedStorageId) {
-      baseBooks = baseBooks.filter(book => book.storageName === storages.find(s => s.id === selectedStorageId)?.nome);
+        const selectedStorage = storages.find(s => s.id === Number(selectedStorageId));
+        if (selectedStorage) {
+            baseBooks = baseBooks.filter(book => book.storageName === selectedStorage.nome);
+        } else {
+            return []; // No valid storage selected, show no books
+        }
     } else {
-      return [];
+        return []; // Nothing selected, show nothing
     }
     
     if (selectedProjectId) {
