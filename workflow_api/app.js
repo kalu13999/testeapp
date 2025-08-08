@@ -606,7 +606,9 @@ app.get('/api/processing-batches/:id/details', async (req, res) => {
         }
 
         const [itemRows] = await connection.query(
-            `SELECT b.id, b.name, b.expectedDocuments, p.name as projectName
+            `SELECT 
+                b.id, b.name, b.expectedDocuments, p.name as projectName,
+                pbi.status, pbi.itemStartTime, pbi.itemEndTime
              FROM processing_batch_items pbi
              JOIN books b ON pbi.bookId = b.id
              JOIN projects p ON b.projectId = p.id
