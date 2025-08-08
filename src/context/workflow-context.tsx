@@ -1577,11 +1577,11 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         }
 
         openLocalApp('rfs-processa-app', {
-          user_id: currentUser.id,
-          batch_id: newBatch.id,
-          batch_name_decoded: newBatch.timestampStr,
-          storage_id: storageId,
-          root_path: storage.root_path,
+          userId: currentUser.id,
+          batchId: newBatch.id,
+          batchName: newBatch.timestampStr,
+          storageId: storageId,
+          rootPath: storage.root_path,
         });
 
       } catch (error: any) {
