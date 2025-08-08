@@ -115,6 +115,23 @@ app.get('/api/storages', async (req, res) => {
     }
 });
 
+app.get('/api/storages/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const [rows] = await dbPool.query(
+            "SELECT * FROM storages WHERE id = ?",
+            [id]
+        );
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Storage não encontrado.' });
+        }
+        res.json(rows[0]);
+    } catch (err) {
+        console.error(`Erro ao buscar storage ${id}:`, err);
+        res.status(500).json({ error: 'Erro interno ao buscar storage.' });
+    }
+});
+
 app.get('/api/storages/stats', async (req, res) => {
     try {
         const today = new Date().toISOString().slice(0, 10);
@@ -573,6 +590,43 @@ app.delete('/api/documents/:id/tags', async (req, res) => {
     }
 });
 
+app.get('/api/processing-batches/:id/details', async (req, res) => {
+    const { id } = req.params;
+    let connection;
+    try {
+        connection = await dbPool.getConnection();
+        
+        const [batchRows] = await connection.query(
+            'SELECT * FROM processing_batches WHERE id = ?',
+            [id]
+        );
+
+        if (batchRows.length === 0) {
+            return res.status(404).json({ error: 'Lote de processamento não encontrado.' });
+        }
+
+        const [itemRows] = await connection.query(
+            `SELECT b.id, b.name, b.expectedDocuments, p.name as projectName
+             FROM processing_batch_items pbi
+             JOIN books b ON pbi.bookId = b.id
+             JOIN projects p ON b.projectId = p.id
+             WHERE pbi.batchId = ?`,
+            [id]
+        );
+
+        const response = {
+            batch: batchRows[0],
+            books: itemRows
+        };
+        
+        res.json(response);
+    } catch (err) {
+        console.error(`Erro ao buscar detalhes do lote ${id}:`, err);
+        res.status(500).json({ error: 'Erro interno ao buscar detalhes do lote.' });
+    } finally {
+        if (connection) connection.release();
+    }
+});
 
 // --- Inicialização do Servidor ---
 async function startServer() {
