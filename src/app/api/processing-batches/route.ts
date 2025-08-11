@@ -31,7 +31,15 @@ export async function POST(request: Request) {
 
         const now = new Date();
         const startTime = now.toISOString().slice(0, 19).replace('T', ' ');
-        const timestampStr = now.toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'});
+        
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const day = now.getDate().toString().padStart(2, '0');
+        const month = monthNames[now.getMonth()];
+        const year = now.getFullYear();
+        const hours = now.getHours().toString().padStart(2, '0');
+        const minutes = now.getMinutes().toString().padStart(2, '0');
+        const seconds = now.getSeconds().toString().padStart(2, '0');
+        const timestampStr = `${day}-${month}-${year} (${hours}h-${minutes}min-${seconds}sec)`;
         
         const newBatch = {
             id: `batch_${Date.now()}`,
@@ -39,7 +47,7 @@ export async function POST(request: Request) {
             endTime: null,
             status: 'In Progress',
             progress: 0,
-            timestampStr: `Process started on ${timestampStr}`,
+            timestampStr: timestampStr,
             info: `${bookIds.length} books added to the batch.`,
             obs: null
         };
