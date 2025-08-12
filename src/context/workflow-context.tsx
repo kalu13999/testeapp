@@ -636,9 +636,24 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   
   const updateUserDefaultProject = (userId: string, projectId: string | null) => {
     withMutation(async () => {
-      const user = users.find(u => u.id === userId);
-      if (!user) return;
-      updateUser(userId, { defaultProjectId: projectId === null ? undefined : projectId });
+      try {
+        const response = await fetch(`/api/users/${userId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ defaultProjectId: projectId }),
+        });
+        if (!response.ok) throw new Error("Failed to update user's default project.");
+        const updatedUser = await response.json();
+        setUsers(prev => prev.map(u => u.id === userId ? updatedUser : u));
+        if (currentUser?.id === userId) {
+          setCurrentUser(updatedUser);
+        }
+        logAction('Default Project Set', `Default project for user ${updatedUser.name} set.`, {});
+        toast({ title: "Default Project Updated" });
+      } catch (error: any) {
+        console.error(error);
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+      }
     });
   };
   
@@ -1897,6 +1912,7 @@ export function useAppContext() {
 
 
     
+
 
 
 
