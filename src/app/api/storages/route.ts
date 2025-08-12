@@ -1,7 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import { getConnection, releaseConnection } from '@/lib/db';
-import type { PoolConnection } from 'mysql2/promise';
+import type { PoolConnection, ResultSetHeader } from 'mysql2/promise';
 
 export async function GET() {
   let connection: PoolConnection | null = null;
@@ -30,14 +30,14 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
         
-        const newId = `st_${Date.now()}`;
-        const newStorage = { id: newId, ...storageData };
-        
         connection = await getConnection();
-        const query = 'INSERT INTO storages (id, nome, ip, root_path, thumbs_path, percentual_minimo_diario, minimo_diario_fixo, peso, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
-        const values = [newId, nome, ip, root_path, thumbs_path, percentual_minimo_diario, minimo_diario_fixo, peso, status];
+        const query = 'INSERT INTO storages (nome, ip, root_path, thumbs_path, percentual_minimo_diario, minimo_diario_fixo, peso, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
+        const values = [nome, ip, root_path, thumbs_path, percentual_minimo_diario, minimo_diario_fixo, peso, status];
         
-        await connection.execute(query, values);
+        const [result] = await connection.execute<ResultSetHeader>(query, values);
+        const newId = result.insertId;
+
+        const newStorage = { id: newId, ...storageData };
         
         releaseConnection(connection);
         return NextResponse.json(newStorage, { status: 201 });
