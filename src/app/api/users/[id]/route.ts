@@ -34,16 +34,17 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     await connection.beginTransaction();
 
     const updateFields: { [key: string]: any } = {};
-    if (name) updateFields.name = name;
-    if (email) updateFields.email = email;
-    if (username) updateFields.username = username;
+    if (name !== undefined) updateFields.name = name;
+    if (email !== undefined) updateFields.email = email;
+    if (username !== undefined) updateFields.username = username;
     if (password) updateFields.password = password;
-    if (role) updateFields.role = role;
-    if (phone) updateFields.phone = phone;
-    if (jobTitle) updateFields.jobTitle = jobTitle;
-    if (department) updateFields.department = department;
+    if (role !== undefined) updateFields.role = role;
+    if (phone !== undefined) updateFields.phone = phone;
+    if (jobTitle !== undefined) updateFields.jobTitle = jobTitle;
+    if (department !== undefined) updateFields.department = department;
     if (info !== undefined) updateFields.info = info;
     if (clientId !== undefined) updateFields.clientId = role === 'Client' ? clientId : null;
+    if (userData.defaultProjectId !== undefined) updateFields.defaultProjectId = userData.defaultProjectId;
     
     if (Object.keys(updateFields).length > 0) {
       const query = `UPDATE users SET ${Object.keys(updateFields).map(key => `${key} = ?`).join(', ')} WHERE id = ?`;
@@ -52,10 +53,12 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     }
 
     // Always update project associations
-    await connection.execute('DELETE FROM user_projects WHERE userId = ?', [id]);
-    if (projectIds && Array.isArray(projectIds) && projectIds.length > 0 && role && !['Admin', 'Client'].includes(role)) {
-      const projectValues = projectIds.map((projectId: string) => [id, projectId]);
-      await connection.query('INSERT INTO user_projects (userId, projectId) VALUES ?', [projectValues]);
+    if (projectIds !== undefined) {
+      await connection.execute('DELETE FROM user_projects WHERE userId = ?', [id]);
+      if (Array.isArray(projectIds) && projectIds.length > 0 && role && !['Admin', 'Client'].includes(role)) {
+        const projectValues = projectIds.map((projectId: string) => [id, projectId]);
+        await connection.query('INSERT INTO user_projects (userId, projectId) VALUES ?', [projectValues]);
+      }
     }
     
     await connection.commit();

@@ -80,7 +80,7 @@ type AppContextType = {
 
   // User Actions
   addUser: (userData: UserFormValues) => Promise<void>;
-  updateUser: (userId: string, userData: Partial<UserFormValues>) => Promise<void>;
+  updateUser: (userId: string, userData: Partial<User>) => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
   toggleUserStatus: (userId: string) => Promise<void>;
   updateUserDefaultProject: (userId: string, projectId: string | null) => void;
@@ -574,7 +574,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     });
   };
 
-  const updateUser = async (userId: string, userData: Partial<UserFormValues>) => {
+  const updateUser = async (userId: string, userData: Partial<User>) => {
     await withMutation(async () => {
       try {
           const response = await fetch(`/api/users/${userId}`, {
@@ -638,7 +638,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     withMutation(async () => {
       const user = users.find(u => u.id === userId);
       if (!user) return;
-      updateUser(userId, { defaultProjectId: projectId || undefined });
+      updateUser(userId, { defaultProjectId: projectId === null ? undefined : projectId });
     });
   };
   
@@ -1897,6 +1897,7 @@ export function useAppContext() {
 
 
     
+
 
 
 
