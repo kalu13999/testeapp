@@ -113,7 +113,7 @@ export function ProjectStorageAssociationForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Storage</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isEditing}>
+                <Select onValueChange={field.onChange} value={field.value} disabled={isEditing}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Select a storage location" />
@@ -121,7 +121,7 @@ export function ProjectStorageAssociationForm({
                   </FormControl>
                   <SelectContent>
                     {storages.map(storage => (
-                      <SelectItem key={storage.id} value={storage.id}>
+                      <SelectItem key={storage.id} value={String(storage.id)}>
                         {storage.nome}
                       </SelectItem>
                     ))}
