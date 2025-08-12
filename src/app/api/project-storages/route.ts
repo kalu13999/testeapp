@@ -44,7 +44,7 @@ export async function POST(request: Request) {
         await connection.execute(query, values);
         
         releaseConnection(connection);
-        return NextResponse.json({ ...associationData }, { status: 201 });
+        return NextResponse.json({ ...associationData, storageId: Number(associationData.storageId) }, { status: 201 });
     } catch (error) {
         console.error("Error creating project_storage association:", error);
         return NextResponse.json({ error: 'Failed to create association' }, { status: 500 });
