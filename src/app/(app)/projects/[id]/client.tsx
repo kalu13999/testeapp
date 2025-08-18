@@ -348,13 +348,19 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                  {project.description && (
                   <>
                     <Separator className="my-4"/>
-                    <DetailItem label="Description" value={<p className="text-sm font-normal text-foreground">{project.description}</p>} />
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm text-muted-foreground">Description</p>
+                      <div className="font-medium text-sm">{project.description}</div>
+                    </div>
                   </>
                 )}
                  {project.info && (
                   <>
                     <Separator className="my-4"/>
-                    <DetailItem label="Additional Info" value={<p className="text-sm font-normal text-foreground whitespace-pre-wrap">{project.info}</p>} />
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm text-muted-foreground">Additional Info</p>
+                      <div className="font-medium text-sm whitespace-pre-wrap">{project.info}</div>
+                    </div>
                   </>
                 )}
             </CardContent>

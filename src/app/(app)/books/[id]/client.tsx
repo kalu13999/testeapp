@@ -28,7 +28,7 @@ interface BookDetailClientProps {
 }
 
 const DetailItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
-  <div>
+  <div className="flex flex-col space-y-1">
     <p className="text-sm text-muted-foreground">{label}</p>
     <div className="font-medium">{value}</div>
   </div>
@@ -242,7 +242,7 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
                   <DetailItem label="Scanned Pages" value={book.documentCount} />
                   <Separator />
                   <DetailItem label="Storage" value={book.storageName || '—'} />
-                  <DetailItem label="Scanner (Device)" value={book.scannerName || '—'} />
+                  <DetailItem label="Scanner (Device)" value={book.scannerDeviceName || '—'} />
             </CardContent>
         </Card>
         

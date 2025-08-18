@@ -2,7 +2,7 @@
 
 "use client"
 
-import * as React from "react";
+import * as React from "react"
 import * as XLSX from 'xlsx';
 import Link from "next/link";
 import {
@@ -12,8 +12,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+} from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
 import {
   Card,
   CardContent,
@@ -25,8 +25,8 @@ import {
 import { useAppContext } from "@/context/workflow-context";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Info, CheckCircle2, XCircle, History, ArrowUp, ArrowDown, ChevronsUpDown, Download, MoreHorizontal } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { Input } from "@/components/ui/input"
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -49,7 +49,7 @@ type ValidatedBook = EnrichedBook & {
 const DetailItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
   <div className="grid grid-cols-3 items-center gap-x-4">
     <p className="text-muted-foreground">{label}</p>
-    <p className="col-span-2 font-medium">{value}</p>
+    <div className="col-span-2 font-medium">{value}</div>
   </div>
 );
 
