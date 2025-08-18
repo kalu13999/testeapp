@@ -293,18 +293,24 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const handleSort = (columnId: string, isShift: boolean) => {
     setSorting(currentSorting => {
         const existingSortIndex = currentSorting.findIndex(s => s.id === columnId);
+
         if (isShift) {
             let newSorting = [...currentSorting];
             if (existingSortIndex > -1) {
-                if (newSorting[existingSortIndex].desc) { newSorting.splice(existingSortIndex, 1); } 
-                else { newSorting[existingSortIndex].desc = true; }
+                if (newSorting[existingSortIndex].desc) {
+                    newSorting.splice(existingSortIndex, 1);
+                } else {
+                    newSorting[existingSortIndex].desc = true;
+                }
             } else {
                 newSorting.push({ id: columnId, desc: false });
             }
             return newSorting;
         } else {
             if (currentSorting.length === 1 && currentSorting[0].id === columnId) {
-                if (currentSorting[0].desc) { return []; }
+                if (currentSorting[0].desc) {
+                    return [];
+                }
                 return [{ id: columnId, desc: true }];
             }
             return [{ id: columnId, desc: false }];
@@ -315,9 +321,18 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const getSortIndicator = (columnId: string) => {
     const sortIndex = sorting.findIndex(s => s.id === columnId);
     if (sortIndex === -1) return <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-0 group-hover:opacity-50" />;
+    
     const sort = sorting[sortIndex];
     const icon = sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />;
-    return <div className="flex items-center gap-1">{icon}{sorting.length > 1 && (<span className="text-xs font-bold text-muted-foreground">{sortIndex + 1}</span>)}</div>;
+    
+    return (
+        <div className="flex items-center gap-1">
+            {icon}
+            {sorting.length > 1 && (
+                <span className="text-xs font-bold text-muted-foreground">{sortIndex + 1}</span>
+            )}
+        </div>
+    );
   }
   
   const handleClearFilters = () => {
@@ -559,14 +574,24 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     }
 
     if (stage === 'already-received') {
-      const projectWorkflow = projectWorkflows[book.projectId!] || [];
-      const isScanningEnabled = projectWorkflow.includes('to-scan');
-      if (isScanningEnabled) {
-        openAssignmentDialog(book, 'scanner');
-      } else {
-        setScanState({ open: true, book, folderName: null, fileCount: null });
-      }
-      return;
+        const projectWorkflow = projectWorkflows[book.projectId!] || [];
+        const isScanningEnabled = projectWorkflow.includes('to-scan');
+        if (isScanningEnabled) {
+            const userPermissions = currentUser ? permissions[currentUser.role] || [] : [];
+            const canViewAll = userPermissions.includes('/workflow/view-all') || userPermissions.includes('*');
+            const canScan = userPermissions.includes('/workflow/to-scan') || canViewAll;
+
+            if (canViewAll) {
+                openAssignmentDialog(book, 'scanner');
+            } else if (canScan) {
+                handleAssignUser(book.id, currentUser!.id, 'scanner');
+            } else {
+                openAssignmentDialog(book, 'scanner');
+            }
+        } else {
+            setScanState({ open: true, book, folderName: null, fileCount: null });
+        }
+        return;
     }
     
     if (['to-scan', 'to-indexing', 'to-checking'].includes(stage)) {
