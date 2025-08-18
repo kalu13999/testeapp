@@ -821,9 +821,22 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
   const updateRole = (roleName: string, rolePermissions: string[]) => {
     withMutation(async () => {
-      setPermissions(prev => ({...prev, [roleName]: rolePermissions }));
-      logAction('Role Updated', `Permissions for role "${roleName}" were updated.`, {});
-      toast({ title: "Role Updated", description: `Permissions for "${roleName}" have been saved.` });
+      try {
+        const response = await fetch('/api/permissions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ role: roleName, permissions: rolePermissions }),
+        });
+        if (!response.ok) {
+          throw new Error('Failed to save permissions to the database.');
+        }
+        setPermissions(prev => ({ ...prev, [roleName]: rolePermissions }));
+        logAction('Role Updated', `Permissions for role "${roleName}" were updated.`, {});
+        toast({ title: "Role Updated", description: `Permissions for "${roleName}" have been saved.` });
+      } catch (error) {
+        console.error(error);
+        toast({ title: "Error", description: "Could not update role permissions.", variant: "destructive" });
+      }
     });
   };
   
@@ -1912,6 +1925,7 @@ export function useAppContext() {
 
 
     
+
 
 
 
