@@ -792,7 +792,7 @@ const handleMainAction = (book: EnrichedBook) => {
               </Button>
             ) : null}
 
-            {actionDetails && (
+            {canViewAll && actionDetails && (
               <Button size="sm" onClick={() => handleActionClick(item)} disabled={actionDetails.disabled}>
                   <actionDetails.icon className={isProcessing ? "mr-2 h-4 w-4 animate-spin" : "mr-2 h-4 w-4"} />
                   {actionDetails.label}
@@ -868,8 +868,7 @@ const handleMainAction = (book: EnrichedBook) => {
       )}
     </TableRow>
   )
-
-  const PaginationNav = () => {
+    const PaginationNav = () => {
     if (totalPages <= 1) return null;
     const pageNumbers: number[] = [];
     const maxPagesToShow = 5;
