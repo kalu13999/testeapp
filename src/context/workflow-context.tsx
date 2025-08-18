@@ -128,6 +128,7 @@ type AppContextType = {
   handleAssignUser: (bookId: string, userId: string, role: 'scanner' | 'indexer' | 'qc') => void;
   reassignUser: (bookId: string, newUserId: string, role: 'scanner' | 'indexer' | 'qc') => void;
   handleStartTask: (bookId: string, role: 'scanner' | 'indexing' | 'qc') => void;
+  handleCompleteTask: (bookId: string, stage: string) => void;
   handleCancelTask: (bookId: string, currentStatus: string) => void;
   handleAdminStatusOverride: (bookId: string, newStatusName: string, reason: string) => void;
   startProcessingBatch: (bookIds: string[], storageId: string) => void;
@@ -1490,7 +1491,24 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         }
     });
   };
-
+  
+  const handleCompleteTask = async (bookId: string, stage: string) => {
+    await withMutation(async () => {
+      const updateFields: { [key: string]: Partial<RawBook> } = {
+        'Scanning Started': { scanEndTime: getDbSafeDate() },
+        'Indexing Started': { indexingEndTime: getDbSafeDate() },
+        'Checking Started': { qcEndTime: getDbSafeDate() },
+      };
+      
+      const update = updateFields[stage];
+      if (update) {
+        await updateBook(bookId, update);
+        const book = rawBooks.find(b => b.id === bookId);
+        logAction('Task Completed', `Task "${stage}" completed for book "${book?.name}".`, { bookId });
+        toast({ title: 'Task Marked as Complete' });
+      }
+    });
+  };
 
   const handleCancelTask = (bookId: string, currentStatus: string) => {
     withMutation(async () => {
@@ -1904,6 +1922,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     updateDocumentFlag, startProcessingBatch, completeProcessingBatch, handleSendBatchToNextStage,
     handleAssignUser, reassignUser, handleStartTask, handleCancelTask,
     handleAdminStatusOverride, handleCreateDeliveryBatch, finalizeDeliveryBatch,
+    handleCompleteTask,
   };
 
   return (
@@ -1925,6 +1944,7 @@ export function useAppContext() {
 
 
     
+
 
 
 

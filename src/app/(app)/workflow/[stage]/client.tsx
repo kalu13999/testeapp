@@ -156,7 +156,8 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     selectedProjectId, projectWorkflows, handleConfirmReception, getNextEnabledStage,
     handleSendToStorage, processingBookIds,
     handleClientAction, handleFinalize, handleMarkAsCorrected, handleResubmit,
-    addPageToBook, deletePageFromBook, updateDocumentFlag, rejectionTags, tagPageForRejection
+    addPageToBook, deletePageFromBook, updateDocumentFlag, rejectionTags, tagPageForRejection,
+    handleCompleteTask
   } = useAppContext();
 
   const { toast } = useToast();
@@ -611,20 +612,6 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
       });
       return;
     }
-
-    if (stage === 'scanning-started') {
-        setScanState({ open: true, book: book, folderName: null, fileCount: null });
-        return;
-    }
-    
-    if (['indexing-started', 'checking-started'].includes(stage)) {
-        openConfirmationDialog({
-            title: `Confirm: Mark as Complete?`,
-            description: `This will complete the task for "${book.name}" and move it to the next step.`,
-            onConfirm: () => handleMainAction(book)
-        });
-        return;
-    }
     
     if (stage === 'ready-for-processing') {
          openConfirmationDialog({
@@ -762,6 +749,12 @@ const handleMainAction = (book: EnrichedBook) => {
   const renderBookRow = (item: any, index: number) => {
     const actionDetails = getDynamicActionButton(item);
     const isProcessing = processingBookIds.includes(item.id);
+    const book = item as EnrichedBook;
+
+    const hasEndTime = 
+      (stage === 'scanning-started' && !!book.scanEndTime) ||
+      (stage === 'indexing-started' && !!book.indexingEndTime) ||
+      (stage === 'checking-started' && !!book.qcEndTime);
 
     return (
         <TableRow key={item.id} data-state={selection.includes(item.id) && "selected"}>
@@ -787,6 +780,18 @@ const handleMainAction = (book: EnrichedBook) => {
         </TableCell>
         <TableCell>
           <div className="flex items-center justify-end gap-2">
+            {isCancelable && hasEndTime ? (
+              <Badge variant="default" className="bg-green-600 hover:bg-green-600/90">
+                <Check className="mr-2 h-4 w-4" />
+                Task Completed
+              </Badge>
+            ) : isCancelable ? (
+              <Button size="sm" variant="secondary" onClick={() => handleCompleteTask(item.id, item.status)}>
+                <Check className="mr-2 h-4 w-4" />
+                Complete Task
+              </Button>
+            ) : null}
+
             {actionDetails && (
               <Button size="sm" onClick={() => handleActionClick(item)} disabled={actionDetails.disabled}>
                   <actionDetails.icon className={isProcessing ? "mr-2 h-4 w-4 animate-spin" : "mr-2 h-4 w-4"} />
