@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, Check, ScanLine, FileText, FileJson, PlayCircle, Send, UserPlus, CheckCheck, Archive, ThumbsUp, ThumbsDown, Undo2, MoreHorizontal, Loader2, Upload, FileWarning, Download, ArrowUp, ArrowDown, ChevronsUpDown, XCircle } from "lucide-react";
+import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, Check, ScanLine, FileText, FileJson, PlayCircle, Send, UserPlus, CheckCheck, Archive, ThumbsUp, ThumbsDown, Undo2, MoreHorizontal, Loader2, Upload, FileWarning, Download, ArrowUp, ArrowDown, ChevronsUpDown, XCircle, UserPlus2 } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -145,6 +145,7 @@ type GroupedDocuments = {
     pages: AppDocument[];
     hasError: boolean;
     hasWarning: boolean;
+    batchInfo?: { id: string, timestampStr: string };
   };
 };
 
@@ -157,7 +158,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     handleSendToStorage, processingBookIds,
     handleClientAction, handleFinalize, handleMarkAsCorrected, handleResubmit,
     addPageToBook, deletePageFromBook, updateDocumentFlag, rejectionTags, tagPageForRejection,
-    handleCompleteTask
+    handleCompleteTask, handlePullNextTask
   } = useAppContext();
 
   const { toast } = useToast();
@@ -169,6 +170,8 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const [confirmationState, setConfirmationState] = React.useState({ open: false, title: '', description: '', onConfirm: () => {} });
   const [assignState, setAssignState] = React.useState<{ open: boolean; book: EnrichedBook | null; role: AssignmentRole | null }>({ open: false, book: null, role: null });
   const [bulkAssignState, setBulkAssignState] = React.useState<{ open: boolean; role: AssignmentRole | null }>({ open: false, role: null });
+  const [pullTaskState, setPullTaskState] = React.useState<{ open: boolean; stage: string; role: AssignmentRole | null }>({ open: false, stage: '', role: null });
+
   const [selectedUserId, setSelectedUserId] = React.useState<string>("");
   const [selectedBulkUserId, setSelectedBulkUserId] = React.useState<string>("");
   const [detailsState, setDetailsState] = React.useState<{ open: boolean; book?: EnrichedBook }>({ open: false });
@@ -1068,27 +1071,6 @@ const handleMainAction = (book: EnrichedBook) => {
     7: 'grid-cols-7', 8: 'grid-cols-8', 9: 'grid-cols-9', 10: 'grid-cols-10', 11: 'grid-cols-11', 12: 'grid-cols-12'
   };
 
-  const openFlagDialog = (doc: AppDocument, flag: NonNullable<AppDocument['flag']>) => {
-    setFlagDialogState({
-      open: true,
-      docId: doc.id,
-      docName: doc.name,
-      flag: flag,
-      comment: doc.flagComment || '',
-    });
-  };
-
-  const closeFlagDialog = () => {
-    setFlagDialogState({ open: false, docId: null, docName: null, flag: null, comment: '' });
-  };
-
-  const handleFlagSubmit = () => {
-    if (flagDialogState.docId && flagDialogState.flag) {
-      updateDocumentFlag(flagDialogState.docId, flagDialogState.flag, flagDialogState.comment);
-    }
-    closeFlagDialog();
-  };
-
   return (
     <>
      <AlertDialog>
@@ -1099,7 +1081,12 @@ const handleMainAction = (book: EnrichedBook) => {
                     <CardTitle className="font-headline">{config.title}</CardTitle>
                     <CardDescription>{config.description}</CardDescription>
                 </div>
-                <div className="flex items-center gap-2">
+                 <div className="flex items-center gap-2">
+                    {['to-indexing', 'to-checking'].includes(stage) && (
+                      <Button variant="outline" size="sm" onClick={() => canViewAll ? setPullTaskState({open: true, stage, role: config.assigneeRole ?? null}) : handlePullNextTask(stage)}>
+                        <UserPlus2 className="mr-2 h-4 w-4" /> Get Next Task
+                      </Button>
+                    )}
                     {renderBulkActions()}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -1422,6 +1409,40 @@ const handleMainAction = (book: EnrichedBook) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    
+    <Dialog open={pullTaskState.open} onOpenChange={(open) => !open && setPullTaskState({ open: false, stage: '', role: null })}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Get Next Task and Assign</DialogTitle>
+          <DialogDescription>
+            Find the next available book from the previous stage and assign it to a user.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <Label htmlFor="user-select">Assign To</Label>
+          <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+            <SelectTrigger id="user-select">
+              <SelectValue placeholder={`Select a user...`} />
+            </SelectTrigger>
+            <SelectContent>
+              {pullTaskState.role && getAssignableUsers(pullTaskState.role).map(user => (
+                  <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setPullTaskState({ open: false, stage: '', role: null })}>Cancel</Button>
+          <Button onClick={() => {
+            handlePullNextTask(pullTaskState.stage, selectedUserId);
+            setPullTaskState({ open: false, stage: '', role: null });
+            setSelectedUserId('');
+          }} disabled={!selectedUserId}>
+            Assign Task
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     </>
   )
 }

@@ -144,6 +144,7 @@ type AppContextType = {
   addPageToBook: (bookId: string, position: number) => Promise<void>;
   deletePageFromBook: (pageId: string, bookId: string) => Promise<void>;
   updateDocumentFlag: (docId: string, flag: AppDocument['flag'], comment?: string) => Promise<void>;
+  handlePullNextTask: (currentStage: string, userIdToAssign?: string) => Promise<void>;
 };
 
 const AppContext = React.createContext<AppContextType | undefined>(undefined);
@@ -1856,6 +1857,55 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     });
   };
   
+  const handlePullNextTask = React.useCallback(async (currentStageKey: string, userIdToAssign?: string) => {
+    await withMutation(async () => {
+        const assigneeId = userIdToAssign || currentUser?.id;
+        if (!assigneeId) {
+            toast({ title: "Error", description: "No user specified for assignment.", variant: "destructive" });
+            return;
+        }
+
+        const user = users.find(u => u.id === assigneeId);
+        if (!user) {
+            toast({ title: "Error", description: "Assignee not found.", variant: "destructive" });
+            return;
+        }
+        
+        const workflowConfig = STAGE_CONFIG[currentStageKey];
+        if (!workflowConfig || !workflowConfig.assigneeRole) {
+            toast({ title: "Workflow Error", description: "Invalid stage for pulling tasks.", variant: "destructive" });
+            return;
+        }
+
+        const currentIndex = WORKFLOW_SEQUENCE.indexOf(currentStageKey);
+        if (currentIndex === -1 || currentIndex === 0) {
+            toast({ title: "Workflow Error", description: "Cannot pull task from a starting stage.", variant: "destructive" });
+            return;
+        }
+
+        const previousStageKey = WORKFLOW_SEQUENCE[currentIndex - 1];
+        const previousStageStatus = STAGE_CONFIG[previousStageKey]?.dataStatus;
+        if (!previousStageStatus) {
+            toast({ title: "Workflow Error", description: `Previous stage (${previousStageKey}) has no defined status.`, variant: "destructive" });
+            return;
+        }
+
+        let bookToAssign = enrichedBooks.find(b => 
+            b.status === previousStageStatus &&
+            !b[workflowConfig.assigneeRole! + 'UserId' as keyof EnrichedBook] && // Check if not already assigned for the target role
+            (!selectedProjectId || b.projectId === selectedProjectId)
+        );
+
+        if (!bookToAssign) {
+            toast({ title: "No Tasks Available", description: "There are no unassigned books in the previous stage.", variant: "default" });
+            return;
+        }
+
+        handleAssignUser(bookToAssign.id, assigneeId, workflowConfig.assigneeRole);
+        toast({ title: "Task Pulled Successfully", description: `"${bookToAssign.name}" has been assigned to ${user.name}.` });
+    });
+  }, [currentUser, users, enrichedBooks, selectedProjectId, handleAssignUser, toast]);
+
   const scannerUsers = React.useMemo(() => users.filter(user => user.role === 'Scanning'), [users]);
   const indexerUsers = React.useMemo(() => users.filter(user => user.role === 'Indexing'), [users]);
   const qcUsers = React.useMemo(() => users.filter(user => user.role === 'QC Specialist'), [users]);
@@ -1922,7 +1972,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     updateDocumentFlag, startProcessingBatch, completeProcessingBatch, handleSendBatchToNextStage,
     handleAssignUser, reassignUser, handleStartTask, handleCancelTask,
     handleAdminStatusOverride, handleCreateDeliveryBatch, finalizeDeliveryBatch,
-    handleCompleteTask,
+    handleCompleteTask, handlePullNextTask,
   };
 
   return (
@@ -1944,6 +1994,7 @@ export function useAppContext() {
 
 
     
+
 
 
 
