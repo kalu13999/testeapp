@@ -22,11 +22,11 @@ import {
 import { BarChart2, BookCheck, ChevronsUpDown, ArrowUp, ArrowDown, HelpCircle, Save, Info } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import { Input } from "@/components/ui/input"
-import { type ProjectStorage } from "@/lib/data"
+import { type ProjectStorage, type EnrichedBook } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
-import { subDays, format, isSameDay } from 'date-fns'
+import { subDays, format, isSameDay, startOfDay } from 'date-fns'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 
 
@@ -36,7 +36,7 @@ type EditableAssociation = ProjectStorage & {
 }
 
 export default function DistributionHubClient() {
-  const { transferLogs, projectStorages, allProjects, storages, updateProjectStorage } = useAppContext();
+  const { transferLogs, projectStorages, allProjects, storages, updateProjectStorage, selectedProjectId, books } = useAppContext();
   const { toast } = useToast();
 
   const [editableData, setEditableData] = React.useState<EditableAssociation[]>([]);
@@ -45,9 +45,14 @@ export default function DistributionHubClient() {
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([{ id: 'projectName', desc: false }]);
 
   React.useEffect(() => {
-    const enrichedData = (projectStorages || []).map(ps => {
-      const project = (allProjects || []).find(p => p.id === ps.projectId);
-      const storage = (storages || []).find(s => s.id === ps.storageId);
+    let relevantProjectStorages = projectStorages || [];
+    if (selectedProjectId) {
+      relevantProjectStorages = relevantProjectStorages.filter(ps => ps.projectId === selectedProjectId);
+    }
+    
+    const enrichedData = relevantProjectStorages.map(ps => {
+      const project = allProjects.find(p => p.id === ps.projectId);
+      const storage = storages.find(s => s.id === ps.storageId);
       return {
         ...ps,
         projectName: project?.name || 'Unknown Project',
@@ -55,17 +60,26 @@ export default function DistributionHubClient() {
       };
     });
     setEditableData(enrichedData);
-  }, [projectStorages, allProjects, storages]);
+    setDirtyRows(new Set()); // Clear dirty state on project change
+  }, [projectStorages, allProjects, storages, selectedProjectId]);
 
   const productivityStats = React.useMemo(() => {
-    const today = new Date();
-    const logsToday = (transferLogs || []).filter(log => isSameDay(new Date(log.data_fim), today));
+    const projectBookIds = selectedProjectId 
+        ? new Set(books.filter(b => b.projectId === selectedProjectId).map(b => b.id))
+        : null;
+
+    const relevantLogs = (transferLogs || []).filter(log => 
+        !projectBookIds || projectBookIds.has(log.bookId)
+    );
+
+    const today = startOfDay(new Date());
+    const logsToday = relevantLogs.filter(log => isSameDay(new Date(log.data_fim), today));
     
     const pagesToday = logsToday.reduce((sum, log) => sum + log.total_tifs, 0);
     const booksToday = new Set(logsToday.map(log => log.bookId)).size;
 
-    const sevenDaysAgo = subDays(today, 6);
-    const last7DaysLogs = (transferLogs || []).filter(log => new Date(log.data_fim) >= sevenDaysAgo);
+    const sevenDaysAgo = startOfDay(subDays(today, 6));
+    const last7DaysLogs = relevantLogs.filter(log => new Date(log.data_fim) >= sevenDaysAgo);
     
     const pagesByDay = Array.from({ length: 7 }, (_, i) => {
         const day = subDays(today, i);
@@ -77,7 +91,7 @@ export default function DistributionHubClient() {
     }).reverse();
 
     return { pagesToday, booksToday, pagesByDay };
-  }, [transferLogs]);
+  }, [transferLogs, selectedProjectId, books]);
   
   const chartConfig = { pages: { label: "Pages", color: "hsl(var(--primary))" } } satisfies ChartConfig;
 
@@ -167,7 +181,7 @@ export default function DistributionHubClient() {
        <Card>
           <CardHeader>
               <CardTitle>Daily Scanning Productivity (Last 7 Days)</CardTitle>
-              <CardDescription>Total pages scanned per day.</CardDescription>
+              <CardDescription>Total pages scanned per day for the selected scope.</CardDescription>
           </CardHeader>
           <CardContent>
               <ChartContainer config={chartConfig} className="h-[250px] w-full">
@@ -188,7 +202,12 @@ export default function DistributionHubClient() {
                 <div className="flex items-center justify-between">
                     <div>
                         <CardTitle>Distribution Rules</CardTitle>
-                        <CardDescription>Adjust how new books are distributed across storages for each project.</CardDescription>
+                        <CardDescription>
+                            {selectedProjectId 
+                                ? "Adjust distribution rules for the selected project."
+                                : "Adjust global distribution rules. Select a project to see its specific rules."
+                            }
+                        </CardDescription>
                     </div>
                     <Button onClick={handleSaveChanges} disabled={dirtyRows.size === 0}>
                         <Save className="mr-2 h-4 w-4"/>
@@ -213,7 +232,7 @@ export default function DistributionHubClient() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {sortedAndFilteredData.map((item) => (
+                        {sortedAndFilteredData.length > 0 ? sortedAndFilteredData.map((item) => (
                             <TableRow key={`${item.projectId}-${item.storageId}`}>
                                 <TableCell className="font-medium">{item.projectName}</TableCell>
                                 <TableCell>{item.storageName}</TableCell>
@@ -221,7 +240,13 @@ export default function DistributionHubClient() {
                                 <TableCell><Input type="number" value={item.minimo_diario_fixo} onChange={(e) => handleInputChange(item.projectId, item.storageId, 'minimo_diario_fixo', e.target.value)} className="w-24 h-8"/></TableCell>
                                 <TableCell><Input type="number" value={item.percentual_minimo_diario} onChange={(e) => handleInputChange(item.projectId, item.storageId, 'percentual_minimo_diario', e.target.value)} className="w-24 h-8"/></TableCell>
                             </TableRow>
-                        ))}
+                        )) : (
+                           <TableRow>
+                            <TableCell colSpan={5} className="h-24 text-center">
+                                No distribution rules found for the selected project.
+                            </TableCell>
+                           </TableRow>
+                        )}
                     </TableBody>
                 </Table>
             </CardContent>
