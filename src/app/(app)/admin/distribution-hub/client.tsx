@@ -72,18 +72,19 @@ export default function DistributionHubClient() {
         !projectBookIds || projectBookIds.has(log.bookId)
     );
 
-    const today = startOfDay(new Date());
-    const logsToday = relevantLogs.filter(log => isSameDay(new Date(log.data_fim), today));
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const logsToday = relevantLogs.filter(log => format(new Date(log.data_fim), 'yyyy-MM-dd') === todayStr);
     
     const pagesToday = logsToday.reduce((sum, log) => sum + log.total_tifs, 0);
     const booksToday = new Set(logsToday.map(log => log.bookId)).size;
-
-    const sevenDaysAgo = startOfDay(subDays(today, 6));
+    
+    const sevenDaysAgo = startOfDay(subDays(new Date(), 6));
     const last7DaysLogs = relevantLogs.filter(log => new Date(log.data_fim) >= sevenDaysAgo);
     
     const pagesByDay = Array.from({ length: 7 }, (_, i) => {
-        const day = subDays(today, i);
-        const dayLogs = last7DaysLogs.filter(log => isSameDay(new Date(log.data_fim), day));
+        const day = subDays(new Date(), i);
+        const dayStr = format(day, 'yyyy-MM-dd');
+        const dayLogs = last7DaysLogs.filter(log => format(new Date(log.data_fim), 'yyyy-MM-dd') === dayStr);
         return {
             date: format(day, 'MMM d'),
             pages: dayLogs.reduce((sum, log) => sum + log.total_tifs, 0)
