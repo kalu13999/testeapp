@@ -45,6 +45,7 @@ export default function DistributionHubClient() {
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([{ id: 'projectName', desc: false }]);
 
   React.useEffect(() => {
+    if (!allProjects || !storages) return;
     const allProjectStorages = allProjects.flatMap(p => 
         (p.storages || []).map(s => ({
             ...s,
@@ -68,9 +69,11 @@ export default function DistributionHubClient() {
       : allProjects.flatMap(p => p.books);
 
     const completedScans = (relevantBooks || []).filter(book => book.scanEndTime);
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
     
-    const scansToday = completedScans.filter(book => format(new Date(book.scanEndTime!), 'yyyy-MM-dd') === todayStr);
+    const scansToday = completedScans.filter(book => {
+      const scanDate = new Date(book.scanEndTime!);
+      return format(scanDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+    });
     
     const pagesToday = scansToday.reduce((sum, book) => sum + (book.expectedDocuments || 0), 0);
     const booksToday = scansToday.length;
@@ -285,3 +288,5 @@ export default function DistributionHubClient() {
     </div>
   )
 }
+
+    
