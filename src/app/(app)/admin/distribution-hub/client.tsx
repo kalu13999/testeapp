@@ -36,7 +36,7 @@ type EditableAssociation = ProjectStorage & {
 }
 
 export default function DistributionHubClient() {
-  const { transferLogs, projectStorages, allProjects, storages, updateProjectStorage, selectedProjectId, books } = useAppContext();
+  const { allProjects, storages, updateProjectStorage, selectedProjectId } = useAppContext();
   const { toast } = useToast();
 
   const [editableData, setEditableData] = React.useState<EditableAssociation[]>([]);
@@ -45,54 +45,51 @@ export default function DistributionHubClient() {
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([{ id: 'projectName', desc: false }]);
 
   React.useEffect(() => {
-    let relevantProjectStorages = projectStorages || [];
+    const allProjectStorages = allProjects.flatMap(p => 
+        (p.storages || []).map(s => ({
+            ...s,
+            projectName: p.name,
+            storageName: storages.find(st => st.id === s.storageId)?.nome || 'Unknown Storage'
+        }))
+    );
+
+    let relevantProjectStorages = allProjectStorages;
     if (selectedProjectId) {
       relevantProjectStorages = relevantProjectStorages.filter(ps => ps.projectId === selectedProjectId);
     }
     
-    const enrichedData = relevantProjectStorages.map(ps => {
-      const project = allProjects.find(p => p.id === ps.projectId);
-      const storage = storages.find(s => s.id === ps.storageId);
-      return {
-        ...ps,
-        projectName: project?.name || 'Unknown Project',
-        storageName: storage?.nome || 'Unknown Storage',
-      };
-    });
-    setEditableData(enrichedData);
+    setEditableData(relevantProjectStorages);
     setDirtyRows(new Set()); // Clear dirty state on project change
-  }, [projectStorages, allProjects, storages, selectedProjectId]);
-
+  }, [allProjects, storages, selectedProjectId]);
+  
   const productivityStats = React.useMemo(() => {
-    const projectBookIds = selectedProjectId
-      ? new Set(allProjects.find(p => p.id === selectedProjectId)?.books.map(b => b.id))
-      : null;
+    const relevantBooks = selectedProjectId
+      ? allProjects.find(p => p.id === selectedProjectId)?.books || []
+      : allProjects.flatMap(p => p.books);
 
-    const relevantLogs = (transferLogs || []).filter(log =>
-      !projectBookIds || projectBookIds.has(log.bookId)
-    );
-
+    const completedScans = (relevantBooks || []).filter(book => book.scanEndTime);
     const todayStr = format(new Date(), 'yyyy-MM-dd');
-    const logsToday = relevantLogs.filter(log => format(new Date(log.data_fim), 'yyyy-MM-dd') === todayStr);
     
-    const pagesToday = logsToday.reduce((sum, log) => sum + log.total_tifs, 0);
-    const booksToday = new Set(logsToday.map(log => log.bookId)).size;
+    const scansToday = completedScans.filter(book => format(new Date(book.scanEndTime!), 'yyyy-MM-dd') === todayStr);
     
+    const pagesToday = scansToday.reduce((sum, book) => sum + (book.expectedDocuments || 0), 0);
+    const booksToday = scansToday.length;
+
     const sevenDaysAgo = startOfDay(subDays(new Date(), 6));
-    const last7DaysLogs = relevantLogs.filter(log => new Date(log.data_fim) >= sevenDaysAgo);
-    
+    const last7DaysScans = completedScans.filter(book => new Date(book.scanEndTime!) >= sevenDaysAgo);
+
     const pagesByDay = Array.from({ length: 7 }, (_, i) => {
-        const day = subDays(new Date(), i);
-        const dayStr = format(day, 'yyyy-MM-dd');
-        const dayLogs = last7DaysLogs.filter(log => format(new Date(log.data_fim), 'yyyy-MM-dd') === dayStr);
-        return {
-            date: format(day, 'MMM d'),
-            pages: dayLogs.reduce((sum, log) => sum + log.total_tifs, 0)
-        };
+      const day = subDays(new Date(), i);
+      const dayStr = format(day, 'yyyy-MM-dd');
+      const dayScans = last7DaysScans.filter(book => format(new Date(book.scanEndTime!), 'yyyy-MM-dd') === dayStr);
+      return {
+        date: format(day, 'MMM d'),
+        pages: dayScans.reduce((sum, book) => sum + (book.expectedDocuments || 0), 0)
+      };
     }).reverse();
 
     return { pagesToday, booksToday, pagesByDay };
-  }, [transferLogs, selectedProjectId, allProjects]);
+  }, [allProjects, selectedProjectId]);
   
   const chartConfig = { pages: { label: "Pages", color: "hsl(var(--primary))" } } satisfies ChartConfig;
 
@@ -182,7 +179,7 @@ export default function DistributionHubClient() {
        <Card>
           <CardHeader>
               <CardTitle>Daily Scanning Productivity (Last 7 Days)</CardTitle>
-              <CardDescription>Total pages scanned per day for the selected scope.</CardDescription>
+              <CardDescription>Total pages from books that completed the scanning phase per day.</CardDescription>
           </CardHeader>
           <CardContent>
               <ChartContainer config={chartConfig} className="h-[250px] w-full">
