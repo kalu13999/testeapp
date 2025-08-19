@@ -64,12 +64,12 @@ export default function DistributionHubClient() {
   }, [projectStorages, allProjects, storages, selectedProjectId]);
 
   const productivityStats = React.useMemo(() => {
-    const projectBookIds = selectedProjectId 
-        ? new Set(books.filter(b => b.projectId === selectedProjectId).map(b => b.id))
-        : null;
+    const projectBookIds = selectedProjectId
+      ? new Set(allProjects.find(p => p.id === selectedProjectId)?.books.map(b => b.id))
+      : null;
 
-    const relevantLogs = (transferLogs || []).filter(log => 
-        !projectBookIds || projectBookIds.has(log.bookId)
+    const relevantLogs = (transferLogs || []).filter(log =>
+      !projectBookIds || projectBookIds.has(log.bookId)
     );
 
     const todayStr = format(new Date(), 'yyyy-MM-dd');
@@ -92,7 +92,7 @@ export default function DistributionHubClient() {
     }).reverse();
 
     return { pagesToday, booksToday, pagesByDay };
-  }, [transferLogs, selectedProjectId, books]);
+  }, [transferLogs, selectedProjectId, allProjects]);
   
   const chartConfig = { pages: { label: "Pages", color: "hsl(var(--primary))" } } satisfies ChartConfig;
 
