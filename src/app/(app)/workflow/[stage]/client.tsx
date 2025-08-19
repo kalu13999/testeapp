@@ -821,7 +821,7 @@ const handleMainAction = (book: EnrichedBook) => {
               </Button>
             ) : null}
 
-            {actionDetails && (
+            {(canViewAll || !['scanning-started', 'indexing-started', 'checking-started'].includes(stage)) && actionDetails && (
               <Button size="sm" onClick={() => handleActionClick(item)} disabled={actionDetails.disabled}>
                   <actionDetails.icon className={isProcessing ? "mr-2 h-4 w-4 animate-spin" : "mr-2 h-4 w-4"} />
                   {actionDetails.label}
