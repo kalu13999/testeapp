@@ -19,7 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { BarChart2, BookCheck, ChevronsUpDown, ArrowUp, ArrowDown, HelpCircle, Save, Info } from "lucide-react"
+import { BarChart2, BookCheck, ChevronsUpDown, ArrowUp, ArrowDown, HelpCircle, Save, Info, BookUp, FileStack } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import { Input } from "@/components/ui/input"
 import { type ProjectStorage, type EnrichedBook } from "@/lib/data"
@@ -28,11 +28,22 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Toolti
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { subDays, format, isSameDay, startOfDay } from 'date-fns'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import Link from "next/link"
+import { Badge } from "@/components/ui/badge"
 
 type EditableAssociation = ProjectStorage & {
   projectName: string;
   storageName: string;
+}
+
+const getStatusBadgeVariant = (status: string) => {
+    switch (status) {
+        case 'Complete': case 'Finalized': case 'Archived': return 'default';
+        case 'In Processing': case 'Scanning Started': case 'Indexing Started': case 'Checking Started': return 'secondary';
+        case 'Client Rejected': return 'destructive';
+        default: return 'outline';
+    }
 }
 
 export default function DistributionHubClient() {
@@ -43,44 +54,54 @@ export default function DistributionHubClient() {
   const [dirtyRows, setDirtyRows] = React.useState<Set<string>>(new Set());
   const [columnFilters, setColumnFilters] = React.useState<{ [key: string]: string }>({});
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([{ id: 'projectName', desc: false }]);
+  const [dialogState, setDialogState] = React.useState<{ open: boolean, title: string, items: EnrichedBook[] }>({ open: false, title: '', items: [] });
+  const [dialogFilter, setDialogFilter] = React.useState('');
 
   React.useEffect(() => {
     if (!allProjects || !storages) return;
-    const allProjectStorages = allProjects.flatMap(p => 
-        (p.storages || []).map(s => ({
-            ...s,
-            projectName: p.name,
-            storageName: storages.find(st => st.id === s.storageId)?.nome || 'Unknown Storage'
-        }))
-    );
 
-    let relevantProjectStorages = allProjectStorages;
+    let relevantProjectStorages: EditableAssociation[] = [];
+    
     if (selectedProjectId) {
-      relevantProjectStorages = relevantProjectStorages.filter(ps => ps.projectId === selectedProjectId);
+      const project = allProjects.find(p => p.id === selectedProjectId);
+      if (project && project.storages) {
+        relevantProjectStorages = project.storages.map(s => ({
+            ...s,
+            projectName: project.name,
+            storageName: storages.find(st => st.id === s.storageId)?.nome || 'Unknown Storage'
+        }));
+      }
+    } else {
+        relevantProjectStorages = allProjects.flatMap(p => 
+            (p.storages || []).map(s => ({
+                ...s,
+                projectName: p.name,
+                storageName: storages.find(st => st.id === s.storageId)?.nome || 'Unknown Storage'
+            }))
+        );
     }
     
     setEditableData(relevantProjectStorages);
-    setDirtyRows(new Set()); // Clear dirty state on project change
+    setDirtyRows(new Set());
   }, [allProjects, storages, selectedProjectId]);
-  
+
   const productivityStats = React.useMemo(() => {
     const relevantBooks = selectedProjectId
       ? allProjects.find(p => p.id === selectedProjectId)?.books || []
       : allProjects.flatMap(p => p.books);
 
-    const completedScans = (relevantBooks || []).filter(book => book.scanEndTime);
+    const completedScans = (relevantBooks || []).filter(book => !!book.scanEndTime);
     
-    const scansToday = completedScans.filter(book => {
-      const scanDate = new Date(book.scanEndTime!);
-      return format(scanDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
-    });
-    
+    const scansToday = completedScans.filter(book => isSameDay(new Date(book.scanEndTime!), new Date()));
     const pagesToday = scansToday.reduce((sum, book) => sum + (book.expectedDocuments || 0), 0);
     const booksToday = scansToday.length;
+    
+    const booksReadyToDistribute = relevantBooks.filter(book => book.status === 'Scanning Started' && !!book.scanEndTime);
+    const pagesReadyToDistribute = booksReadyToDistribute.reduce((sum, book) => sum + (book.expectedDocuments || 0), 0);
 
     const sevenDaysAgo = startOfDay(subDays(new Date(), 6));
     const last7DaysScans = completedScans.filter(book => new Date(book.scanEndTime!) >= sevenDaysAgo);
-
+    
     const pagesByDay = Array.from({ length: 7 }, (_, i) => {
       const day = subDays(new Date(), i);
       const dayStr = format(day, 'yyyy-MM-dd');
@@ -91,7 +112,14 @@ export default function DistributionHubClient() {
       };
     }).reverse();
 
-    return { pagesToday, booksToday, pagesByDay };
+    return { 
+      pagesToday, 
+      booksToday, 
+      scansToday,
+      pagesByDay,
+      booksReadyToDistribute,
+      pagesReadyToDistribute,
+    };
   }, [allProjects, selectedProjectId]);
   
   const chartConfig = { pages: { label: "Pages", color: "hsl(var(--primary))" } } satisfies ChartConfig;
@@ -161,7 +189,24 @@ export default function DistributionHubClient() {
     return filtered;
   }, [editableData, columnFilters, sorting]);
 
+  const handleKpiClick = (title: string, items: EnrichedBook[]) => {
+    if (!items || items.length === 0) return;
+    setDialogFilter('');
+    setDialogState({ open: true, title, items });
+  }
+
+  const filteredDialogItems = React.useMemo(() => {
+    if (!dialogFilter) return dialogState.items;
+    const query = dialogFilter.toLowerCase();
+    return dialogState.items.filter(p => 
+      p.name.toLowerCase().includes(query) ||
+      p.projectName.toLowerCase().includes(query) ||
+      p.status.toLowerCase().includes(query)
+    );
+  }, [dialogState.items, dialogFilter]);
+
   return (
+    <>
     <div className="space-y-6">
       <div>
         <h1 className="font-headline text-3xl font-bold tracking-tight">Distribution Hub</h1>
@@ -173,9 +218,17 @@ export default function DistributionHubClient() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Pages Scanned Today</CardTitle><BarChart2 className="h-4 w-4 text-muted-foreground" /></CardHeader>
           <CardContent><div className="text-2xl font-bold">{productivityStats.pagesToday.toLocaleString()}</div></CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Books Completed Today</CardTitle><BookCheck className="h-4 w-4 text-muted-foreground" /></CardHeader>
+        <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Books Scanned Today', productivityStats.scansToday)}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Books Scanned Today</CardTitle><BookCheck className="h-4 w-4 text-muted-foreground" /></CardHeader>
           <CardContent><div className="text-2xl font-bold">{productivityStats.booksToday.toLocaleString()}</div></CardContent>
+        </Card>
+        <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Books Ready to Distribute', productivityStats.booksReadyToDistribute)}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Books Ready to Distribute</CardTitle><BookUp className="h-4 w-4 text-muted-foreground" /></CardHeader>
+          <CardContent><div className="text-2xl font-bold">{productivityStats.booksReadyToDistribute.length}</div></CardContent>
+        </Card>
+        <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Pages Ready to Distribute', productivityStats.booksReadyToDistribute)}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Pages Ready to Distribute</CardTitle><FileStack className="h-4 w-4 text-muted-foreground" /></CardHeader>
+          <CardContent><div className="text-2xl font-bold">{productivityStats.pagesReadyToDistribute.toLocaleString()}</div></CardContent>
         </Card>
       </div>
 
@@ -284,9 +337,50 @@ export default function DistributionHubClient() {
             </CardContent>
         </Card>
       </div>
-
     </div>
+    <Dialog open={dialogState.open} onOpenChange={(open) => { if (!open) setDialogFilter(''); setDialogState(prev => ({ ...prev, open })); }}>
+        <DialogContent className="max-w-4xl">
+            <DialogHeader>
+                <DialogTitle>{dialogState.title}</DialogTitle>
+                <DialogDescription>Showing {filteredDialogItems.length} of {dialogState.items.length} books.</DialogDescription>
+            </DialogHeader>
+            <div className="py-2">
+                <Input 
+                    placeholder="Filter books..."
+                    value={dialogFilter}
+                    onChange={(e) => setDialogFilter(e.target.value)}
+                />
+            </div>
+            <div className="max-h-[60vh] overflow-y-auto pr-4">
+                 <Table>
+                    <TableHeader>
+                      <TableRow>
+                          <TableHead>Book</TableHead>
+                          <TableHead>Project</TableHead>
+                          <TableHead>Client</TableHead>
+                          <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {filteredDialogItems.length > 0 ? filteredDialogItems.map(book => (
+                            <TableRow key={book.id}>
+                                <TableCell><Link href={`/books/${book.id}`} className="hover:underline font-medium">{book.name}</Link></TableCell>
+                                <TableCell>{book.projectName}</TableCell>
+                                <TableCell>{book.clientName}</TableCell>
+                                <TableCell><Badge variant={getStatusBadgeVariant(book.status)}>{book.status}</Badge></TableCell>
+                            </TableRow>
+                        )) : (
+                           <TableRow>
+                              <TableCell colSpan={4} className="h-24 text-center">
+                                  No items match the filter.
+                              </TableCell>
+                           </TableRow>
+                        )}
+                    </TableBody>
+                 </Table>
+            </div>
+        </DialogContent>
+    </Dialog>
+    </>
   )
 }
-
-    
