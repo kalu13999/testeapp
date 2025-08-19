@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import * as React from "react"
@@ -597,6 +598,11 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         return;
     }
     
+    if (stage === 'scanning-started') {
+      setScanState({ open: true, book, folderName: null, fileCount: null });
+      return;
+    }
+
     if (['to-scan', 'to-indexing', 'to-checking'].includes(stage)) {
       let label = 'Start Task';
       if (stage === 'to-scan') label = 'Start Scanning';
@@ -756,6 +762,10 @@ const handleMainAction = (book: EnrichedBook) => {
               ? { label: 'Assign Scanner', icon: UserPlus, disabled: false }
               : { label: 'Send to Storage', icon: FolderSync, disabled: false };
       }
+
+      if(stage === 'scanning-started') {
+        return { label: 'Complete Scan', icon: ScanLine, disabled: false };
+      }
       
       if (actionButtonLabel && actionButtonIcon) {
           const Icon = iconMap[actionButtonIcon];
@@ -811,7 +821,7 @@ const handleMainAction = (book: EnrichedBook) => {
               </Button>
             ) : null}
 
-            {(canViewAll || !['scanning-started', 'indexing-started', 'checking-started'].includes(stage)) && actionDetails && (
+            {actionDetails && (
               <Button size="sm" onClick={() => handleActionClick(item)} disabled={actionDetails.disabled}>
                   <actionDetails.icon className={isProcessing ? "mr-2 h-4 w-4 animate-spin" : "mr-2 h-4 w-4"} />
                   {actionDetails.label}
@@ -1503,5 +1513,3 @@ const handleMainAction = (book: EnrichedBook) => {
     </>
   )
 }
-
-    
