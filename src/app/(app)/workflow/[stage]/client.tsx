@@ -1,5 +1,4 @@
 
-
 "use client"
 
 import * as React from "react"
@@ -812,7 +811,7 @@ const handleMainAction = (book: EnrichedBook) => {
               </Button>
             ) : null}
 
-            {canViewAll && actionDetails && (
+            {(canViewAll || !['scanning-started', 'indexing-started', 'checking-started'].includes(stage)) && actionDetails && (
               <Button size="sm" onClick={() => handleActionClick(item)} disabled={actionDetails.disabled}>
                   <actionDetails.icon className={isProcessing ? "mr-2 h-4 w-4 animate-spin" : "mr-2 h-4 w-4"} />
                   {actionDetails.label}
@@ -1155,14 +1154,51 @@ const handleMainAction = (book: EnrichedBook) => {
                   </TableRow>
                   <TableRow>
                     <TableHead />
-                    <TableHead><Input placeholder="Filter by name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/></TableHead>
-                    <TableHead><Input placeholder="Filter by project..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/></TableHead>
-                    <TableHead className="hidden md:table-cell"><Input placeholder="Filter by client..." value={columnFilters['clientName'] || ''} onChange={(e) => handleColumnFilterChange('clientName', e.target.value)} className="h-8"/></TableHead>
+                    <TableHead>
+                        <Input
+                            placeholder="Filter by name..."
+                            value={columnFilters['name'] || ''}
+                            onChange={(e) => handleColumnFilterChange('name', e.target.value)}
+                            className="h-8"
+                        />
+                    </TableHead>
+                    <TableHead>
+                        <Input
+                            placeholder="Filter by project..."
+                            value={columnFilters['projectName'] || ''}
+                            onChange={(e) => handleColumnFilterChange('projectName', e.target.value)}
+                            className="h-8"
+                        />
+                    </TableHead>
+                    <TableHead className="hidden md:table-cell">
+                        <Input
+                            placeholder="Filter by client..."
+                            value={columnFilters['clientName'] || ''}
+                            onChange={(e) => handleColumnFilterChange('clientName', e.target.value)}
+                            className="h-8"
+                        />
+                    </TableHead>
                      {canViewAll && config.assigneeRole && (
-                       <TableHead><Input placeholder="Filter by user..." value={columnFilters['assigneeName'] || ''} onChange={(e) => handleColumnFilterChange('assigneeName', e.target.value)} className="h-8"/></TableHead>
+                       <TableHead>
+                            <Input
+                                placeholder="Filter by user..."
+                                value={columnFilters['assigneeName'] || ''}
+                                onChange={(e) => handleColumnFilterChange('assigneeName', e.target.value)}
+                                className="h-8"
+                            />
+                       </TableHead>
                      )}
-                    <TableHead><Input placeholder="Filter by status..." value={columnFilters['status'] || ''} onChange={(e) => handleColumnFilterChange('status', e.target.value)} className="h-8"/></TableHead>
-                    <TableHead className="text-right"><Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Clear</Button></TableHead>
+                    <TableHead>
+                         <Input
+                            placeholder="Filter by status..."
+                            value={columnFilters['status'] || ''}
+                            onChange={(e) => handleColumnFilterChange('status', e.target.value)}
+                            className="h-8"
+                        />
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Clear</Button>
+                    </TableHead>
                   </TableRow>
                   </>
                 ) : (
@@ -1467,3 +1503,5 @@ const handleMainAction = (book: EnrichedBook) => {
     </>
   )
 }
+
+    
