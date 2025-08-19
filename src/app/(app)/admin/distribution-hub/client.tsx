@@ -45,9 +45,9 @@ export default function DistributionHubClient() {
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([{ id: 'projectName', desc: false }]);
 
   React.useEffect(() => {
-    const enrichedData = projectStorages.map(ps => {
-      const project = allProjects.find(p => p.id === ps.projectId);
-      const storage = storages.find(s => s.id === ps.storageId);
+    const enrichedData = (projectStorages || []).map(ps => {
+      const project = (allProjects || []).find(p => p.id === ps.projectId);
+      const storage = (storages || []).find(s => s.id === ps.storageId);
       return {
         ...ps,
         projectName: project?.name || 'Unknown Project',
@@ -59,13 +59,13 @@ export default function DistributionHubClient() {
 
   const productivityStats = React.useMemo(() => {
     const today = new Date();
-    const logsToday = transferLogs.filter(log => isSameDay(new Date(log.data_fim), today));
+    const logsToday = (transferLogs || []).filter(log => isSameDay(new Date(log.data_fim), today));
     
     const pagesToday = logsToday.reduce((sum, log) => sum + log.total_tifs, 0);
     const booksToday = new Set(logsToday.map(log => log.bookId)).size;
 
     const sevenDaysAgo = subDays(today, 6);
-    const last7DaysLogs = transferLogs.filter(log => new Date(log.data_fim) >= sevenDaysAgo);
+    const last7DaysLogs = (transferLogs || []).filter(log => new Date(log.data_fim) >= sevenDaysAgo);
     
     const pagesByDay = Array.from({ length: 7 }, (_, i) => {
         const day = subDays(today, i);
