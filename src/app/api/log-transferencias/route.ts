@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import { getConnection, releaseConnection } from '@/lib/db';
 import type { PoolConnection } from 'mysql2/promise';

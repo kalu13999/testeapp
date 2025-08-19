@@ -93,6 +93,7 @@ export const allMenuItems: MenuSection[] = [
       { href: "/documents", label: "All Books", icon: Files },
       { href: "/admin/reassign-user", label: "Reassign User", icon: UserCog },
       { href: "/admin/default-projects", label: "Default Projects", icon: Star },
+      { href: "/admin/distribution-hub", label: "Distribution Hub", icon: SlidersHorizontal },
     ]
   },
   {
