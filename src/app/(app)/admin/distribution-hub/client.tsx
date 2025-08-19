@@ -26,7 +26,7 @@ import { type ProjectStorage, type EnrichedBook } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
-import { subDays, format, isSameDay, startOfDay } from 'date-fns'
+import { subDays, format, startOfDay } from 'date-fns'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import Link from "next/link"
@@ -47,7 +47,7 @@ const getStatusBadgeVariant = (status: string) => {
 }
 
 export default function DistributionHubClient() {
-  const { allProjects, storages, updateProjectStorage, selectedProjectId } = useAppContext();
+  const { allProjects, storages, updateProjectStorage, selectedProjectId, projectStorages } = useAppContext();
   const { toast } = useToast();
 
   const [editableData, setEditableData] = React.useState<EditableAssociation[]>([]);
@@ -57,46 +57,19 @@ export default function DistributionHubClient() {
   const [dialogState, setDialogState] = React.useState<{ open: boolean, title: string, items: EnrichedBook[] }>({ open: false, title: '', items: [] });
   const [dialogFilter, setDialogFilter] = React.useState('');
 
-  React.useEffect(() => {
-    if (!allProjects || !storages) return;
-
-    let relevantProjectStorages: EditableAssociation[] = [];
-    
-    if (selectedProjectId) {
-      const project = allProjects.find(p => p.id === selectedProjectId);
-      if (project && project.storages) {
-        relevantProjectStorages = project.storages.map(s => ({
-            ...s,
-            projectName: project.name,
-            storageName: storages.find(st => st.id === s.storageId)?.nome || 'Unknown Storage'
-        }));
-      }
-    } else {
-        relevantProjectStorages = allProjects.flatMap(p => 
-            (p.storages || []).map(s => ({
-                ...s,
-                projectName: p.name,
-                storageName: storages.find(st => st.id === s.storageId)?.nome || 'Unknown Storage'
-            }))
-        );
-    }
-    
-    setEditableData(relevantProjectStorages);
-    setDirtyRows(new Set());
-  }, [allProjects, storages, selectedProjectId]);
-
   const productivityStats = React.useMemo(() => {
-    const relevantBooks = selectedProjectId
+    const today = new Date();
+    const booksInScope = selectedProjectId
       ? allProjects.find(p => p.id === selectedProjectId)?.books || []
       : allProjects.flatMap(p => p.books);
 
-    const completedScans = (relevantBooks || []).filter(book => !!book.scanEndTime);
+    const completedScans = booksInScope.filter(book => !!book.scanEndTime);
     
-    const scansToday = completedScans.filter(book => isSameDay(new Date(book.scanEndTime!), new Date()));
+    const scansToday = completedScans.filter(book => format(new Date(book.scanEndTime!), 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd'));
     const pagesToday = scansToday.reduce((sum, book) => sum + (book.expectedDocuments || 0), 0);
     const booksToday = scansToday.length;
     
-    const booksReadyToDistribute = relevantBooks.filter(book => book.status === 'Scanning Started' && !!book.scanEndTime);
+    const booksReadyToDistribute = booksInScope.filter(book => book.status === 'Scanning Started' && !!book.scanEndTime);
     const pagesReadyToDistribute = booksReadyToDistribute.reduce((sum, book) => sum + (book.expectedDocuments || 0), 0);
 
     const sevenDaysAgo = startOfDay(subDays(new Date(), 6));
@@ -122,6 +95,29 @@ export default function DistributionHubClient() {
     };
   }, [allProjects, selectedProjectId]);
   
+  React.useEffect(() => {
+    if (!allProjects || !storages || !projectStorages) return;
+
+    let associations = projectStorages;
+    if (selectedProjectId) {
+      associations = associations.filter(ps => ps.projectId === selectedProjectId);
+    }
+    
+    const enrichedAssociations = associations.map(ps => {
+      const project = allProjects.find(p => p.id === ps.projectId);
+      const storage = storages.find(s => s.id === ps.storageId);
+      return {
+        ...ps,
+        projectName: project?.name || 'Unknown Project',
+        storageName: storage?.nome || 'Unknown Storage',
+      };
+    });
+
+    setEditableData(enrichedAssociations);
+    setDirtyRows(new Set());
+  }, [allProjects, storages, projectStorages, selectedProjectId]);
+
+
   const chartConfig = { pages: { label: "Pages", color: "hsl(var(--primary))" } } satisfies ChartConfig;
 
   const handleInputChange = (projectId: string, storageId: number, field: keyof ProjectStorage, value: string) => {
@@ -140,8 +136,9 @@ export default function DistributionHubClient() {
 
   const handleSaveChanges = async () => {
     const updates = Array.from(dirtyRows).map(key => {
-      const [projectId, storageId] = key.split('-');
-      return editableData.find(d => d.projectId === projectId && d.storageId === Number(storageId));
+      const [projectId, storageIdStr] = key.split('-');
+      const storageId = Number(storageIdStr);
+      return editableData.find(d => d.projectId === projectId && d.storageId === storageId);
     }).filter((item): item is EditableAssociation => !!item);
     
     await Promise.all(updates.map(item => updateProjectStorage(item)));
@@ -226,7 +223,7 @@ export default function DistributionHubClient() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Books Ready to Distribute</CardTitle><BookUp className="h-4 w-4 text-muted-foreground" /></CardHeader>
           <CardContent><div className="text-2xl font-bold">{productivityStats.booksReadyToDistribute.length}</div></CardContent>
         </Card>
-        <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Pages Ready to Distribute', productivityStats.booksReadyToDistribute)}>
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Pages Ready to Distribute</CardTitle><FileStack className="h-4 w-4 text-muted-foreground" /></CardHeader>
           <CardContent><div className="text-2xl font-bold">{productivityStats.pagesReadyToDistribute.toLocaleString()}</div></CardContent>
         </Card>
@@ -257,10 +254,7 @@ export default function DistributionHubClient() {
                     <div>
                         <CardTitle>Distribution Rules</CardTitle>
                         <CardDescription>
-                            {selectedProjectId 
-                                ? "Adjust distribution rules for the selected project."
-                                : "Adjust global distribution rules. Select a project to see its specific rules."
-                            }
+                            Adjusting rules for <strong className="text-foreground">{productivityStats.pagesReadyToDistribute.toLocaleString()}</strong> pages currently ready for distribution.
                         </CardDescription>
                     </div>
                     <Button onClick={handleSaveChanges} disabled={dirtyRows.size === 0}>
