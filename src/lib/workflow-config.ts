@@ -178,7 +178,7 @@ export const WORKFLOW_PHASES = [
     name: "Automated Processing",
     toggleable: true,
     description: "Automated OCR, data extraction, and other scripts.",
-    stages: ["ready-for-processing", "in-processing", "processed", "processing-batches/[id]"],
+    stages: ["ready-for-processing", "in-processing", "processed"],
     config: {
       'ready-for-processing': {
         title: "Ready for Processing",
@@ -207,13 +207,6 @@ export const WORKFLOW_PHASES = [
         dataType: 'book',
         dataStatus: "Processed",
         viewType: 'list', // This will now use the new processed-view-client
-      },
-       'processing-batches/[id]': {
-        title: "Batch Details",
-        description: "Detailed view of a specific processing batch.",
-        viewType: 'list', 
-        dataType: 'book',
-        emptyStateText: "",
       }
     }
   },
