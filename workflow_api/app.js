@@ -630,6 +630,43 @@ app.get('/api/processing-batches/:id/details', async (req, res) => {
     }
 });
 
+app.post('/api/processing-logs', async (req, res) => {
+    let connection;
+    try {
+        const { batchId, message, level = 'INFO', info, obs } = req.body;
+
+        if (!batchId || !message) {
+            return res.status(400).json({ error: 'Campos obrigatórios: batchId e message' });
+        }
+        
+        const newId = `plog_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
+        
+        const newLog = {
+            id: newId,
+            batchId,
+            message,
+            timestamp,
+            level,
+            info: info || null,
+            obs: obs || null
+        };
+        
+        connection = await dbPool.getConnection();
+        const query = 'INSERT INTO processing_logs (id, batchId, message, timestamp, level, info, obs) VALUES (?, ?, ?, ?, ?, ?, ?)';
+        const values = Object.values(newLog);
+        
+        await connection.query(query, values);
+        
+        res.status(201).json(newLog);
+    } catch (err) {
+        console.error("Erro ao criar log de processamento:", err);
+        res.status(500).json({ error: 'Erro ao criar log de processamento' });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
 // --- Inicialização do Servidor ---
 async function startServer() {
     await initializeDbPool();
