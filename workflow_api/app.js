@@ -630,7 +630,7 @@ app.get('/api/processing-batches/:id/details', async (req, res) => {
     }
 });
 
-app.post('/api/processing-logs', async (req, res) => {
+app.post('/api/script/processing-logs/add', async (req, res) => {
     let connection;
     try {
         const { batchId, message, level = 'INFO', info, obs } = req.body;
@@ -660,7 +660,7 @@ app.post('/api/processing-logs', async (req, res) => {
         
         res.status(201).json(newLog);
     } catch (err) {
-        console.error("Erro ao criar log de processamento:", err);
+        console.error("Erro ao criar log de processamento via script:", err);
         res.status(500).json({ error: 'Erro ao criar log de processamento' });
     } finally {
         if (connection) connection.release();
