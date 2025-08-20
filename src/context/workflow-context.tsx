@@ -124,7 +124,7 @@ type AppContextType = {
   handleMarkAsShipped: (bookIds: string[]) => void;
   handleConfirmReception: (bookId: string) => void;
   handleSendToStorage: (bookId: string, payload: { actualPageCount: number }) => void;
-  handleMoveBookToNextStage: (bookId: string, currentStatus: string) => Promise<void>;
+  handleMoveBookToNextStage: (bookId: string, currentStatus: string) => Promise<boolean>;
   handleAssignUser: (bookId: string, userId: string, role: 'scanner' | 'indexer' | 'qc') => void;
   reassignUser: (bookId: string, newUserId: string, role: 'scanner' | 'indexer' | 'qc') => void;
   handleStartTask: (bookId: string, role: 'scanner' | 'indexing' | 'qc') => void;
@@ -929,7 +929,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
           if (!response.ok) throw new Error('Failed to delete rejection tag');
           setRejectionTags(prev => prev.filter(t => t.id !== tagId));
           logAction('Rejection Tag Deleted', `Tag "${tag?.label}" deleted.`, {});
-          toast({ title: "Rejection Reason Deleted", variant: 'destructive' });
+          toast({ title: "Rejection Reason Deleted", variant: "destructive" });
       } catch (error) {
           console.error(error);
           toast({ title: "Error", description: "Could not delete rejection reason.", variant: "destructive" });
@@ -1208,22 +1208,35 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   }, [statuses]);
 
   const moveBookFolder = React.useCallback(async (bookName: string, fromStatusName: string, toStatusName: string): Promise<boolean> => {
-    console.log(`WORKFLOW: Attempting to move folder for book: ${bookName} from ${fromStatusName} to ${toStatusName}`);
+    console.log(`[moveBookFolder] Attempting to move folder for book: ${bookName} from ${fromStatusName} to ${toStatusName}`);
+    
     const fromStatus = statuses.find(s => s.name === fromStatusName);
     const toStatus = statuses.find(s => s.name === toStatusName);
     
-    if (!fromStatus?.folderName || !toStatus?.folderName) {
-        console.log(`WORKFLOW: Logical move from ${fromStatusName} to ${toStatusName}. No physical folder move needed.`);
+    if (!fromStatus) {
+        toast({ title: "Workflow Config Error", description: `Source status "${fromStatusName}" not found.`, variant: "destructive" });
+        console.error(`[moveBookFolder] Source status "${fromStatusName}" not found.`);
+        return false;
+    }
+     if (!toStatus) {
+        toast({ title: "Workflow Config Error", description: `Destination status "${toStatusName}" not found.`, variant: "destructive" });
+        console.error(`[moveBookFolder] Destination status "${toStatusName}" not found.`);
+        return false;
+    }
+
+    if (!fromStatus.folderName || !toStatus.folderName) {
+        console.log(`[moveBookFolder] Logical move from ${fromStatusName} to ${toStatusName}. No physical folder move needed.`);
         return true; 
     }
     
     const apiUrl = process.env.NEXT_PUBLIC_WORKFLOW_API_URL;
     if (!apiUrl) {
-      console.warn("WORKFLOW: API URL not configured. Physical folder move will be skipped.");
+      console.warn("[moveBookFolder] WORKFLOW API URL not configured. Physical folder move will be skipped.");
       return true;
     }
     
     try {
+        console.log(`[moveBookFolder] Calling API to move folder for "${bookName}".`);
         const response = await fetch(`${apiUrl}/api/workflow/move`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1233,21 +1246,15 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         if (!response.ok) {
             const errorData = await response.json();
             const errorMessage = errorData.error || `Failed to move folder. API responded with status ${response.status}`;
-            if (response.status === 404) {
-                 toast({
-                    title: "Folder Not Found",
-                    description: `Could not physically move "${bookName}". The folder was not found in the expected location. The book’s status still hasn’t been updated.`,
-                    variant: "destructive",
-                    duration: 10000,
-                });
-            }
+            console.error(`[moveBookFolder] API Error: ${errorMessage}`);
             logAction('System Alert', `Failed to move folder for book "${bookName}" from ${fromStatusName} to ${toStatusName}. Reason: ${errorMessage}`, { userId: 'u_system' });
+            toast({ title: "Folder Move Failed", description: errorMessage, variant: "destructive", duration: 10000 });
             return false;
         }
-        console.log(`WORKFLOW: Successfully moved folder for ${bookName}.`);
+        console.log(`[moveBookFolder] Successfully moved folder for ${bookName}.`);
         return true;
     } catch (error: any) {
-        console.error("WORKFLOW: Error calling workflow API to move folder:", error);
+        console.error("[moveBookFolder] Network or fetch error:", error);
         toast({ title: "Folder Move Error", description: `Could not move folder for "${bookName}". Please check API logs.`, variant: "destructive" });
         logAction('System Alert', `Error moving folder for book "${bookName}". Reason: ${error.message}`, { userId: 'u_system' });
         return false;
@@ -1332,32 +1339,47 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     });
   };
 
-  const handleMoveBookToNextStage = async (bookId: string, currentStatus: string) => {
-    return withMutation(async () => {
-      const book = rawBooks.find(b => b.id === bookId);
-      if (!book || !book.projectId) return;
+  const handleMoveBookToNextStage = React.useCallback(async (bookId: string, currentStatus: string): Promise<boolean> => {
+    console.log(`[handleMoveBookToNextStage] Starting for book ${bookId} from status ${currentStatus}`);
+    const book = rawBooks.find(b => b.id === bookId);
+    if (!book || !book.projectId) {
+      console.error(`[handleMoveBookToNextStage] Book or projectId not found for bookId ${bookId}`);
+      return false;
+    }
 
-      const workflow = projectWorkflows[book.projectId] || [];
-      const currentStageKey = findStageKeyFromStatus(currentStatus);
-      if (!currentStageKey) { toast({title: "Workflow Error", description: `Cannot find workflow stage for status "${currentStatus}".`, variant: "destructive"}); return; }
-      
-      const nextStageKey = getNextEnabledStage(currentStageKey, workflow);
-      
-      const newStatusName = nextStageKey ? (STAGE_CONFIG[nextStageKey]?.dataStatus || 'Unknown') : 'Complete';
-      if (newStatusName === 'Unknown') {
-          toast({ title: "Workflow Error", description: `Next stage "${nextStageKey}" has no configured status.`, variant: "destructive" });
-          return;
-      }
-      
-      const moveResult = await moveBookFolder(book.name, currentStatus, newStatusName);
-      if (moveResult !== true) return;
+    const workflow = projectWorkflows[book.projectId] || [];
+    const currentStageKey = findStageKeyFromStatus(currentStatus);
+    if (!currentStageKey) {
+      toast({ title: "Workflow Error", description: `Cannot find workflow stage for status: "${currentStatus}".`, variant: "destructive" });
+      console.error(`[handleMoveBookToNextStage] Workflow key not found for status: ${currentStatus}`);
+      return false;
+    }
+    console.log(`[handleMoveBookToNextStage] Current stage key: ${currentStageKey}`);
 
-      const updatedBook = await updateBookStatus(bookId, newStatusName);
-      setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
-      logAction('Workflow Step', `Book "${book.name}" moved from ${currentStatus} to ${newStatusName}.`, { bookId });
-      toast({ title: "Workflow Action", description: `Book moved to ${newStatusName}.` });
-    });
-  };
+    const nextStageKey = getNextEnabledStage(currentStageKey, workflow);
+    console.log(`[handleMoveBookToNextStage] Next stage key: ${nextStageKey}`);
+    
+    const newStatusName = nextStageKey ? (STAGE_CONFIG[nextStageKey]?.dataStatus || 'Unknown') : 'Complete';
+    if (newStatusName === 'Unknown') {
+      toast({ title: "Workflow Error", description: `Next stage "${nextStageKey}" has no configured status.`, variant: "destructive" });
+      console.error(`[handleMoveBookToNextStage] Next stage "${nextStageKey}" has no status.`);
+      return false;
+    }
+
+    console.log(`[handleMoveBookToNextStage] Moving book to new status: ${newStatusName}`);
+    const moveResult = await moveBookFolder(book.name, currentStatus, newStatusName);
+    if (moveResult !== true) {
+      console.error(`[handleMoveBookToNextStage] moveBookFolder failed for book ${bookId}`);
+      return false; // Stop execution if folder move fails
+    }
+
+    const updatedBook = await updateBookStatus(bookId, newStatusName);
+    setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
+    logAction('Workflow Step', `Book "${book.name}" moved from ${currentStatus} to ${newStatusName}.`, { bookId });
+    console.log(`[handleMoveBookToNextStage] Successfully moved book ${bookId} to ${newStatusName}`);
+    return true;
+  }, [rawBooks, projectWorkflows, statuses, toast, logAction, updateBookStatus, moveBookFolder]);
+
 
   const handleAssignUser = async (bookId: string, userId: string, role: 'scanner' | 'indexer' | 'qc') => {
     withMutation(async () => {
@@ -1672,15 +1694,31 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
   const handleSendBatchToNextStage = async (batchIds: string[]) => {
     await withMutation(async () => {
+      console.log('[handleSendBatchToNextStage] Initiated for batches:', batchIds);
       const bookMovePromises = batchIds.flatMap(batchId => {
         const itemsInBatch = processingBatchItems.filter(i => i.batchId === batchId);
         return itemsInBatch.map(item => handleMoveBookToNextStage(item.bookId, 'Processed'));
       });
+      console.log(`[handleSendBatchToNextStage] Processing ${bookMovePromises.length} books.`);
   
-      await Promise.all(bookMovePromises);
-      
-      logAction('Batch Sent to Next Stage', `${batchIds.length} batch(es) sent to Final Quality Control.`, {});
-      toast({ title: "Batches Sent to Final QC", description: `${batchIds.length} batch(es) have been moved.` });
+      try {
+        const results = await Promise.all(bookMovePromises);
+        const successfulMoves = results.filter(res => res).length;
+        console.log(`[handleSendBatchToNextStage] All promises resolved. Successful moves: ${successfulMoves}`);
+
+        if (successfulMoves > 0) {
+            logAction('Batch Sent to Next Stage', `${successfulMoves} books from ${batchIds.length} batch(es) sent to Final Quality Control.`, {});
+            toast({ title: "Batches Sent to Final QC", description: `${successfulMoves} books have been moved.` });
+        }
+        
+        if (successfulMoves < bookMovePromises.length) {
+          console.error(`[handleSendBatchToNextStage] Some books failed to move. Total: ${bookMovePromises.length}, Success: ${successfulMoves}`);
+        }
+
+      } catch(error) {
+        console.error('[handleSendBatchToNextStage] An error occurred while processing batches:', error);
+        toast({ title: "Error", description: "An unexpected error occurred while moving books.", variant: "destructive" });
+      }
     });
   };
 
@@ -1994,6 +2032,7 @@ export function useAppContext() {
 
 
     
+
 
 
 
