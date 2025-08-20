@@ -124,7 +124,7 @@ type AppContextType = {
   handleMarkAsShipped: (bookIds: string[]) => void;
   handleConfirmReception: (bookId: string) => void;
   handleSendToStorage: (bookId: string, payload: { actualPageCount: number }) => void;
-  handleMoveBookToNextStage: (bookId: string, currentStatus: string) => void;
+  handleMoveBookToNextStage: (bookId: string, currentStatus: string) => Promise<void>;
   handleAssignUser: (bookId: string, userId: string, role: 'scanner' | 'indexer' | 'qc') => void;
   reassignUser: (bookId: string, newUserId: string, role: 'scanner' | 'indexer' | 'qc') => void;
   handleStartTask: (bookId: string, role: 'scanner' | 'indexing' | 'qc') => void;
@@ -133,7 +133,7 @@ type AppContextType = {
   handleAdminStatusOverride: (bookId: string, newStatusName: string, reason: string) => void;
   startProcessingBatch: (bookIds: string[], storageId: string) => void;
   completeProcessingBatch: (batchId: string) => void;
-  handleSendBatchToNextStage: (batchIds: string[]) => void;
+  handleSendBatchToNextStage: (batchIds: string[]) => Promise<void>;
   setProvisionalDeliveryStatus: (deliveryItemId: string, bookId: string, status: 'approved' | 'rejected', reason?: string) => Promise<void>;
   approveBatch: (deliveryId: string) => void;
   handleFinalize: (bookId: string) => void;
@@ -1332,8 +1332,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     });
   };
 
-  const handleMoveBookToNextStage = (bookId: string, currentStatus: string) => {
-    withMutation(async () => {
+  const handleMoveBookToNextStage = async (bookId: string, currentStatus: string) => {
+    return withMutation(async () => {
       const book = rawBooks.find(b => b.id === bookId);
       if (!book || !book.projectId) return;
 
@@ -1672,15 +1672,15 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
   const handleSendBatchToNextStage = async (batchIds: string[]) => {
     await withMutation(async () => {
-        for (const batchId of batchIds) {
-            const itemsInBatch = processingBatchItems.filter(i => i.batchId === batchId);
-            const bookIdsInBatch = itemsInBatch.map(i => i.bookId);
-            for (const bookId of bookIdsInBatch) {
-                handleMoveBookToNextStage(bookId, 'Processed');
-            }
-        }
-        logAction('Batch Sent to Next Stage', `${batchIds.length} batch(es) sent to Final Quality Control.`, {});
-        toast({ title: "Batches Sent to Final QC", description: `${batchIds.length} batch(es) have been moved.` });
+      const bookMovePromises = batchIds.flatMap(batchId => {
+        const itemsInBatch = processingBatchItems.filter(i => i.batchId === batchId);
+        return itemsInBatch.map(item => handleMoveBookToNextStage(item.bookId, 'Processed'));
+      });
+  
+      await Promise.all(bookMovePromises);
+      
+      logAction('Batch Sent to Next Stage', `${batchIds.length} batch(es) sent to Final Quality Control.`, {});
+      toast({ title: "Batches Sent to Final QC", description: `${batchIds.length} batch(es) have been moved.` });
     });
   };
 
@@ -1994,6 +1994,7 @@ export function useAppContext() {
 
 
     
+
 
 
 
