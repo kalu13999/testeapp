@@ -84,39 +84,37 @@ export default function MyValidationsClient({}: MyValidationsClientProps) {
  const batchesToValidate = React.useMemo((): BatchGroup[] => {
     if (!currentUser) return [];
 
-    // 1. Get all batches currently in validation
-    const validatingBatchIds = new Set(deliveryBatches.filter(b => b.status === 'Validating').map(b => b.id));
-
-    // 2. Get all pending items from those batches
-    let relevantItems = deliveryBatchItems.filter(item => 
-      validatingBatchIds.has(item.deliveryId) && item.status === 'pending'
+    const validatingBatchIds = new Set(
+        deliveryBatches.filter(b => b.status === 'Validating').map(b => b.id)
     );
 
-    // 3. Filter items based on project and user permissions
-    let booksInScope = books;
+    let allPendingItems = deliveryBatchItems.filter(item => 
+      validatingBatchIds.has(item.deliveryId) && item.status === 'pending'
+    );
+    
+    // Filter by selected project
     if (selectedProjectId) {
-      booksInScope = books.filter(b => b.projectId === selectedProjectId);
+      const bookIdsInProject = new Set(books.filter(b => b.projectId === selectedProjectId).map(b => b.id));
+      allPendingItems = allPendingItems.filter(item => bookIdsInProject.has(item.bookId));
     }
-    
-    // Filter items based on books in scope
-    const bookIdsInScope = new Set(booksInScope.map(b => b.id));
-    relevantItems = relevantItems.filter(item => bookIdsInScope.has(item.bookId));
 
-    if (!canViewAll) {
-      // Operator view: only see items assigned to them
-      relevantItems = relevantItems.filter(item => item.userId === currentUser.id);
-    } else {
-      // Manager/Admin view: only see items for their client company
+    // Filter by user permissions
+    let userVisibleItems;
+    if (canViewAll) {
       if (currentUser.clientId) {
-        const clientBookIds = new Set(books.filter(b => b.clientId === currentUser.clientId).map(b => b.id));
-        relevantItems = relevantItems.filter(item => clientBookIds.has(item.bookId));
+          const clientBookIds = new Set(books.filter(b => b.clientId === currentUser.clientId).map(b => b.id));
+          userVisibleItems = allPendingItems.filter(item => clientBookIds.has(item.bookId));
+      } else {
+          userVisibleItems = allPendingItems; // Admin case
       }
+    } else {
+      userVisibleItems = allPendingItems.filter(item => item.userId === currentUser.id);
     }
     
-    // 4. Enrich and group by batch
+    // Group by batch
     const groupedByBatch = new Map<string, BatchGroup>();
 
-    relevantItems.forEach(item => {
+    userVisibleItems.forEach(item => {
         const batch = deliveryBatches.find(b => b.id === item.deliveryId);
         const book = books.find(b => b.id === item.bookId);
 
@@ -401,5 +399,3 @@ export default function MyValidationsClient({}: MyValidationsClientProps) {
     </>
   )
 }
-
-    
