@@ -136,7 +136,7 @@ export interface DeliveryBatch {
   id: string;
   creationDate: string;
   deliveryDate: string | null;
-  status: 'Ready' | 'Delivered';
+  status: 'Ready' | 'Validating' | 'Finalized';
   userId: string | null;
   info: string | null;
 }
@@ -145,7 +145,7 @@ export interface DeliveryBatchItem {
   id: string;
   deliveryId: string;
   bookId: string;
-  userId: string;
+  userId: string | null;
   status: 'pending' | 'approved' | 'rejected';
   info: string | null;
   obs: string | null;

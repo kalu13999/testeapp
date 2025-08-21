@@ -140,7 +140,8 @@ type AppContextType = {
   handleMarkAsCorrected: (bookId: string) => void;
   handleResubmit: (bookId: string, targetStage: string) => void;
   handleCreateDeliveryBatch: (bookIds: string[]) => Promise<void>;
-  finalizeDeliveryBatch: (deliveryId: string) => Promise<void>;
+  finalizeDeliveryBatch: (deliveryId: string, finalDecision: 'approve_remaining' | 'reject_all') => Promise<void>;
+  distributeValidationSample: (batchId: string, assignments: { itemId: string; userId: string }[]) => Promise<void>;
   addPageToBook: (bookId: string, position: number) => Promise<void>;
   deletePageFromBook: (pageId: string, bookId: string) => Promise<void>;
   updateDocumentFlag: (docId: string, flag: AppDocument['flag'], comment?: string) => Promise<void>;
@@ -1755,11 +1756,13 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     });
   };
 
-  const finalizeDeliveryBatch = async (deliveryId: string) => {
+  const finalizeDeliveryBatch = async (deliveryId: string, finalDecision: 'approve_remaining' | 'reject_all') => {
     await withMutation(async () => {
       try {
         const response = await fetch(`/api/delivery-batches/${deliveryId}/finalize`, {
-          method: 'POST'
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ finalDecision }),
         });
         if (!response.ok) throw new Error('Failed to finalize batch.');
 
@@ -1786,6 +1789,30 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       }
     });
   };
+  
+   const distributeValidationSample = async (batchId: string, assignments: { itemId: string, userId: string}[]) => {
+     await withMutation(async () => {
+        try {
+            const response = await fetch('/api/delivery-batches/distribute', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ batchId, assignments }),
+            });
+            if (!response.ok) throw new Error('Failed to distribute sample');
+            
+            const { batch, items } = await response.json();
+            
+            setDeliveryBatches(prev => prev.map(b => b.id === batch.id ? batch : b));
+            setDeliveryBatchItems(prev => [...prev.filter(i => i.deliveryId !== batchId), ...items]);
+
+            logAction('Validation Distributed', `${assignments.length} items from batch ${batchId} distributed.`, {});
+            toast({ title: "Sample Distributed", description: "Tasks have been assigned to operators." });
+        } catch (error: any) {
+            console.error(error);
+            toast({ title: "Error", description: error.message, variant: "destructive" });
+        }
+     });
+   };
 
   const approveBatch = async (deliveryId: string) => {
     withMutation(async () => {
@@ -1793,7 +1820,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         for (const item of itemsToApprove) {
             await setProvisionalDeliveryStatus(item.id, item.bookId, 'approved');
         }
-        await finalizeDeliveryBatch(deliveryId);
+        await finalizeDeliveryBatch(deliveryId, 'approve_remaining');
     });
   };
 
@@ -2010,6 +2037,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     updateDocumentFlag, startProcessingBatch, completeProcessingBatch, handleSendBatchToNextStage,
     handleAssignUser, reassignUser, handleStartTask, handleCancelTask,
     handleAdminStatusOverride, handleCreateDeliveryBatch, finalizeDeliveryBatch,
+    distributeValidationSample,
     handleCompleteTask, handlePullNextTask,
   };
 
@@ -2032,6 +2060,7 @@ export function useAppContext() {
 
 
     
+
 
 
 
