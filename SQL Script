@@ -1,0 +1,28 @@
+
+-- SQL para inserir os novos papéis na tabela `roles`
+INSERT INTO `roles` (`name`) VALUES
+('Client Manager'),
+('Client Operator');
+
+-- SQL para inserir as permissões para os novos papéis na tabela `permissions`
+INSERT INTO `permissions` (`role`, `route`) VALUES
+('Client Manager', '/dashboard'),
+('Client Manager', '/documents/[id]'),
+('Client Manager', '/books/[id]'),
+('Client Manager', '/manage-deliveries'),
+('Client Manager', '/my-validations'),
+('Client Manager', '/pending-deliveries'),
+('Client Manager', '/reasons'),
+('Client Manager', '/shipments'),
+('Client Manager', '/validated-history'),
+('Client Manager', '/validation-monitoring'),
+('Client Operator', '/dashboard'),
+('Client Operator', '/documents/[id]'),
+('Client Operator', 'books/[id]'),
+('Client Operator', '/my-validations');
+
+-- SQL para inserir 3 utilizadores de exemplo na tabela `users`
+INSERT INTO `users` (`id`, `username`, `password`, `name`, `email`, `role`, `avatar`, `phone`, `jobTitle`, `department`, `lastLogin`, `info`, `status`, `defaultProjectId`, `clientId`) VALUES
+('u_client_mgr_1', 'cathy.manager', 'password', 'Catherine Manager', 'cathy@innovatecorp.com', 'Client Manager', 'https://placehold.co/100x100.png', '555-0201', 'Procurement Director', 'Finance', NOW(), 'Primary contact for Innovate Corp validations.', 'active', NULL, 'cl_1'),
+('u_client_op_1', 'oliver.operator', 'password', 'Oliver Operator', 'oliver@innovatecorp.com', 'Client Operator', 'https://placehold.co/100x100.png', '555-0202', 'Accounts Payable Clerk', 'Finance', NOW(), 'Validates financial documents.', 'active', NULL, 'cl_1'),
+('u_client_op_2', 'olivia.operator', 'password', 'Olivia Operator', 'olivia@future.tech', 'Client Operator', 'https://placehold.co/100x100.png', '555-0203', 'R&D Assistant', 'Research', NOW(), 'Validates R&D notebooks.', 'active', NULL, 'cl_2');
