@@ -80,10 +80,12 @@ export default function MyValidationsClient() {
     const validatingBatchIds = new Set(deliveryBatches.filter(b => b.status === 'Validating').map(b => b.id));
     
     let relevantItems = deliveryBatchItems.filter(item => 
-      validatingBatchIds.has(item.deliveryId) && item.status === 'pending'
+      validatingBatchIds.has(item.deliveryId)
     );
 
-    if (currentUser?.clientId) {
+    if (!canViewAll) {
+      relevantItems = relevantItems.filter(item => item.user_id === currentUser.id);
+    } else if(currentUser.clientId) {
       const clientBookIds = new Set(books.filter(b => b.clientId === currentUser.clientId).map(b => b.id));
       relevantItems = relevantItems.filter(item => clientBookIds.has(item.bookId));
     }
@@ -91,10 +93,6 @@ export default function MyValidationsClient() {
     if (selectedProjectId) {
         const projectBookIds = new Set(books.filter(b => b.projectId === selectedProjectId).map(b => b.id));
         relevantItems = relevantItems.filter(item => projectBookIds.has(item.bookId));
-    }
-
-    if (!canViewAll) {
-      relevantItems = relevantItems.filter(item => item.user_id === currentUser.id);
     }
     
     const tasks = relevantItems.map(item => {
@@ -185,7 +183,8 @@ export default function MyValidationsClient() {
             <Accordion type="multiple" className="w-full">
               {batchesToValidate.map(({ batchId, creationDate, books: booksInBatch }) => (
                 <AccordionItem value={batchId} key={batchId}>
-                   <AccordionTrigger className="hover:bg-muted/50 px-4 py-2">
+                   <div className="flex items-center justify-between hover:bg-muted/50 rounded-md">
+                    <AccordionTrigger className="flex-1 px-4 py-2">
                         <div className="flex items-center gap-3 text-left">
                             <FileClock className="h-5 w-5 text-primary" />
                             <div>
@@ -196,6 +195,7 @@ export default function MyValidationsClient() {
                             </div>
                         </div>
                     </AccordionTrigger>
+                  </div>
                   <AccordionContent className="p-4 space-y-4">
                      <Accordion type="multiple" className="w-full">
                         {booksInBatch.map(task => {

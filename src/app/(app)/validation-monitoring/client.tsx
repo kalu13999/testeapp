@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import * as React from "react"
@@ -27,6 +28,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import type { EnrichedBook } from "@/context/workflow-context";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 const StatusBadge = ({ status }: { status: 'pending' | 'approved' | 'rejected' }) => {
     if (status === 'approved') {
@@ -162,7 +164,13 @@ export default function ValidationMonitoringClient() {
                       </TableHeader>
                       <TableBody>
                         {booksInBatch.map(book => (
-                          <TableRow key={book.id}>
+                          <TableRow 
+                            key={book.id}
+                            className={cn(
+                              book.itemStatus === 'approved' && 'bg-green-500/10',
+                              book.itemStatus === 'rejected' && 'bg-red-500/10'
+                            )}
+                          >
                             <TableCell className="font-medium"><Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link></TableCell>
                             <TableCell>{book.projectName}</TableCell>
                             <TableCell>{book.assigneeName}</TableCell>
