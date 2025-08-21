@@ -16,10 +16,11 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Eye } from "lucide-react"
+import { Eye, ThumbsDown, ThumbsUp, Tag } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import { type EnrichedBook } from "@/lib/data"
 import Link from "next/link";
@@ -29,7 +30,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
-import { ThumbsUp, ThumbsDown, Tag } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { AppDocument, RejectionTag } from "@/context/workflow-context";
