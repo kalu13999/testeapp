@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FileClock, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, ThumbsDown, ThumbsUp, Check, LucideIcon } from "lucide-react";
+import { FileClock, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, ThumbsDown, ThumbsUp, Check, type LucideIcon } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -28,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
 
 interface DeliveryValidationClientProps {
   config: {
@@ -52,11 +53,12 @@ export default function MyValidationsClient() {
     setProvisionalDeliveryStatus, tagPageForRejection
   } = useAppContext();
   
-  const [reviewState, setReviewState] = React.useState<{ open: boolean; task: ValidationTask | null }>({ open: false, task: null });
-  const [columnCols, setColumnCols] = React.useState(8);
+  const { toast } = useToast();
+  
   const [rejectionDialog, setRejectionDialog] = React.useState<{ open: boolean; bookId: string; deliveryItemId: string; bookName: string; } | null>(null);
   const [rejectionComment, setRejectionComment] = React.useState("");
   const [taggingState, setTaggingState] = React.useState<{ open: boolean; doc: AppDocument | null; availableTags: RejectionTag[]; }>({ open: false, doc: null, availableTags: [] });
+  const [columnStates, setColumnStates] = React.useState<{ [key: string]: { cols: number } }>({});
 
   const canViewAll = React.useMemo(() => {
     if (!currentUser) return false;
@@ -73,25 +75,25 @@ export default function MyValidationsClient() {
       validatingBatchIds.has(item.deliveryId) && item.status === 'pending'
     );
     
-    const clientProjects = new Set(books.filter(b => b.clientId === currentUser?.clientId).map(b => b.projectId));
-
-    if (currentUser.clientId) {
-      const clientBookIds = new Set(books.filter(b => b.clientId === currentUser.clientId).map(b => b.id));
-      relevantItems = relevantItems.filter(item => clientBookIds.has(item.bookId));
-    }
-    
-    if (!canViewAll) {
+    // This is the main filter logic based on user permissions
+    if (canViewAll) {
+      if (currentUser.clientId) {
+        // Admins might not have a clientID, but client managers do. Filter by client if applicable.
+        const clientBookIds = new Set(books.filter(b => b.clientId === currentUser.clientId).map(b => b.id));
+        relevantItems = relevantItems.filter(item => clientBookIds.has(item.bookId));
+      }
+    } else {
+      // Regular client operator only sees their own assigned tasks
       relevantItems = relevantItems.filter(item => item.user_id === currentUser.id);
     }
     
+    // Further filter by selected project if one is active
     if (selectedProjectId) {
-      relevantItems = relevantItems.filter(item => {
-        const book = books.find(b => b.id === item.bookId);
-        return book?.projectId === selectedProjectId;
-      });
+        const projectBookIds = new Set(books.filter(b => b.projectId === selectedProjectId).map(b => b.id));
+        relevantItems = relevantItems.filter(item => projectBookIds.has(item.bookId));
     }
 
-    const batchesMap = new Map<string, { creationDate: string; books: (EnrichedBook & {itemStatus: string, deliveryItemId: string})[] }>();
+    const batchesMap = new Map<string, { creationDate: string; books: (EnrichedBook & {itemStatus: string, deliveryItemId: string, assigneeName: string})[] }>();
 
     relevantItems.forEach(item => {
       const batch = deliveryBatches.find(b => b.id === item.deliveryId);
@@ -119,6 +121,7 @@ export default function MyValidationsClient() {
 
   const handleApprove = (deliveryItemId: string, book: EnrichedBook) => {
     setProvisionalDeliveryStatus(deliveryItemId, book.id, 'approved');
+    toast({ title: `Book "${book.name}" Approved` });
   };
   
   const handleRejectSubmit = () => {
@@ -126,6 +129,7 @@ export default function MyValidationsClient() {
     setProvisionalDeliveryStatus(rejectionDialog.deliveryItemId, rejectionDialog.bookId, 'rejected', rejectionComment);
     setRejectionDialog(null);
     setRejectionComment("");
+    toast({ title: `Book "${rejectionDialog.bookName}" Rejected`, variant: "destructive" });
   };
 
   const openTaggingDialog = (doc: AppDocument) => {
@@ -152,7 +156,7 @@ export default function MyValidationsClient() {
   
   const setBookColumns = (bookId: string, cols: number) => {
     setColumnStates(prev => ({ ...prev, [bookId]: { cols } }));
-  };
+  }
 
   const getPagesForBook = (bookId: string) => {
     const getPageNum = (name: string): number => {
@@ -212,10 +216,10 @@ export default function MyValidationsClient() {
                                             </div>
                                         </AccordionTrigger>
                                         <div className="flex justify-end gap-2 px-4">
-                                            <Button size="sm" variant="destructive" onClick={() => setRejectionDialog({ open: true, bookId: book.id, deliveryItemId: (book as any).deliveryItemId, bookName: book.name })}>
+                                            <Button size="sm" variant="destructive" onClick={() => setRejectionDialog({ open: true, bookId: book.id, deliveryItemId: book.deliveryItemId, bookName: book.name })}>
                                                 <ThumbsDown className="mr-2 h-4 w-4" /> Reject
                                             </Button>
-                                            <Button size="sm" onClick={() => handleApprove((book as any).deliveryItemId, book)}>
+                                            <Button size="sm" onClick={() => handleApprove(book.deliveryItemId, book)}>
                                                 <ThumbsUp className="mr-2 h-4 w-4" /> Approve
                                             </Button>
                                         </div>
@@ -308,7 +312,7 @@ interface TaggingDialogProps {
   onClose: () => void;
   doc: AppDocument | null;
   availableTags: RejectionTag[];
-  onSave: (tags: string[]) => void;
+  onSave: (selectedTags: string[]) => void;
 }
 
 function TaggingDialog({ isOpen, onClose, doc, availableTags, onSave }: TaggingDialogProps) {
