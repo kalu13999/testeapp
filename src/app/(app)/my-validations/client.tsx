@@ -81,20 +81,24 @@ export default function MyValidationsClient({}: MyValidationsClientProps) {
     return userPermissions.includes('/client/view-all-validations');
   }, [currentUser, permissions]);
 
-  const batchesToValidate = React.useMemo((): BatchGroup[] => {
+ const batchesToValidate = React.useMemo((): BatchGroup[] => {
     if (!currentUser?.clientId) return [];
     
     // 1. Get all batches currently in validation for the user's company
-    const clientBatches = deliveryBatches.filter(b => {
+    const validatingBatches = deliveryBatches.filter(b => {
+        if (b.status !== 'Validating') return false;
+        // Check if any book in this batch belongs to the current user's client
         const firstItem = deliveryBatchItems.find(i => i.deliveryId === b.id);
-        if(!firstItem) return false;
+        if (!firstItem) return false;
         const book = books.find(b => b.id === firstItem.bookId);
-        return b.status === 'Validating' && book?.clientId === currentUser.clientId;
+        return book?.clientId === currentUser.clientId;
     });
+
+    const validatingBatchIds = new Set(validatingBatches.map(b => b.id));
 
     // 2. Get all pending items from those batches
     let pendingItems = deliveryBatchItems.filter(item => 
-      clientBatches.some(b => b.id === item.deliveryId) && item.status === 'pending'
+      validatingBatchIds.has(item.deliveryId) && item.status === 'pending'
     );
     
     // 3. Filter items based on permission
@@ -106,7 +110,7 @@ export default function MyValidationsClient({}: MyValidationsClientProps) {
     const groupedByBatch = new Map<string, BatchGroup>();
 
     pendingItems.forEach(item => {
-        const batch = clientBatches.find(b => b.id === item.deliveryId);
+        const batch = validatingBatches.find(b => b.id === item.deliveryId);
         const book = books.find(b => b.id === item.bookId);
 
         if (batch && book && (!selectedProjectId || book.projectId === selectedProjectId)) {
@@ -124,7 +128,10 @@ export default function MyValidationsClient({}: MyValidationsClientProps) {
         }
     });
 
-    return Array.from(groupedByBatch.values()).sort((a,b) => new Date(b.creationDate).getTime() - new Date(a.creationDate).getTime());
+    // 5. Filter out any groups that might now be empty after project filtering
+    return Array.from(groupedByBatch.values())
+      .filter(group => group.tasks.length > 0)
+      .sort((a,b) => new Date(b.creationDate).getTime() - new Date(a.creationDate).getTime());
 
   }, [deliveryBatches, deliveryBatchItems, books, users, currentUser, canViewAll, selectedProjectId]);
 
@@ -322,7 +329,7 @@ export default function MyValidationsClient({}: MyValidationsClientProps) {
             <DialogHeader>
                 <DialogTitle>Reason for Rejection</DialogTitle>
                 <DialogDescription>
-                    Provide a reason for rejecting the book "{currentBookInfo?.name}". This will be sent to the internal team for correction.
+                    Please provide a reason for rejecting the book "{currentBookInfo?.name}". This will be sent to the internal team for correction.
                 </DialogDescription>
             </DialogHeader>
             <div className="space-y-2 py-4">

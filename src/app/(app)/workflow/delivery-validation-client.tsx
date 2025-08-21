@@ -18,7 +18,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { FileClock, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, ThumbsDown, ThumbsUp, Check, type LucideIcon } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { type AppDocument, type EnrichedBook, type RejectionTag } from "@/context/workflow-context";
@@ -30,12 +29,6 @@ import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 
-const flagConfig = {
-    error: { icon: ShieldAlert, color: "text-destructive", label: "Error" },
-    warning: { icon: AlertTriangle, color: "text-orange-500", label: "Warning" },
-    info: { icon: Info, color: "text-primary", label: "Info" },
-};
-
 interface DeliveryValidationClientProps {
   config: {
     title: string;
@@ -45,17 +38,28 @@ interface DeliveryValidationClientProps {
   };
 }
 
+const flagConfig = {
+    error: { icon: ShieldAlert, color: "text-destructive", label: "Error" },
+    warning: { icon: AlertTriangle, color: "text-orange-500", label: "Warning" },
+    info: { icon: Info, color: "text-primary", label: "Info" },
+};
+
 
 export default function DeliveryValidationClient({ config }: DeliveryValidationClientProps) {
   const { 
-    books, deliveryBatches, deliveryBatchItems, currentUser,
-    documents, rejectionTags, tagPageForRejection, 
-    setProvisionalDeliveryStatus, finalizeDeliveryBatch
+    books, 
+    documents, 
+    handleClientAction,
+    rejectionTags,
+    currentUser,
+    tagPageForRejection,
+    deliveryBatches,
+    deliveryBatchItems,
   } = useAppContext();
 
   const [rejectionComment, setRejectionComment] = React.useState("");
   const [confirmationState, setConfirmationState] = React.useState({ open: false, title: '', description: '', onConfirm: () => {} });
-  const [currentBookInfo, setCurrentBookInfo] = React.useState<{bookId: string, name: string, deliveryId: string, deliveryItemId: string} | null>(null);
+  const [currentBook, setCurrentBook] = React.useState<{id: string, name: string} | null>(null);
   const [columnStates, setColumnStates] = React.useState<{ [key: string]: { cols: number } }>({});
   
   const [taggingState, setTaggingState] = React.useState<{
@@ -71,7 +75,7 @@ export default function DeliveryValidationClient({ config }: DeliveryValidationC
 
     const relevantItems = deliveryBatchItems.filter(item => bookIdsInScope.has(item.bookId));
 
-    const batchesMap = new Map<string, { creationDate: string; books: (EnrichedBook & {itemStatus: string, deliveryItemId: string})[] }>();
+    const batchesMap = new Map<string, { creationDate: string; books: (EnrichedBook & {itemStatus: string})[] }>();
 
     relevantItems.forEach(item => {
         const batch = deliveryBatches.find(b => b.id === item.deliveryId);
@@ -83,8 +87,7 @@ export default function DeliveryValidationClient({ config }: DeliveryValidationC
             }
             batchesMap.get(batch.id)!.books.push({
                 ...book,
-                itemStatus: item.status,
-                deliveryItemId: item.id
+                itemStatus: item.status
             });
         }
     });
@@ -109,20 +112,12 @@ export default function DeliveryValidationClient({ config }: DeliveryValidationC
   }
 
   const handleRejectSubmit = () => {
-    if (!currentBookInfo) return;
-    setProvisionalDeliveryStatus(currentBookInfo.deliveryItemId, currentBookInfo.bookId, 'rejected', rejectionComment);
+    if (!currentBook) return;
+    handleClientAction(currentBook.id, 'reject', rejectionComment);
     setRejectionComment("");
-    setCurrentBookInfo(null);
+    setCurrentBook(null);
   }
   
-  const handleApproveBatch = (batchId: string) => {
-    openConfirmationDialog({
-      title: `Confirm Validation & Approve Remaining?`,
-      description: "This will approve all pending books and finalize the entire batch (both approved and rejected books). This action cannot be undone.",
-      onConfirm: () => finalizeDeliveryBatch(batchId, 'approve_remaining'),
-    });
-  }
-
   const openTaggingDialog = (doc: AppDocument) => {
     const book = books.find(b => b.id === doc.bookId);
     if (!book || !currentUser?.clientId) return;
@@ -180,11 +175,6 @@ export default function DeliveryValidationClient({ config }: DeliveryValidationC
                             </div>
                         </div>
                     </AccordionTrigger>
-                    <div className="px-4">
-                      <Button size="sm" variant="secondary" onClick={() => handleApproveBatch(batchId)}>
-                        <Check className="mr-2 h-4 w-4" /> Confirm & Finalize Batch
-                      </Button>
-                    </div>
                   </div>
                   <AccordionContent className="p-4 space-y-4">
                      <Accordion type="multiple" className="w-full">
@@ -208,10 +198,10 @@ export default function DeliveryValidationClient({ config }: DeliveryValidationC
                                             </div>
                                         </AccordionTrigger>
                                         <div className="flex justify-end gap-2 px-4">
-                                            <Button size="sm" variant="destructive" onClick={() => setCurrentBookInfo({bookId: book.id, name: book.name, deliveryId: batchId, deliveryItemId: book.deliveryItemId})}>
+                                            <Button size="sm" variant="destructive" onClick={() => setCurrentBook({id: book.id, name: book.name})}>
                                                 <ThumbsDown className="mr-2 h-4 w-4" /> Reject
                                             </Button>
-                                            <Button size="sm" onClick={() => setProvisionalDeliveryStatus(book.deliveryItemId, book.id, 'approved')}>
+                                            <Button size="sm" onClick={() => handleClientAction(book.id, 'approve')}>
                                                 <ThumbsUp className="mr-2 h-4 w-4" /> Approve
                                             </Button>
                                         </div>
@@ -276,12 +266,12 @@ export default function DeliveryValidationClient({ config }: DeliveryValidationC
         </AlertDialogContent>
       </AlertDialog>
       
-      <Dialog open={!!currentBookInfo} onOpenChange={(open) => !open && setCurrentBookInfo(null)}>
+      <Dialog open={!!currentBook} onOpenChange={(open) => !open && setCurrentBook(null)}>
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>Reason for Rejection</DialogTitle>
                 <DialogDescription>
-                    Please provide a reason for rejecting the book "{currentBookInfo?.name}". This will be sent to the internal team for correction.
+                    Please provide a reason for rejecting the book "{currentBook?.name}". This will be sent to the internal team for correction.
                 </DialogDescription>
             </DialogHeader>
             <div className="space-y-2 py-4">
@@ -294,7 +284,7 @@ export default function DeliveryValidationClient({ config }: DeliveryValidationC
                 />
             </div>
             <DialogFooter>
-                <Button variant="outline" onClick={() => setCurrentBookInfo(null)}>Cancel</Button>
+                <Button variant="outline" onClick={() => setCurrentBook(null)}>Cancel</Button>
                 <Button variant="destructive" onClick={handleRejectSubmit} disabled={!rejectionComment.trim()}>
                     Submit Rejection
                 </Button>
