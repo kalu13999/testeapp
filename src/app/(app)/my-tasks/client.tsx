@@ -16,7 +16,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -34,6 +33,7 @@ import { ThumbsUp, ThumbsDown, Tag } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { AppDocument, RejectionTag } from "@/context/workflow-context";
+import { Textarea } from "@/components/ui/textarea";
 
 type ValidationTask = {
   item: {
