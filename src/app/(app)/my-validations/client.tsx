@@ -32,7 +32,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 const flagConfig = {
     error: { icon: ShieldAlert, color: "text-destructive", label: "Error" },
     warning: { icon: AlertTriangle, color: "text-orange-500", label: "Warning" },
-    info: { icon: Info, color: "text-primary", label: "Info" },
+    info: { icon: InfoIcon, color: "text-primary", label: "Info" },
 };
 
 export default function MyValidationsClient() {
@@ -55,26 +55,31 @@ export default function MyValidationsClient() {
     const userPermissions = permissions[currentUser.role] || [];
     const canViewAllCompanyValidations = userPermissions.includes('/client/view-all-validations');
 
+    // 1. Get all batches currently in validation
     const validatingBatchIds = new Set(
         deliveryBatches.filter(b => b.status === 'Validating').map(b => b.id)
     );
 
     if (validatingBatchIds.size === 0) return [];
     
+    // 2. Get all items belonging to those batches
     const itemsInValidatingBatches = deliveryBatchItems.filter(item => 
         validatingBatchIds.has(item.deliveryId) && item.status === 'pending'
     );
     
+    // 3. Filter items based on user permissions
     let relevantItems;
-
-    if (canViewAllCompanyValidations) {
-        const myClientBooks = books.filter(b => b.clientId === currentUser.clientId);
-        const myClientBookIds = new Set(myClientBooks.map(b => b.id));
-        relevantItems = itemsInValidatingBatches.filter(item => myClientBookIds.has(item.bookId));
+    if (canViewAllCompanyValidations && currentUser.clientId) {
+      // Find all book IDs belonging to the current user's client
+      const myClientBookIds = new Set(books.filter(b => b.clientId === currentUser.clientId).map(b => b.id));
+      // Filter items to only those whose book is in the client's project
+      relevantItems = itemsInValidatingBatches.filter(item => myClientBookIds.has(item.bookId));
     } else {
-        relevantItems = itemsInValidatingBatches.filter(item => item.userId === currentUser.id);
+      // Regular user only sees their own assigned tasks
+      relevantItems = itemsInValidatingBatches.filter(item => item.userId === currentUser.id);
     }
-
+    
+    // 4. Enrich the items with book and assignee data
     return relevantItems.map(item => {
         const book = books.find(b => b.id === item.bookId);
         if (!book) return null;
