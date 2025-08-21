@@ -145,7 +145,7 @@ export interface DeliveryBatchItem {
   id: string;
   deliveryId: string;
   bookId: string;
-  userId: string | null;
+  user_id: string | null;
   status: 'pending' | 'approved' | 'rejected';
   info: string | null;
   obs: string | null;
@@ -392,5 +392,3 @@ export async function getPagesByBookId(bookId: string): Promise<Document[]> {
     const documents = await getRawDocuments();
     return documents.filter(d => d.bookId === bookId);
 }
-
-    

@@ -1,17 +1,10 @@
 
+
 "use client"
 
 import * as React from "react"
 import Link from "next/link";
 import Image from "next/image";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import {
   Card,
   CardContent,
@@ -21,42 +14,34 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Textarea } from "@/components/ui/textarea";
-import { Slider } from "@/components/ui/slider";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { useToast } from "@/hooks/use-toast";
-
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { FileClock, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, ThumbsDown, ThumbsUp, Check, LucideIcon } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { type AppDocument, type EnrichedBook, type RejectionTag } from "@/context/workflow-context";
+import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
+import { cn } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
 
-import { Eye, ThumbsUp, ThumbsDown, Tag, ShieldAlert, AlertTriangle, Info, BookOpen } from "lucide-react";
-
-type ValidationTask = {
-  item: {
-    id: string;
-    deliveryId: string;
+interface DeliveryValidationClientProps {
+  config: {
+    title: string;
+    description: string;
+    emptyStateText: string;
+    dataStatus?: string;
   };
-  book: EnrichedBook;
-  assigneeName: string;
-  batchDate: string;
-};
+}
 
 const flagConfig = {
     error: { icon: ShieldAlert, color: "text-destructive", label: "Error" },
     warning: { icon: AlertTriangle, color: "text-orange-500", label: "Warning" },
     info: { icon: Info, color: "text-primary", label: "Info" },
-};
-
-const gridClasses: { [key: number]: string } = {
-  1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4', 5: 'grid-cols-5', 6: 'grid-cols-6',
-  7: 'grid-cols-7', 8: 'grid-cols-8', 9: 'grid-cols-9', 10: 'grid-cols-10', 11: 'grid-cols-11', 12: 'grid-cols-12'
 };
 
 
@@ -72,7 +57,6 @@ export default function MyValidationsClient() {
   const [rejectionDialog, setRejectionDialog] = React.useState<{ open: boolean; bookId: string; deliveryItemId: string; bookName: string; } | null>(null);
   const [rejectionComment, setRejectionComment] = React.useState("");
   const [taggingState, setTaggingState] = React.useState<{ open: boolean; doc: AppDocument | null; availableTags: RejectionTag[]; }>({ open: false, doc: null, availableTags: [] });
-  const { toast } = useToast();
 
   const canViewAll = React.useMemo(() => {
     if (!currentUser) return false;
@@ -80,59 +64,68 @@ export default function MyValidationsClient() {
     return userPermissions.includes('*') || userPermissions.includes('/client/view-all-validations');
   }, [currentUser, permissions]);
 
-  const myTasks = React.useMemo(() => {
+  const batchesToValidate = React.useMemo(() => {
     if (!currentUser) return [];
 
     const validatingBatchIds = new Set(deliveryBatches.filter(b => b.status === 'Validating').map(b => b.id));
-    
+
     let relevantItems = deliveryBatchItems.filter(item => 
       validatingBatchIds.has(item.deliveryId) && item.status === 'pending'
     );
     
-    // Filter by user's client company if they are a client type
+    const clientProjects = new Set(books.filter(b => b.clientId === currentUser?.clientId).map(b => b.projectId));
+
     if (currentUser.clientId) {
       const clientBookIds = new Set(books.filter(b => b.clientId === currentUser.clientId).map(b => b.id));
       relevantItems = relevantItems.filter(item => clientBookIds.has(item.bookId));
     }
     
-    // Then, filter by assigned user if they DON'T have view-all permission
     if (!canViewAll) {
-      relevantItems = relevantItems.filter(item => item.userId === currentUser.id);
+      relevantItems = relevantItems.filter(item => item.user_id === currentUser.id);
     }
     
-    // Finally, filter by selected project if one is selected
     if (selectedProjectId) {
-        const projectBookIds = new Set(books.filter(b => b.projectId === selectedProjectId).map(b => b.id));
-        relevantItems = relevantItems.filter(item => projectBookIds.has(item.bookId));
+      relevantItems = relevantItems.filter(item => {
+        const book = books.find(b => b.id === item.bookId);
+        return book?.projectId === selectedProjectId;
+      });
     }
 
-    return relevantItems.map(item => {
-      const book = books.find(b => b.id === item.bookId);
+    const batchesMap = new Map<string, { creationDate: string; books: (EnrichedBook & {itemStatus: string, deliveryItemId: string})[] }>();
+
+    relevantItems.forEach(item => {
       const batch = deliveryBatches.find(b => b.id === item.deliveryId);
-      const assignee = users.find(u => u.id === item.userId);
-      return {
-        item: { id: item.id, deliveryId: item.deliveryId },
-        book,
-        assigneeName: assignee?.name || 'Unassigned',
-        batchDate: batch?.creationDate || 'Unknown'
+      const book = books.find(b => b.id === item.bookId);
+      const assignee = users.find(u => u.id === item.user_id);
+
+      if (batch && book) {
+        if (!batchesMap.has(batch.id)) {
+            batchesMap.set(batch.id, { creationDate: batch.creationDate, books: [] });
+        }
+        batchesMap.get(batch.id)!.books.push({
+            ...book,
+            itemStatus: item.status,
+            deliveryItemId: item.id,
+            assigneeName: assignee?.name || 'Unassigned',
+        });
       }
-    }).filter((task): task is ValidationTask => !!task.book);
-    
+    });
+
+    return Array.from(batchesMap.entries())
+        .map(([batchId, data]) => ({ batchId, ...data }))
+        .sort((a,b) => new Date(b.creationDate).getTime() - new Date(a.creationDate).getTime());
+
   }, [currentUser, deliveryBatches, deliveryBatchItems, books, users, canViewAll, selectedProjectId, permissions]);
 
-  const handleApprove = (item: ValidationTask) => {
-    setProvisionalDeliveryStatus(item.item.id, item.book.id, 'approved');
-    setReviewState({ open: false, task: null });
-    toast({ title: `Book "${item.book.name}" Approved` });
+  const handleApprove = (deliveryItemId: string, book: EnrichedBook) => {
+    setProvisionalDeliveryStatus(deliveryItemId, book.id, 'approved');
   };
   
   const handleRejectSubmit = () => {
     if (!rejectionDialog) return;
     setProvisionalDeliveryStatus(rejectionDialog.deliveryItemId, rejectionDialog.bookId, 'rejected', rejectionComment);
-    setReviewState({ open: false, task: null });
     setRejectionDialog(null);
     setRejectionComment("");
-    toast({ title: `Book "${rejectionDialog.bookName}" Rejected`, variant: "destructive" });
   };
 
   const openTaggingDialog = (doc: AppDocument) => {
@@ -156,6 +149,10 @@ export default function MyValidationsClient() {
     }
     closeTaggingDialog();
   };
+  
+  const setBookColumns = (bookId: string, cols: number) => {
+    setColumnStates(prev => ({ ...prev, [bookId]: { cols } }));
+  };
 
   const getPagesForBook = (bookId: string) => {
     const getPageNum = (name: string): number => {
@@ -164,6 +161,11 @@ export default function MyValidationsClient() {
     }
     return documents.filter(doc => doc.bookId === bookId).sort((a, b) => getPageNum(a.name) - getPageNum(b.name));
   }
+  
+  const gridClasses: { [key: number]: string } = {
+    1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4', 5: 'grid-cols-5', 6: 'grid-cols-6',
+    7: 'grid-cols-7', 8: 'grid-cols-8', 9: 'grid-cols-9', 10: 'grid-cols-10', 11: 'grid-cols-11', 12: 'grid-cols-12'
+  };
 
   return (
     <>
@@ -173,92 +175,95 @@ export default function MyValidationsClient() {
           <CardDescription>Review and approve or reject the books assigned to you for validation.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Book Name</TableHead>
-                <TableHead>Project</TableHead>
-                <TableHead>Delivery Batch Date</TableHead>
-                {canViewAll && <TableHead>Assigned To</TableHead>}
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {myTasks.length > 0 ? (
-                myTasks.map(task => (
-                  <TableRow key={task.item.id}>
-                    <TableCell className="font-medium">{task.book.name}</TableCell>
-                    <TableCell>{task.book.projectName}</TableCell>
-                    <TableCell>{new Date(task.batchDate).toLocaleDateString()}</TableCell>
-                    {canViewAll && <TableCell>{task.assigneeName}</TableCell>}
-                    <TableCell className="text-right">
-                       <Button size="sm" onClick={() => setReviewState({ open: true, task })}>
-                         <Eye className="mr-2 h-4 w-4" /> Review Book
-                       </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={canViewAll ? 5 : 4} className="h-24 text-center">
-                    You have no pending validation tasks.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+          {batchesToValidate.length > 0 ? (
+            <Accordion type="multiple" className="w-full">
+              {batchesToValidate.map(({ batchId, creationDate, books: booksInBatch }) => (
+                <AccordionItem value={batchId} key={batchId}>
+                   <AccordionTrigger className="hover:bg-muted/50 px-4 py-2">
+                        <div className="flex items-center gap-3 text-left">
+                            <FileClock className="h-5 w-5 text-primary" />
+                            <div>
+                                <p className="font-semibold text-base">
+                                  Delivery Batch - {new Date(creationDate).toLocaleDateString()}
+                                </p>
+                                <p className="text-sm text-muted-foreground">{booksInBatch.length} book(s) in this batch</p>
+                            </div>
+                        </div>
+                    </AccordionTrigger>
+                  <AccordionContent className="p-4 space-y-4">
+                     <Accordion type="multiple" className="w-full">
+                        {booksInBatch.map(book => {
+                            const pages = getPagesForBook(book.id);
+                            const bookCols = columnStates[book.id]?.cols || 8;
+                            return (
+                                <AccordionItem value={book.id} key={book.id} className={cn(
+                                  "border-b transition-colors",
+                                  book.itemStatus === 'approved' && 'bg-green-500/10 border-green-500/30',
+                                  book.itemStatus === 'rejected' && 'bg-red-500/10 border-red-500/30'
+                                )}>
+                                    <div className="flex items-center justify-between hover:bg-muted/50 rounded-md">
+                                        <AccordionTrigger className="flex-1 px-4 py-2">
+                                            <div className="flex items-center gap-3 text-left">
+                                                <BookOpen className="h-5 w-5 text-muted-foreground" />
+                                                <div>
+                                                    <p className="font-semibold">{book.name}</p>
+                                                    <p className="text-sm text-muted-foreground">{book.projectName} - {pages.length} pages {canViewAll && `- Assigned to: ${book.assigneeName}`}</p>
+                                                </div>
+                                            </div>
+                                        </AccordionTrigger>
+                                        <div className="flex justify-end gap-2 px-4">
+                                            <Button size="sm" variant="destructive" onClick={() => setRejectionDialog({ open: true, bookId: book.id, deliveryItemId: (book as any).deliveryItemId, bookName: book.name })}>
+                                                <ThumbsDown className="mr-2 h-4 w-4" /> Reject
+                                            </Button>
+                                            <Button size="sm" onClick={() => handleApprove((book as any).deliveryItemId, book)}>
+                                                <ThumbsUp className="mr-2 h-4 w-4" /> Approve
+                                            </Button>
+                                        </div>
+                                    </div>
+                                    <AccordionContent className="p-4 space-y-4">
+                                        <div className="flex items-center justify-end gap-4">
+                                            <Label htmlFor={`columns-slider-${book.id}`} className="text-sm whitespace-nowrap">Thumbnail Size:</Label>
+                                            <Slider id={`columns-slider-${book.id}`} min={1} max={12} step={1} value={[bookCols]} onValueChange={(val) => setBookColumns(book.id, val[0])} className="w-full max-w-[200px]" />
+                                            <Badge variant="outline" className="w-16 justify-center">{bookCols} {bookCols > 1 ? 'cols' : 'col'}</Badge>
+                                        </div>
+                                         <div className={`grid gap-4 ${gridClasses[bookCols]}`}>
+                                            {pages.map(page => (
+                                                <div key={page.id} className="relative group">
+                                                    <Link href={`/documents/${page.id}`} target="_blank" className="block">
+                                                        <Card className="overflow-hidden hover:shadow-lg transition-shadow relative border-2 border-transparent group-hover:border-primary">
+                                                            <CardContent className="p-0">
+                                                                <Image src={page.imageUrl || "https://placehold.co/400x550.png"} alt={`Preview of ${page.name}`} data-ai-hint="document page" width={400} height={550} className="aspect-[4/5.5] object-cover w-full h-full" />
+                                                            </CardContent>
+                                                            <CardFooter className="p-2 min-h-[50px] flex-col items-start gap-1">
+                                                                <p className="text-xs font-medium break-words">{page.name}</p>
+                                                                {page.tags && page.tags.length > 0 && (<div className="flex flex-wrap gap-1 pt-1">{page.tags.map(tag => (<Badge key={tag} variant={'outline'} className="text-xs">{tag}</Badge>))}</div>)}
+                                                            </CardFooter>
+                                                        </Card>
+                                                    </Link>
+                                                    <Button variant="secondary" size="icon" className="h-7 w-7 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => openTaggingDialog(page)}>
+                                                        <Tag className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </AccordionContent>
+                                </AccordionItem>
+                            )
+                        })}
+                     </Accordion>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          ) : (
+            <div className="text-center py-10 text-muted-foreground flex flex-col items-center gap-4">
+              <FileClock className="h-12 w-12"/>
+              <p>You have no pending validation tasks.</p>
+           </div>
+          )}
         </CardContent>
       </Card>
       
-      {/* Review Dialog */}
-      <Dialog open={reviewState.open} onOpenChange={(isOpen) => !isOpen && setReviewState({ open: false, task: null })}>
-          <DialogContent className="max-w-[90vw] h-[95vh] flex flex-col">
-              <DialogHeader>
-                  <DialogTitle>Reviewing: {reviewState.task?.book.name}</DialogTitle>
-                  <DialogDescription>
-                    Review all pages. You can tag individual pages with issues before making a final decision.
-                  </DialogDescription>
-              </DialogHeader>
-              <div className="flex-1 min-h-0">
-                  <ScrollArea className="h-full pr-6">
-                      <div className="flex items-center justify-end gap-4 py-4 sticky top-0 bg-background z-10">
-                          <Label htmlFor="columns-slider" className="text-sm whitespace-nowrap">Thumbnail Size:</Label>
-                          <Slider id="columns-slider" min={1} max={12} step={1} value={[columnCols]} onValueChange={(val) => setColumnCols(val[0])} className="w-full max-w-[200px]" />
-                      </div>
-                      <div className={`grid gap-4 ${gridClasses[columnCols]}`}>
-                        {reviewState.task && getPagesForBook(reviewState.task.book.id).map(page => (
-                            <div key={page.id} className="relative group">
-                                <Link href={`/documents/${page.id}`} target="_blank" className="block">
-                                    <Card className="overflow-hidden hover:shadow-lg transition-shadow relative border-2 border-transparent group-hover:border-primary">
-                                        <CardContent className="p-0">
-                                            <Image src={page.imageUrl || "https://placehold.co/400x550.png"} alt={`Preview of ${page.name}`} data-ai-hint="document page" width={400} height={550} className="aspect-[4/5.5] object-cover w-full h-full" />
-                                        </CardContent>
-                                        <CardFooter className="p-2 min-h-[50px] flex-col items-start gap-1">
-                                            <p className="text-xs font-medium break-words">{page.name}</p>
-                                            {page.tags && page.tags.length > 0 && (<div className="flex flex-wrap gap-1 pt-1">{page.tags.map(tag => (<Badge key={tag} variant={'outline'} className="text-xs">{tag}</Badge>))}</div>)}
-                                        </CardFooter>
-                                    </Card>
-                                </Link>
-                                <Button variant="secondary" size="icon" className="h-7 w-7 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => openTaggingDialog(page)}>
-                                    <Tag className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        ))}
-                      </div>
-                  </ScrollArea>
-              </div>
-              <DialogFooter className="pt-4 border-t">
-                  <Button variant="destructive" onClick={() => reviewState.task && setRejectionDialog({ open: true, bookId: reviewState.task.book.id, deliveryItemId: reviewState.task.item.id, bookName: reviewState.task.book.name })}>
-                      <ThumbsDown className="mr-2 h-4 w-4"/> Reject Book
-                  </Button>
-                  <Button onClick={() => reviewState.task && handleApprove(reviewState.task)}>
-                      <ThumbsUp className="mr-2 h-4 w-4"/> Approve Book
-                  </Button>
-              </DialogFooter>
-          </DialogContent>
-      </Dialog>
-      
-       {/* Rejection Comment Dialog */}
        <Dialog open={!!rejectionDialog} onOpenChange={(isOpen) => !isOpen && setRejectionDialog(null)}>
           <DialogContent>
               <DialogHeader>
@@ -285,7 +290,6 @@ export default function MyValidationsClient() {
           </DialogContent>
        </Dialog>
        
-       {/* Tagging Dialog */}
        <TaggingDialog
          isOpen={taggingState.open}
          onClose={closeTaggingDialog}
@@ -304,7 +308,7 @@ interface TaggingDialogProps {
   onClose: () => void;
   doc: AppDocument | null;
   availableTags: RejectionTag[];
-  onSave: (selectedTags: string[]) => void;
+  onSave: (tags: string[]) => void;
 }
 
 function TaggingDialog({ isOpen, onClose, doc, availableTags, onSave }: TaggingDialogProps) {
