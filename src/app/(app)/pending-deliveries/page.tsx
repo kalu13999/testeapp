@@ -1,4 +1,5 @@
 
+
 import DeliveryValidationClient from "../workflow/delivery-validation-client";
 
 export default function PendingDeliveriesPage() {
@@ -7,7 +8,10 @@ export default function PendingDeliveriesPage() {
     description: "Documents awaiting your review and approval.",
     emptyStateText: "There are no pending deliveries.",
     dataStatus: "Pending Validation",
+    dataType: 'book',
+    viewType: 'folder',
   };
   
   return <DeliveryValidationClient config={config} />;
 }
+
