@@ -74,6 +74,7 @@ export const ALL_PERMISSIONS: PermissionGroup[] = [
     group: 'Client Portal',
     permissions: [
       { id: '/shipments', label: 'Client: Prepare Shipment' },
+      { id: '/my-validations', label: 'Client: My Validations' },
       { id: '/my-tasks', label: 'Client: My Tasks' },
       { id: '/manage-deliveries', label: 'Client: Manage Deliveries' },
       { id: '/validation-monitoring', label: 'Client: Validation Monitoring' },
@@ -122,6 +123,7 @@ export const permissionDescriptions: { [key: string]: string } = {
   '/archive': 'Access the view of all fully archived and completed books.',
   '/shipments': 'Client-facing page to prepare and mark books as shipped.',
   '/my-tasks': 'Client-facing page to view and action assigned validation tasks.',
+  '/my-validations': 'Client-facing page to view and action assigned validation tasks (legacy).',
   '/validated-history': 'Client-facing page to view the history of all their validated batches.',
   '/reasons': 'Allows management of custom rejection reasons for clients.',
   '/manage-deliveries': 'Allows client managers to distribute validation tasks.',

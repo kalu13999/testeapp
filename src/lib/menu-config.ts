@@ -172,6 +172,7 @@ export const allMenuItems: MenuSection[] = [
     items: [
       { href: "/dashboard", label: "Project Dashboard", icon: Home, roles: ['Client', 'Client Manager', 'Client Operator'] },
       { href: "/shipments", label: "Prepare Shipment", icon: Send },
+      { href: "/my-validations", label: "My Validations", icon: ClipboardList },
       { href: "/manage-deliveries", label: "Manage Deliveries", icon: Split },
       { href: "/my-tasks", label: "My Tasks", icon: ClipboardList },
       { href: "/validation-monitoring", label: "Validation Monitoring", icon: MonitorCheck },

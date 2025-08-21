@@ -5,6 +5,14 @@ import * as React from "react"
 import Link from "next/link";
 import Image from "next/image";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import {
   Card,
   CardContent,
   CardDescription,
@@ -13,22 +21,22 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FileClock, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, ThumbsDown, ThumbsUp, Check, User, type LucideIcon } from "lucide-react";
-import { useAppContext } from "@/context/workflow-context";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { type AppDocument, type EnrichedBook, type RejectionTag } from "@/context/workflow-context";
-import { Textarea } from "@/components/ui/textarea";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { Slider } from "@/components/ui/slider";
-import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
+import { Slider } from "@/components/ui/slider";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 
-interface MyValidationsClientProps {}
+import { useAppContext } from "@/context/workflow-context";
+import { type AppDocument, type EnrichedBook, type RejectionTag } from "@/context/workflow-context";
+
+import { Eye, ThumbsUp, ThumbsDown, Tag, ShieldAlert, AlertTriangle, Info, BookOpen } from "lucide-react";
 
 type ValidationTask = {
   item: {
@@ -36,17 +44,9 @@ type ValidationTask = {
     deliveryId: string;
   };
   book: EnrichedBook;
-  assignee: {
-    id: string;
-    name: string;
-  } | null;
+  assigneeName: string;
+  batchDate: string;
 };
-
-type BatchGroup = {
-  batchId: string;
-  creationDate: string;
-  tasks: ValidationTask[];
-}
 
 const flagConfig = {
     error: { icon: ShieldAlert, color: "text-destructive", label: "Error" },
@@ -54,26 +54,25 @@ const flagConfig = {
     info: { icon: Info, color: "text-primary", label: "Info" },
 };
 
-export default function MyValidationsClient({}: MyValidationsClientProps) {
-  const { 
-    deliveryBatches, deliveryBatchItems, books, currentUser, users, permissions,
-    documents, rejectionTags, tagPageForRejection, 
-    setProvisionalDeliveryStatus, finalizeDeliveryBatch,
-    selectedProjectId
-  } = useAppContext();
+const gridClasses: { [key: number]: string } = {
+  1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4', 5: 'grid-cols-5', 6: 'grid-cols-6',
+  7: 'grid-cols-7', 8: 'grid-cols-8', 9: 'grid-cols-9', 10: 'grid-cols-10', 11: 'grid-cols-11', 12: 'grid-cols-12'
+};
 
-  const [rejectionComment, setRejectionComment] = React.useState("");
-  const [currentBookInfo, setCurrentBookInfo] = React.useState<{ bookId: string; name: string; deliveryItemId: string } | null>(null);
-  const [confirmationState, setConfirmationState] = React.useState({ open: false, title: '', description: '', onConfirm: () => {} });
-  const [columnStates, setColumnStates] = React.useState<{ [key: string]: { cols: number } }>({});
+
+export default function MyValidationsClient() {
+  const {
+    currentUser, permissions, deliveryBatches, deliveryBatchItems, books, users,
+    documents, rejectionTags, selectedProjectId,
+    setProvisionalDeliveryStatus, tagPageForRejection
+  } = useAppContext();
   
-  const [taggingState, setTaggingState] = React.useState<{
-    open: boolean;
-    docId: string | null;
-    docName: string | null;
-    selectedTags: string[];
-    availableTags: RejectionTag[];
-  }>({ open: false, docId: null, docName: null, selectedTags: [], availableTags: [] });
+  const [reviewState, setReviewState] = React.useState<{ open: boolean; task: ValidationTask | null }>({ open: false, task: null });
+  const [columnCols, setColumnCols] = React.useState(8);
+  const [rejectionDialog, setRejectionDialog] = React.useState<{ open: boolean; bookId: string; deliveryItemId: string; bookName: string; } | null>(null);
+  const [rejectionComment, setRejectionComment] = React.useState("");
+  const [taggingState, setTaggingState] = React.useState<{ open: boolean; doc: AppDocument | null; availableTags: RejectionTag[]; }>({ open: false, doc: null, availableTags: [] });
+  const { toast } = useToast();
 
   const canViewAll = React.useMemo(() => {
     if (!currentUser) return false;
@@ -81,64 +80,82 @@ export default function MyValidationsClient({}: MyValidationsClientProps) {
     return userPermissions.includes('*') || userPermissions.includes('/client/view-all-validations');
   }, [currentUser, permissions]);
 
- const batchesToValidate = React.useMemo((): BatchGroup[] => {
+  const myTasks = React.useMemo(() => {
     if (!currentUser) return [];
 
-    const validatingBatchIds = new Set(
-        deliveryBatches.filter(b => b.status === 'Validating').map(b => b.id)
-    );
-
-    let allPendingItems = deliveryBatchItems.filter(item => 
+    const validatingBatchIds = new Set(deliveryBatches.filter(b => b.status === 'Validating').map(b => b.id));
+    
+    let relevantItems = deliveryBatchItems.filter(item => 
       validatingBatchIds.has(item.deliveryId) && item.status === 'pending'
     );
     
-    // Filter by selected project
-    if (selectedProjectId) {
-      const bookIdsInProject = new Set(books.filter(b => b.projectId === selectedProjectId).map(b => b.id));
-      allPendingItems = allPendingItems.filter(item => bookIdsInProject.has(item.bookId));
-    }
-
-    // Filter by user permissions
-    let userVisibleItems;
-    if (canViewAll) {
-      if (currentUser.clientId) {
-          const clientBookIds = new Set(books.filter(b => b.clientId === currentUser.clientId).map(b => b.id));
-          userVisibleItems = allPendingItems.filter(item => clientBookIds.has(item.bookId));
-      } else {
-          userVisibleItems = allPendingItems; // Admin case
-      }
-    } else {
-      userVisibleItems = allPendingItems.filter(item => item.userId === currentUser.id);
+    // Filter by user's client company if they are a client type
+    if (currentUser.clientId) {
+      const clientBookIds = new Set(books.filter(b => b.clientId === currentUser.clientId).map(b => b.id));
+      relevantItems = relevantItems.filter(item => clientBookIds.has(item.bookId));
     }
     
-    // Group by batch
-    const groupedByBatch = new Map<string, BatchGroup>();
+    // Then, filter by assigned user if they DON'T have view-all permission
+    if (!canViewAll) {
+      relevantItems = relevantItems.filter(item => item.userId === currentUser.id);
+    }
+    
+    // Finally, filter by selected project if one is selected
+    if (selectedProjectId) {
+        const projectBookIds = new Set(books.filter(b => b.projectId === selectedProjectId).map(b => b.id));
+        relevantItems = relevantItems.filter(item => projectBookIds.has(item.bookId));
+    }
 
-    userVisibleItems.forEach(item => {
-        const batch = deliveryBatches.find(b => b.id === item.deliveryId);
-        const book = books.find(b => b.id === item.bookId);
+    return relevantItems.map(item => {
+      const book = books.find(b => b.id === item.bookId);
+      const batch = deliveryBatches.find(b => b.id === item.deliveryId);
+      const assignee = users.find(u => u.id === item.userId);
+      return {
+        item: { id: item.id, deliveryId: item.deliveryId },
+        book,
+        assigneeName: assignee?.name || 'Unassigned',
+        batchDate: batch?.creationDate || 'Unknown'
+      }
+    }).filter((task): task is ValidationTask => !!task.book);
+    
+  }, [currentUser, deliveryBatches, deliveryBatchItems, books, users, canViewAll, selectedProjectId, permissions]);
 
-        if (batch && book) {
-            const assignee = item.userId ? users.find(u => u.id === item.userId) : null;
-            const task: ValidationTask = {
-                item: { id: item.id, deliveryId: item.deliveryId },
-                book,
-                assignee: assignee ? { id: assignee.id, name: assignee.name } : null
-            };
+  const handleApprove = (item: ValidationTask) => {
+    setProvisionalDeliveryStatus(item.item.id, item.book.id, 'approved');
+    setReviewState({ open: false, task: null });
+    toast({ title: `Book "${item.book.name}" Approved` });
+  };
+  
+  const handleRejectSubmit = () => {
+    if (!rejectionDialog) return;
+    setProvisionalDeliveryStatus(rejectionDialog.deliveryItemId, rejectionDialog.bookId, 'rejected', rejectionComment);
+    setReviewState({ open: false, task: null });
+    setRejectionDialog(null);
+    setRejectionComment("");
+    toast({ title: `Book "${rejectionDialog.bookName}" Rejected`, variant: "destructive" });
+  };
 
-            if (!groupedByBatch.has(batch.id)) {
-                groupedByBatch.set(batch.id, { batchId: batch.id, creationDate: batch.creationDate, tasks: [] });
-            }
-            groupedByBatch.get(batch.id)!.tasks.push(task);
-        }
+  const openTaggingDialog = (doc: AppDocument) => {
+    const book = books.find(b => b.id === doc.bookId);
+    if (!book || !currentUser?.clientId) return;
+    const availableTags = rejectionTags.filter(tag => tag.clientId === currentUser.clientId);
+    setTaggingState({
+      open: true,
+      doc: doc,
+      availableTags: availableTags
     });
-
-    return Array.from(groupedByBatch.values())
-      .filter(group => group.tasks.length > 0)
-      .sort((a,b) => new Date(b.creationDate).getTime() - new Date(a.creationDate).getTime());
-
-  }, [deliveryBatches, deliveryBatchItems, books, users, currentUser, canViewAll, selectedProjectId, permissions]);
-
+  };
+  
+  const closeTaggingDialog = () => {
+    setTaggingState({ open: false, doc: null, availableTags: [] });
+  };
+  
+  const handleTaggingSubmit = (tags: string[]) => {
+    if (taggingState.doc) {
+      tagPageForRejection(taggingState.doc.id, tags);
+    }
+    closeTaggingDialog();
+  };
 
   const getPagesForBook = (bookId: string) => {
     const getPageNum = (name: string): number => {
@@ -147,255 +164,201 @@ export default function MyValidationsClient({}: MyValidationsClientProps) {
     }
     return documents.filter(doc => doc.bookId === bookId).sort((a, b) => getPageNum(a.name) - getPageNum(b.name));
   }
-  
-  const openConfirmationDialog = ({ title, description, onConfirm}: Omit<typeof confirmationState, 'open'>) => {
-    setConfirmationState({ open: true, title, description, onConfirm });
-  }
-
-  const handleRejectSubmit = () => {
-    if (!currentBookInfo) return;
-    setProvisionalDeliveryStatus(currentBookInfo.deliveryItemId, currentBookInfo.bookId, 'rejected', rejectionComment);
-    setRejectionComment("");
-    setCurrentBookInfo(null);
-  }
-  
-  const handleApproveBatch = (batchId: string) => {
-    openConfirmationDialog({
-      title: `Confirm Validation & Approve Remaining?`,
-      description: "This will approve all pending books and finalize the entire batch (both approved and rejected books). This action cannot be undone.",
-      onConfirm: () => finalizeDeliveryBatch(batchId, 'approve_remaining'),
-    });
-  }
-
-  const openTaggingDialog = (doc: AppDocument) => {
-    const book = books.find(b => b.id === doc.bookId);
-    if (!book || !currentUser?.clientId) return;
-    const availableTags = rejectionTags.filter(tag => tag.clientId === currentUser.clientId);
-    setTaggingState({
-      open: true,
-      docId: doc.id,
-      docName: doc.name,
-      selectedTags: doc.tags || [],
-      availableTags: availableTags
-    });
-  };
-  
-  const closeTaggingDialog = () => {
-    setTaggingState({ open: false, docId: null, docName: null, selectedTags: [], availableTags: [] });
-  };
-  
-  const handleTaggingSubmit = () => {
-    if (taggingState.docId) {
-      tagPageForRejection(taggingState.docId, taggingState.selectedTags);
-    }
-    closeTaggingDialog();
-  };
-  
-  const setBookColumns = (bookId: string, cols: number) => {
-    setColumnStates(prev => ({ ...prev, [bookId]: { cols } }));
-  };
-
-  const gridClasses: { [key: number]: string } = {
-    1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4', 5: 'grid-cols-5', 6: 'grid-cols-6',
-    7: 'grid-cols-7', 8: 'grid-cols-8', 9: 'grid-cols-9', 10: 'grid-cols-10', 11: 'grid-cols-11', 12: 'grid-cols-12'
-  };
 
   return (
     <>
       <Card>
         <CardHeader>
           <CardTitle className="font-headline">My Validations</CardTitle>
-          <CardDescription>Review and approve or reject the books assigned to you.</CardDescription>
+          <CardDescription>Review and approve or reject the books assigned to you for validation.</CardDescription>
         </CardHeader>
         <CardContent>
-          {batchesToValidate.length > 0 ? (
-            <Accordion type="multiple" className="w-full">
-              {batchesToValidate.map(({ batchId, creationDate, tasks }) => (
-                <AccordionItem value={batchId} key={batchId}>
-                   <div className="flex items-center justify-between hover:bg-muted/50 rounded-md">
-                    <AccordionTrigger className="flex-1 px-4 py-2">
-                        <div className="flex items-center gap-3 text-left">
-                            <FileClock className="h-5 w-5 text-primary" />
-                            <div>
-                                <p className="font-semibold text-base">
-                                  Delivery Batch - {new Date(creationDate).toLocaleDateString()}
-                                </p>
-                                <p className="text-sm text-muted-foreground">{tasks.length} book(s) in your queue for this batch</p>
-                            </div>
-                        </div>
-                    </AccordionTrigger>
-                    <div className="px-4">
-                      {canViewAll && (
-                        <Button size="sm" variant="secondary" onClick={() => handleApproveBatch(batchId)}>
-                          <Check className="mr-2 h-4 w-4" /> Confirm & Finalize Batch
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                  <AccordionContent className="p-4 space-y-4">
-                     <Accordion type="multiple" className="w-full">
-                        {tasks.map(task => {
-                            const { book, assignee } = task;
-                            const pages = getPagesForBook(book.id);
-                            const bookCols = columnStates[book.id]?.cols || 8;
-                            return (
-                                <AccordionItem value={book.id} key={book.id}>
-                                    <div className="flex items-center justify-between hover:bg-muted/50 rounded-md">
-                                        <AccordionTrigger className="flex-1 px-4 py-2">
-                                            <div className="flex items-center gap-3 text-left">
-                                                <BookOpen className="h-5 w-5 text-muted-foreground" />
-                                                <div>
-                                                    <p className="font-semibold">{book.name}</p>
-                                                    <div className="flex items-center gap-2">
-                                                        <p className="text-sm text-muted-foreground">{book.projectName}</p>
-                                                        {canViewAll && assignee && (
-                                                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                                            <User className="h-3 w-3"/>
-                                                            <span>{assignee.name}</span>
-                                                          </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </AccordionTrigger>
-                                        <div className="flex justify-end gap-2 px-4">
-                                            <Button size="sm" variant="destructive" onClick={() => setCurrentBookInfo({bookId: book.id, name: book.name, deliveryItemId: task.item.id})}>
-                                                <ThumbsDown className="mr-2 h-4 w-4" /> Reject
-                                            </Button>
-                                            <Button size="sm" onClick={() => setProvisionalDeliveryStatus(task.item.id, book.id, 'approved')}>
-                                                <ThumbsUp className="mr-2 h-4 w-4" /> Approve
-                                            </Button>
-                                        </div>
-                                    </div>
-                                    <AccordionContent className="p-4 space-y-4">
-                                        <div className="flex items-center justify-end gap-4">
-                                            <Label htmlFor={`columns-slider-${book.id}`} className="text-sm whitespace-nowrap">Thumbnail Size:</Label>
-                                            <Slider id={`columns-slider-${book.id}`} min={1} max={12} step={1} value={[bookCols]} onValueChange={(value) => setBookColumns(book.id, value[0])} className="w-full max-w-[200px]" />
-                                            <Badge variant="outline" className="w-16 justify-center">{bookCols} {bookCols > 1 ? 'cols' : 'col'}</Badge>
-                                        </div>
-                                         <div className={`grid gap-4 ${gridClasses[bookCols] || 'grid-cols-8'}`}>
-                                            {pages.map(page => (
-                                                <div key={page.id} className="relative group">
-                                                    <Link href={`/documents/${page.id}`} className="block">
-                                                        <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-                                                            <CardContent className="p-0">
-                                                                <Image src={page.imageUrl || "https://placehold.co/400x550.png"} alt={`Preview of ${page.name}`} data-ai-hint="document page" width={400} height={550} className="aspect-[4/5.5] object-cover w-full h-full" />
-                                                            </CardContent>
-                                                            <CardFooter className="p-2 flex-col items-start gap-1">
-                                                                <p className="text-xs font-medium break-words">{page.name}</p>
-                                                                {page.tags && page.tags.length > 0 && (<div className="flex flex-wrap gap-1 pt-1">{page.tags.map(tag => (<Badge key={tag} variant={'outline'} className="text-xs">{tag}</Badge>))}</div>)}
-                                                            </CardFooter>
-                                                        </Card>
-                                                    </Link>
-                                                    <Button variant="secondary" size="icon" className="h-7 w-7 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => openTaggingDialog(page)}>
-                                                        <Tag className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </AccordionContent>
-                                </AccordionItem>
-                            )
-                        })}
-                     </Accordion>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          ) : (
-            <div className="text-center py-10 text-muted-foreground flex flex-col items-center gap-4">
-                <FileClock className="h-12 w-12"/>
-                <h3 className="font-semibold text-lg">No Pending Validations</h3>
-                <p>You have no assigned books awaiting validation at this time.</p>
-            </div>
-          )}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Book Name</TableHead>
+                <TableHead>Project</TableHead>
+                <TableHead>Delivery Batch Date</TableHead>
+                {canViewAll && <TableHead>Assigned To</TableHead>}
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {myTasks.length > 0 ? (
+                myTasks.map(task => (
+                  <TableRow key={task.item.id}>
+                    <TableCell className="font-medium">{task.book.name}</TableCell>
+                    <TableCell>{task.book.projectName}</TableCell>
+                    <TableCell>{new Date(task.batchDate).toLocaleDateString()}</TableCell>
+                    {canViewAll && <TableCell>{task.assigneeName}</TableCell>}
+                    <TableCell className="text-right">
+                       <Button size="sm" onClick={() => setReviewState({ open: true, task })}>
+                         <Eye className="mr-2 h-4 w-4" /> Review Book
+                       </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={canViewAll ? 5 : 4} className="h-24 text-center">
+                    You have no pending validation tasks.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
       
-      <AlertDialog open={confirmationState.open} onOpenChange={(open) => !open && setConfirmationState(prev => ({...prev, open: false}))}>
-        <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>{confirmationState.title}</AlertDialogTitle>
-                <AlertDialogDescription>{confirmationState.description}</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setConfirmationState(prev => ({...prev, open: false}))}>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={() => {
-                    confirmationState.onConfirm();
-                    setConfirmationState({ open: false, title: '', description: '', onConfirm: () => {} });
-                }}>Confirm</AlertDialogAction>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      
-      <Dialog open={!!currentBookInfo} onOpenChange={(open) => !open && setCurrentBookInfo(null)}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Reason for Rejection</DialogTitle>
-                <DialogDescription>
-                    Please provide a reason for rejecting the book "{currentBookInfo?.name}". This will be sent to the internal team for correction.
-                </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-2 py-4">
-                <Label htmlFor="rejection-comment">Comment</Label>
-                <Textarea 
-                    id="rejection-comment"
-                    placeholder="e.g., Page 5 is blurry, please re-scan."
-                    value={rejectionComment}
-                    onChange={(e) => setRejectionComment(e.target.value)}
-                />
-            </div>
-            <DialogFooter>
-                <Button variant="outline" onClick={() => setCurrentBookInfo(null)}>Cancel</Button>
-                <Button variant="destructive" onClick={handleRejectSubmit} disabled={!rejectionComment.trim()}>
-                    Submit Rejection
-                </Button>
-            </DialogFooter>
-        </DialogContent>
+      {/* Review Dialog */}
+      <Dialog open={reviewState.open} onOpenChange={(isOpen) => !isOpen && setReviewState({ open: false, task: null })}>
+          <DialogContent className="max-w-[90vw] h-[95vh] flex flex-col">
+              <DialogHeader>
+                  <DialogTitle>Reviewing: {reviewState.task?.book.name}</DialogTitle>
+                  <DialogDescription>
+                    Review all pages. You can tag individual pages with issues before making a final decision.
+                  </DialogDescription>
+              </DialogHeader>
+              <div className="flex-1 min-h-0">
+                  <ScrollArea className="h-full pr-6">
+                      <div className="flex items-center justify-end gap-4 py-4 sticky top-0 bg-background z-10">
+                          <Label htmlFor="columns-slider" className="text-sm whitespace-nowrap">Thumbnail Size:</Label>
+                          <Slider id="columns-slider" min={1} max={12} step={1} value={[columnCols]} onValueChange={(val) => setColumnCols(val[0])} className="w-full max-w-[200px]" />
+                      </div>
+                      <div className={`grid gap-4 ${gridClasses[columnCols]}`}>
+                        {reviewState.task && getPagesForBook(reviewState.task.book.id).map(page => (
+                            <div key={page.id} className="relative group">
+                                <Link href={`/documents/${page.id}`} target="_blank" className="block">
+                                    <Card className="overflow-hidden hover:shadow-lg transition-shadow relative border-2 border-transparent group-hover:border-primary">
+                                        <CardContent className="p-0">
+                                            <Image src={page.imageUrl || "https://placehold.co/400x550.png"} alt={`Preview of ${page.name}`} data-ai-hint="document page" width={400} height={550} className="aspect-[4/5.5] object-cover w-full h-full" />
+                                        </CardContent>
+                                        <CardFooter className="p-2 min-h-[50px] flex-col items-start gap-1">
+                                            <p className="text-xs font-medium break-words">{page.name}</p>
+                                            {page.tags && page.tags.length > 0 && (<div className="flex flex-wrap gap-1 pt-1">{page.tags.map(tag => (<Badge key={tag} variant={'outline'} className="text-xs">{tag}</Badge>))}</div>)}
+                                        </CardFooter>
+                                    </Card>
+                                </Link>
+                                <Button variant="secondary" size="icon" className="h-7 w-7 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => openTaggingDialog(page)}>
+                                    <Tag className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        ))}
+                      </div>
+                  </ScrollArea>
+              </div>
+              <DialogFooter className="pt-4 border-t">
+                  <Button variant="destructive" onClick={() => reviewState.task && setRejectionDialog({ open: true, bookId: reviewState.task.book.id, deliveryItemId: reviewState.task.item.id, bookName: reviewState.task.book.name })}>
+                      <ThumbsDown className="mr-2 h-4 w-4"/> Reject Book
+                  </Button>
+                  <Button onClick={() => reviewState.task && handleApprove(reviewState.task)}>
+                      <ThumbsUp className="mr-2 h-4 w-4"/> Approve Book
+                  </Button>
+              </DialogFooter>
+          </DialogContent>
       </Dialog>
       
-      <Dialog open={taggingState.open} onOpenChange={closeTaggingDialog}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Tag "{taggingState.docName}"</DialogTitle>
-                <DialogDescription>
-                    Select one or more rejection reasons for this page.
-                </DialogDescription>
-            </DialogHeader>
-            <div className="py-4">
-                <ScrollArea className="h-64">
-                    <div className="space-y-2 pr-6">
-                         {taggingState.availableTags.length > 0 ? (
-                            taggingState.availableTags.map(tag => (
-                                <div key={tag.id} className="flex items-center space-x-2">
-                                    <Checkbox
-                                        id={`tag-${tag.id}`}
-                                        checked={taggingState.selectedTags.includes(tag.label)}
-                                        onCheckedChange={(checked) => {
-                                            setTaggingState(prev => ({
-                                                ...prev,
-                                                selectedTags: checked
-                                                    ? [...prev.selectedTags, tag.label]
-                                                    : prev.selectedTags.filter(t => t !== tag.label)
-                                            }));
-                                        }}
-                                    />
-                                    <Label htmlFor={`tag-${tag.id}`} className="flex flex-col gap-1 w-full">
-                                        <span className="font-medium">{tag.label}</span>
-                                        <span className="text-xs text-muted-foreground">{tag.description}</span>
-                                    </Label>
-                                </div>
-                            ))
-                        ) : (<p className="text-sm text-muted-foreground text-center">No rejection tags have been defined for this client.</p>)}
-                    </div>
-                </ScrollArea>
-            </div>
-            <DialogFooter>
-                <Button variant="outline" onClick={closeTaggingDialog}>Cancel</Button>
-                <Button onClick={handleTaggingSubmit}>Save Tags</Button>
-            </DialogFooter>
-        </DialogContent>
-    </Dialog>
+       {/* Rejection Comment Dialog */}
+       <Dialog open={!!rejectionDialog} onOpenChange={(isOpen) => !isOpen && setRejectionDialog(null)}>
+          <DialogContent>
+              <DialogHeader>
+                  <DialogTitle>Reason for Rejection</DialogTitle>
+                  <DialogDescription>
+                      Please provide a reason for rejecting the book "{rejectionDialog?.bookName}". This will be sent to the internal team for correction.
+                  </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2 py-4">
+                  <Label htmlFor="rejection-comment">Comment</Label>
+                  <Textarea 
+                      id="rejection-comment"
+                      placeholder="e.g., Page 5 is blurry, please re-scan."
+                      value={rejectionComment}
+                      onChange={(e) => setRejectionComment(e.target.value)}
+                  />
+              </div>
+              <DialogFooter>
+                  <Button variant="outline" onClick={() => setRejectionDialog(null)}>Cancel</Button>
+                  <Button variant="destructive" onClick={handleRejectSubmit} disabled={!rejectionComment.trim()}>
+                      Submit Rejection
+                  </Button>
+              </DialogFooter>
+          </DialogContent>
+       </Dialog>
+       
+       {/* Tagging Dialog */}
+       <TaggingDialog
+         isOpen={taggingState.open}
+         onClose={closeTaggingDialog}
+         doc={taggingState.doc}
+         availableTags={taggingState.availableTags}
+         onSave={handleTaggingSubmit}
+       />
     </>
+  )
+}
+
+
+// --- TaggingDialog Component ---
+interface TaggingDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  doc: AppDocument | null;
+  availableTags: RejectionTag[];
+  onSave: (selectedTags: string[]) => void;
+}
+
+function TaggingDialog({ isOpen, onClose, doc, availableTags, onSave }: TaggingDialogProps) {
+  const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
+
+  React.useEffect(() => {
+    if (doc) {
+      setSelectedTags(doc.tags || []);
+    }
+  }, [doc]);
+
+  if (!doc) return null;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+          <DialogHeader>
+              <DialogTitle>Tag "{doc.name}"</DialogTitle>
+              <DialogDescription>
+                  Select one or more rejection reasons for this page.
+              </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+              <ScrollArea className="h-64">
+                  <div className="space-y-2 pr-6">
+                       {availableTags.length > 0 ? (
+                          availableTags.map(tag => (
+                              <div key={tag.id} className="flex items-center space-x-2">
+                                  <Checkbox
+                                      id={`tag-${tag.id}`}
+                                      checked={selectedTags.includes(tag.label)}
+                                      onCheckedChange={(checked) => {
+                                          setSelectedTags(prev => 
+                                            checked 
+                                              ? [...prev, tag.label] 
+                                              : prev.filter(t => t !== tag.label)
+                                          );
+                                      }}
+                                  />
+                                  <Label htmlFor={`tag-${tag.id}`} className="flex flex-col gap-1 w-full">
+                                      <span className="font-medium">{tag.label}</span>
+                                      <span className="text-xs text-muted-foreground">{tag.description}</span>
+                                  </Label>
+                              </div>
+                          ))
+                      ) : (<p className="text-sm text-muted-foreground text-center">No rejection tags have been defined for this client.</p>)}
+                  </div>
+              </ScrollArea>
+          </div>
+          <DialogFooter>
+              <Button variant="outline" onClick={onClose}>Cancel</Button>
+              <Button onClick={() => onSave(selectedTags)}>Save Tags</Button>
+          </DialogFooter>
+      </DialogContent>
+  </Dialog>
   )
 }
