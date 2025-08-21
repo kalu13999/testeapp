@@ -4,6 +4,14 @@
 import * as React from "react"
 import Link from "next/link";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import {
   Card,
   CardContent,
   CardDescription,
