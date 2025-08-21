@@ -467,8 +467,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
   const accessibleProjectsForUser = React.useMemo(() => {
     if (!currentUser) return [];
-    if (currentUser.role === 'Client' && currentUser.clientId) {
-        return allEnrichedProjects.filter(p => p.clientId === currentUser.clientId);
+    if (currentUser.clientId) {
+      return allEnrichedProjects.filter(p => p.clientId === currentUser.clientId);
     }
     if (OPERATOR_ROLES.includes(currentUser.role) && currentUser.projectIds?.length) {
       const operatorProjectIds = new Set(currentUser.projectIds);
@@ -2060,6 +2060,7 @@ export function useAppContext() {
 
 
     
+
 
 
 
