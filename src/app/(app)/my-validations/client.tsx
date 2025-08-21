@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, Undo2, ThumbsDown, ThumbsUp, LucideIcon } from "lucide-react";
+import { FileClock, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, Undo2, ThumbsDown, ThumbsUp, LucideIcon } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -36,7 +36,7 @@ const flagConfig = {
 };
 
 export default function MyValidationsClient() {
-  const { deliveryBatches, deliveryBatchItems, books, currentUser, setProvisionalDeliveryStatus, documents, rejectionTags, tagPageForRejection, permissions } = useAppContext();
+  const { deliveryBatches, deliveryBatchItems, books, currentUser, setProvisionalDeliveryStatus, documents, rejectionTags, tagPageForRejection, permissions, users } = useAppContext();
   const [rejectionComment, setRejectionComment] = React.useState("");
   const [currentBookInfo, setCurrentBookInfo] = React.useState<{bookId: string, name: string, deliveryItemId: string} | null>(null);
   const [columnStates, setColumnStates] = React.useState<{ [key: string]: { cols: number } }>({});
@@ -48,45 +48,50 @@ export default function MyValidationsClient() {
     selectedTags: string[];
     availableTags: RejectionTag[];
   }>({ open: false, docId: null, docName: null, selectedTags: [], availableTags: [] });
-
+  
   const myTasks = React.useMemo(() => {
     if (!currentUser) return [];
 
     const userPermissions = permissions[currentUser.role] || [];
     const canViewAllCompanyValidations = userPermissions.includes('/client/view-all-validations');
 
-    const validatingBatchIds = new Set(deliveryBatches.filter(b => b.status === 'Validating').map(b => b.id));
+    const validatingBatchIds = new Set(
+        deliveryBatches.filter(b => b.status === 'Validating').map(b => b.id)
+    );
 
     if (validatingBatchIds.size === 0) return [];
     
-    let relevantItems = deliveryBatchItems.filter(item => validatingBatchIds.has(item.deliveryId) && item.status === 'pending');
-
-    let relevantBooks;
+    const itemsInValidatingBatches = deliveryBatchItems.filter(item => 
+        validatingBatchIds.has(item.deliveryId) && item.status === 'pending'
+    );
+    
+    let relevantItems;
 
     if (canViewAllCompanyValidations) {
-        // Find all books associated with the user's client company that are in a validating batch
-        const bookIdsInValidatingBatches = new Set(relevantItems.map(item => item.bookId));
-        relevantBooks = books.filter(book => 
-            book.clientId === currentUser.clientId && 
-            bookIdsInValidatingBatches.has(book.id)
-        );
+        const myClientBooks = books.filter(b => b.clientId === currentUser.clientId);
+        const myClientBookIds = new Set(myClientBooks.map(b => b.id));
+        relevantItems = itemsInValidatingBatches.filter(item => myClientBookIds.has(item.bookId));
     } else {
-        // Find all items directly assigned to the current user
-        const myAssignedItems = relevantItems.filter(item => item.userId === currentUser.id);
-        const myBookIds = new Set(myAssignedItems.map(item => item.bookId));
-        relevantBooks = books.filter(book => myBookIds.has(book.id));
+        relevantItems = itemsInValidatingBatches.filter(item => item.userId === currentUser.id);
     }
 
-    return relevantBooks
-        .map(book => {
-            const item = deliveryBatchItems.find(i => i.bookId === book.id && validatingBatchIds.has(i.deliveryId));
-            return item ? { ...book, deliveryItemId: item.id } : null;
-        })
-        .filter((b): b is (EnrichedBook & { deliveryItemId: string }) => !!b)
-        .sort((a,b) => (a.priority || 'Medium') > (b.priority || 'Medium') ? -1 : 1);
+    return relevantItems.map(item => {
+        const book = books.find(b => b.id === item.bookId);
+        if (!book) return null;
+        
+        const assignee = users.find(u => u.id === item.userId);
 
-  }, [deliveryBatches, deliveryBatchItems, books, currentUser, permissions]);
-  
+        return { 
+            ...book, 
+            deliveryItemId: item.id,
+            assigneeName: assignee?.name || 'Unassigned',
+        };
+    })
+    .filter((b): b is EnrichedBook & { deliveryItemId: string; assigneeName: string; } => !!b)
+    .sort((a,b) => (a.priority || 'Medium') > (b.priority || 'Medium') ? -1 : 1);
+
+  }, [deliveryBatches, deliveryBatchItems, books, currentUser, permissions, users]);
+
   const getPagesForBook = (bookId: string) => {
     const getPageNum = (name: string): number => {
         const match = name.match(/ - Page (\d+)/);
@@ -154,10 +159,13 @@ export default function MyValidationsClient() {
                     <div className="flex items-center justify-between hover:bg-muted/50 rounded-md">
                         <AccordionTrigger className="flex-1 px-4 py-2">
                             <div className="flex items-center gap-3 text-left">
-                                <BookOpen className="h-5 w-5 text-muted-foreground" />
+                                <FileClock className="h-5 w-5 text-muted-foreground" />
                                 <div>
                                     <p className="font-semibold text-base">{book.name}</p>
                                     <p className="text-sm text-muted-foreground">{book.projectName} - {pages.length} pages</p>
+                                    {(currentUser?.role === 'Client Manager' || currentUser?.role === 'Admin') && (
+                                        <p className="text-xs text-primary">{book.assigneeName}</p>
+                                    )}
                                 </div>
                             </div>
                         </AccordionTrigger>
