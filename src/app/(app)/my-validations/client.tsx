@@ -30,19 +30,27 @@ import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 
-interface DeliveryValidationClientProps {
-  config: {
-    title: string;
-    description: string;
-    emptyStateText: string;
-    dataStatus?: string;
+
+type ValidationTask = {
+  item: {
+    id: string;
+    deliveryId: string;
   };
-}
+  book: EnrichedBook;
+  assigneeName: string;
+  batchDate: string;
+  itemStatus: 'pending' | 'approved' | 'rejected';
+};
 
 const flagConfig = {
-    error: { icon: ShieldAlert, color: "text-destructive", label: "Error" },
-    warning: { icon: AlertTriangle, color: "text-orange-500", label: "Warning" },
-    info: { icon: Info, color: "text-primary", label: "Info" },
+    error: { icon: ShieldAlert, color: "text-destructive" },
+    warning: { icon: AlertTriangle, color: "text-orange-500" },
+    info: { icon: Info, color: "text-primary" },
+};
+
+const gridClasses: { [key: number]: string } = {
+  1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4', 5: 'grid-cols-5', 6: 'grid-cols-6',
+  7: 'grid-cols-7', 8: 'grid-cols-8', 9: 'grid-cols-9', 10: 'grid-cols-10', 11: 'grid-cols-11', 12: 'grid-cols-12'
 };
 
 
@@ -66,62 +74,61 @@ export default function MyValidationsClient() {
     return userPermissions.includes('*') || userPermissions.includes('/client/view-all-validations');
   }, [currentUser, permissions]);
 
-  const batchesToValidate = React.useMemo(() => {
+ const batchesToValidate = React.useMemo(() => {
     if (!currentUser) return [];
 
     const validatingBatchIds = new Set(deliveryBatches.filter(b => b.status === 'Validating').map(b => b.id));
-
+    
     let relevantItems = deliveryBatchItems.filter(item => 
       validatingBatchIds.has(item.deliveryId) && item.status === 'pending'
     );
-    
-    // This is the main filter logic based on user permissions
-    if (canViewAll) {
-      if (currentUser.clientId) {
-        // Admins might not have a clientID, but client managers do. Filter by client if applicable.
-        const clientBookIds = new Set(books.filter(b => b.clientId === currentUser.clientId).map(b => b.id));
-        relevantItems = relevantItems.filter(item => clientBookIds.has(item.bookId));
-      }
-    } else {
-      // Regular client operator only sees their own assigned tasks
-      relevantItems = relevantItems.filter(item => item.user_id === currentUser.id);
+
+    if (currentUser?.clientId) {
+      const clientBookIds = new Set(books.filter(b => b.clientId === currentUser.clientId).map(b => b.id));
+      relevantItems = relevantItems.filter(item => clientBookIds.has(item.bookId));
     }
     
-    // Further filter by selected project if one is active
     if (selectedProjectId) {
         const projectBookIds = new Set(books.filter(b => b.projectId === selectedProjectId).map(b => b.id));
         relevantItems = relevantItems.filter(item => projectBookIds.has(item.bookId));
     }
 
-    const batchesMap = new Map<string, { creationDate: string; books: (EnrichedBook & {itemStatus: string, deliveryItemId: string, assigneeName: string})[] }>();
-
-    relevantItems.forEach(item => {
-      const batch = deliveryBatches.find(b => b.id === item.deliveryId);
+    if (!canViewAll) {
+      relevantItems = relevantItems.filter(item => item.user_id === currentUser.id);
+    }
+    
+    const tasks = relevantItems.map(item => {
       const book = books.find(b => b.id === item.bookId);
+      const batch = deliveryBatches.find(b => b.id === item.deliveryId);
       const assignee = users.find(u => u.id === item.user_id);
+      if (!book || !batch) return null;
+      return {
+        item: { id: item.id, deliveryId: item.deliveryId },
+        book,
+        assigneeName: assignee?.name || 'Unassigned',
+        batchDate: batch.creationDate,
+        itemStatus: item.status
+      };
+    }).filter((task): task is ValidationTask => !!task);
 
-      if (batch && book) {
-        if (!batchesMap.has(batch.id)) {
-            batchesMap.set(batch.id, { creationDate: batch.creationDate, books: [] });
+    const batchesMap = new Map<string, { creationDate: string; books: ValidationTask[] }>();
+    tasks.forEach(task => {
+        const batchId = task.item.deliveryId;
+        if (!batchesMap.has(batchId)) {
+            batchesMap.set(batchId, { creationDate: task.batchDate, books: [] });
         }
-        batchesMap.get(batch.id)!.books.push({
-            ...book,
-            itemStatus: item.status,
-            deliveryItemId: item.id,
-            assigneeName: assignee?.name || 'Unassigned',
-        });
-      }
+        batchesMap.get(batchId)!.books.push(task);
     });
 
     return Array.from(batchesMap.entries())
         .map(([batchId, data]) => ({ batchId, ...data }))
         .sort((a,b) => new Date(b.creationDate).getTime() - new Date(a.creationDate).getTime());
-
+  
   }, [currentUser, deliveryBatches, deliveryBatchItems, books, users, canViewAll, selectedProjectId, permissions]);
 
-  const handleApprove = (deliveryItemId: string, book: EnrichedBook) => {
-    setProvisionalDeliveryStatus(deliveryItemId, book.id, 'approved');
-    toast({ title: `Book "${book.name}" Approved` });
+  const handleApprove = (item: ValidationTask) => {
+    setProvisionalDeliveryStatus(item.item.id, item.book.id, 'approved');
+    toast({ title: `Book "${item.book.name}" Approved` });
   };
   
   const handleRejectSubmit = () => {
@@ -165,11 +172,6 @@ export default function MyValidationsClient() {
     }
     return documents.filter(doc => doc.bookId === bookId).sort((a, b) => getPageNum(a.name) - getPageNum(b.name));
   }
-  
-  const gridClasses: { [key: number]: string } = {
-    1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4', 5: 'grid-cols-5', 6: 'grid-cols-6',
-    7: 'grid-cols-7', 8: 'grid-cols-8', 9: 'grid-cols-9', 10: 'grid-cols-10', 11: 'grid-cols-11', 12: 'grid-cols-12'
-  };
 
   return (
     <>
@@ -196,14 +198,15 @@ export default function MyValidationsClient() {
                     </AccordionTrigger>
                   <AccordionContent className="p-4 space-y-4">
                      <Accordion type="multiple" className="w-full">
-                        {booksInBatch.map(book => {
+                        {booksInBatch.map(task => {
+                            const { book } = task;
                             const pages = getPagesForBook(book.id);
                             const bookCols = columnStates[book.id]?.cols || 8;
                             return (
                                 <AccordionItem value={book.id} key={book.id} className={cn(
                                   "border-b transition-colors",
-                                  book.itemStatus === 'approved' && 'bg-green-500/10 border-green-500/30',
-                                  book.itemStatus === 'rejected' && 'bg-red-500/10 border-red-500/30'
+                                  task.itemStatus === 'approved' && 'bg-green-500/10 border-green-500/30',
+                                  task.itemStatus === 'rejected' && 'bg-red-500/10 border-red-500/30'
                                 )}>
                                     <div className="flex items-center justify-between hover:bg-muted/50 rounded-md">
                                         <AccordionTrigger className="flex-1 px-4 py-2">
@@ -211,15 +214,15 @@ export default function MyValidationsClient() {
                                                 <BookOpen className="h-5 w-5 text-muted-foreground" />
                                                 <div>
                                                     <p className="font-semibold">{book.name}</p>
-                                                    <p className="text-sm text-muted-foreground">{book.projectName} - {pages.length} pages {canViewAll && `- Assigned to: ${book.assigneeName}`}</p>
+                                                    <p className="text-sm text-muted-foreground">{book.projectName} - {pages.length} pages {canViewAll && `- Assigned to: ${task.assigneeName}`}</p>
                                                 </div>
                                             </div>
                                         </AccordionTrigger>
                                         <div className="flex justify-end gap-2 px-4">
-                                            <Button size="sm" variant="destructive" onClick={() => setRejectionDialog({ open: true, bookId: book.id, deliveryItemId: book.deliveryItemId, bookName: book.name })}>
+                                            <Button size="sm" variant="destructive" onClick={() => setRejectionDialog({ open: true, bookId: book.id, deliveryItemId: task.item.id, bookName: book.name })}>
                                                 <ThumbsDown className="mr-2 h-4 w-4" /> Reject
                                             </Button>
-                                            <Button size="sm" onClick={() => handleApprove(book.deliveryItemId, book)}>
+                                            <Button size="sm" onClick={() => handleApprove(task)}>
                                                 <ThumbsUp className="mr-2 h-4 w-4" /> Approve
                                             </Button>
                                         </div>
@@ -268,6 +271,7 @@ export default function MyValidationsClient() {
         </CardContent>
       </Card>
       
+       {/* Rejection Comment Dialog */}
        <Dialog open={!!rejectionDialog} onOpenChange={(isOpen) => !isOpen && setRejectionDialog(null)}>
           <DialogContent>
               <DialogHeader>
@@ -294,6 +298,7 @@ export default function MyValidationsClient() {
           </DialogContent>
        </Dialog>
        
+       {/* Tagging Dialog */}
        <TaggingDialog
          isOpen={taggingState.open}
          onClose={closeTaggingDialog}

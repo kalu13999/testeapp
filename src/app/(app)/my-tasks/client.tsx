@@ -1,9 +1,8 @@
 
+
 "use client"
 
 import * as React from "react"
-import Link from "next/link";
-import Image from "next/image";
 import {
   Table,
   TableBody,
@@ -12,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -20,24 +20,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Button } from "@/components/ui/button";
+import { Eye } from "lucide-react"
+import { useAppContext } from "@/context/workflow-context"
+import { type EnrichedBook } from "@/lib/data"
+import Link from "next/link";
+import Image from "next/image";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { ThumbsUp, ThumbsDown, Tag } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-import { useAppContext } from "@/context/workflow-context";
-import { type AppDocument, type EnrichedBook, type RejectionTag } from "@/context/workflow-context";
-import { cn } from "@/lib/utils";
-
-import { Eye, ThumbsUp, ThumbsDown, Tag, ShieldAlert, AlertTriangle, Info, BookOpen } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import type { AppDocument, RejectionTag } from "@/context/workflow-context";
 
 type ValidationTask = {
   item: {
@@ -49,17 +45,10 @@ type ValidationTask = {
   batchDate: string;
 };
 
-const flagConfig = {
-    error: { icon: ShieldAlert, color: "text-destructive" },
-    warning: { icon: AlertTriangle, color: "text-orange-500" },
-    info: { icon: Info, color: "text-primary" },
-};
-
 const gridClasses: { [key: number]: string } = {
   1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4', 5: 'grid-cols-5', 6: 'grid-cols-6',
   7: 'grid-cols-7', 8: 'grid-cols-8', 9: 'grid-cols-9', 10: 'grid-cols-10', 11: 'grid-cols-11', 12: 'grid-cols-12'
 };
-
 
 export default function MyTasksClient() {
   const {
@@ -74,7 +63,7 @@ export default function MyTasksClient() {
   const [rejectionComment, setRejectionComment] = React.useState("");
   const [taggingState, setTaggingState] = React.useState<{ open: boolean; doc: AppDocument | null; availableTags: RejectionTag[]; }>({ open: false, doc: null, availableTags: [] });
   const { toast } = useToast();
-
+  
   const canViewAll = React.useMemo(() => {
     if (!currentUser) return false;
     const userPermissions = permissions[currentUser.role] || [];
@@ -91,7 +80,7 @@ export default function MyTasksClient() {
     );
     
     if (!canViewAll) {
-      relevantItems = relevantItems.filter(item => item.userId === currentUser.id);
+      relevantItems = relevantItems.filter(item => item.user_id === currentUser.id);
     } else if(currentUser.clientId) {
       const clientBookIds = new Set(books.filter(b => b.clientId === currentUser.clientId).map(b => b.id));
       relevantItems = relevantItems.filter(item => clientBookIds.has(item.bookId));
@@ -105,14 +94,15 @@ export default function MyTasksClient() {
     return relevantItems.map(item => {
       const book = books.find(b => b.id === item.bookId);
       const batch = deliveryBatches.find(b => b.id === item.deliveryId);
-      const assignee = users.find(u => u.id === item.userId);
+      const assignee = users.find(u => u.id === item.user_id);
+      if (!book || !batch) return null;
       return {
         item: { id: item.id, deliveryId: item.deliveryId },
         book,
         assigneeName: assignee?.name || 'Unassigned',
-        batchDate: batch?.creationDate || 'Unknown'
+        batchDate: batch.creationDate
       }
-    }).filter((task): task is ValidationTask => !!task.book);
+    }).filter((task): task is ValidationTask => !!task);
     
   }, [currentUser, deliveryBatches, deliveryBatchItems, books, users, canViewAll, selectedProjectId, permissions]);
 

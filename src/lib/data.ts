@@ -358,7 +358,7 @@ export async function getEnrichedProjects(): Promise<EnrichedProject[]> {
                 scannerDeviceName: extraInfo?.scannerDeviceName,
             };
         });
-  
+
       const totalExpected = projectBooks.reduce((sum, book) => sum + book.expectedDocuments, 0);
       const documentCount = projectBooks.reduce((sum, book) => sum + book.documentCount, 0);
       const progress = totalExpected > 0 ? (documentCount / totalExpected) * 100 : 0;
@@ -392,3 +392,5 @@ export async function getPagesByBookId(bookId: string): Promise<Document[]> {
     const documents = await getRawDocuments();
     return documents.filter(d => d.bookId === bookId);
 }
+
+    
