@@ -80,6 +80,7 @@ export const ALL_PERMISSIONS: PermissionGroup[] = [
       { id: '/manage-deliveries', label: 'Client: Manage Deliveries' },
       { id: '/my-validations', label: 'Client: My Validations' },
       { id: '/validation-monitoring', label: 'Client: Validation Monitoring' },
+      { id: '/client/view-all-validations', label: 'View All Company Validations' },
     ],
   },
 ];
@@ -126,5 +127,6 @@ export const permissionDescriptions: { [key: string]: string } = {
   '/reasons': 'Allows management of custom rejection reasons for clients.',
   '/manage-deliveries': 'Allows client managers to distribute validation tasks.',
   '/my-validations': 'Allows client operators to view and action their assigned validation tasks.',
-  '/validation-monitoring': 'Allows client managers to monitor the progress of distributed validation tasks.'
+  '/validation-monitoring': 'Allows client managers to monitor the progress of distributed validation tasks.',
+  '/client/view-all-validations': 'Allows a client user (e.g., a manager) to see all validation tasks for their entire company, not just their own.'
 };

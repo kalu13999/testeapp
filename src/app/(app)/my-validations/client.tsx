@@ -35,7 +35,7 @@ const flagConfig = {
 };
 
 export default function MyValidationsClient() {
-  const { deliveryBatchItems, books, currentUser, setProvisionalDeliveryStatus, documents, rejectionTags, tagPageForRejection } = useAppContext();
+  const { deliveryBatchItems, books, currentUser, setProvisionalDeliveryStatus, documents, rejectionTags, tagPageForRejection, permissions } = useAppContext();
   const [rejectionComment, setRejectionComment] = React.useState("");
   const [currentBookInfo, setCurrentBookInfo] = React.useState<{bookId: string, name: string, deliveryItemId: string} | null>(null);
   const [columnStates, setColumnStates] = React.useState<{ [key: string]: { cols: number } }>({});
@@ -50,9 +50,21 @@ export default function MyValidationsClient() {
 
   const myTasks = React.useMemo(() => {
     if (!currentUser) return [];
-    
-    return deliveryBatchItems
-        .filter(item => item.userId === currentUser.id && item.status === 'pending')
+
+    const userPermissions = permissions[currentUser.role] || [];
+    const canViewAllCompanyValidations = userPermissions.includes('/client/view-all-validations');
+
+    const relevantItems = deliveryBatchItems.filter(item => {
+        if (canViewAllCompanyValidations) {
+            // Manager view: get all items for their company
+            const book = books.find(b => b.id === item.bookId);
+            return book?.clientId === currentUser.clientId && item.status === 'pending';
+        }
+        // Operator view: get only items assigned to them
+        return item.userId === currentUser.id && item.status === 'pending';
+    });
+
+    return relevantItems
         .map(item => {
             const book = books.find(b => b.id === item.bookId);
             return book ? { ...book, deliveryItemId: item.id } : null;
@@ -60,7 +72,7 @@ export default function MyValidationsClient() {
         .filter((b): b is (EnrichedBook & { deliveryItemId: string }) => !!b)
         .sort((a,b) => (a.priority || 'Medium') > (b.priority || 'Medium') ? -1 : 1);
 
-  }, [deliveryBatchItems, books, currentUser]);
+  }, [deliveryBatchItems, books, currentUser, permissions]);
   
   const getPagesForBook = (bookId: string) => {
     const getPageNum = (name: string): number => {

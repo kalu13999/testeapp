@@ -7,14 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 export const GlobalProjectFilter = () => {
   const { accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, currentUser } = useAppContext();
   
-  if (!currentUser || currentUser.role === 'Client') {
-    return null;
-  }
-  
-  if (accessibleProjectsForUser.length < 1) {
+  // This component is now available for Admins, Operators, and Clients.
+  // It is hidden only if there are no projects to show.
+  if (!currentUser || accessibleProjectsForUser.length < 1) {
     return (
       <div className="flex items-center h-9 px-3 w-full text-sm font-medium border rounded-md bg-muted text-muted-foreground truncate">
-        No Project Assigned
+        No Projects Available
       </div>
     )
   }

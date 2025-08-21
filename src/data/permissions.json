@@ -72,7 +72,9 @@
     "/books/[id]",
     "/reasons",
     "/manage-deliveries",
-    "/validation-monitoring"
+    "/my-validations",
+    "/validation-monitoring",
+    "/client/view-all-validations"
   ],
   "Client Manager": [
     "/dashboard",
@@ -83,7 +85,9 @@
     "/books/[id]",
     "/reasons",
     "/manage-deliveries",
-    "/validation-monitoring"
+    "/my-validations",
+    "/validation-monitoring",
+    "/client/view-all-validations"
   ],
   "Client Operator": [
     "/dashboard",
