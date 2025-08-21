@@ -37,7 +37,8 @@ import {
   LucideIcon,
   ServerCog,
   Split,
-  MonitorCheck
+  MonitorCheck,
+  ClipboardUser,
 } from "lucide-react";
 
 interface MenuItem {
@@ -173,9 +174,8 @@ export const allMenuItems: MenuSection[] = [
       { href: "/dashboard", label: "Project Dashboard", icon: Home, roles: ['Client', 'Client Manager', 'Client Operator'] },
       { href: "/shipments", label: "Prepare Shipment", icon: Send },
       { href: "/manage-deliveries", label: "Manage Deliveries", icon: Split },
-      { href: "/my-validations", label: "My Validations", icon: FileCheck },
+      { href: "/my-tasks", label: "My Tasks", icon: ClipboardUser },
       { href: "/validation-monitoring", label: "Validation Monitoring", icon: MonitorCheck },
-      { href: "/pending-deliveries", label: "Pending Deliveries (Legacy)", icon: FileClock },
       { href: "/validated-history", label: "Validated History", icon: History },
       { href: "/reasons", label: "Rejection Reasons", icon: Tags },
     ],

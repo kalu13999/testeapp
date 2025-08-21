@@ -74,12 +74,11 @@ export const ALL_PERMISSIONS: PermissionGroup[] = [
     group: 'Client Portal',
     permissions: [
       { id: '/shipments', label: 'Client: Prepare Shipment' },
-      { id: '/pending-deliveries', label: 'Client: Pending Deliveries (Legacy)' },
+      { id: '/my-tasks', label: 'Client: My Tasks' },
+      { id: '/manage-deliveries', label: 'Client: Manage Deliveries' },
+      { id: '/validation-monitoring', label: 'Client: Validation Monitoring' },
       { id: '/validated-history', label: 'Client: Validated History' },
       { id: '/reasons', label: 'Rejection Reasons' },
-      { id: '/manage-deliveries', label: 'Client: Manage Deliveries' },
-      { id: '/my-validations', label: 'Client: My Validations' },
-      { id: '/validation-monitoring', label: 'Client: Validation Monitoring' },
       { id: '/client/view-all-validations', label: 'View All Company Validations' },
     ],
   },
@@ -122,11 +121,10 @@ export const permissionDescriptions: { [key: string]: string } = {
   '/finalized': 'Access the queue of client-approved books waiting for final archival.',
   '/archive': 'Access the view of all fully archived and completed books.',
   '/shipments': 'Client-facing page to prepare and mark books as shipped.',
-  '/pending-deliveries': 'Client-facing page to review and approve/reject delivered books.',
+  '/my-tasks': 'Client-facing page to view and action assigned validation tasks.',
   '/validated-history': 'Client-facing page to view the history of all their validated batches.',
   '/reasons': 'Allows management of custom rejection reasons for clients.',
   '/manage-deliveries': 'Allows client managers to distribute validation tasks.',
-  '/my-validations': 'Allows client operators to view and action their assigned validation tasks.',
   '/validation-monitoring': 'Allows client managers to monitor the progress of distributed validation tasks.',
   '/client/view-all-validations': 'Allows a client user (e.g., a manager) to see all validation tasks for their entire company, not just their own.'
 };
