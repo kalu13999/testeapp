@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import * as React from "react"
@@ -31,11 +32,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 const flagConfig = {
     error: { icon: ShieldAlert, color: "text-destructive", label: "Error" },
     warning: { icon: AlertTriangle, color: "text-orange-500", label: "Warning" },
-    info: { icon: Info, color: "text-primary", label: "Info" },
+    info: { icon: InfoIcon, color: "text-primary", label: "Info" },
 };
 
 export default function MyValidationsClient() {
-  const { deliveryBatchItems, books, currentUser, setProvisionalDeliveryStatus, documents, rejectionTags, tagPageForRejection, permissions } = useAppContext();
+  const { deliveryBatches, deliveryBatchItems, books, currentUser, setProvisionalDeliveryStatus, documents, rejectionTags, tagPageForRejection, permissions } = useAppContext();
   const [rejectionComment, setRejectionComment] = React.useState("");
   const [currentBookInfo, setCurrentBookInfo] = React.useState<{bookId: string, name: string, deliveryItemId: string} | null>(null);
   const [columnStates, setColumnStates] = React.useState<{ [key: string]: { cols: number } }>({});
@@ -54,13 +55,16 @@ export default function MyValidationsClient() {
     const userPermissions = permissions[currentUser.role] || [];
     const canViewAllCompanyValidations = userPermissions.includes('/client/view-all-validations');
 
+    const validatingBatchIds = new Set(deliveryBatches.filter(b => b.status === 'Validating').map(b => b.id));
+
     const relevantItems = deliveryBatchItems.filter(item => {
+        if (!validatingBatchIds.has(item.deliveryId)) return false;
+        
         if (canViewAllCompanyValidations) {
-            // Manager view: get all items for their company
             const book = books.find(b => b.id === item.bookId);
             return book?.clientId === currentUser.clientId && item.status === 'pending';
         }
-        // Operator view: get only items assigned to them
+        
         return item.userId === currentUser.id && item.status === 'pending';
     });
 
@@ -72,7 +76,7 @@ export default function MyValidationsClient() {
         .filter((b): b is (EnrichedBook & { deliveryItemId: string }) => !!b)
         .sort((a,b) => (a.priority || 'Medium') > (b.priority || 'Medium') ? -1 : 1);
 
-  }, [deliveryBatchItems, books, currentUser, permissions]);
+  }, [deliveryBatches, deliveryBatchItems, books, currentUser, permissions]);
   
   const getPagesForBook = (bookId: string) => {
     const getPageNum = (name: string): number => {
