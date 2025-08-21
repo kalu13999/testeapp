@@ -39,12 +39,12 @@ const formSchema = z.object({
   clientId: z.string().optional(),
   projectIds: z.array(z.string()).optional(),
 }).refine(data => {
-    if (data.role === 'Client' && !data.clientId) {
+    if (['Client', 'Client Manager', 'Client Operator'].includes(data.role) && !data.clientId) {
         return false;
     }
     return true;
 }, {
-    message: "A client must be selected for users with the 'Client' role.",
+    message: "A client company must be selected for this role.",
     path: ["clientId"],
 });
 
@@ -78,15 +78,18 @@ export function UserForm({ user, roles, clients, projects, onSave, onCancel }: U
   })
   
   const role = form.watch("role");
+  const isClientRole = ['Client', 'Client Manager', 'Client Operator'].includes(role);
+  const isOperatorRole = role && !isClientRole && role !== 'Admin' && role !== 'System';
+
 
   React.useEffect(() => {
-    if (role !== 'Client' && form.getValues('clientId')) {
+    if (!isClientRole && form.getValues('clientId')) {
       form.setValue('clientId', undefined, { shouldValidate: true });
     }
-    if (role === 'Client' || role === 'Admin') {
+    if (isClientRole || role === 'Admin') {
       form.setValue('projectIds', [], { shouldValidate: true });
     }
-  }, [role, form]);
+  }, [role, form, isClientRole]);
 
   React.useEffect(() => {
     form.reset({
@@ -111,8 +114,6 @@ export function UserForm({ user, roles, clients, projects, onSave, onCancel }: U
     }
     onSave(dataToSave as UserFormValues)
   }
-
-  const isOperatorRole = role && !['Admin', 'Client', 'System'].includes(role);
 
   return (
     <Form {...form}>
@@ -218,7 +219,7 @@ export function UserForm({ user, roles, clients, projects, onSave, onCancel }: U
           />
         </div>
 
-        {role === 'Client' && (
+        {isClientRole && (
             <FormField
             control={form.control}
             name="clientId"
@@ -310,6 +311,7 @@ export function UserForm({ user, roles, clients, projects, onSave, onCancel }: U
                     </ScrollArea>
                   </PopoverContent>
                 </Popover>
+                <FormDescription>Leave blank to grant access to all non-client projects.</FormDescription>
                 <FormMessage />
               </FormItem>
             )}

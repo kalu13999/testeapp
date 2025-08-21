@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import { getConnection, releaseConnection } from '@/lib/db';
 import type { PoolConnection } from 'mysql2/promise';
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
       info: info || null,
       status: 'active',
       defaultProjectId: null,
-      clientId: role === 'Client' ? clientId : null,
+      clientId: ['Client', 'Client Manager', 'Client Operator'].includes(role) ? clientId : null,
     };
     
     const userInsertQuery = `
@@ -57,7 +58,7 @@ export async function POST(request: Request) {
     `;
     await connection.execute(userInsertQuery, Object.values(newUser));
 
-    if (projectIds && Array.isArray(projectIds) && projectIds.length > 0 && role !== 'Admin' && role !== 'Client') {
+    if (projectIds && Array.isArray(projectIds) && projectIds.length > 0 && !['Admin', 'Client', 'Client Manager', 'Client Operator'].includes(role)) {
       const projectValues = projectIds.map(projectId => [newUserId, projectId]);
       await connection.query('INSERT INTO user_projects (userId, projectId) VALUES ?', [projectValues]);
     }

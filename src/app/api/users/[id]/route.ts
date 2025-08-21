@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import { getConnection, releaseConnection } from '@/lib/db';
 import type { PoolConnection, RowDataPacket } from 'mysql2/promise';
@@ -43,7 +44,12 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     if (jobTitle !== undefined) updateFields.jobTitle = jobTitle;
     if (department !== undefined) updateFields.department = department;
     if (info !== undefined) updateFields.info = info;
-    if (clientId !== undefined) updateFields.clientId = role === 'Client' ? clientId : null;
+    
+    // Explicitly handle clientId based on role
+    if (role !== undefined) {
+      updateFields.clientId = ['Client', 'Client Manager', 'Client Operator'].includes(role) ? clientId : null;
+    }
+    
     if (userData.defaultProjectId !== undefined) updateFields.defaultProjectId = userData.defaultProjectId;
     
     if (Object.keys(updateFields).length > 0) {
@@ -52,10 +58,10 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       await connection.execute(query, values);
     }
 
-    // Always update project associations
+    // Always update project associations, but clear them for client roles
     if (projectIds !== undefined) {
       await connection.execute('DELETE FROM user_projects WHERE userId = ?', [id]);
-      if (Array.isArray(projectIds) && projectIds.length > 0 && role && !['Admin', 'Client'].includes(role)) {
+      if (Array.isArray(projectIds) && projectIds.length > 0 && role && !['Admin', 'Client', 'Client Manager', 'Client Operator'].includes(role)) {
         const projectValues = projectIds.map((projectId: string) => [id, projectId]);
         await connection.query('INSERT INTO user_projects (userId, projectId) VALUES ?', [projectValues]);
       }
