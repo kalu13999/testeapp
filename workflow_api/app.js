@@ -667,6 +667,88 @@ app.post('/api/script/processing-logs/add', async (req, res) => {
     }
 });
 
+app.put('/api/processing-batch-items/:id', async (req, res) => {
+    const { id } = req.params;
+    let connection;
+    try {
+        connection = await dbPool.getConnection();
+        const itemData = req.body;
+        
+        const allowedFields = ['itemStartTime', 'itemEndTime', 'processedPages', 'status', 'info', 'obs'];
+        const fieldsToUpdate = Object.keys(itemData).filter(key => allowedFields.includes(key));
+        
+        if (fieldsToUpdate.length === 0) {
+            return res.status(400).json({ error: "Nenhum campo válido para atualizar" });
+        }
+
+        const valuesToUpdate = {};
+        fieldsToUpdate.forEach(field => {
+            if (field === 'processedPages' && typeof itemData[field] === 'object') {
+                valuesToUpdate[field] = JSON.stringify(itemData[field]);
+            } else {
+                valuesToUpdate[field] = itemData[field];
+            }
+        });
+
+        const query = `UPDATE processing_batch_items SET ${fieldsToUpdate.map(field => `${field} = ?`).join(', ')} WHERE id = ?`;
+        const values = [...fieldsToUpdate.map(field => valuesToUpdate[field]), id];
+
+        await connection.query(query, values);
+        
+        const [rows] = await connection.query('SELECT * FROM processing_batch_items WHERE id = ?', [id]);
+        
+        res.json(rows[0] || null);
+    } catch (err) {
+        console.error(`Erro ao atualizar item de lote ${id}:`, err);
+        res.status(500).json({ error: 'Erro interno do servidor.' });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+app.put('/api/script/processing-batch-item/update', async (req, res) => {
+    const { batchId, bookId, ...updateData } = req.body;
+    if (!batchId || !bookId) {
+        return res.status(400).json({ error: "batchId e bookId são obrigatórios." });
+    }
+
+    let connection;
+    try {
+        connection = await dbPool.getConnection();
+        
+        const allowedFields = ['itemStartTime', 'itemEndTime', 'processedPages', 'status', 'info', 'obs'];
+        const fieldsToUpdate = Object.keys(updateData).filter(key => allowedFields.includes(key));
+        
+        if (fieldsToUpdate.length === 0) {
+            return res.status(400).json({ error: "Nenhum campo válido para atualizar" });
+        }
+
+        const valuesToUpdate = {};
+        fieldsToUpdate.forEach(field => {
+            if (field === 'processedPages' && typeof updateData[field] === 'object') {
+                valuesToUpdate[field] = JSON.stringify(updateData[field]);
+            } else {
+                valuesToUpdate[field] = updateData[field];
+            }
+        });
+
+        const query = `UPDATE processing_batch_items SET ${fieldsToUpdate.map(field => `${field} = ?`).join(', ')} WHERE batchId = ? AND bookId = ?`;
+        const values = [...fieldsToUpdate.map(field => valuesToUpdate[field]), batchId, bookId];
+
+        await connection.query(query, values);
+        
+        const [rows] = await connection.query('SELECT * FROM processing_batch_items WHERE batchId = ? AND bookId = ?', [batchId, bookId]);
+        
+        res.json(rows[0] || null);
+    } catch (err) {
+        console.error(`Erro ao atualizar item de lote por batchId/bookId:`, err);
+        res.status(500).json({ error: 'Erro interno do servidor.' });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+
 // --- Inicialização do Servidor ---
 async function startServer() {
     await initializeDbPool();
