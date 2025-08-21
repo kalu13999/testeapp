@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FileClock, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, Undo2, ThumbsDown, ThumbsUp, LucideIcon } from "lucide-react";
+import { FileClock, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, Undo2, ThumbsDown, ThumbsUp, type LucideIcon } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -32,7 +32,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 const flagConfig = {
     error: { icon: ShieldAlert, color: "text-destructive", label: "Error" },
     warning: { icon: AlertTriangle, color: "text-orange-500", label: "Warning" },
-    info: { icon: InfoIcon, color: "text-primary", label: "Info" },
+    info: { icon: Info, color: "text-primary", label: "Info" },
 };
 
 export default function MyValidationsClient() {
@@ -51,10 +51,7 @@ export default function MyValidationsClient() {
   
   const myTasks = React.useMemo(() => {
     if (!currentUser) return [];
-
-    const userPermissions = permissions[currentUser.role] || [];
-    const canViewAllCompanyValidations = userPermissions.includes('/client/view-all-validations');
-
+    
     // 1. Get all batches currently in validation
     const validatingBatchIds = new Set(
         deliveryBatches.filter(b => b.status === 'Validating').map(b => b.id)
@@ -63,17 +60,22 @@ export default function MyValidationsClient() {
     if (validatingBatchIds.size === 0) return [];
     
     // 2. Get all items belonging to those batches
-    const itemsInValidatingBatches = deliveryBatchItems.filter(item => 
+    let itemsInValidatingBatches = deliveryBatchItems.filter(item => 
         validatingBatchIds.has(item.deliveryId) && item.status === 'pending'
     );
     
     // 3. Filter items based on user permissions
+    const userPermissions = permissions[currentUser.role] || [];
+    const canViewAllCompanyValidations = userPermissions.includes('/client/view-all-validations');
+
     let relevantItems;
     if (canViewAllCompanyValidations && currentUser.clientId) {
-      // Find all book IDs belonging to the current user's client
-      const myClientBookIds = new Set(books.filter(b => b.clientId === currentUser.clientId).map(b => b.id));
-      // Filter items to only those whose book is in the client's project
-      relevantItems = itemsInValidatingBatches.filter(item => myClientBookIds.has(item.bookId));
+        // Find all users belonging to the current user's client to filter books
+        const clientUserIds = new Set(users.filter(u => u.clientId === currentUser.clientId).map(u => u.id));
+        
+        // Filter items to only those whose assigned user is in the client's company
+        relevantItems = itemsInValidatingBatches.filter(item => item.userId && clientUserIds.has(item.userId));
+
     } else {
       // Regular user only sees their own assigned tasks
       relevantItems = itemsInValidatingBatches.filter(item => item.userId === currentUser.id);
@@ -96,6 +98,7 @@ export default function MyValidationsClient() {
     .sort((a,b) => (a.priority || 'Medium') > (b.priority || 'Medium') ? -1 : 1);
 
   }, [deliveryBatches, deliveryBatchItems, books, currentUser, permissions, users]);
+
 
   const getPagesForBook = (bookId: string) => {
     const getPageNum = (name: string): number => {
