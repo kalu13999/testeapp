@@ -15,10 +15,11 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Package, Send, Users, Percent, Checkbox, ChevronsUpDown, ArrowUp, ArrowDown } from "lucide-react"
+import { Package, Send, Users, Percent, ChevronsUpDown, ArrowUp, ArrowDown } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import { type DeliveryBatch, type EnrichedBook, type User } from "@/lib/data"
 import {
@@ -40,6 +41,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { AnimatePresence, motion } from "framer-motion"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Checkbox } from "@/components/ui/checkbox"
 
 interface DistributionState {
   batch: (DeliveryBatch & { books: EnrichedBook[] }) | null,
