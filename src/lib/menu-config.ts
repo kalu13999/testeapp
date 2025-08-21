@@ -5,6 +5,7 @@ import {
   BookUp,
   Briefcase,
   CheckCheck,
+  ClipboardList,
   FileCheck,
   FileCheck2,
   FileClock,
@@ -34,7 +35,9 @@ import {
   Star,
   Globe,
   LucideIcon,
-  ServerCog
+  ServerCog,
+  Split,
+  MonitorCheck
 } from "lucide-react";
 
 interface MenuItem {
@@ -167,8 +170,11 @@ export const allMenuItems: MenuSection[] = [
     id: "client",
     title: "Client Portal",
     items: [
-      { href: "/dashboard", label: "Project Dashboard", icon: Home, roles: ['Client'] },
+      { href: "/dashboard", label: "Project Dashboard", icon: Home, roles: ['Client', 'Client Manager', 'Client Operator'] },
       { href: "/shipments", label: "Prepare Shipment", icon: Send },
+      { href: "/manage-deliveries", label: "Manage Deliveries", icon: Split },
+      { href: "/my-validations", label: "My Validations", icon: FileCheck },
+      { href: "/validation-monitoring", label: "Validation Monitoring", icon: MonitorCheck },
       { href: "/pending-deliveries", label: "Pending Deliveries", icon: FileClock },
       { href: "/validated-history", label: "Validated History", icon: History },
       { href: "/reasons", label: "Rejection Reasons", icon: Tags },

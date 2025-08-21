@@ -74,9 +74,12 @@ export const ALL_PERMISSIONS: PermissionGroup[] = [
     group: 'Client Portal',
     permissions: [
       { id: '/shipments', label: 'Client: Prepare Shipment' },
-      { id: '/pending-deliveries', label: 'Client: Pending Deliveries' },
+      { id: '/pending-deliveries', label: 'Client: Legacy Pending Deliveries' },
       { id: '/validated-history', label: 'Client: Validated History' },
       { id: '/reasons', label: 'Rejection Reasons' },
+      { id: '/manage-deliveries', label: 'Client: Manage Deliveries' },
+      { id: '/my-validations', label: 'Client: My Validations' },
+      { id: '/validation-monitoring', label: 'Client: Validation Monitoring' },
     ],
   },
 ];
@@ -120,5 +123,8 @@ export const permissionDescriptions: { [key: string]: string } = {
   '/shipments': 'Client-facing page to prepare and mark books as shipped.',
   '/pending-deliveries': 'Client-facing page to review and approve/reject delivered books.',
   '/validated-history': 'Client-facing page to view the history of all their validated batches.',
-  '/reasons': 'Allows management of custom rejection reasons for clients.'
+  '/reasons': 'Allows management of custom rejection reasons for clients.',
+  '/manage-deliveries': 'Allows client managers to distribute validation tasks.',
+  '/my-validations': 'Allows client operators to view and action their assigned validation tasks.',
+  '/validation-monitoring': 'Allows client managers to monitor the progress of distributed validation tasks.'
 };

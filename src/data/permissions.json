@@ -70,7 +70,26 @@
     "/validated-history",
     "/documents/[id]",
     "/books/[id]",
-    "/reasons"
+    "/reasons",
+    "/manage-deliveries",
+    "/validation-monitoring"
+  ],
+  "Client Manager": [
+    "/dashboard",
+    "/shipments",
+    "/pending-deliveries",
+    "/validated-history",
+    "/documents/[id]",
+    "/books/[id]",
+    "/reasons",
+    "/manage-deliveries",
+    "/validation-monitoring"
+  ],
+  "Client Operator": [
+    "/dashboard",
+    "/my-validations",
+    "/documents/[id]",
+    "/books/[id]"
   ],
   "Reception": [
     "/profile",
