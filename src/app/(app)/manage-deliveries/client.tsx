@@ -69,9 +69,11 @@ export default function ManageDeliveriesClient() {
         .sort((a, b) => new Date(b.creationDate).getTime() - new Date(a.creationDate).getTime());
   }, [deliveryBatches, deliveryBatchItems, books]);
   
-  const clientOperators = React.useMemo(() => {
-    return users.filter(u => u.role === 'Client Operator' && u.clientId === currentUser?.clientId);
-  }, [users, currentUser]);
+  const getAssignableUsers = (batch: (DeliveryBatch & { books: EnrichedBook[] })) => {
+    if (!batch || batch.books.length === 0) return [];
+    const batchClientId = batch.books[0].clientId;
+    return users.filter(u => u.role === 'Client Operator' && u.clientId === batchClientId);
+  };
 
   const openDistributionDialog = (batch: DeliveryBatch & { books: EnrichedBook[] }) => {
     setDialogState({
@@ -109,6 +111,9 @@ export default function ManageDeliveriesClient() {
         setDialogState(prev => ({ ...prev, state: { ...prev.state, sampleBookIds: newSample }}));
     }
   }, [dialogState.open, dialogState.state.percentage, dialogState.state.batch]);
+  
+  const assignableUsersInDialog = dialogState.state.batch ? getAssignableUsers(dialogState.state.batch) : [];
+
 
   return (
     <>
@@ -181,7 +186,7 @@ export default function ManageDeliveriesClient() {
                     <div className="space-y-2">
                          <Label htmlFor="operators" className="flex items-center gap-2"><Users className="h-4 w-4"/> Assign To</Label>
                          <ScrollArea className="h-48 rounded-md border p-4">
-                            {clientOperators.map(user => (
+                            {assignableUsersInDialog.map(user => (
                                 <div key={user.id} className="flex items-center space-x-2 mb-2">
                                     <Checkbox 
                                         id={`user-${user.id}`}
