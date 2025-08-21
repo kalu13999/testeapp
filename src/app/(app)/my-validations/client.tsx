@@ -78,42 +78,49 @@ export default function MyValidationsClient({}: MyValidationsClientProps) {
   const canViewAll = React.useMemo(() => {
     if (!currentUser) return false;
     const userPermissions = permissions[currentUser.role] || [];
-    return userPermissions.includes('/client/view-all-validations');
+    return userPermissions.includes('*') || userPermissions.includes('/client/view-all-validations');
   }, [currentUser, permissions]);
 
  const batchesToValidate = React.useMemo((): BatchGroup[] => {
-    if (!currentUser?.clientId) return [];
-    
-    // 1. Get all batches currently in validation for the user's company
-    const validatingBatches = deliveryBatches.filter(b => {
-        if (b.status !== 'Validating') return false;
-        // Check if any book in this batch belongs to the current user's client
-        const firstItem = deliveryBatchItems.find(i => i.deliveryId === b.id);
-        if (!firstItem) return false;
-        const book = books.find(b => b.id === firstItem.bookId);
-        return book?.clientId === currentUser.clientId;
-    });
+    if (!currentUser) return [];
 
-    const validatingBatchIds = new Set(validatingBatches.map(b => b.id));
+    // 1. Get all batches currently in validation
+    const validatingBatchIds = new Set(deliveryBatches.filter(b => b.status === 'Validating').map(b => b.id));
 
     // 2. Get all pending items from those batches
-    let pendingItems = deliveryBatchItems.filter(item => 
+    let relevantItems = deliveryBatchItems.filter(item => 
       validatingBatchIds.has(item.deliveryId) && item.status === 'pending'
     );
+
+    // 3. Filter items based on project and user permissions
+    let booksInScope = books;
+    if (selectedProjectId) {
+      booksInScope = books.filter(b => b.projectId === selectedProjectId);
+    }
     
-    // 3. Filter items based on permission
+    // Filter items based on books in scope
+    const bookIdsInScope = new Set(booksInScope.map(b => b.id));
+    relevantItems = relevantItems.filter(item => bookIdsInScope.has(item.bookId));
+
     if (!canViewAll) {
-      pendingItems = pendingItems.filter(item => item.userId === currentUser.id);
+      // Operator view: only see items assigned to them
+      relevantItems = relevantItems.filter(item => item.userId === currentUser.id);
+    } else {
+      // Manager/Admin view: only see items for their client company
+      if (currentUser.clientId) {
+        const clientBookIds = new Set(books.filter(b => b.clientId === currentUser.clientId).map(b => b.id));
+        relevantItems = relevantItems.filter(item => clientBookIds.has(item.bookId));
+      }
     }
     
     // 4. Enrich and group by batch
     const groupedByBatch = new Map<string, BatchGroup>();
 
-    pendingItems.forEach(item => {
-        const batch = validatingBatches.find(b => b.id === item.deliveryId);
+    relevantItems.forEach(item => {
+        const batch = deliveryBatches.find(b => b.id === item.deliveryId);
         const book = books.find(b => b.id === item.bookId);
 
-        if (batch && book && (!selectedProjectId || book.projectId === selectedProjectId)) {
+        if (batch && book) {
             const assignee = item.userId ? users.find(u => u.id === item.userId) : null;
             const task: ValidationTask = {
                 item: { id: item.id, deliveryId: item.deliveryId },
@@ -128,12 +135,11 @@ export default function MyValidationsClient({}: MyValidationsClientProps) {
         }
     });
 
-    // 5. Filter out any groups that might now be empty after project filtering
     return Array.from(groupedByBatch.values())
       .filter(group => group.tasks.length > 0)
       .sort((a,b) => new Date(b.creationDate).getTime() - new Date(a.creationDate).getTime());
 
-  }, [deliveryBatches, deliveryBatchItems, books, users, currentUser, canViewAll, selectedProjectId]);
+  }, [deliveryBatches, deliveryBatchItems, books, users, currentUser, canViewAll, selectedProjectId, permissions]);
 
 
   const getPagesForBook = (bookId: string) => {
@@ -255,7 +261,7 @@ export default function MyValidationsClient({}: MyValidationsClientProps) {
                                             </div>
                                         </AccordionTrigger>
                                         <div className="flex justify-end gap-2 px-4">
-                                            <Button size="sm" variant="destructive" onClick={() => setCurrentBookInfo({bookId: book.id, name: book.name, deliveryId: task.item.deliveryId, deliveryItemId: task.item.id})}>
+                                            <Button size="sm" variant="destructive" onClick={() => setCurrentBookInfo({bookId: book.id, name: book.name, deliveryItemId: task.item.id})}>
                                                 <ThumbsDown className="mr-2 h-4 w-4" /> Reject
                                             </Button>
                                             <Button size="sm" onClick={() => setProvisionalDeliveryStatus(task.item.id, book.id, 'approved')}>
@@ -395,3 +401,5 @@ export default function MyValidationsClient({}: MyValidationsClientProps) {
     </>
   )
 }
+
+    
