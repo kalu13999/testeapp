@@ -57,21 +57,30 @@ export default function MyValidationsClient() {
 
     const validatingBatchIds = new Set(deliveryBatches.filter(b => b.status === 'Validating').map(b => b.id));
 
-    const relevantItems = deliveryBatchItems.filter(item => {
-        if (!validatingBatchIds.has(item.deliveryId)) return false;
-        
-        if (canViewAllCompanyValidations) {
-            const book = books.find(b => b.id === item.bookId);
-            return book?.clientId === currentUser.clientId && item.status === 'pending';
-        }
-        
-        return item.userId === currentUser.id && item.status === 'pending';
-    });
+    if (validatingBatchIds.size === 0) return [];
+    
+    let relevantItems = deliveryBatchItems.filter(item => validatingBatchIds.has(item.deliveryId) && item.status === 'pending');
 
-    return relevantItems
-        .map(item => {
-            const book = books.find(b => b.id === item.bookId);
-            return book ? { ...book, deliveryItemId: item.id } : null;
+    let relevantBooks;
+
+    if (canViewAllCompanyValidations) {
+        // Find all books associated with the user's client company that are in a validating batch
+        const bookIdsInValidatingBatches = new Set(relevantItems.map(item => item.bookId));
+        relevantBooks = books.filter(book => 
+            book.clientId === currentUser.clientId && 
+            bookIdsInValidatingBatches.has(book.id)
+        );
+    } else {
+        // Find all items directly assigned to the current user
+        const myAssignedItems = relevantItems.filter(item => item.userId === currentUser.id);
+        const myBookIds = new Set(myAssignedItems.map(item => item.bookId));
+        relevantBooks = books.filter(book => myBookIds.has(book.id));
+    }
+
+    return relevantBooks
+        .map(book => {
+            const item = deliveryBatchItems.find(i => i.bookId === book.id && validatingBatchIds.has(i.deliveryId));
+            return item ? { ...book, deliveryItemId: item.id } : null;
         })
         .filter((b): b is (EnrichedBook & { deliveryItemId: string }) => !!b)
         .sort((a,b) => (a.priority || 'Medium') > (b.priority || 'Medium') ? -1 : 1);
