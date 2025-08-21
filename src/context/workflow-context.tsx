@@ -467,15 +467,22 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
   const accessibleProjectsForUser = React.useMemo(() => {
     if (!currentUser) return [];
+    
+    // Any user with a clientId (Client, Client Manager, Client Operator) sees projects for that client.
     if (currentUser.clientId) {
       return allEnrichedProjects.filter(p => p.clientId === currentUser.clientId);
     }
+    
+    // Internal operators with specific project assignments see only those.
     if (OPERATOR_ROLES.includes(currentUser.role) && currentUser.projectIds?.length) {
       const operatorProjectIds = new Set(currentUser.projectIds);
       return allEnrichedProjects.filter(p => operatorProjectIds.has(p.id));
     }
+    
+    // Admins or operators with no specific project assignments see all projects.
     return allEnrichedProjects;
   }, [allEnrichedProjects, currentUser]);
+
 
   const addClient = async (clientData: Omit<Client, 'id'>) => {
     await withMutation(async () => {
@@ -2060,6 +2067,7 @@ export function useAppContext() {
 
 
     
+
 
 
 

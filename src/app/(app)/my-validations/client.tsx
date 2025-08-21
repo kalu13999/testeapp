@@ -36,7 +36,12 @@ const flagConfig = {
 };
 
 export default function MyValidationsClient() {
-  const { deliveryBatches, deliveryBatchItems, books, currentUser, setProvisionalDeliveryStatus, documents, rejectionTags, tagPageForRejection, permissions, users } = useAppContext();
+  const { 
+    deliveryBatches, deliveryBatchItems, books, currentUser, setProvisionalDeliveryStatus, 
+    documents, rejectionTags, tagPageForRejection, permissions, users,
+    selectedProjectId
+  } = useAppContext();
+
   const [rejectionComment, setRejectionComment] = React.useState("");
   const [currentBookInfo, setCurrentBookInfo] = React.useState<{bookId: string, name: string, deliveryItemId: string} | null>(null);
   const [columnStates, setColumnStates] = React.useState<{ [key: string]: { cols: number } }>({});
@@ -48,56 +53,48 @@ export default function MyValidationsClient() {
     selectedTags: string[];
     availableTags: RejectionTag[];
   }>({ open: false, docId: null, docName: null, selectedTags: [], availableTags: [] });
-  
+
   const myTasks = React.useMemo(() => {
     if (!currentUser) return [];
-    
-    // 1. Get all batches currently in validation
+
     const validatingBatchIds = new Set(
-        deliveryBatches.filter(b => b.status === 'Validating').map(b => b.id)
+      deliveryBatches.filter(b => b.status === 'Validating').map(b => b.id)
     );
 
     if (validatingBatchIds.size === 0) return [];
     
-    // 2. Get all items belonging to those batches
-    let itemsInValidatingBatches = deliveryBatchItems.filter(item => 
-        validatingBatchIds.has(item.deliveryId) && item.status === 'pending'
+    let relevantItems = deliveryBatchItems.filter(item => 
+      validatingBatchIds.has(item.deliveryId) && item.status === 'pending'
     );
     
-    // 3. Filter items based on user permissions
     const userPermissions = permissions[currentUser.role] || [];
-    const canViewAllCompanyValidations = userPermissions.includes('/client/view-all-validations');
+    const canViewAll = userPermissions.includes('/client/view-all-validations');
 
-    let relevantItems;
-    if (canViewAllCompanyValidations && currentUser.clientId) {
-        // Find all users belonging to the current user's client to filter books
-        const clientUserIds = new Set(users.filter(u => u.clientId === currentUser.clientId).map(u => u.id));
-        
-        // Filter items to only those whose assigned user is in the client's company
-        relevantItems = itemsInValidatingBatches.filter(item => item.userId && clientUserIds.has(item.userId));
-
+    if (canViewAll && currentUser.clientId) {
+      const clientUserIds = new Set(users.filter(u => u.clientId === currentUser.clientId).map(u => u.id));
+      relevantItems = relevantItems.filter(item => item.userId && clientUserIds.has(item.userId));
     } else {
-      // Regular user only sees their own assigned tasks
-      relevantItems = itemsInValidatingBatches.filter(item => item.userId === currentUser.id);
+      relevantItems = relevantItems.filter(item => item.userId === currentUser.id);
     }
     
-    // 4. Enrich the items with book and assignee data
-    return relevantItems.map(item => {
-        const book = books.find(b => b.id === item.bookId);
-        if (!book) return null;
-        
-        const assignee = users.find(u => u.id === item.userId);
+    let enrichedTasks = relevantItems.map(item => {
+      const book = books.find(b => b.id === item.bookId);
+      if (!book) return null;
+      const assignee = users.find(u => u.id === item.userId);
+      return { 
+        ...book, 
+        deliveryItemId: item.id,
+        assigneeName: assignee?.name || 'Unassigned',
+      };
+    }).filter((b): b is EnrichedBook & { deliveryItemId: string; assigneeName: string; } => !!b);
 
-        return { 
-            ...book, 
-            deliveryItemId: item.id,
-            assigneeName: assignee?.name || 'Unassigned',
-        };
-    })
-    .filter((b): b is EnrichedBook & { deliveryItemId: string; assigneeName: string; } => !!b)
-    .sort((a,b) => (a.priority || 'Medium') > (b.priority || 'Medium') ? -1 : 1);
+    if (selectedProjectId) {
+      enrichedTasks = enrichedTasks.filter(task => task.projectId === selectedProjectId);
+    }
 
-  }, [deliveryBatches, deliveryBatchItems, books, currentUser, permissions, users]);
+    return enrichedTasks.sort((a,b) => (a.priority || 'Medium') > (b.priority || 'Medium') ? -1 : 1);
+
+  }, [deliveryBatches, deliveryBatchItems, books, currentUser, permissions, users, selectedProjectId]);
 
 
   const getPagesForBook = (bookId: string) => {
@@ -294,7 +291,7 @@ export default function MyValidationsClient() {
                 <Button onClick={handleTaggingSubmit}>Save Tags</Button>
             </DialogFooter>
         </DialogContent>
-      </Dialog>
+    </Dialog>
     </>
   )
 }
