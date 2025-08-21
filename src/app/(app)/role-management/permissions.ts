@@ -74,7 +74,7 @@ export const ALL_PERMISSIONS: PermissionGroup[] = [
     group: 'Client Portal',
     permissions: [
       { id: '/shipments', label: 'Client: Prepare Shipment' },
-      { id: '/pending-deliveries', label: 'Client: Legacy Pending Deliveries' },
+      { id: '/pending-deliveries', label: 'Client: Pending Deliveries (Legacy)' },
       { id: '/validated-history', label: 'Client: Validated History' },
       { id: '/reasons', label: 'Rejection Reasons' },
       { id: '/manage-deliveries', label: 'Client: Manage Deliveries' },

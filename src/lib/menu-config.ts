@@ -175,7 +175,7 @@ export const allMenuItems: MenuSection[] = [
       { href: "/manage-deliveries", label: "Manage Deliveries", icon: Split },
       { href: "/my-validations", label: "My Validations", icon: FileCheck },
       { href: "/validation-monitoring", label: "Validation Monitoring", icon: MonitorCheck },
-      { href: "/pending-deliveries", label: "Pending Deliveries", icon: FileClock },
+      { href: "/pending-deliveries", label: "Pending Deliveries (Legacy)", icon: FileClock },
       { href: "/validated-history", label: "Validated History", icon: History },
       { href: "/reasons", label: "Rejection Reasons", icon: Tags },
     ],

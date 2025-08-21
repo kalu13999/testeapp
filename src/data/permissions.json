@@ -162,5 +162,6 @@
     "/archive",
     "/admin/reassign-user",
     "/processing-batches/[id]"
-  ]
+  ],
+  "System": []
 }
