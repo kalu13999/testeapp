@@ -31,7 +31,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 const flagConfig = {
     error: { icon: ShieldAlert, color: "text-destructive", label: "Error" },
     warning: { icon: AlertTriangle, color: "text-orange-500", label: "Warning" },
-    info: { icon: InfoIcon, color: "text-primary", label: "Info" },
+    info: { icon: Info, color: "text-primary", label: "Info" },
 };
 
 export default function MyValidationsClient() {
