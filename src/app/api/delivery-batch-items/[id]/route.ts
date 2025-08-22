@@ -44,5 +44,3 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         return NextResponse.json({ error: 'Failed to update delivery batch item' }, { status: 500 });
     }
 }
-
-    

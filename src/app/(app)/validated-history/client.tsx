@@ -132,14 +132,14 @@ export default function ValidatedHistoryClient() {
             );
             const deliveryItem = deliveryBatchItems.find(item => item.bookId === book.id);
             const deliveryBatch = deliveryItem ? deliveryBatches.find(batch => batch.id === deliveryItem.deliveryId) : undefined;
-            const validator = users.find(u => u.id === deliveryItem?.userId);
+            const validator = users.find(u => u.id === validationLog?.userId);
 
             return {
                 ...book,
                 validationDate: validationLog ? new Date(validationLog.date).toISOString() : 'N/A',
                 validationStatus: book.status === 'Client Rejected' ? 'Rejected' : 'Approved',
                 deliveryBatchInfo: deliveryBatch ? { id: deliveryBatch.id, creationDate: deliveryBatch.creationDate } : undefined,
-                validatorName: validator?.name || 'N/A',
+                validatorName: validator?.name || 'System',
             };
         });
     }, [books, auditLogs, currentUser, deliveryBatches, deliveryBatchItems, users]);

@@ -1737,7 +1737,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         const response = await fetch(`/api/delivery-batch-items/${deliveryItemId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: status, userId: currentUser.id })
+            body: JSON.stringify({ status: status, user_id: currentUser.id })
         });
         if (!response.ok) throw new Error('Failed to update delivery item status.');
         
@@ -1746,15 +1746,15 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         
         if (status === 'rejected') {
           await updateBook(bookId, { rejectionReason: reason });
+          logAction('Client Rejection', `Book "${rawBooks.find(b => b.id === bookId)?.name}" rejected. Reason: ${reason}`, { bookId });
         } else if (status === 'approved') {
           const book = rawBooks.find(b => b.id === bookId);
           if (book?.rejectionReason) {
             await updateBook(bookId, { rejectionReason: null });
           }
+           logAction('Client Approval', `Book "${book?.name}" approved by client.`, { bookId });
         }
         
-        const book = enrichedBooks.find(b => b.id === bookId);
-        logAction(`Client Provisional Status`, `Book "${book?.name}" marked as '${status}'. Reason: ${reason || 'N/A'}`, { bookId });
         toast({ title: `Book Marked as ${status}` });
       } catch (error: any) {
         console.error(error);
@@ -1765,6 +1765,10 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
   const finalizeDeliveryBatch = async (deliveryId: string, finalDecision: 'approve_remaining' | 'reject_all') => {
     await withMutation(async () => {
+      const batch = deliveryBatches.find(b => b.id === deliveryId);
+      if (!batch) return;
+      const items = deliveryBatchItems.filter(item => item.deliveryId === deliveryId);
+      
       try {
         const response = await fetch(`/api/delivery-batches/${deliveryId}/finalize`, {
           method: 'POST',
@@ -1773,7 +1777,22 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         });
         if (!response.ok) throw new Error('Failed to finalize batch.');
 
-        // Refetch data to ensure consistency after batch finalization
+        for (const item of items) {
+            const book = rawBooks.find(b => b.id === item.bookId);
+            if(!book) continue;
+            
+            const currentStatus = statuses.find(s => s.id === book.statusId)?.name || 'Pending Validation';
+            let newStatusName: string;
+            
+            if (finalDecision === 'reject_all') {
+                newStatusName = 'Client Rejected';
+            } else {
+                newStatusName = item.status === 'rejected' ? 'Client Rejected' : 'Finalized';
+            }
+            await moveBookFolder(book.name, currentStatus, newStatusName);
+        }
+
+        // Refetch all data to ensure consistency
         const [booksData, batchesData, itemsData, auditData] = await Promise.all([
           dataApi.getRawBooks(),
           dataApi.getDeliveryBatches(),
@@ -1905,7 +1924,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             id: `del_item_${newBatch.id}_${bookId}`,
             deliveryId: newBatch.id,
             bookId: bookId,
-            userId: currentUser!.id,
+            user_id: currentUser!.id,
             status: 'pending' as const,
             info: null,
             obs: null
@@ -2062,31 +2081,3 @@ export function useAppContext() {
   }
   return context;
 }
-
-
-
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

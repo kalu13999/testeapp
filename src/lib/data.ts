@@ -392,5 +392,3 @@ export async function getPagesByBookId(bookId: string): Promise<Document[]> {
     const documents = await getRawDocuments();
     return documents.filter(d => d.bookId === bookId);
 }
-
-    
