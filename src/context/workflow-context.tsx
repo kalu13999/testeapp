@@ -1765,54 +1765,59 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
   const finalizeDeliveryBatch = async (deliveryId: string, finalDecision: 'approve_remaining' | 'reject_all') => {
     await withMutation(async () => {
-      const batch = deliveryBatches.find(b => b.id === deliveryId);
-      if (!batch) return;
-      const items = deliveryBatchItems.filter(item => item.deliveryId === deliveryId);
-      
-      try {
-        const response = await fetch(`/api/delivery-batches/${deliveryId}/finalize`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ finalDecision }),
-        });
-        if (!response.ok) throw new Error('Failed to finalize batch.');
-
-        for (const item of items) {
-            const book = rawBooks.find(b => b.id === item.bookId);
-            if(!book) continue;
-            
-            const currentStatus = statuses.find(s => s.id === book.statusId)?.name || 'Pending Validation';
-            let newStatusName: string;
-            
-            if (finalDecision === 'reject_all') {
-                newStatusName = 'Client Rejected';
-            } else {
-                newStatusName = item.status === 'rejected' ? 'Client Rejected' : 'Finalized';
-            }
-            await moveBookFolder(book.name, currentStatus, newStatusName);
-        }
-
-        // Refetch all data to ensure consistency
-        const [booksData, batchesData, itemsData, auditData] = await Promise.all([
-          dataApi.getRawBooks(),
-          dataApi.getDeliveryBatches(),
-          dataApi.getDeliveryBatchItems(),
-          dataApi.getAuditLogs(),
-        ]);
-        setRawBooks(booksData);
-        setDeliveryBatches(batchesData);
-        setDeliveryBatchItems(itemsData);
-        const enrichedAuditLogs = auditData
-            .map(log => ({ ...log, user: users.find(u => u.id === log.userId)?.name || 'Unknown' }))
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        setAuditLogs(enrichedAuditLogs);
+        if (!currentUser) return;
         
-        logAction('Delivery Batch Finalized', `Batch ${deliveryId} was finalized by client.`, {});
-        toast({ title: "Validation Confirmed", description: "All books in the batch have been processed." });
-      } catch (error: any) {
-        console.error(error);
-        toast({ title: "Error", description: error.message, variant: "destructive" });
-      }
+        const batch = deliveryBatches.find(b => b.id === deliveryId);
+        if (!batch) return;
+        const items = deliveryBatchItems.filter(item => item.deliveryId === deliveryId);
+
+        try {
+            for (const item of items) {
+                const book = rawBooks.find(b => b.id === item.bookId);
+                if (!book) continue;
+
+                let newStatusName: string;
+                if (finalDecision === 'reject_all') {
+                    newStatusName = 'Client Rejected';
+                } else {
+                    newStatusName = item.status === 'rejected' ? 'Client Rejected' : 'Finalized';
+                }
+                
+                const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
+                if(currentStatusName) {
+                    await moveBookFolder(book.name, currentStatusName, newStatusName);
+                }
+            }
+            
+            const response = await fetch(`/api/delivery-batches/${deliveryId}/finalize`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ finalDecision, userId: currentUser.id }),
+            });
+            if (!response.ok) throw new Error('Failed to finalize batch via API.');
+
+            // Re-fetch all data to ensure client state is in sync with the backend
+            const [
+                booksData, batchesData, itemsData, auditData
+            ] = await Promise.all([
+                dataApi.getRawBooks(),
+                dataApi.getDeliveryBatches(),
+                dataApi.getDeliveryBatchItems(),
+                dataApi.getAuditLogs(),
+            ]);
+            
+            setRawBooks(booksData);
+            setDeliveryBatches(batchesData);
+            setDeliveryBatchItems(itemsData);
+            const enrichedAuditLogs = auditData.map(log => ({ ...log, user: users.find(u => u.id === log.userId)?.name || 'Unknown' })).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            setAuditLogs(enrichedAuditLogs);
+            
+            logAction('Delivery Batch Finalized', `Batch ${deliveryId} was finalized by ${currentUser.name}. Decision: ${finalDecision}.`, { userId: currentUser.id });
+            toast({ title: "Validation Confirmed", description: "All books in the batch have been processed." });
+        } catch (error: any) {
+            console.error(error);
+            toast({ title: "Error", description: error.message, variant: "destructive" });
+        }
     });
   };
   
@@ -2081,3 +2086,5 @@ export function useAppContext() {
   }
   return context;
 }
+
+    
