@@ -1777,37 +1777,22 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
                 const book = rawBooks.find(b => b.id === item.bookId);
                 if (!book) continue;
 
+                const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
+                if (!currentStatusName) {
+                    console.error(`Could not find status name for statusId: ${book.statusId}`);
+                    continue;
+                }
+                
                 let newStatusName: string;
-                let logActionText = '';
-                let finalUserId = item.user_id || currentUser.id; 
-                let newItemStatus: 'approved' | 'rejected' | 'pending' = item.status;
-
+                
                 if (finalDecision === 'reject_all') {
                     newStatusName = 'Client Rejected';
-                    logActionText = 'Client Rejection (Bulk)';
-                    newItemStatus = 'rejected';
                 } else { // approve_remaining
-                    if (item.status === 'rejected') {
-                        newStatusName = 'Client Rejected';
-                        logActionText = 'Client Rejection'; // It was already rejected
-                    } else { // 'approved' or 'pending' become approved
-                        newStatusName = 'Finalized';
-                        logActionText = 'Client Approval';
-                        if (item.status === 'pending') {
-                            logActionText += ' (Bulk)';
-                        }
-                        newItemStatus = 'approved';
-                    }
+                    newStatusName = item.status === 'rejected' ? 'Client Rejected' : 'Finalized';
                 }
                 
-                const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
-                if(currentStatusName && currentStatusName !== newStatusName) {
+                if (currentStatusName !== newStatusName) {
                     await moveBookFolder(book.name, currentStatusName, newStatusName);
-                }
-                
-                // Only log if the state changes
-                if(book.status !== newStatusName){
-                   logAction(logActionText, `Finalized batch action by ${currentUser.name}.`, { bookId: book.id, userId: finalUserId });
                 }
             }
 
@@ -2110,3 +2095,4 @@ export function useAppContext() {
 }
 
     
+
