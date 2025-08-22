@@ -101,8 +101,8 @@ export default function ValidationMonitoringClient() {
   }
   
   const handleConfirm = () => {
-    if (confirmationState.batchId && confirmationState.finalDecision) {
-      finalizeDeliveryBatch(confirmationState.batchId, confirmationState.finalDecision);
+    if (confirmationState.batchId && confirmationState.finalDecision && currentUser) {
+      finalizeDeliveryBatch(confirmationState.batchId, confirmationState.finalDecision, currentUser.id);
     }
     closeConfirmationDialog();
   }

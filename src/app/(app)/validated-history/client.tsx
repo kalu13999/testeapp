@@ -31,7 +31,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { EnrichedBook } from "@/lib/data";
+import { type EnrichedBook } from "@/lib/data";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
@@ -122,26 +122,44 @@ export default function ValidatedHistoryClient() {
     };
 
     const validationHistory: ValidatedBook[] = React.useMemo(() => {
-        if (!currentUser) return [];
+      if (!currentUser) return [];
 
-        const relevantBooks = books.filter(book => ['Complete', 'Finalized', 'Client Rejected'].includes(book.status));
+      let relevantBooks = books.filter(book => ['Complete', 'Finalized', 'Client Rejected'].includes(book.status));
+      
+      // If user is a client (but not admin), filter by their client ID
+      if (currentUser.clientId) {
+          relevantBooks = relevantBooks.filter(book => book.clientId === currentUser.clientId);
+      }
 
-        return relevantBooks.map(book => {
-            const validationLog = auditLogs.find(log =>
-                log.bookId === book.id && (log.action === 'Client Approval' || log.action === 'Client Rejection')
-            );
-            const deliveryItem = deliveryBatchItems.find(item => item.bookId === book.id);
-            const deliveryBatch = deliveryItem ? deliveryBatches.find(batch => batch.id === deliveryItem.deliveryId) : undefined;
-            const validator = users.find(u => u.id === validationLog?.userId);
+      return relevantBooks.map(book => {
+          const deliveryItem = deliveryBatchItems.find(item => item.bookId === book.id);
+          const validationLog = auditLogs.find(log =>
+              log.bookId === book.id && (log.action === 'Client Approval' || log.action === 'Client Rejection')
+          );
+          const deliveryBatch = deliveryItem ? deliveryBatches.find(batch => batch.id === deliveryItem.deliveryId) : undefined;
+          
+          let validatorName = 'System';
+          let validationDate = validationLog?.date || 'N/A';
+          
+          if (deliveryItem && deliveryItem.user_id) {
+              const validator = users.find(u => u.id === deliveryItem.user_id);
+              validatorName = validator?.name || 'Unknown User';
+          }
+           // Fallback to audit log user if item doesn't have it (e.g. bulk actions)
+          else if (validationLog && validationLog.userId) {
+              const validator = users.find(u => u.id === validationLog.userId);
+              validatorName = validator?.name || 'System';
+          }
 
-            return {
-                ...book,
-                validationDate: validationLog ? new Date(validationLog.date).toISOString() : 'N/A',
-                validationStatus: book.status === 'Client Rejected' ? 'Rejected' : 'Approved',
-                deliveryBatchInfo: deliveryBatch ? { id: deliveryBatch.id, creationDate: deliveryBatch.creationDate } : undefined,
-                validatorName: validator?.name || 'System',
-            };
-        });
+
+          return {
+              ...book,
+              validationDate,
+              validationStatus: book.status === 'Client Rejected' ? 'Rejected' : 'Approved',
+              deliveryBatchInfo: deliveryBatch ? { id: deliveryBatch.id, creationDate: deliveryBatch.creationDate } : undefined,
+              validatorName,
+          };
+      });
     }, [books, auditLogs, currentUser, deliveryBatches, deliveryBatchItems, users]);
 
 
