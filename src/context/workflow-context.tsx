@@ -1769,26 +1769,48 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         
         const batch = deliveryBatches.find(b => b.id === deliveryId);
         if (!batch) return;
-        const items = deliveryBatchItems.filter(item => item.deliveryId === deliveryId);
+        
+        const itemsInBatch = deliveryBatchItems.filter(item => item.deliveryId === deliveryId);
 
         try {
-            for (const item of items) {
+            for (const item of itemsInBatch) {
                 const book = rawBooks.find(b => b.id === item.bookId);
                 if (!book) continue;
 
                 let newStatusName: string;
+                let logActionText = '';
+                let finalUserId = item.user_id || currentUser.id; 
+                let newItemStatus: 'approved' | 'rejected' | 'pending' = item.status;
+
                 if (finalDecision === 'reject_all') {
                     newStatusName = 'Client Rejected';
-                } else {
-                    newStatusName = item.status === 'rejected' ? 'Client Rejected' : 'Finalized';
+                    logActionText = 'Client Rejection (Bulk)';
+                    newItemStatus = 'rejected';
+                } else { // approve_remaining
+                    if (item.status === 'rejected') {
+                        newStatusName = 'Client Rejected';
+                        logActionText = 'Client Rejection'; // It was already rejected
+                    } else { // 'approved' or 'pending' become approved
+                        newStatusName = 'Finalized';
+                        logActionText = 'Client Approval';
+                        if (item.status === 'pending') {
+                            logActionText += ' (Bulk)';
+                        }
+                        newItemStatus = 'approved';
+                    }
                 }
                 
                 const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
-                if(currentStatusName) {
+                if(currentStatusName && currentStatusName !== newStatusName) {
                     await moveBookFolder(book.name, currentStatusName, newStatusName);
                 }
+                
+                // Only log if the state changes
+                if(book.status !== newStatusName){
+                   logAction(logActionText, `Finalized batch action by ${currentUser.name}.`, { bookId: book.id, userId: finalUserId });
+                }
             }
-            
+
             const response = await fetch(`/api/delivery-batches/${deliveryId}/finalize`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

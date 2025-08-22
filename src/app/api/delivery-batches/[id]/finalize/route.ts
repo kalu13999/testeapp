@@ -1,4 +1,5 @@
 
+
 import { NextResponse } from 'next/server';
 import { getConnection, releaseConnection } from '@/lib/db';
 import type { PoolConnection, RowDataPacket } from 'mysql2/promise';
@@ -22,7 +23,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
         await connection.beginTransaction();
 
         const [items] = await connection.execute<RowDataPacket[]>(
-            'SELECT id, bookId, status FROM delivery_batch_items WHERE deliveryId = ?',
+            'SELECT id, bookId, status, user_id FROM delivery_batch_items WHERE deliveryId = ?',
             [deliveryId]
         );
 
@@ -49,18 +50,23 @@ export async function POST(request: Request, { params }: { params: { id: string 
             let targetStatusId;
             let newItemStatus: 'approved' | 'rejected' = item.status;
             let logActionText = '';
+            let finalUserId = item.user_id || userId; // Keep original validator if present
 
             if (finalDecision === 'reject_all') {
                 targetStatusId = rejectedStatusId;
                 newItemStatus = 'rejected';
-                logActionText = 'Client Rejection';
+                logActionText = 'Client Rejection (Bulk)';
             } else { // approve_remaining
                 if (item.status === 'rejected') {
                     targetStatusId = rejectedStatusId;
+                    logActionText = 'Client Rejection'; // It was already rejected
                 } else { // 'approved' or 'pending' become approved
                     targetStatusId = finalizedStatusId;
-                    newItemStatus = 'approved';
                     logActionText = 'Client Approval';
+                    if (item.status === 'pending') {
+                        logActionText += ' (Bulk)';
+                    }
+                    newItemStatus = 'approved';
                 }
             }
             
@@ -69,16 +75,23 @@ export async function POST(request: Request, { params }: { params: { id: string 
                 [targetStatusId, item.bookId]
             );
 
-            await connection.execute(
-                'UPDATE delivery_batch_items SET status = ?, user_id = ? WHERE id = ?',
-                [newItemStatus, userId, item.id]
-            );
+            // Only update the user_id if the item was pending
+            const deliveryItemUpdateQuery = item.status === 'pending'
+                ? 'UPDATE delivery_batch_items SET status = ?, user_id = ? WHERE id = ?'
+                : 'UPDATE delivery_batch_items SET status = ? WHERE id = ?';
 
-             auditLogsToInsert.push([
+            const deliveryItemUpdateValues = item.status === 'pending'
+                ? [newItemStatus, userId, item.id]
+                : [newItemStatus, item.id];
+            
+            await connection.execute(deliveryItemUpdateQuery, deliveryItemUpdateValues);
+            
+            // Log the action with the correct user ID
+            auditLogsToInsert.push([
                 `al_bulk_${item.id}`,
                 logActionText,
-                `Bulk action by user ${userId}.`,
-                userId,
+                `Bulk action by user ${userId}. Final validator: ${finalUserId}`,
+                finalUserId,
                 newDate,
                 item.bookId,
                 null
