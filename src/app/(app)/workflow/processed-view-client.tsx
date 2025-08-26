@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { useAppContext } from "@/context/workflow-context";
-import { Loader2, CheckCircle, XCircle, Clock, Book, FileText, Timer, BookOpen, Send } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Clock, Book, FileText, Timer, BookOpen, Send, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
@@ -56,6 +56,9 @@ export default function ProcessedViewClient({ config }: ProcessedViewClientProps
     books,
     processingBatches,
     processingBatchItems,
+    processingLogs,
+    completeProcessingBatch,
+    failureProcessingBatch,
     selectedProjectId,
     storages,
     handleSendBatchToNextStage,
@@ -72,7 +75,9 @@ export default function ProcessedViewClient({ config }: ProcessedViewClientProps
         const items = processingBatchItems.filter(item => item.batchId === batch.id);
         const firstBook = items.length > 0 ? books.find(b => b.id === items[0].bookId) : null;
         const storageName = firstBook?.storageName || 'N/A';
-        return { ...batch, items, storageName };
+        const storageId = firstBook?.storageId;
+        const hasFailedItems = items.some(item => item.status === 'CQ Failed');
+        return { ...batch, items, storageName, storageId, hasFailedItems };
       })
       .filter(batch => {
         if (!selectedProjectId) return true; // Show all if no project is selected
@@ -83,7 +88,7 @@ export default function ProcessedViewClient({ config }: ProcessedViewClientProps
       });
 
       if (selectedStorageId !== 'all') {
-        const selectedStorage = storages.find(s => s.id === selectedStorageId);
+        const selectedStorage = storages.find(s => String(s.id) === selectedStorageId);
         if (selectedStorage) {
             batches = batches.filter(batch => batch.storageName === selectedStorage.nome);
         }
@@ -115,6 +120,16 @@ export default function ProcessedViewClient({ config }: ProcessedViewClientProps
     }
     closeConfirmationDialog();
   }
+  
+  const getStatusInfo = (batch: (typeof batchesForDisplay)[0]) => {
+      if (batch.hasFailedItems) return { icon: AlertTriangle, color: 'text-orange-500', className: '' };
+      switch (batch.status) {
+          case 'In Progress': return { icon: Loader2, color: 'text-primary', className: 'animate-spin' };
+          case 'Complete': return { icon: CheckCircle, color: 'text-green-600', className: '' };
+          case 'Failed': return { icon: XCircle, color: 'text-destructive', className: '' };
+          default: return { icon: Clock, color: 'text-muted-foreground', className: '' };
+      }
+  }
 
   return (
     <>
@@ -141,7 +156,7 @@ export default function ProcessedViewClient({ config }: ProcessedViewClientProps
                   <SelectContent>
                       <SelectItem value="all">All Storages</SelectItem>
                       {storages.map(storage => (
-                          <SelectItem key={storage.id} value={storage.id}>{storage.nome}</SelectItem>
+                          <SelectItem key={storage.id} value={String(storage.id)}>{storage.nome}</SelectItem>
                       ))}
                   </SelectContent>
               </Select>
@@ -151,6 +166,9 @@ export default function ProcessedViewClient({ config }: ProcessedViewClientProps
           {batchesForDisplay.length > 0 ? (
             <Accordion type="multiple" className="w-full">
               {batchesForDisplay.map(batch => {
+                const StatusIcon = getStatusInfo(batch).icon;
+                const statusColor = getStatusInfo(batch).color;
+                const statusAnimation = getStatusInfo(batch).className;
                 return (
                   <AccordionItem value={batch.id} key={batch.id}>
                     <div className="flex items-center justify-between hover:bg-muted/50 rounded-md">
@@ -169,7 +187,7 @@ export default function ProcessedViewClient({ config }: ProcessedViewClientProps
                       </div>
                       <AccordionTrigger className="flex-1 px-4 py-2">
                         <div className="flex items-center gap-3 text-left">
-                          <CheckCircle className="h-5 w-5 text-green-600" />
+                          <StatusIcon className={`h-5 w-5 ${statusColor} ${statusAnimation}`} />
                           <div>
                               <p className="font-semibold text-base">{batch.timestampStr}</p>
                               <p className="text-sm text-muted-foreground">{batch.items.length} book(s) in this batch</p>
@@ -220,7 +238,9 @@ export default function ProcessedViewClient({ config }: ProcessedViewClientProps
                                     <Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link>
                                   </TableCell>
                                   <TableCell>{book.projectName}</TableCell>
-                                  <TableCell><Badge variant="secondary">{item.status}</Badge></TableCell>
+                                  <TableCell>
+                                    <Badge variant={item.status === 'Complete' ? 'default' : item.status === 'Failed' ? 'destructive' : 'secondary'}>{item.status}</Badge>
+                                  </TableCell>
                                   <TableCell>{item.itemStartTime ? format(new Date(item.itemStartTime), 'p') : '—'}</TableCell>
                                   <TableCell>{item.itemEndTime ? format(new Date(item.itemEndTime), 'p') : '—'}</TableCell>
                                   <TableCell className="text-right">{book.expectedDocuments?.toLocaleString() || '—'}</TableCell>

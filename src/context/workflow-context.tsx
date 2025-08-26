@@ -157,6 +157,7 @@ type AppContextType = {
   setDeliveryBatches: React.Dispatch<React.SetStateAction<DeliveryBatch[]>>;
   setDeliveryBatchItems: React.Dispatch<React.SetStateAction<DeliveryBatchItem[]>>;
   setAuditLogs: React.Dispatch<React.SetStateAction<EnrichedAuditLog[]>>;
+  setProcessingBatchItems: React.Dispatch<React.SetStateAction<ProcessingBatchItem[]>>;
 };
 
 const AppContext = React.createContext<AppContextType | undefined>(undefined);
@@ -1747,31 +1748,64 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
   const handleSendBatchToNextStage = async (batchIds: string[]) => {
     await withMutation(async () => {
-      console.log('[handleSendBatchToNextStage] Initiated for batches:', batchIds);
-      const bookMovePromises = batchIds.flatMap(batchId => {
-        const itemsInBatch = processingBatchItems.filter(i => i.batchId === batchId);
-        return itemsInBatch.map(item => handleMoveBookToNextStage(item.bookId, 'Processed'));
-      });
-      console.log(`[handleSendBatchToNextStage] Processing ${bookMovePromises.length} books.`);
+        let allSucceeded = true;
+        const failedBooks: string[] = [];
   
-      try {
-        const results = await Promise.all(bookMovePromises);
-        const successfulMoves = results.filter(res => res).length;
-        console.log(`[handleSendBatchToNextStage] All promises resolved. Successful moves: ${successfulMoves}`);
+        for (const batchId of batchIds) {
+            const itemsInBatch = processingBatchItems.filter(i => i.batchId === batchId);
+            for (const item of itemsInBatch) {
+                const moveResult = await handleMoveBookToNextStage(item.bookId, 'Processed');
+                let itemUpdateResponse;
+                try {
+                    itemUpdateResponse = await fetch(`/api/processing-batch-items/${item.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: moveResult ? 'Finalized' : 'CQ Failed' }),
+                    });
+                     if (!itemUpdateResponse.ok) throw new Error('Failed to update item status');
 
-        if (successfulMoves > 0) {
-            logAction('Batch Sent to Next Stage', `${successfulMoves} books from ${batchIds.length} batch(es) sent to Final Quality Control.`, {});
-            toast({ title: "Batches Sent to Final QC", description: `${successfulMoves} books have been moved.` });
-        }
-        
-        if (successfulMoves < bookMovePromises.length) {
-          console.error(`[handleSendBatchToNextStage] Some books failed to move. Total: ${bookMovePromises.length}, Success: ${successfulMoves}`);
-        }
+                    const updatedItem = await itemUpdateResponse.json();
+                     setProcessingBatchItems(prev => prev.map(i => i.id === updatedItem.id ? updatedItem : i));
+                } catch (e) {
+                     console.error(`Failed to update status for item ${item.id}`, e);
+                }
 
-      } catch(error) {
-        console.error('[handleSendBatchToNextStage] An error occurred while processing batches:', error);
-        toast({ title: "Error", description: "An unexpected error occurred while moving books.", variant: "destructive" });
-      }
+                if (!moveResult) {
+                    allSucceeded = false;
+                    const book = rawBooks.find(b => b.id === item.bookId);
+                    if (book) {
+                        failedBooks.push(book.name);
+                        logAction('Final QC Failed', `Book "${book.name}" failed to move to Final QC.`, { bookId: item.bookId });
+                    }
+                }
+            }
+            
+            if (allSucceeded) {
+                 try {
+                    const response = await fetch(`/api/processing-batches/${batchId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: 'Finalized' }),
+                    });
+                     if (!response.ok) throw new Error('Failed to update batch status');
+                    const updatedBatch = await response.json();
+                     setProcessingBatches(prev => prev.map(b => b.id === batchId ? updatedBatch : b));
+                     logAction('Batch Sent to Final QC', `Batch ${batchId} was successfully sent to Final QC.`, {});
+                 } catch (e) {
+                     console.error(`Failed to finalize batch ${batchId}`, e);
+                 }
+            }
+        }
+  
+        if (failedBooks.length > 0) {
+            toast({
+                title: "Some Items Failed",
+                description: `Could not move the following books: ${failedBooks.join(', ')}. The batch remains in 'Processed' state.`,
+                variant: "destructive"
+            });
+        } else {
+            toast({ title: "Batches Sent", description: `${batchIds.length} batch(es) moved to Final Quality Control.` });
+        }
     });
   };
 
@@ -2130,7 +2164,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     setRawBooks,
     setDeliveryBatches,
     setDeliveryBatchItems,
-    setAuditLogs
+    setAuditLogs,
+    setProcessingBatchItems,
   };
 
   return (
@@ -2149,6 +2184,7 @@ export function useAppContext() {
 }
 
     
+
 
 
 
