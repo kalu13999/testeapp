@@ -240,6 +240,7 @@ export interface EnrichedBook extends RawBook {
     documentCount: number;
     progress: number;
     storageName?: string;
+    storageId?: string;
     scannerDeviceName?: string;
 }
 
@@ -324,13 +325,14 @@ export async function getEnrichedProjects(): Promise<EnrichedProject[]> {
 
     const storageMap = new Map(storages.map(s => [s.id, s.nome]));
     const scannerDeviceMap = new Map(scanners.map(s => [s.id, s.nome]));
-    const bookInfoMap = new Map<string, { storageName?: string, scannerDeviceName?: string }>();
+    const bookInfoMap = new Map<string, { storageName?: string, storageId?: string, scannerDeviceName?: string }>();
 
     transferLogs.forEach(log => {
       if (log.bookId && log.status === 'sucesso') {
           const currentInfo = bookInfoMap.get(log.bookId) || {};
           if (storageMap.has(Number(log.storage_id))) {
               currentInfo.storageName = storageMap.get(Number(log.storage_id))!;
+              currentInfo.storageId = log.storage_id;
           }
            if (scannerDeviceMap.has(Number(log.scanner_id))) {
               currentInfo.scannerDeviceName = scannerDeviceMap.get(Number(log.scanner_id))!;
@@ -355,6 +357,7 @@ export async function getEnrichedProjects(): Promise<EnrichedProject[]> {
                 documentCount: bookDocuments.length,
                 progress: Math.min(100, bookProgress),
                 storageName: extraInfo?.storageName,
+                storageId: extraInfo?.storageId,
                 scannerDeviceName: extraInfo?.scannerDeviceName,
             };
         });

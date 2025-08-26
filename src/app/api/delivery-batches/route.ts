@@ -13,7 +13,9 @@ export async function GET() {
     console.error("Error fetching delivery batches:", error);
     return NextResponse.json({ error: 'Failed to fetch delivery batches' }, { status: 500 });
   } finally {
-    if (connection) releaseConnection(connection);
+    if (connection) {
+      releaseConnection(connection);
+    }
   }
 }
 
@@ -51,7 +53,7 @@ export async function POST(request: Request) {
                 id: `del_item_${newBatch.id}_${bookId}`,
                 deliveryId: newBatch.id,
                 bookId: bookId,
-                userId: userId, // Set the initial user ID here
+                userId: null, // Changed from userId to null as requested
                 status: 'pending', // Explicitly setting status on creation
                 info: null,
                 obs: null

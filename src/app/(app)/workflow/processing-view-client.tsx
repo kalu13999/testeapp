@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { useAppContext } from "@/context/workflow-context";
-import { Loader2, CheckCircle, XCircle, Clock, Book, FileText, Timer, BookOpen } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Clock, Book, FileText, Timer, BookOpen, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
@@ -67,26 +67,27 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
     processingBatchItems,
     processingLogs,
     completeProcessingBatch,
+    failureProcessingBatch,
     selectedProjectId,
     storages,
   } = useAppContext();
 
-  const [confirmationState, setConfirmationState] = React.useState<{ open: boolean; batch: ProcessingBatch | null }>({ open: false, batch: null });
+  const [confirmationState, setConfirmationState] = React.useState<{ open: boolean; batch: (ProcessingBatch & { storageId?: string }) | null, status: string }>({ open: false, batch: null, status: '' });
   const [selectedStorageId, setSelectedStorageId] = React.useState<string>('all');
 
   const batchesForDisplay = React.useMemo(() => {
     let batches = processingBatches
-      .filter(batch => batch.status !== 'Complete') // Filter out completed batches
+      .filter(batch => batch.status !== 'Complete')
       .map(batch => {
         const items = processingBatchItems.filter(item => item.batchId === batch.id);
         const bookIds = new Set(items.map(item => item.bookId));
         const firstBook = items.length > 0 ? books.find(b => b.id === items[0].bookId) : null;
         const storageName = firstBook?.storageName || 'N/A';
-        return { ...batch, items, bookIds, storageName };
+        const storageId = firstBook?.storageId;
+        return { ...batch, items, bookIds, storageName, storageId };
       })
       .filter(batch => {
-        if (!selectedProjectId) return true; // Show all if no project is selected
-        // Check if any book in the batch belongs to the selected project
+        if (!selectedProjectId) return true;
         return batch.items.some(item => {
             const book = books.find(b => b.id === item.bookId);
             return book?.projectId === selectedProjectId;
@@ -94,7 +95,7 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
       });
 
       if (selectedStorageId !== 'all') {
-        const selectedStorage = storages.find(s => s.id === selectedStorageId);
+        const selectedStorage = storages.find(s => String(s.id) === selectedStorageId);
         if (selectedStorage) {
             batches = batches.filter(batch => batch.storageName === selectedStorage.nome);
         }
@@ -103,18 +104,27 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
     return batches.sort((a,b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
   }, [processingBatches, processingBatchItems, selectedProjectId, books, selectedStorageId, storages]);
 
-  const openConfirmationDialog = (batch: ProcessingBatch) => {
-    setConfirmationState({ open: true, batch });
+  const openConfirmationDialog = (batch: ProcessingBatch & { storageId?: string }, status: string) => {
+    setConfirmationState({ open: true, batch, status });
   }
 
   const closeConfirmationDialog = () => {
-    setConfirmationState({ open: false, batch: null });
+    setConfirmationState({ open: false, batch: null, status: '' });
   }
 
   const handleConfirm = () => {
-    if (confirmationState.batch) {
+    if (!confirmationState.batch) return;
+
+    if (confirmationState.status === "Complete") {
       completeProcessingBatch(confirmationState.batch.id);
+    } else if (confirmationState.status === "Open Protocol") {
+        if(!confirmationState.batch.storageId) {
+            console.error("Storage ID is missing for the failed batch.");
+            return;
+        }
+      failureProcessingBatch(confirmationState.batch.id, String(confirmationState.batch.storageId));
     }
+
     closeConfirmationDialog();
   }
   
@@ -142,7 +152,7 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
                   <SelectContent>
                       <SelectItem value="all">All Storages</SelectItem>
                       {storages.map(storage => (
-                          <SelectItem key={storage.id} value={storage.id}>{storage.nome}</SelectItem>
+                          <SelectItem key={storage.id} value={String(storage.id)}>{storage.nome}</SelectItem>
                       ))}
                   </SelectContent>
               </Select>
@@ -178,8 +188,14 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
                       </div>
                       <div className="px-4">
                         {batch.status === 'In Progress' && (
-                           <Button size="sm" onClick={() => openConfirmationDialog(batch)}>
+                           <Button size="sm" onClick={() => openConfirmationDialog(batch, "Complete")}>
                              Mark as Complete
+                           </Button>
+                        )}
+                         {batch.status === 'Failed' && (
+                           <Button size="sm" variant="destructive" onClick={() => openConfirmationDialog(batch, "Open Protocol")}>
+                            <RefreshCw className="mr-2 h-4 w-4"/>
+                             Retry/Resolve
                            </Button>
                         )}
                       </div>
@@ -255,16 +271,26 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
         </CardFooter>
       </Card>
 
-      <Dialog open={confirmationState.open} onOpenChange={closeConfirmationDialog}>
+       <Dialog open={confirmationState.open} onOpenChange={closeConfirmationDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Complete Processing Batch?</DialogTitle>
+            <DialogTitle>
+              {confirmationState.status === 'Complete'
+                ? 'Complete Processing Batch?'
+                : 'Open Protocol?'}
+            </DialogTitle>
             <DialogDescription>
-              {`This will mark the entire batch from "${confirmationState.batch?.timestampStr}" as complete and move all associated books to the next stage. This action cannot be undone.`}
+              {confirmationState.status === 'Complete' &&
+                `This will mark the entire batch from "${confirmationState.batch?.timestampStr}" as complete and move all associated books to the next stage. This action cannot be undone.`}
+
+              {confirmationState.status === 'Open Protocol' &&
+                `This will open the failure protocol for the batch from "${confirmationState.batch?.timestampStr}". Use this to investigate and resolve issues before retrying.`}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={closeConfirmationDialog}>Cancel</Button>
+            <Button variant="outline" onClick={closeConfirmationDialog}>
+              Cancel
+            </Button>
             <Button onClick={handleConfirm}>Confirm</Button>
           </DialogFooter>
         </DialogContent>

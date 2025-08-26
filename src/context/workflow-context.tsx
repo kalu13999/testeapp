@@ -135,6 +135,7 @@ type AppContextType = {
   handleCancelTask: (bookId: string, currentStatus: string) => void;
   handleAdminStatusOverride: (bookId: string, newStatusName: string, reason: string) => void;
   startProcessingBatch: (bookIds: string[], storageId: string) => void;
+  failureProcessingBatch: (batchId: string, storageId: string) => void;
   completeProcessingBatch: (batchId: string) => void;
   handleSendBatchToNextStage: (batchIds: string[]) => Promise<void>;
   setProvisionalDeliveryStatus: (deliveryItemId: string, bookId: string, status: 'approved' | 'rejected', reason?: string) => Promise<void>;
@@ -421,13 +422,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const allEnrichedProjects: EnrichedProject[] = React.useMemo(() => {
     const storageMap = new Map(storages.map(s => [s.id, s.nome]));
     const scannerDeviceMap = new Map(scanners.map(s => [s.id, s.nome]));
-    const bookInfoMap = new Map<string, { storageName?: string, scannerDeviceName?: string }>();
+    const bookInfoMap = new Map<string, { storageName?: string, storageId?: string, scannerDeviceName?: string }>();
 
     transferLogs.forEach(log => {
       if (log.bookId && log.status === 'sucesso') {
           const currentInfo = bookInfoMap.get(log.bookId) || {};
           if (storageMap.has(Number(log.storage_id))) {
               currentInfo.storageName = storageMap.get(Number(log.storage_id))!;
+              currentInfo.storageId = log.storage_id;
           }
            if (scannerDeviceMap.has(Number(log.scanner_id))) {
               currentInfo.scannerDeviceName = scannerDeviceMap.get(Number(log.scanner_id))!;
@@ -452,6 +454,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
                 documentCount: bookDocuments.length,
                 progress: Math.min(100, bookProgress),
                 storageName: extraInfo?.storageName,
+                storageId: extraInfo?.storageId,
                 scannerDeviceName: extraInfo?.scannerDeviceName,
             };
         });
@@ -1678,6 +1681,38 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     });
   };
 
+  const failureProcessingBatch = async (batchId: string, storageId: string) => {
+    await withMutation(async () => {
+      const batch = processingBatches.find(b => b.id === batchId);
+      if (!batch || !currentUser) return;
+      
+      try {
+        logAction('Processing Batch Retry', `User retrying failed batch ${batch.id}.`, { userId: currentUser.id });
+        await logProcessingEvent(batch.id, `User ${currentUser.name} initiated a retry for this failed batch.`);
+        toast({ title: "Retrying Batch..." });
+        
+        const storage = storages.find(s => String(s.id) === storageId);
+        if (!storage) {
+          toast({ title: "Error", description: `Storage with ID ${storageId} not found. Cannot launch local app.`, variant: "destructive" });
+          return;
+        }
+
+        openLocalApp('rfs-processa-app', {
+          userId: currentUser.id,
+          batchId: batch.id,
+          batchName: batch.timestampStr,
+          storageId: storageId,
+          rootPath: storage.root_path,
+        });
+
+      } catch (error: any) {
+        console.error(error);
+        toast({ title: "Error", description: error.message || "Could not start failed processing batch.", variant: "destructive" });
+      }
+     
+    });
+  };
+
   const completeProcessingBatch = async (batchId: string) => {
     await withMutation(async () => {
       const batch = processingBatches.find(b => b.id === batchId);
@@ -2084,7 +2119,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     approveBatch,
     handleFinalize, handleMarkAsCorrected, handleResubmit,
     addPageToBook, deletePageFromBook,
-    updateDocumentFlag, startProcessingBatch, completeProcessingBatch, handleSendBatchToNextStage,
+    updateDocumentFlag, startProcessingBatch, failureProcessingBatch, completeProcessingBatch, handleSendBatchToNextStage,
     handleAssignUser, reassignUser, handleStartTask, handleCancelTask,
     handleAdminStatusOverride, handleCreateDeliveryBatch, finalizeDeliveryBatch,
     distributeValidationSample,
@@ -2114,6 +2149,7 @@ export function useAppContext() {
 }
 
     
+
 
 
 
