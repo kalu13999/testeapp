@@ -4,6 +4,7 @@
 import React from 'react';
 import { useAppContext } from './workflow-context';
 import { useToast } from "@/hooks/use-toast";
+import type { RawBook } from '@/lib/data';
 import * as dataApi from '@/lib/data';
 
 type ClientValidationContextType = {
@@ -16,17 +17,29 @@ export function ClientValidationProvider({ children }: { children: React.ReactNo
   const appContext = useAppContext();
   const { toast } = useToast();
 
-  const handleValidationDeliveryBatch = async (deliveryId: string, finalDecision: 'approve_remaining' | 'reject_all') => {
-    if (!appContext.currentUser) return;
-    
-    const batch = appContext.deliveryBatches.find(b => b.id === deliveryId);
-    if (!batch) return;
-
-    const itemsInBatch = appContext.deliveryBatchItems.filter(item => item.deliveryId === deliveryId);
-    const failedMoves: string[] = [];
-
+  const withMutation = async <T,>(action: () => Promise<T>): Promise<T | undefined> => {
     appContext.setIsMutating(true);
     try {
+        const result = await action();
+        return result;
+    } catch (error: any) {
+        console.error("A validation action failed:", error);
+        toast({ title: "Operation Failed", description: error.message, variant: "destructive" });
+    } finally {
+        appContext.setIsMutating(false);
+    }
+  };
+
+  const handleValidationDeliveryBatch = async (deliveryId: string, finalDecision: 'approve_remaining' | 'reject_all') => {
+    await withMutation(async () => {
+        if (!appContext.currentUser) return;
+        
+        const batch = appContext.deliveryBatches.find(b => b.id === deliveryId);
+        if (!batch) return;
+        
+        const itemsInBatch = appContext.deliveryBatchItems.filter(item => item.deliveryId === deliveryId);
+        const failedMoves: string[] = [];
+
         for (const item of itemsInBatch) {
             const book = appContext.rawBooks.find(b => b.id === item.bookId);
             if (!book) continue;
@@ -48,11 +61,12 @@ export function ClientValidationProvider({ children }: { children: React.ReactNo
             
             if (currentStatusName !== newStatusName) {
                 const moveResult = await appContext.moveBookFolder(book.name, currentStatusName, newStatusName);
-                if (moveResult) {
-                    await appContext.updateBookStatus(book.id, newStatusName);
+                if(moveResult) {
+                    const updatedBook = await appContext.updateBookStatus(book.id, newStatusName);
+                    appContext.setRawBooks(prev => prev.map(b => b.id === book.id ? updatedBook : b));
                     await appContext.logAction(
                         newStatusName === 'Client Rejected' ? 'Client Rejection' : 'Client Approval',
-                        `Book status set to ${newStatusName} during batch finalization.`,
+                        `Batch Finalization: Book status set to ${newStatusName}.`,
                         { bookId: book.id, userId: appContext.currentUser.id }
                     );
                 } else {
@@ -63,19 +77,18 @@ export function ClientValidationProvider({ children }: { children: React.ReactNo
 
         if (failedMoves.length > 0) {
             toast({
-                title: "Partial Failure",
-                description: `Could not move folders for the following books: ${failedMoves.join(', ')}. The batch was not finalized.`,
+                title: "Batch Finalization Failed",
+                description: `Could not move folders for the following books: ${failedMoves.join(', ')}. The batch status was not updated.`,
                 variant: "destructive",
                 duration: 10000,
             });
             return;
         }
 
-        // All books moved successfully, now update the batch status
         const response = await fetch(`/api/delivery-batches/${deliveryId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'Finalized', deliveryDate: new Date().toISOString().slice(0, 19).replace('T', ' ') }),
+            body: JSON.stringify({ status: 'Finalized' }),
         });
         if (!response.ok) throw new Error('Failed to finalize batch via API.');
         
@@ -84,12 +97,7 @@ export function ClientValidationProvider({ children }: { children: React.ReactNo
 
         await appContext.logAction('Delivery Batch Finalized', `Batch ${deliveryId} was finalized by ${appContext.currentUser.name}. Decision: ${finalDecision}.`, { userId: appContext.currentUser.id });
         toast({ title: "Validation Confirmed", description: "All books in the batch have been processed." });
-    } catch (error: any) {
-        console.error(error);
-        toast({ title: "Error", description: error.message, variant: "destructive" });
-    } finally {
-        appContext.setIsMutating(false);
-    }
+    });
   };
   
   const value = {
