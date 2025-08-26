@@ -4,7 +4,7 @@
 
 import * as React from 'react';
 import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions, ProjectWorkflows, RejectionTag, DocumentStatus, ProcessingBatch, ProcessingBatchItem, Storage, LogTransferencia, ProjectStorage, Scanner, DeliveryBatch, DeliveryBatchItem } from '@/lib/data';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from "@/hooks/use-toast";
 import { WORKFLOW_SEQUENCE, STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage } from '@/lib/workflow-config';
 import * as dataApi from '@/lib/data';
 import { UserFormValues } from '@/app/(app)/users/user-form';
@@ -66,6 +66,8 @@ type AppContextType = {
   rejectionTags: RejectionTag[];
   storages: Storage[];
   scanners: Scanner[];
+  statuses: DocumentStatus[];
+  rawBooks: RawBook[];
   
   // Global Project Filter
   allProjects: EnrichedProject[];
@@ -146,6 +148,13 @@ type AppContextType = {
   deletePageFromBook: (pageId: string, bookId: string) => Promise<void>;
   updateDocumentFlag: (docId: string, flag: AppDocument['flag'], comment?: string) => Promise<void>;
   handlePullNextTask: (currentStage: string, userIdToAssign?: string) => Promise<void>;
+  logAction: (action: string, details: string, ids: { bookId?: string; documentId?: string; userId?: string; }) => Promise<void>;
+  moveBookFolder: (bookName: string, fromStatusName: string, toStatusName: string) => Promise<boolean>;
+  updateBookStatus: (bookId: string, newStatusName: string, additionalUpdates?: Partial<EnrichedBook>) => Promise<any>;
+  setRawBooks: React.Dispatch<React.SetStateAction<RawBook[]>>;
+  setDeliveryBatches: React.Dispatch<React.SetStateAction<DeliveryBatch[]>>;
+  setDeliveryBatchItems: React.Dispatch<React.SetStateAction<DeliveryBatchItem[]>>;
+  setAuditLogs: React.Dispatch<React.SetStateAction<EnrichedAuditLog[]>>;
 };
 
 const AppContext = React.createContext<AppContextType | undefined>(undefined);
@@ -446,9 +455,9 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             };
         });
 
-        const totalExpected = projectBooks.reduce((sum, book) => sum + book.expectedDocuments, 0);
-        const documentCount = projectBooks.reduce((sum, book) => sum + book.documentCount, 0);
-        const progress = totalExpected > 0 ? (documentCount / totalExpected) * 100 : 0;
+      const totalExpected = projectBooks.reduce((sum, book) => sum + book.expectedDocuments, 0);
+      const documentCount = projectBooks.reduce((sum, book) => sum + book.documentCount, 0);
+      const progress = totalExpected > 0 ? (documentCount / totalExpected) * 100 : 0;
   
       return {
         ...project,
@@ -1746,13 +1755,13 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         
         if (status === 'rejected') {
           await updateBook(bookId, { rejectionReason: reason });
-          logAction('Client Rejection', `Book "${rawBooks.find(b => b.id === bookId)?.name}" rejected. Reason: ${reason}`, { bookId });
+          logAction('Rejection Marked', `Book "${rawBooks.find(b => b.id === bookId)?.name}" marked as rejected. Reason: ${reason}`, { bookId });
         } else if (status === 'approved') {
           const book = rawBooks.find(b => b.id === bookId);
           if (book?.rejectionReason) {
             await updateBook(bookId, { rejectionReason: null });
           }
-           logAction('Client Approval', `Book "${book?.name}" approved by client.`, { bookId });
+           logAction('Approval Marked', `Book "${book?.name}" marked as approved by client.`, { bookId });
         }
         
         toast({ title: `Book Marked as ${status}` });
@@ -2048,6 +2057,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     rejectionTags,
     storages,
     scanners,
+    rawBooks,
+    statuses,
     allProjects: allEnrichedProjects,
     accessibleProjectsForUser,
     selectedProjectId,
@@ -2077,6 +2088,13 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     handleAdminStatusOverride, handleCreateDeliveryBatch, finalizeDeliveryBatch,
     distributeValidationSample,
     handleCompleteTask, handlePullNextTask,
+    logAction,
+    moveBookFolder,
+    updateBookStatus,
+    setRawBooks,
+    setDeliveryBatches,
+    setDeliveryBatchItems,
+    setAuditLogs
   };
 
   return (
@@ -2095,4 +2113,5 @@ export function useAppContext() {
 }
 
     
+
 
