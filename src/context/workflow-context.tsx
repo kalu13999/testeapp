@@ -32,6 +32,7 @@ type AppContextType = {
   // Loading state
   loading: boolean;
   isMutating: boolean;
+  setIsMutating: React.Dispatch<React.SetStateAction<boolean>>;
   processingBookIds: string[];
   
   // Auth state
@@ -2040,7 +2041,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
 
   const value: AppContextType = { 
-    loading, isMutating, processingBookIds,
+    loading, isMutating, processingBookIds, setIsMutating,
     currentUser, login, logout, changePassword,
     navigationHistory, addNavigationHistoryItem,
     clients, users, scannerUsers, indexerUsers, qcUsers,
@@ -2113,5 +2114,6 @@ export function useAppContext() {
 }
 
     
+
 
 
