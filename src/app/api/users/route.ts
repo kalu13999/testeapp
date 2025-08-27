@@ -1,14 +1,33 @@
 
 import { NextResponse } from 'next/server';
 import { getConnection, releaseConnection } from '@/lib/db';
-import type { PoolConnection } from 'mysql2/promise';
+import type { PoolConnection, RowDataPacket } from 'mysql2/promise';
+import type { User } from '@/lib/data';
 
 export async function GET() {
   let connection: PoolConnection | null = null;
   try {
     connection = await getConnection();
-    const [rows] = await connection.execute('SELECT * FROM users');
-    return NextResponse.json(rows);
+    const [users] = await connection.execute<RowDataPacket[]>('SELECT * FROM users');
+    const [userProjects] = await connection.execute<RowDataPacket[]>('SELECT * FROM user_projects');
+
+    const userProjectsMap: { [userId: string]: string[] } = {};
+
+    for (const up of userProjects) {
+        if (!userProjectsMap[up.userId]) {
+            userProjectsMap[up.userId] = [];
+        }
+        userProjectsMap[up.userId].push(up.projectId);
+    }
+
+    const enrichedUsers = users.map(user => {
+        return {
+            ...user,
+            projectIds: userProjectsMap[user.id] || []
+        };
+    });
+
+    return NextResponse.json(enrichedUsers);
   } catch (error) {
     console.error("Error fetching users:", error);
     return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });

@@ -9,11 +9,19 @@ export async function GET(request: Request, { params }: { params: { id: string }
   let connection: PoolConnection | null = null;
   try {
     connection = await getConnection();
-    const [rows] = await connection.execute('SELECT * FROM users WHERE id = ?', [id]);
+    const [rows] = await connection.execute<RowDataPacket[]>('SELECT * FROM users WHERE id = ?', [id]);
     if (Array.isArray(rows) && rows.length === 0) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
-    return NextResponse.json(Array.isArray(rows) ? rows[0] : null);
+    
+    const user = Array.isArray(rows) ? rows[0] : null;
+
+    if (user) {
+        const [projectRows] = await connection.execute<RowDataPacket[]>('SELECT projectId FROM user_projects WHERE userId = ?', [id]);
+        (user as User).projectIds = projectRows.map((p: any) => p.projectId);
+    }
+
+    return NextResponse.json(user);
   } catch (error) {
     console.error(`Error fetching user ${id}:`, error);
     return NextResponse.json({ error: 'Failed to fetch user' }, { status: 500 });
