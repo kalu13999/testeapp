@@ -171,6 +171,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const [assignState, setAssignState] = React.useState<{ open: boolean; book: EnrichedBook | null; role: AssignmentRole | null }>({ open: false, book: null, role: null });
   const [bulkAssignState, setBulkAssignState] = React.useState<{ open: boolean; role: AssignmentRole | null }>({ open: false, role: null });
   const [pullTaskState, setPullTaskState] = React.useState<{ open: boolean; stage: string; role: AssignmentRole | null }>({ open: false, stage: '', role: null });
+  const [pendingTasksState, setPendingTasksState] = React.useState<{ open: boolean; tasks: EnrichedBook[], bookToStart: EnrichedBook, role: AssignmentRole }>({ open: false, tasks: [], bookToStart: {} as EnrichedBook, role: 'scanner' });
 
   const [selectedUserId, setSelectedUserId] = React.useState<string>("");
   const [selectedBulkUserId, setSelectedBulkUserId] = React.useState<string>("");
@@ -568,6 +569,40 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   };
 
   const handleActionClick = (book: EnrichedBook) => {
+    const role = config.assigneeRole;
+    if (['to-scan', 'to-indexing', 'to-checking'].includes(stage)) {
+        if (!canViewAll) {
+            const openTasks = books.filter(b => {
+                const startedStatus = `${role!.charAt(0).toUpperCase() + role!.slice(1)} Started`;
+                const endTimeField = `${role}EndTime` as keyof EnrichedBook;
+                return b.status === startedStatus &&
+                       b[`${role}UserId` as keyof EnrichedBook] === currentUser?.id &&
+                       !b[endTimeField];
+            });
+
+            if (openTasks.length > 0) {
+                setPendingTasksState({ open: true, tasks: openTasks, bookToStart: book, role: role! });
+                return;
+            }
+        }
+        
+        let label = 'Start Task';
+        if (stage === 'to-scan') label = 'Start Scanning';
+        if (stage === 'to-indexing') label = 'Start Indexing';
+        if (stage === 'to-checking') label = 'Start Checking';
+
+        openConfirmationDialog({
+            title: `Confirm: ${label}?`,
+            description: `This will perform the action for "${book.name}".`,
+            onConfirm: () => {
+                if (stage === 'to-scan') handleStartTask(book.id, 'scanner');
+                else if (stage === 'to-indexing') handleStartTask(book.id, 'indexing');
+                else if (stage === 'to-checking') handleStartTask(book.id, 'qc');
+            }
+        });
+        return;
+    }
+
     if (stage === 'confirm-reception') {
       openConfirmationDialog({
         title: `Confirm Reception for "${book.name}"?`,
@@ -600,24 +635,6 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     
     if (stage === 'scanning-started') {
       setScanState({ open: true, book, folderName: null, fileCount: null });
-      return;
-    }
-
-    if (['to-scan', 'to-indexing', 'to-checking'].includes(stage)) {
-      let label = 'Start Task';
-      if (stage === 'to-scan') label = 'Start Scanning';
-      if (stage === 'to-indexing') label = 'Start Indexing';
-      if (stage === 'to-checking') label = 'Start Checking';
-
-      openConfirmationDialog({
-          title: `Confirm: ${label}?`,
-          description: `This will perform the action for "${book.name}".`,
-          onConfirm: () => {
-              if (stage === 'to-scan') handleStartTask(book.id, 'scanner');
-              else if (stage === 'to-indexing') handleStartTask(book.id, 'indexing');
-              else if (stage === 'to-checking') handleStartTask(book.id, 'qc');
-          }
-      });
       return;
     }
     
@@ -1103,6 +1120,34 @@ const handleMainAction = (book: EnrichedBook) => {
 
   return (
     <>
+     <AlertDialog open={pendingTasksState.open} onOpenChange={(open) => !open && setPendingTasksState({ open: false, tasks: [], bookToStart: {} as EnrichedBook, role: 'scanner' })}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>You have tasks in progress</AlertDialogTitle>
+                <AlertDialogDescription>
+                    The following books are still marked as "{pendingTasksState.role} started". Do you want to mark them as complete before starting "{pendingTasksState.bookToStart.name}"?
+                    <ul className="list-disc pl-5 mt-2">
+                        {pendingTasksState.tasks.map(t => <li key={t.id}>{t.name}</li>)}
+                    </ul>
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogAction onClick={() => {
+                    handleStartTask(pendingTasksState.bookToStart.id, pendingTasksState.role);
+                    setPendingTasksState({ open: false, tasks: [], bookToStart: {} as EnrichedBook, role: 'scanner' });
+                }}>
+                    No, Just Start New Task
+                </AlertDialogAction>
+                <AlertDialogAction onClick={() => {
+                    pendingTasksState.tasks.forEach(task => handleCompleteTask(task.id, task.status));
+                    handleStartTask(pendingTasksState.bookToStart.id, pendingTasksState.role);
+                    setPendingTasksState({ open: false, tasks: [], bookToStart: {} as EnrichedBook, role: 'scanner' });
+                }}>
+                    Yes, Complete Old & Start New
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
      <AlertDialog>
         <Card>
           <CardHeader>
