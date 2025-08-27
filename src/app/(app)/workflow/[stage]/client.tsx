@@ -241,12 +241,20 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const allDisplayItems = React.useMemo(() => {
     let items: (EnrichedBook | AppDocument)[];
     
-    if (dataType === 'book' && dataStatus) {
-      items = books.filter(book => book.status === dataStatus);
+    // START HERE: The error might be because we filter by dataStatus,
+    // but the `openTasks` check needs to see books in a DIFFERENT status (e.g. "Scanning Started").
+    // Let's broaden the initial pool for book-based views.
+    if (dataType === 'book') {
+        items = books;
     } else if (dataType === 'document' && dataStage) {
       items = documents.filter(doc => doc.status === dataStage);
     } else {
       items = [];
+    }
+
+    // Now filter down to the specific status for the page display
+    if (dataType === 'book' && dataStatus) {
+      items = (items as EnrichedBook[]).filter(book => book.status === dataStatus);
     }
 
     const isSharedQueue = dataStatus === 'Received';
@@ -569,25 +577,35 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   };
 
   const handleActionClick = (book: EnrichedBook) => {
-    const role = config.assigneeRole;
-    if (['to-scan', 'to-indexing', 'to-checking'].includes(stage)) {
-        if (!canViewAll && currentUser && role) {
-            const statusMap: Record<string, keyof EnrichedBook> = {
-                scanner: 'scanEndTime',
-                indexer: 'indexingEndTime',
-                qc: 'qcEndTime',
-            };
-            const startedStatus = `${role.charAt(0).toUpperCase() + role.slice(1)} Started`;
-            const endTimeField = statusMap[role];
+    console.log(`[handleActionClick] Clicked for book: "${book.name}" in stage: "${stage}"`);
 
-            const openTasks = books.filter(b => 
-                b.status === startedStatus &&
-                b[`${role}UserId` as keyof EnrichedBook] === currentUser?.id &&
-                !b[endTimeField]
-            );
+    if (['to-scan', 'to-indexing', 'to-checking'].includes(stage)) {
+        if (!canViewAll && config.assigneeRole) {
+            console.log(`[handleActionClick] User is not admin. Checking for open tasks...`);
+            const role = config.assigneeRole;
+            const statusMap = { scanner: 'Scanning Started', indexer: 'Indexing Started', qc: 'Checking Started' };
+            const endTimeMap = { scanner: 'scanEndTime', indexer: 'indexingEndTime', qc: 'qcEndTime' };
+            const userIdMap = { scanner: 'scannerUserId', indexer: 'indexerUserId', qc: 'qcUserId' };
+
+            const startedStatus = statusMap[role];
+            const endTimeField = endTimeMap[role] as keyof EnrichedBook;
+            const userIdField = userIdMap[role] as keyof EnrichedBook;
+            
+            console.log(`[handleActionClick] Checking params: role=${role}, startedStatus=${startedStatus}, endTimeField=${endTimeField}, userIdField=${userIdField}`);
+
+            const openTasks = books.filter(b => {
+                return b.status === startedStatus &&
+                       b[userIdField] === currentUser?.id &&
+                       !b[endTimeField];
+            });
+
+            console.log(`[handleActionClick] Found ${openTasks.length} open tasks.`);
+            if (openTasks.length > 0) {
+              console.log('[handleActionClick] Open tasks are:', JSON.stringify(openTasks.map(t => ({id: t.id, name: t.name, status: t.status, end: t[endTimeField]}))));
+            }
 
             if (openTasks.length > 0) {
-                setPendingTasksState({ open: true, tasks: openTasks, bookToStart: book, role });
+                setPendingTasksState({ open: true, tasks: openTasks, bookToStart: book, role: role });
                 return;
             }
         }
@@ -1152,6 +1170,7 @@ const handleMainAction = (book: EnrichedBook) => {
             </AlertDialogFooter>
         </AlertDialogContent>
     </AlertDialog>
+
      <AlertDialog>
         <Card>
           <CardHeader>
