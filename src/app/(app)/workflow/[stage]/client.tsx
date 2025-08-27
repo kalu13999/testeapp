@@ -1148,12 +1148,14 @@ const handleMainAction = (book: EnrichedBook) => {
         <AlertDialogContent>
             <AlertDialogHeader>
                 <AlertDialogTitle>You have tasks in progress</AlertDialogTitle>
-                <AlertDialogDescription>
-                    The following books are still marked as "{pendingTasksState.role} started". Do you want to mark them as complete before starting "{pendingTasksState.bookToStart.name}"?
-                    <ul className="list-disc pl-5 mt-2">
-                        {pendingTasksState.tasks.map(t => <li key={t.id}>{t.name}</li>)}
-                    </ul>
-                </AlertDialogDescription>
+                <div>
+                  <AlertDialogDescription>
+                      The following books are still marked as "{pendingTasksState.role} started". Do you want to mark them as complete before starting "{pendingTasksState.bookToStart.name}"?
+                      <ul className="list-disc pl-5 mt-2">
+                          {pendingTasksState.tasks.map(t => <li key={t.id}>{t.name}</li>)}
+                      </ul>
+                  </AlertDialogDescription>
+                </div>
             </AlertDialogHeader>
             <AlertDialogFooter>
                 <AlertDialogCancel onClick={() => {
