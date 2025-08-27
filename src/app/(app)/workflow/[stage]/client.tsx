@@ -242,9 +242,8 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const allDisplayItems = React.useMemo(() => {
     let items: (EnrichedBook | AppDocument)[];
     
-    // START HERE: The error might be because we filter by dataStatus,
-    // but the `openTasks` check needs to see books in a DIFFERENT status (e.g. "Scanning Started").
-    // Let's broaden the initial pool for book-based views.
+    // For book views, start with all books, then filter.
+    // This is crucial for handleActionClick to find books in "Started" states.
     if (dataType === 'book') {
         items = books;
     } else if (dataType === 'document' && dataStage) {
@@ -256,6 +255,10 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     // Now filter down to the specific status for the page display
     if (dataType === 'book' && dataStatus) {
       items = (items as EnrichedBook[]).filter(book => book.status === dataStatus);
+    }
+
+    if(selectedProjectId) {
+      items = (items as EnrichedBook[]).filter(book => book.projectId === selectedProjectId);
     }
 
     const isSharedQueue = dataStatus === 'Received';
@@ -297,7 +300,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     }
 
     return items;
-  }, [books, documents, dataType, dataStatus, dataStage, currentUser, permissions, config.assigneeRole, users, canViewAll]);
+  }, [books, documents, dataType, dataStatus, dataStage, currentUser, permissions, config.assigneeRole, users, canViewAll, selectedProjectId]);
 
   const handleColumnFilterChange = (columnId: string, value: string) => {
     setColumnFilters(prev => ({ ...prev, [columnId]: value }));
@@ -541,7 +544,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     setSelectedBulkUserId('');
   };
 
-  const handleConfirmBulkAssignment = () => {
+  const handleBulkAssignmentSubmit = () => {
     const role = bulkAssignState.role;
     if (!selectedBulkUserId || !role) {
       toast({ title: "No User Selected", description: "Please select a user to assign the books.", variant: "destructive" });
@@ -578,35 +581,38 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   };
 
   const handleActionClick = (book: EnrichedBook) => {
-    console.log(`[handleActionClick] Clicked for book: "${book.name}" in stage: "${stage}"`);
-
+    const role = config.assigneeRole;
+    
     if (['to-scan', 'to-indexing', 'to-checking'].includes(stage)) {
-        if (!canViewAll && config.assigneeRole) {
-            console.log(`[handleActionClick] User is not admin. Checking for open tasks...`);
-            const role = config.assigneeRole;
-            const statusMap = { scanner: 'Scanning Started', indexer: 'Indexing Started', qc: 'Checking Started' };
-            const endTimeMap = { scanner: 'scanEndTime', indexer: 'indexingEndTime', qc: 'qcEndTime' };
-            const userIdMap = { scanner: 'scannerUserId', indexer: 'indexerUserId', qc: 'qcUserId' };
-
-            const startedStatus = statusMap[role];
-            const endTimeField = endTimeMap[role] as keyof EnrichedBook;
-            const userIdField = userIdMap[role] as keyof EnrichedBook;
+        console.log(`[handleActionClick] Stage is ${stage}, role is ${role}`);
+        if (role && !canViewAll) {
+            console.log("[handleActionClick] User is not admin. Checking for open tasks...");
             
-            console.log(`[handleActionClick] Checking params: role=${role}, startedStatus=${startedStatus}, endTimeField=${endTimeField}, userIdField=${userIdField}`);
+            const startedStatusMap = { scanner: 'Scanning Started', indexer: 'Indexing Started', qc: 'Checking Started' };
+            const endTimeFieldMap: Record<AssignmentRole, keyof EnrichedBook> = { scanner: 'scanEndTime', indexer: 'indexingEndTime', qc: 'qcEndTime' };
+            const userIdFieldMap = { scanner: 'scannerUserId', indexer: 'indexerUserId', qc: 'qcUserId' };
+            
+            const startedStatus = startedStatusMap[role];
+            const endTimeField = endTimeFieldMap[role];
+            const userIdField = userIdFieldMap[role];
+            
+            console.log(`[handleActionClick] Filtering for status: ${startedStatus}, userId: ${currentUser?.id}, endTimeField: ${endTimeField}`);
 
             const openTasks = books.filter(b => {
-                return b.status === startedStatus &&
-                       b[userIdField] === currentUser?.id &&
-                       !b[endTimeField];
+                const isStatusMatch = b.status === startedStatus;
+                const isUserMatch = b[userIdField as keyof EnrichedBook] === currentUser?.id;
+                const isEndTimeNull = !b[endTimeField];
+                
+                return isStatusMatch && isUserMatch && isEndTimeNull;
             });
 
             console.log(`[handleActionClick] Found ${openTasks.length} open tasks.`);
             if (openTasks.length > 0) {
-              console.log('[handleActionClick] Open tasks are:', JSON.stringify(openTasks.map(t => ({id: t.id, name: t.name, status: t.status, end: t[endTimeField]}))));
+                console.log(`[handleActionClick] Open tasks are:`, openTasks.map(t => ({id: t.id, name: t.name, status: t.status, endTime: t[endTimeField]})));
             }
-
+            
             if (openTasks.length > 0) {
-                setPendingTasksState({ open: true, tasks: openTasks, bookToStart: book, role: role });
+                setPendingTasksState({ open: true, tasks: openTasks, bookToStart: book, role: role! });
                 return;
             }
         }
@@ -641,17 +647,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         const projectWorkflow = projectWorkflows[book.projectId!] || [];
         const isScanningEnabled = projectWorkflow.includes('to-scan');
         if (isScanningEnabled) {
-            const userPermissions = currentUser ? permissions[currentUser.role] || [] : [];
-            const canViewAll = userPermissions.includes('/workflow/view-all') || userPermissions.includes('*');
-            const canScan = userPermissions.includes('/workflow/to-scan') || canViewAll;
-
-            if (canViewAll) {
-                openAssignmentDialog(book, 'scanner');
-            } else if (canScan) {
-                handleAssignUser(book.id, currentUser!.id, 'scanner');
-            } else {
-                openAssignmentDialog(book, 'scanner');
-            }
+            openAssignmentDialog(book, 'scanner');
         } else {
             setScanState({ open: true, book, folderName: null, fileCount: null });
         }
@@ -1189,7 +1185,6 @@ const handleMainAction = (book: EnrichedBook) => {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <ul className="list-none p-0 m-0 flex flex-col gap-2 w-full">
-                {/* Botão Yes: completa antigas e inicia nova */}
                 <li>
                   <AlertDialogAction
                     className="w-full justify-center"
@@ -1213,7 +1208,6 @@ const handleMainAction = (book: EnrichedBook) => {
                   </AlertDialogAction>
                 </li>
 
-                {/* Botão No: inicia nova task sem completar antigas */}
                 <li>
                   <AlertDialogCancel
                     className="w-full justify-center"
@@ -1232,7 +1226,6 @@ const handleMainAction = (book: EnrichedBook) => {
                 </li>
 
                 
-                {/* Botão Cancel simples */}
                 <li>
                   <AlertDialogCancel className="w-full justify-center">
                     Cancel
@@ -1560,7 +1553,7 @@ const handleMainAction = (book: EnrichedBook) => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeBulkAssignmentDialog}>Cancel</Button>
-            <Button onClick={handleConfirmBulkAssignment} disabled={!bulkAssignState.selectedUserId}>
+            <Button onClick={handleBulkAssignmentSubmit} disabled={!bulkAssignState.selectedUserId}>
               Assign and Confirm
             </Button>
           </DialogFooter>
