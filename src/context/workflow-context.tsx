@@ -301,6 +301,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         });
         return null;
       }
+      setSelectedProjectId(null);
       setCurrentUser(user);
       localStorage.setItem('flowvault_userid', user.id);
       const storedHistory = localStorage.getItem(`nav_history_${user.id}`);

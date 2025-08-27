@@ -84,21 +84,19 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
         return;
     }
 
-    const isSelectionValid = accessibleProjectsForUser.some(p => p.id === selectedProjectId);
-
-    if (isSelectionValid) {
-        return;
-    }
-
-    let newDefaultProjectId: string | null = null;
+    // Determine the ideal project ID based on user default or first available
+    let idealProjectId: string | null = null;
     if (currentUser.defaultProjectId && accessibleProjectsForUser.some(p => p.id === currentUser.defaultProjectId)) {
-        newDefaultProjectId = currentUser.defaultProjectId;
+        idealProjectId = currentUser.defaultProjectId;
     } else if (accessibleProjectsForUser.length > 0) {
-        newDefaultProjectId = accessibleProjectsForUser[0].id;
+        idealProjectId = accessibleProjectsForUser[0].id;
     }
 
-    setSelectedProjectId(newDefaultProjectId);
-
+    // Only update if the current selection is not the ideal one
+    if (selectedProjectId !== idealProjectId) {
+      setSelectedProjectId(idealProjectId);
+    }
+    
   }, [currentUser, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loading]);
   
   useEffect(() => {

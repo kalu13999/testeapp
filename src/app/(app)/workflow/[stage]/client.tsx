@@ -1510,13 +1510,13 @@ const handleMainAction = (book: EnrichedBook) => {
           <DialogDescription>{assignState.role ? assignmentConfig[assignState.role].description : ''}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
-          <Select value={assignState.selectedUserId} onValueChange={(val) => setAssignState(s => ({...s, selectedUserId: val}))}>
+          <Select value={selectedUserId} onValueChange={setSelectedUserId}>
             <SelectTrigger>
               <SelectValue placeholder={`Select an ${assignState.role}...`} />
             </SelectTrigger>
             <SelectContent>
-              {assignState.projectId && assignState.role && 
-                getAssignableUsers(assignState.role, assignState.projectId).map(user => (
+              {assignState.role && assignState.book && 
+                getAssignableUsers(assignState.role, assignState.book.projectId).map(user => (
                   <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
               ))}
             </SelectContent>
@@ -1524,7 +1524,7 @@ const handleMainAction = (book: EnrichedBook) => {
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={closeAssignmentDialog}>Cancel</Button>
-          <Button onClick={handleConfirmAssignment} disabled={!assignState.selectedUserId}>
+          <Button onClick={handleConfirmAssignment} disabled={!selectedUserId}>
             Assign and Confirm
           </Button>
         </DialogFooter>
