@@ -571,14 +571,15 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const handleActionClick = (book: EnrichedBook) => {
     const role = config.assigneeRole;
     if (['to-scan', 'to-indexing', 'to-checking'].includes(stage)) {
-        if (!canViewAll) {
-            const openTasks = books.filter(b => {
-                const startedStatus = `${role!.charAt(0).toUpperCase() + role!.slice(1)} Started`;
-                const endTimeField = `${role}EndTime` as keyof EnrichedBook;
-                return b.status === startedStatus &&
-                       b[`${role}UserId` as keyof EnrichedBook] === currentUser?.id &&
-                       !b[endTimeField];
-            });
+        if (!canViewAll && currentUser && role) {
+            const startedStatus = `${role.charAt(0).toUpperCase() + role.slice(1)} Started`;
+            const endTimeField = `${role}EndTime` as keyof EnrichedBook;
+            
+            const openTasks = books.filter(b => 
+                b.status === startedStatus &&
+                b[`${role}UserId` as keyof EnrichedBook] === currentUser.id &&
+                !b[endTimeField]
+            );
 
             if (openTasks.length > 0) {
                 setPendingTasksState({ open: true, tasks: openTasks, bookToStart: book, role: role! });
@@ -1120,7 +1121,7 @@ const handleMainAction = (book: EnrichedBook) => {
 
   return (
     <>
-     <AlertDialog open={pendingTasksState.open} onOpenChange={(open) => !open && setPendingTasksState({ open: false, tasks: [], bookToStart: {} as EnrichedBook, role: 'scanner' })}>
+      <AlertDialog open={pendingTasksState.open} onOpenChange={(open) => !open && setPendingTasksState({ open: false, tasks: [], bookToStart: {} as EnrichedBook, role: 'scanner' })}>
         <AlertDialogContent>
             <AlertDialogHeader>
                 <AlertDialogTitle>You have tasks in progress</AlertDialogTitle>
