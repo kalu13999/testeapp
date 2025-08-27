@@ -572,17 +572,22 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     const role = config.assigneeRole;
     if (['to-scan', 'to-indexing', 'to-checking'].includes(stage)) {
         if (!canViewAll && currentUser && role) {
+            const statusMap: Record<string, keyof EnrichedBook> = {
+                scanner: 'scanEndTime',
+                indexer: 'indexingEndTime',
+                qc: 'qcEndTime',
+            };
             const startedStatus = `${role.charAt(0).toUpperCase() + role.slice(1)} Started`;
-            const endTimeField = `${role}EndTime` as keyof EnrichedBook;
-            
+            const endTimeField = statusMap[role];
+
             const openTasks = books.filter(b => 
                 b.status === startedStatus &&
-                b[`${role}UserId` as keyof EnrichedBook] === currentUser.id &&
+                b[`${role}UserId` as keyof EnrichedBook] === currentUser?.id &&
                 !b[endTimeField]
             );
 
             if (openTasks.length > 0) {
-                setPendingTasksState({ open: true, tasks: openTasks, bookToStart: book, role: role! });
+                setPendingTasksState({ open: true, tasks: openTasks, bookToStart: book, role });
                 return;
             }
         }
@@ -1133,12 +1138,10 @@ const handleMainAction = (book: EnrichedBook) => {
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-                <AlertDialogAction onClick={() => {
-                    handleStartTask(pendingTasksState.bookToStart.id, pendingTasksState.role);
-                    setPendingTasksState({ open: false, tasks: [], bookToStart: {} as EnrichedBook, role: 'scanner' });
-                }}>
-                    No, Just Start New Task
-                </AlertDialogAction>
+                <AlertDialogCancel onClick={() => {
+                  handleStartTask(pendingTasksState.bookToStart.id, pendingTasksState.role);
+                  setPendingTasksState({ open: false, tasks: [], bookToStart: {} as EnrichedBook, role: 'scanner' });
+                }}>No, Just Start New Task</AlertDialogCancel>
                 <AlertDialogAction onClick={() => {
                     pendingTasksState.tasks.forEach(task => handleCompleteTask(task.id, task.status));
                     handleStartTask(pendingTasksState.bookToStart.id, pendingTasksState.role);
@@ -1423,13 +1426,13 @@ const handleMainAction = (book: EnrichedBook) => {
           <DialogDescription>{assignState.role ? assignmentConfig[assignState.role].description : ''}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
-          <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+          <Select value={assignState.selectedUserId} onValueChange={(val) => setAssignState(s => ({...s, selectedUserId: val}))}>
             <SelectTrigger>
               <SelectValue placeholder={`Select an ${assignState.role}...`} />
             </SelectTrigger>
             <SelectContent>
-              {assignState.role && assignState.book && 
-                getAssignableUsers(assignState.role, assignState.book.projectId).map(user => (
+              {assignState.projectId && assignState.role && 
+                getAssignableUsers(assignState.role, assignState.projectId).map(user => (
                   <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
               ))}
             </SelectContent>
@@ -1437,7 +1440,7 @@ const handleMainAction = (book: EnrichedBook) => {
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={closeAssignmentDialog}>Cancel</Button>
-          <Button onClick={handleConfirmAssignment} disabled={!selectedUserId}>
+          <Button onClick={handleConfirmAssignment} disabled={!assignState.selectedUserId}>
             Assign and Confirm
           </Button>
         </DialogFooter>
@@ -1453,7 +1456,7 @@ const handleMainAction = (book: EnrichedBook) => {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <Select value={selectedBulkUserId} onValueChange={setSelectedBulkUserId}>
+            <Select value={bulkAssignState.selectedUserId} onValueChange={(val) => setBulkAssignState(s => ({...s, selectedUserId: val}))}>
               <SelectTrigger>
                 <SelectValue placeholder={`Select an ${bulkAssignState.role}...`} />
               </SelectTrigger>
@@ -1466,7 +1469,7 @@ const handleMainAction = (book: EnrichedBook) => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeBulkAssignmentDialog}>Cancel</Button>
-            <Button onClick={handleConfirmBulkAssignment} disabled={!selectedBulkUserId}>
+            <Button onClick={handleConfirmBulkAssignment} disabled={!bulkAssignState.selectedUserId}>
               Assign and Confirm
             </Button>
           </DialogFooter>
