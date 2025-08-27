@@ -339,6 +339,11 @@ export default function UsersClient() {
                     </div>
                 </TableHead>
                 <TableHead>
+                    <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('username', e.shiftKey)}>
+                        Username {getSortIndicator('username')}
+                    </div>
+                </TableHead>
+                <TableHead>
                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('email', e.shiftKey)}>
                         Email {getSortIndicator('email')}
                     </div>
@@ -369,6 +374,14 @@ export default function UsersClient() {
                         placeholder="Filter by name..."
                         value={columnFilters['name'] || ''}
                         onChange={(e) => handleColumnFilterChange('name', e.target.value)}
+                        className="h-8"
+                    />
+                </TableHead>
+                <TableHead>
+                    <Input
+                        placeholder="Filter by username..."
+                        value={columnFilters['username'] || ''}
+                        onChange={(e) => handleColumnFilterChange('username', e.target.value)}
                         className="h-8"
                     />
                 </TableHead>
@@ -432,6 +445,7 @@ export default function UsersClient() {
                       {user.name}
                     </div>
                   </TableCell>
+                  <TableCell>{user.username || '—'}</TableCell>
                   <TableCell>{user.email || '—'}</TableCell>
                    <TableCell>
                       <Badge variant={user.role === 'Admin' ? "default" : "secondary"}>{user.role}</Badge>
@@ -479,7 +493,7 @@ export default function UsersClient() {
                 </TableRow>
               )) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
+                  <TableCell colSpan={8} className="h-24 text-center">
                     No users found matching your filters.
                   </TableCell>
                 </TableRow>

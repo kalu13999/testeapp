@@ -134,6 +134,11 @@ export default function DefaultProjectsClient() {
                     </div>
                 </TableHead>
                 <TableHead className="w-[200px]">
+                    <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('username')}>
+                        Username {getSortIndicator('username')}
+                    </div>
+                </TableHead>
+                <TableHead className="w-[200px]">
                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('role')}>
                         Role {getSortIndicator('role')}
                     </div>
@@ -146,6 +151,14 @@ export default function DefaultProjectsClient() {
                         placeholder="Filter by name..." 
                         value={columnFilters['name'] || ''} 
                         onChange={e => setColumnFilters(p => ({...p, name: e.target.value}))} 
+                        className="h-8"
+                    />
+                </TableHead>
+                <TableHead>
+                    <Input 
+                        placeholder="Filter by username..." 
+                        value={columnFilters['username'] || ''} 
+                        onChange={e => setColumnFilters(p => ({...p, username: e.target.value}))} 
                         className="h-8"
                     />
                 </TableHead>
@@ -176,6 +189,7 @@ export default function DefaultProjectsClient() {
                         {user.name}
                       </div>
                     </TableCell>
+                    <TableCell>{user.username}</TableCell>
                     <TableCell>{user.role}</TableCell>
                     <TableCell>
                       <Select
@@ -203,7 +217,7 @@ export default function DefaultProjectsClient() {
                 )
               }) : (
                 <TableRow>
-                  <TableCell colSpan={3} className="h-24 text-center">
+                  <TableCell colSpan={4} className="h-24 text-center">
                     No applicable users found.
                   </TableCell>
                 </TableRow>
