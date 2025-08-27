@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, Check, ScanLine, FileText, FileJson, PlayCircle, Send, UserPlus, CheckCheck, Archive, ThumbsUp, ThumbsDown, Undo2, MoreHorizontal, Loader2, Upload, FileWarning, Download, ArrowUp, ArrowDown, ChevronsUpDown, XCircle, UserPlus2 } from "lucide-react";
+import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, Check, ScanLine, FileText, FileJson, PlayCircle, Send, UserPlus, CheckCheck, Archive, ThumbsUp, ThumbsDown, Undo2, MoreHorizontal, Loader2, Upload, FileWarning, Download, ArrowUp, ArrowDown, ChevronsUpDown, XCircle, UserPlus2, RotateCcw } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -86,6 +86,7 @@ const iconMap: { [key: string]: LucideIcon } = {
     ThumbsDown,
     Undo2,
     MoreHorizontal,
+    RotateCcw,
 };
 
 interface WorkflowClientProps {
@@ -158,7 +159,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     handleSendToStorage, processingBookIds,
     handleClientAction, handleFinalize, handleMarkAsCorrected, handleResubmit,
     addPageToBook, deletePageFromBook, updateDocumentFlag, rejectionTags, tagPageForRejection,
-    handleCompleteTask, handlePullNextTask
+    handleCompleteTask,handleCancelCompleteTask, handlePullNextTask
   } = useAppContext();
 
   const { toast } = useToast();
@@ -856,7 +857,17 @@ const handleMainAction = (book: EnrichedBook) => {
                 Task Completed
               </Badge>
             ) : isCancelable ? (
-              <Button size="sm" variant="secondary" onClick={() => handleCompleteTask(item.id, item.status)}>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() =>
+                  openConfirmationDialog({
+                    title: "Confirm Complete Task",
+                    description: `Are you sure you want to mark "${item.name}" as complete?`,
+                    onConfirm: () => handleCompleteTask(item.id, item.status),
+                  })
+                }
+              >
                 <Check className="mr-2 h-4 w-4" />
                 Complete Task
               </Button>
@@ -883,7 +894,23 @@ const handleMainAction = (book: EnrichedBook) => {
                     </DropdownMenuItem>
                     {isCancelable && (
                       <>
+                        
+                        { hasEndTime && (
+                           <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onSelect={() => openConfirmationDialog({
+                                  title: `Mark not Complete for "${item.name}"?`,
+                                  description: "This will undo the completion of this task, marking it as not completed.",
+                                  onConfirm: () => handleCancelCompleteTask(item.id, item.status)
+                              })}>
+                              <RotateCcw className="mr-2 h-4 w-4" />
+                              Mark not Complete
+                          </DropdownMenuItem>
+                          </>
+                        )}
+
                         <DropdownMenuSeparator />
+
                         <DropdownMenuItem onSelect={() => openConfirmationDialog({
                                 title: `Cancel task for "${item.name}"?`,
                                 description: "This will return the book to the previous step.",
@@ -892,6 +919,7 @@ const handleMainAction = (book: EnrichedBook) => {
                             <Undo2 className="mr-2 h-4 w-4" />
                             Cancel Task
                         </DropdownMenuItem>
+                       
                       </>
                     )}
                 </DropdownMenuContent>
@@ -1160,17 +1188,57 @@ const handleMainAction = (book: EnrichedBook) => {
 
             </AlertDialogHeader>
             <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => {
-                  handleStartTask(pendingTasksState.bookToStart.id, pendingTasksState.role);
-                  setPendingTasksState({ open: false, tasks: [], bookToStart: {} as EnrichedBook, role: 'scanner' });
-                }}>No, Just Start New Task</AlertDialogCancel>
-                <AlertDialogAction onClick={() => {
-                    pendingTasksState.tasks.forEach(task => handleCompleteTask(task.id, task.status));
-                    handleStartTask(pendingTasksState.bookToStart.id, pendingTasksState.role);
-                    setPendingTasksState({ open: false, tasks: [], bookToStart: {} as EnrichedBook, role: 'scanner' });
-                }}>
+              <ul className="list-none p-0 m-0 flex flex-col gap-2 w-full">
+                {/* Botão Yes: completa antigas e inicia nova */}
+                <li>
+                  <AlertDialogAction
+                    className="w-full justify-center"
+                    onClick={() => {
+                      pendingTasksState.tasks.forEach(task =>
+                        handleCompleteTask(task.id, task.status)
+                      )
+                      handleStartTask(
+                        pendingTasksState.bookToStart.id,
+                        pendingTasksState.role
+                      )
+                      setPendingTasksState({
+                        open: false,
+                        tasks: [],
+                        bookToStart: {} as EnrichedBook,
+                        role: 'scanner',
+                      })
+                    }}
+                  >
                     Yes, Complete Old & Start New
-                </AlertDialogAction>
+                  </AlertDialogAction>
+                </li>
+
+                {/* Botão No: inicia nova task sem completar antigas */}
+                <li>
+                  <AlertDialogCancel
+                    className="w-full justify-center"
+                    onClick={() => {
+                      handleStartTask(pendingTasksState.bookToStart.id, pendingTasksState.role)
+                      setPendingTasksState({
+                        open: false,
+                        tasks: [],
+                        bookToStart: {} as EnrichedBook,
+                        role: 'scanner',
+                      })
+                    }}
+                  >
+                    No, Just Start New Task
+                  </AlertDialogCancel>
+                </li>
+
+                
+                {/* Botão Cancel simples */}
+                <li>
+                  <AlertDialogCancel className="w-full justify-center">
+                    Cancel
+                  </AlertDialogCancel>
+                </li>
+              </ul>
             </AlertDialogFooter>
         </AlertDialogContent>
     </AlertDialog>

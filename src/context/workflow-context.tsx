@@ -132,6 +132,7 @@ type AppContextType = {
   reassignUser: (bookId: string, newUserId: string, role: 'scanner' | 'indexer' | 'qc') => void;
   handleStartTask: (bookId: string, role: 'scanner' | 'indexing' | 'qc') => void;
   handleCompleteTask: (bookId: string, stage: string) => void;
+  handleCancelCompleteTask: (bookId: string, stage: string) => void;
   handleCancelTask: (bookId: string, currentStatus: string) => void;
   handleAdminStatusOverride: (bookId: string, newStatusName: string, reason: string) => void;
   startProcessingBatch: (bookIds: string[], storageId: string) => void;
@@ -1555,6 +1556,30 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     });
   };
 
+  const handleCancelCompleteTask = async (bookId: string, stage: string) => {
+    await withMutation(async () => {
+      const updateFields: { [key: string]: Partial<RawBook> } = {
+        'Scanning Started': { scanEndTime: null },
+        'Indexing Started': { indexingEndTime: null },
+        'Checking Started': { qcEndTime: null },
+      };
+  
+      const update = updateFields[stage];
+      if (update) {
+        await updateBook(bookId, update);
+  
+        const book = rawBooks.find(b => b.id === bookId);
+        logAction(
+          'Task Completion Cancelled',
+          `Task "${stage}" cancelled for book "${book?.name}".`,
+          { bookId }
+        );
+  
+        toast({ title: 'Task Completion Cancelled' });
+      }
+    });
+  };
+
   const handleCancelTask = (bookId: string, currentStatus: string) => {
     withMutation(async () => {
       const book = rawBooks.find(b => b.id === bookId);
@@ -2157,7 +2182,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     handleAssignUser, reassignUser, handleStartTask, handleCancelTask,
     handleAdminStatusOverride, handleCreateDeliveryBatch, finalizeDeliveryBatch,
     distributeValidationSample,
-    handleCompleteTask, handlePullNextTask,
+    handleCompleteTask,handleCancelCompleteTask, handlePullNextTask,
     logAction,
     moveBookFolder,
     updateBookStatus,

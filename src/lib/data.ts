@@ -89,13 +89,13 @@ export interface RawBook {
     info?: string;
     scannerUserId?: string;
     scanStartTime?: string;
-    scanEndTime?: string;
+    scanEndTime?: string | null;
     indexerUserId?: string;
     indexingStartTime?: string;
-    indexingEndTime?: string;
+    indexingEndTime?: string | null;
     qcUserId?: string;
     qcStartTime?: string;
-    qcEndTime?: string;
+    qcEndTime?: string | null;
     rejectionReason?: string | null;
 }
 
