@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Sidebar, SidebarHeader, SidebarContent, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
 import { MainNav } from '@/components/layout/main-nav';
@@ -21,6 +21,8 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
   const { toast } = useToast();
   const [isChecking, setIsChecking] = React.useState(true);
   const [isAllowed, setIsAllowed] = React.useState(false);
+  const previousUserIdRef = useRef<string | null | undefined>(null);
+
   
   useEffect(() => {
     if (loading) {
@@ -78,25 +80,36 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
     setIsChecking(false);
   }, [currentUser, pathname, permissions, router, toast, accessibleProjectsForUser, loading]);
   
-   // Effect to manage the selected project ID automatically
+  // Effect to manage the selected project ID automatically
   useEffect(() => {
     if (loading || !currentUser) {
-        return;
+      return;
     }
 
-    // Determine the ideal project ID based on user default or first available
-    let idealProjectId: string | null = null;
-    if (currentUser.defaultProjectId && accessibleProjectsForUser.some(p => p.id === currentUser.defaultProjectId)) {
-        idealProjectId = currentUser.defaultProjectId;
-    } else if (accessibleProjectsForUser.length > 0) {
-        idealProjectId = accessibleProjectsForUser[0].id;
-    }
+    const hasUserChanged = previousUserIdRef.current !== null && previousUserIdRef.current !== currentUser.id;
+    const isSelectionValid = selectedProjectId && accessibleProjectsForUser.some(p => p.id === selectedProjectId);
 
-    // Only update if the current selection is not the ideal one
-    if (selectedProjectId !== idealProjectId) {
-      setSelectedProjectId(idealProjectId);
+    // This is the core logic:
+    // 1. If user has changed: Force set to default/first project.
+    // 2. If selection is invalid (e.g. no longer accessible): Force set to default/first.
+    // 3. If no project is selected: Force set to default/first.
+    // Otherwise, do nothing and respect the current selection.
+    if (hasUserChanged || !isSelectionValid) {
+        let idealProjectId: string | null = null;
+        if (currentUser.defaultProjectId && accessibleProjectsForUser.some(p => p.id === currentUser.defaultProjectId)) {
+            idealProjectId = currentUser.defaultProjectId;
+        } else if (accessibleProjectsForUser.length > 0) {
+            idealProjectId = accessibleProjectsForUser[0].id;
+        }
+        
+        if(selectedProjectId !== idealProjectId) {
+          setSelectedProjectId(idealProjectId);
+        }
     }
     
+    // Always update the ref AFTER the logic has run
+    previousUserIdRef.current = currentUser.id;
+
   }, [currentUser, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loading]);
   
   useEffect(() => {
