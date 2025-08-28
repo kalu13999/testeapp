@@ -144,6 +144,8 @@ type AppContextType = {
   handleFinalize: (bookId: string) => void;
   handleMarkAsCorrected: (bookId: string) => void;
   handleResubmit: (bookId: string, targetStage: string) => void;
+  handleResubmitCopyTifs: (bookId: string, targetStage: string) => void;
+  handleResubmitMoveTifs: (bookId: string, targetStage: string) => void;
   handleCreateDeliveryBatch: (bookIds: string[]) => Promise<void>;
   finalizeDeliveryBatch: (deliveryId: string, finalDecision: 'approve_remaining' | 'reject_all') => Promise<void>;
   distributeValidationSample: (batchId: string, assignments: { itemId: string; userId: string }[]) => Promise<void>;
@@ -153,6 +155,8 @@ type AppContextType = {
   handlePullNextTask: (currentStage: string, userIdToAssign?: string) => Promise<void>;
   logAction: (action: string, details: string, ids: { bookId?: string; documentId?: string; userId?: string; }) => Promise<void>;
   moveBookFolder: (bookName: string, fromStatusName: string, toStatusName: string) => Promise<boolean>;
+  moveTifsBookFolder: (bookName: string, fromStatusName: string, toStatusName: string) => Promise<boolean>;
+  copyTifsBookFolder: (bookName: string, fromStatusName: string, toStatusName: string) => Promise<boolean>;
   updateBookStatus: (bookId: string, newStatusName: string, additionalUpdates?: Partial<EnrichedBook>) => Promise<any>;
   setRawBooks: React.Dispatch<React.SetStateAction<RawBook[]>>;
   setDeliveryBatches: React.Dispatch<React.SetStateAction<DeliveryBatch[]>>;
@@ -1285,6 +1289,118 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     }
   }, [statuses, toast, logAction]);
   
+  const moveTifsBookFolder = React.useCallback(async (bookName: string, fromStatusName: string, toStatusName: string): Promise<boolean> => {
+    console.log(`[moveTifsBookFolder] Attempting to move only TIFFs for book: ${bookName} from ${fromStatusName} to ${toStatusName}`);
+  
+    const fromStatus = statuses.find(s => s.name === fromStatusName);
+    const toStatus = statuses.find(s => s.name === toStatusName);
+    
+    if (!fromStatus) {
+        toast({ title: "Workflow Config Error", description: `Source status "${fromStatusName}" not found.`, variant: "destructive" });
+        console.error(`[moveTifsBookFolder] Source status "${fromStatusName}" not found.`);
+        return false;
+    }
+    if (!toStatus) {
+        toast({ title: "Workflow Config Error", description: `Destination status "${toStatusName}" not found.`, variant: "destructive" });
+        console.error(`[moveTifsBookFolder] Destination status "${toStatusName}" not found.`);
+        return false;
+    }
+
+    if (!fromStatus.folderName || !toStatus.folderName) {
+        console.log(`[moveTifsBookFolder] Logical move from ${fromStatusName} to ${toStatusName}. No physical TIFF move needed.`);
+        return true; 
+    }
+    
+    const apiUrl = process.env.NEXT_PUBLIC_WORKFLOW_API_URL;
+    if (!apiUrl) {
+      console.warn("[moveTifsBookFolder] WORKFLOW API URL not configured. Physical TIFF move will be skipped.");
+      return true;
+    }
+    
+    try {
+      console.log(`[moveTifsBookFolder] Calling API to move only TIFFs for "${bookName}".`);
+      const response = await fetch(`${apiUrl}/api/workflow/move-tifs`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bookName, fromStatus: fromStatusName, toStatus: toStatusName }),
+      });
+
+      if (!response.ok) {
+          const errorData = await response.json();
+          const errorMessage = errorData.error || `Failed to move TIFFs. API responded with status ${response.status}`;
+          console.error(`[moveTifsBookFolder] API Error: ${errorMessage}`);
+          logAction('System Alert', `Failed to move TIFFs for book "${bookName}" from ${fromStatusName} to ${toStatusName}. Reason: ${errorMessage}`, { userId: 'u_system' });
+          toast({ title: "TIFF Move Failed", description: errorMessage, variant: "destructive", duration: 10000 });
+          return false;
+      }
+      console.log(`[moveTifsBookFolder] Successfully moved only TIFFs for ${bookName}.`);
+      //toast({ title: "TIFFs Moved", description: `TIFF files for "${bookName}" successfully moved from ${fromStatusName} to ${toStatusName}.` });
+      return true;
+  } catch (error: any) {
+      console.error("[moveTifsBookFolder] Network or fetch error:", error);
+      toast({ title: "TIFF Move Error", description: `Could not move TIFFs for "${bookName}". Please check API logs.`, variant: "destructive" });
+      logAction('System Alert', `Error moving TIFFs for book "${bookName}". Reason: ${error.message}`, { userId: 'u_system' });
+      return false;
+  }
+}, [statuses, toast, logAction]);
+
+
+const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatusName: string, toStatusName: string): Promise<boolean> => {
+  console.log(`[copyTifsBookFolder] Attempting to copy only TIFFs for book: ${bookName} from ${fromStatusName} to ${toStatusName}`);
+  
+  const fromStatus = statuses.find(s => s.name === fromStatusName);
+  const toStatus = statuses.find(s => s.name === toStatusName);
+  
+  if (!fromStatus) {
+      toast({ title: "Workflow Config Error", description: `Source status "${fromStatusName}" not found.`, variant: "destructive" });
+      console.error(`[copyTifsBookFolder] Source status "${fromStatusName}" not found.`);
+      return false;
+  }
+   if (!toStatus) {
+      toast({ title: "Workflow Config Error", description: `Destination status "${toStatusName}" not found.`, variant: "destructive" });
+      console.error(`[copyTifsBookFolder] Destination status "${toStatusName}" not found.`);
+      return false;
+  }
+
+  if (!fromStatus.folderName || !toStatus.folderName) {
+      console.log(`[copyTifsBookFolder] Logical copy from ${fromStatusName} to ${toStatusName}. No physical TIFF copy needed.`);
+      return true; 
+  }
+  
+  const apiUrl = process.env.NEXT_PUBLIC_WORKFLOW_API_URL;
+  if (!apiUrl) {
+    console.warn("[copyTifsBookFolder] WORKFLOW API URL not configured. Physical TIFF copy will be skipped.");
+    return true;
+  }
+  
+  try {
+      console.log(`[copyTifsBookFolder] Calling API to copy only TIFFs for "${bookName}".`);
+      const response = await fetch(`${apiUrl}/api/workflow/cpy-tifs`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bookName, fromStatus: fromStatusName, toStatus: toStatusName }),
+      });
+
+      if (!response.ok) {
+          const errorData = await response.json();
+          const errorMessage = errorData.error || `Failed to copy TIFFs. API responded with status ${response.status}`;
+          console.error(`[copyTifsBookFolder] API Error: ${errorMessage}`);
+          logAction('System Alert', `Failed to copy TIFFs for book "${bookName}" from ${fromStatusName} to ${toStatusName}. Reason: ${errorMessage}`, { userId: 'u_system' });
+          toast({ title: "TIFF Copy Failed", description: errorMessage, variant: "destructive", duration: 10000 });
+          return false;
+      }
+      console.log(`[copyTifsBookFolder] Successfully copied only TIFFs for ${bookName}.`);
+      return true;
+  } catch (error: any) {
+      console.error("[copyTifsBookFolder] Network or fetch error:", error);
+      toast({ title: "TIFF Copy Error", description: `Could not copy TIFFs for "${bookName}". Please check API logs.`, variant: "destructive" });
+      logAction('System Alert', `Error copying TIFFs for book "${bookName}". Reason: ${error.message}`, { userId: 'u_system' });
+      return false;
+  }
+}, [statuses, toast, logAction]);
+
+
+
   const handleMarkAsShipped = (bookIds: string[]) => {
     withMutation(async () => {
       for (const bookId of bookIds) {
@@ -2019,10 +2135,46 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
       const updatedBook = await updateBookStatus(bookId, targetStage);
       setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
-      logAction('Book Resubmitted', `Book "${book.name}" resubmitted to ${targetStage}.`, { bookId });
-      toast({ title: "Book Resubmitted" });
+      logAction('Book All Resubmitted', `Book "${book.name}" resubmitted to ${targetStage}.`, { bookId });
+      toast({ title: "Book All Resubmitted" });
     });
   };
+
+    const handleResubmitCopyTifs = (bookId: string, targetStage: string) => {
+    withMutation(async () => {
+      const book = rawBooks.find(b => b.id === bookId);
+      if (!book) return;
+      const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
+      if (!currentStatusName) return;
+
+      const moveResult = await copyTifsBookFolder(book.name, currentStatusName, targetStage);
+      if (moveResult !== true) return;
+
+      const updatedBook = await updateBookStatus(bookId, targetStage);
+      setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
+      logAction('Book Copy TifsR esubmitted', `Book "${book.name}" resubmitted to ${targetStage}.`, { bookId });
+      toast({ title: "Book Copy Tifs Resubmitted" });
+    });
+  };
+
+
+    const handleResubmitMoveTifs = (bookId: string, targetStage: string) => {
+    withMutation(async () => {
+      const book = rawBooks.find(b => b.id === bookId);
+      if (!book) return;
+      const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
+      if (!currentStatusName) return;
+
+      const moveResult = await moveTifsBookFolder(book.name, currentStatusName, targetStage);
+      if (moveResult !== true) return;
+
+      const updatedBook = await updateBookStatus(bookId, targetStage);
+      setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
+      logAction('Book Move Tifs Resubmitted', `Book "${book.name}" resubmitted to ${targetStage}.`, { bookId });
+      toast({ title: "Book Move Tifs Resubmitted" });
+    });
+  };
+
 
   const handleCreateDeliveryBatch = async (bookIds: string[]) => {
     await withMutation(async () => {
@@ -2177,7 +2329,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     handleMoveBookToNextStage, 
     setProvisionalDeliveryStatus,
     approveBatch,
-    handleFinalize, handleMarkAsCorrected, handleResubmit,
+    handleFinalize, handleMarkAsCorrected, handleResubmit, handleResubmitCopyTifs, handleResubmitMoveTifs,
     addPageToBook, deletePageFromBook,
     updateDocumentFlag, startProcessingBatch, failureProcessingBatch, completeProcessingBatch, handleSendBatchToNextStage,
     handleAssignUser, reassignUser, handleStartTask, handleCancelTask,
@@ -2186,6 +2338,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     handleCompleteTask,handleCancelCompleteTask, handlePullNextTask,
     logAction,
     moveBookFolder,
+    moveTifsBookFolder,
+    copyTifsBookFolder,
     updateBookStatus,
     setRawBooks,
     setDeliveryBatches,

@@ -158,6 +158,8 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     handleFinalize,
     handleMarkAsCorrected,
     handleResubmit,
+    handleResubmitCopyTifs,
+    handleResubmitMoveTifs,
     updateDocumentFlag,
     users,
     permissions,
@@ -659,18 +661,83 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
         );
        case 'corrected':
          return (
-           <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm">
-                  <Send className="mr-2 h-4 w-4" /> Resubmit To...
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => handleResubmit(bookId, 'To Indexing')}>Indexing</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleResubmit(bookId, 'To Checking')}>Quality Control</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleResubmit(bookId, 'Delivery')}>Delivery</DropdownMenuItem>
-              </DropdownMenuContent>
-           </DropdownMenu>
+        <div className="flex gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm">
+                <Send className="mr-2 h-4 w-4" /> Send Only Tifs To...
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem
+                onClick={() =>
+                  openConfirmationDialog({
+                    title: "Are you sure?",
+                    description: `This will resubmit only TIFFs of "${bookName}" to Storage.`,
+                    onConfirm: () => handleResubmitMoveTifs(bookId, "Storage"),
+                  })
+                }
+              >
+                Storage
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() =>
+                  openConfirmationDialog({
+                    title: "Are you sure?",
+                    description: `This will resubmit only TIFFs of "${bookName}" to Indexing.`,
+                    onConfirm: () => handleResubmitMoveTifs(bookId, "To Indexing"),
+                  })
+                }
+              >
+                Indexing
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() =>
+                  openConfirmationDialog({
+                    title: "Are you sure?",
+                    description: `This will resubmit only TIFFs of "${bookName}" to Quality Control.`,
+                    onConfirm: () => handleResubmitMoveTifs(bookId, "To Checking"),
+                  })
+                }
+              >
+                Quality Control
+              </DropdownMenuItem>
+              
+               <DropdownMenuItem
+                onClick={() =>
+                  openConfirmationDialog({
+                    title: "Are you sure?",
+                    description: `This will resubmit all formats of "${bookName}" to Ready for Processing.`,
+                    onConfirm: () => handleResubmitMoveTifs(bookId, "Ready for Processing"),
+                  })
+                }
+              >
+                Ready for Processing
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="secondary">
+                <Send className="mr-2 h-4 w-4" /> Send All To...
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem
+                onClick={() =>
+                  openConfirmationDialog({
+                    title: "Are you sure?",
+                    description: `This will resubmit all formats of "${bookName}" to Final Quality Control.`,
+                    onConfirm: () => handleResubmit(bookId, "Final Quality Control"),
+                  })
+                }
+              >
+                Final Quality Control
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
          )
       case 'archive':
         return null;
