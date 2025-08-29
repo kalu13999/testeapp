@@ -54,7 +54,7 @@ export interface AuditLog {
     date: string;
     details: string;
     documentId?: string;
-    bookId?: string;
+    bookId?: string | null;
 }
 
 export interface User {

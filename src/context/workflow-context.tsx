@@ -11,6 +11,8 @@ import { UserFormValues } from '@/app/(app)/users/user-form';
 import { StorageFormValues } from '@/app/(app)/admin/general-configs/storage-form';
 import { ScannerFormValues } from '@/app/(app)/admin/general-configs/scanner-form';
 
+export type { EnrichedBook, RejectionTag };
+
 // Define the shape of the book data when importing
 export interface BookImport {
   name: string;
@@ -39,7 +41,7 @@ type AppContextType = {
   currentUser: User | null;
   login: (username: string, password: string) => User | null;
   logout: () => void;
-  changePassword: (userId: string, currentPassword: string, newPassword: string) => Promise<boolean>;
+  changePassword: (userId: string, currentPassword: string, newPassword: string) => Promise<boolean | undefined>;
 
   // Navigation History
   navigationHistory: NavigationHistoryItem[];
@@ -130,7 +132,7 @@ type AppContextType = {
   handleMoveBookToNextStage: (bookId: string, currentStatus: string) => Promise<boolean>;
   handleAssignUser: (bookId: string, userId: string, role: 'scanner' | 'indexer' | 'qc') => void;
   reassignUser: (bookId: string, newUserId: string, role: 'scanner' | 'indexer' | 'qc') => void;
-  handleStartTask: (bookId: string, role: 'scanner' | 'indexing' | 'qc') => void;
+  handleStartTask: (bookId: string, role: 'scanner' | 'indexer' | 'qc') => void;
   handleCompleteTask: (bookId: string, stage: string) => void;
   handleCancelCompleteTask: (bookId: string, stage: string) => void;
   handleCancelTask: (bookId: string, currentStatus: string) => void;
@@ -308,6 +310,9 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       setSelectedProjectId(null);
       setCurrentUser(user);
       localStorage.setItem('flowvault_userid', user.id);
+      if (localStorage.getItem('flowvault_projectid')) {
+        localStorage.removeItem('flowvault_projectid');
+      }
       const storedHistory = localStorage.getItem(`nav_history_${user.id}`);
       if(storedHistory) {
         setNavigationHistory(JSON.parse(storedHistory));
@@ -321,11 +326,12 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
   const logout = () => {
     setCurrentUser(null);
+    setSelectedProjectId(null);
     setNavigationHistory([]);
     localStorage.removeItem('flowvault_userid');
   };
   
-  const changePassword = async (userId: string, currentPassword: string, newPassword: string): Promise<boolean> => {
+  const changePassword = async (userId: string, currentPassword: string, newPassword: string): Promise<boolean | undefined> => {
     return withMutation(async () => {
       try {
           const response = await fetch(`/api/users/${userId}/change-password`, {
@@ -364,7 +370,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const logAction = React.useCallback(async (
     action: string, 
     details: string, 
-    ids: { bookId?: string, documentId?: string, userId?: string }
+    ids: { bookId?: string | null, documentId?: string, userId?: string }
   ) => {
     const actorId = ids.userId || currentUser?.id;
     if (!actorId) return;
@@ -408,7 +414,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         const book = rawBooks.find(b => b.id === doc.bookId);
         const bookStatus = statuses.find(s => s.id === book?.statusId)?.name || 'Unknown';
         let parsedTags: string[] = [];
-        if (doc.tags && typeof doc.tags === 'string' && doc.tags.trim() !== '') {
+        if (doc.tags && typeof doc.tags === 'string' && (doc.tags as string).trim() !== '') {
             try {
                 parsedTags = JSON.parse(doc.tags);
             } catch (e) {
@@ -1183,7 +1189,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       const newPage: Partial<RawDocument> = {
         id: newPageId, name: newPageName, clientId: book.clientId, 
         type: 'Added Page', lastUpdated: getDbSafeDate(), 
-        tags: JSON.stringify(['added', 'corrected']),
+        tags: ['added', 'corrected'],
         projectId: book.projectId, bookId: book.id, 
         flag: 'info', flagComment: 'This page was manually added during the correction phase.',
         imageUrl: `https://dummyimage.com/400x550/e0e0e0/5c5c5c.png&text=${encodeURIComponent(newPageName)}`
@@ -1567,7 +1573,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
     });
   };
 
-  const handleStartTask = (bookId: string, role: 'scanner' | 'indexing' | 'qc') => {
+  const handleStartTask = (bookId: string, role: 'scanner' | 'indexer' | 'qc') => {
     withMutation(async () => {
         const book = rawBooks.find(b => b.id === bookId);
         if (!book || !book.projectId || !currentUser) return;
@@ -1631,7 +1637,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
             bookId: book.id,
         };
 
-        if (role === 'indexing') {
+        if (role === 'indexer') {
             updates.indexingStartTime = getDbSafeDate();
             logMsg = 'Indexing Started';
             appProtocol = 'rfs-indexing-app';

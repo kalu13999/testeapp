@@ -20,7 +20,7 @@ export const GlobalProjectFilter = () => {
   return (
     <Select
       value={selectedProjectId || ''}
-      onValueChange={(value) => setSelectedProjectId(value)}
+      onValueChange={(value) => {setSelectedProjectId(value); localStorage.setItem('flowvault_projectid', value);}}
     >
       <SelectTrigger className="w-full h-9">
         <SelectValue placeholder="Select a project..." />

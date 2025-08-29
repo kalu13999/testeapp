@@ -56,128 +56,128 @@ interface MenuSection {
 export const allMenuItems: MenuSection[] = [
   {
     id: "account",
-    title: "Account",
+    title: "Conta",
     items: [
-      { href: "/profile", label: "My Profile", icon: User },
-      { href: "/settings", label: "Settings", icon: Settings },
+      { href: "/profile", label: "O Meu Perfil", icon: User },
+      { href: "/settings", label: "Configurações", icon: Settings },
     ],
   },
   {
     id: "dashboards",
-    title: "Dashboards",
+    title: "Painéis",
     items: [
-        { href: "/dashboard", label: "Project Dashboard", icon: SlidersHorizontal },
+        { href: "/dashboard", label: "Painel do Projeto", icon: SlidersHorizontal },
     ],
   },
   {
     id: "management",
-    title: "Management",
+    title: "Gestão",
     items: [
-      { href: "/admin/overview", label: "Global Overview", icon: Globe, roles: ['Admin'] },
-      { href: "/projects", label: "Projects", icon: Briefcase },
-      { href: "/clients", label: "Clients", icon: Users },
-      { href: "/users", label: "Users", icon: User },
-      { href: "/role-management", label: "Role Management", icon: GanttChartSquare },
+      { href: "/admin/overview", label: "Visão Global", icon: Globe, roles: ['Admin'] },
+      { href: "/projects", label: "Projetos", icon: Briefcase },
+      { href: "/clients", label: "Clientes", icon: Users },
+      { href: "/users", label: "Utilizadores", icon: User },
+      { href: "/role-management", label: "Gestão de Funções", icon: GanttChartSquare },
     ],
   },
   {
     id: "admin",
-    title: "Admin Tools",
+    title: "Ferramentas de Admin",
     items: [
-      { href: "/admin/status-override", label: "Status Override", icon: Sliders },
-      { href: "/book-management", label: "Book Management", icon: BookUp },
-      { href: "/admin/general-configs", label: "General Configs", icon: ServerCog },
+      { href: "/admin/status-override", label: "Substituição de Estado", icon: Sliders },
+      { href: "/book-management", label: "Gestão de Livros", icon: BookUp },
+      { href: "/admin/general-configs", label: "Configurações Gerais", icon: ServerCog },
     ]
   },
   {
     id: "workflow-tools",
-    title: "Workflow Tools",
+    title: "Ferramentas de Workflow",
     items: [
-      { href: "/documents", label: "All Books", icon: Files },
-      { href: "/admin/reassign-user", label: "Reassign User", icon: UserCog },
-      { href: "/admin/default-projects", label: "Default Projects", icon: Star },
-      { href: "/admin/distribution-hub", label: "Distribution Hub", icon: SlidersHorizontal },
+      { href: "/documents", label: "Todos os Livros", icon: Files },
+      { href: "/admin/reassign-user", label: "Reatribuir Utilizador", icon: UserCog },
+      { href: "/admin/default-projects", label: "Projetos por Defeito", icon: Star },
+      { href: "/admin/distribution-hub", label: "Centro de Distribuição", icon: SlidersHorizontal },
     ]
   },
   {
     id: "workflow-intake",
-    title: "Intake & Reception",
+    title: "Receção",
     items: [
-      { href: "/workflow/pending-shipment", label: "Pending Shipment", icon: FileClock },
-      { href: "/workflow/confirm-reception", label: "Confirm Reception", icon: ArrowDownToLine },
-      { href: "/workflow/already-received", label: "Already Received", icon: CheckCheck },
+      { href: "/workflow/pending-shipment", label: "Envio Pendente", icon: FileClock },
+      { href: "/workflow/confirm-reception", label: "Confirmar Receção", icon: ArrowDownToLine },
+      { href: "/workflow/already-received", label: "Recebidos", icon: CheckCheck },
     ]
   },
   {
     id: "workflow-scanning",
-    title: "Scanning",
+    title: "Digitalização",
     items: [
-      { href: "/workflow/to-scan", label: "To Scan Queue", icon: ScanLine },
-      { href: "/workflow/scanning-started", label: "Scanning Started", icon: PlayCircle },
+      { href: "/workflow/to-scan", label: "Digitalização Pendente", icon: ScanLine },
+      { href: "/workflow/scanning-started", label: "Digitalização Iniciada", icon: PlayCircle },
     ]
   },
   {
     id: "workflow-digitization",
-    title: "Digitization",
+    title: "Digitalização",
     items: [
-      { href: "/workflow/storage", label: "Storage", icon: Warehouse },
+      { href: "/workflow/storage", label: "Armazenamento", icon: Warehouse },
     ]
   },
   {
     id: "workflow-indexing",
-    title: "Indexing",
+    title: "Indexação",
     items: [
-      { href: "/workflow/to-indexing", label: "To Indexing Queue", icon: FileText },
-      { href: "/workflow/indexing-started", label: "Indexing Started", icon: PencilRuler },
+      { href: "/workflow/to-indexing", label: "Indexação Pendente", icon: FileText },
+      { href: "/workflow/indexing-started", label: "Indexação Iniciada", icon: PencilRuler },
     ]
   },
   {
     id: "workflow-qc",
-    title: "Quality Control",
+    title: "Controlo de Qualidade",
     items: [
-      { href: "/workflow/to-checking", label: "To Checking Queue", icon: FileSearch2 },
-      { href: "/workflow/checking-started", label: "Checking Started", icon: ClipboardCheck },
+      { href: "/workflow/to-checking", label: "Verificação Pendente", icon: FileSearch2 },
+      { href: "/workflow/checking-started", label: "Verificação Iniciada", icon: ClipboardCheck },
     ]
   },
   {
     id: "workflow-processing",
-    title: "Processing",
+    title: "Processamento",
     items: [
-      { href: "/workflow/ready-for-processing", label: "Ready for Processing", icon: FileCog },
-      { href: "/workflow/in-processing", label: "In Processing", icon: Loader2 },
-      { href: "/workflow/processed", label: "Processed", icon: FileCheck2 },
+      { href: "/workflow/ready-for-processing", label: "Processamento Pendente", icon: FileCog },
+      { href: "/workflow/in-processing", label: "Em Processamento", icon: Loader2 },
+      { href: "/workflow/processed", label: "Lotes Processados", icon: FileCheck2 },
     ]
   },
   {
     id: "workflow-delivery",
-    title: "Delivery & Correction",
+    title: "Entrega e Correção",
     items: [
-      { href: "/workflow/final-quality-control", label: "Final Quality Control", icon: FileCheck2 },
-      { href: "/workflow/delivery", label: "Delivery", icon: Send },
-      { href: "/workflow/client-rejections", label: "Client Rejections", icon: ThumbsDown },
-      { href: "/workflow/corrected", label: "Corrected", icon: Undo2 },
+      { href: "/workflow/final-quality-control", label: "QC Final", icon: FileCheck2 },
+      { href: "/workflow/delivery", label: "Entrega", icon: Send },
+      { href: "/workflow/client-rejections", label: "Rejeições do Cliente", icon: ThumbsDown },
+      { href: "/workflow/corrected", label: "Corrigidos", icon: Undo2 },
     ]
   },
   {
     id: "finalization",
-    title: "Finalization",
+    title: "Finalização",
     items: [
-      { href: "/finalized", label: "Finalized", icon: CheckCheck },
-      { href: "/archive", label: "Archive", icon: Archive },
+      { href: "/finalized", label: "Finalizados", icon: CheckCheck },
+      { href: "/archive", label: "Arquivar", icon: Archive },
     ],
   },
   {
     id: "client",
-    title: "Client Portal",
+    title: "Portal do Cliente",
     items: [
-      { href: "/dashboard", label: "Project Dashboard", icon: Home, roles: ['Client', 'Client Manager', 'Client Operator'] },
-      { href: "/shipments", label: "Prepare Shipment", icon: Send },
-      { href: "/my-validations", label: "My Validations", icon: ClipboardList },
-      { href: "/manage-deliveries", label: "Manage Deliveries", icon: Split },
-      { href: "/my-tasks", label: "My Tasks", icon: ClipboardList },
-      { href: "/validation-monitoring", label: "Validation Monitoring", icon: MonitorCheck },
-      { href: "/validated-history", label: "Validated History", icon: History },
-      { href: "/reasons", label: "Rejection Reasons", icon: Tags },
+      { href: "/dashboard", label: "Painel do Projeto", icon: Home, roles: ['Client', 'Client Manager', 'Client Operator'] },
+      { href: "/shipments", label: "Preparar Envio", icon: Send },
+      { href: "/my-validations", label: "As Minhas Validações", icon: ClipboardList },
+      { href: "/manage-deliveries", label: "Gerir Entregas", icon: Split },
+      { href: "/my-tasks", label: "As Minhas Tarefas", icon: ClipboardList },
+      { href: "/validation-monitoring", label: "Monitorização de Validações", icon: MonitorCheck },
+      { href: "/validated-history", label: "Histórico de Validações", icon: History },
+      { href: "/reasons", label: "Motivos de Rejeição", icon: Tags },
     ],
   },
 ];

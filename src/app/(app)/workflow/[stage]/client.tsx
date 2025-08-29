@@ -27,10 +27,10 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { AppDocument, EnrichedBook, User, RejectionTag } from "@/context/workflow-context";
+import { AppDocument, EnrichedBook, RejectionTag } from "@/context/workflow-context";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage } from "@/lib/workflow-config";
+import { STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage, StageConfigItem } from "@/lib/workflow-config";
 import type { LucideIcon } from "lucide-react";
 import {
   DropdownMenu,
@@ -90,18 +90,8 @@ const iconMap: { [key: string]: LucideIcon } = {
 };
 
 interface WorkflowClientProps {
-  config: {
-    title: string;
-    description: string;
-    dataType: 'book' | 'document';
-    actionButtonLabel?: string;
-    actionButtonIcon?: keyof typeof iconMap;
-    emptyStateText: string;
-    dataStatus?: string; // For books
-    dataStage?: string; // For documents
-    assigneeRole?: 'scanner' | 'indexer' | 'qc';
-  };
   stage: string;
+  config: StageConfigItem; 
 }
 
 type BadgeVariant = "default" | "destructive" | "secondary" | "outline";
@@ -154,28 +144,28 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const { 
     books, documents, handleMoveBookToNextStage, 
     currentUser, users, permissions,
-    handleStartTask, handleAssignUser, handleStartProcessing, handleCancelTask,
+    handleStartTask, handleAssignUser,handleCancelTask,
     selectedProjectId, projectWorkflows, handleConfirmReception, getNextEnabledStage,
     handleSendToStorage, processingBookIds,
-    handleClientAction, handleFinalize, handleMarkAsCorrected, handleResubmit,
+    handleFinalize, handleMarkAsCorrected, handleResubmit,
     addPageToBook, deletePageFromBook, updateDocumentFlag, rejectionTags, tagPageForRejection,
     handleCompleteTask,handleCancelCompleteTask, handlePullNextTask
   } = useAppContext();
 
   const { toast } = useToast();
-  const { title, description, dataType, actionButtonLabel, actionButtonIcon, emptyStateText, dataStatus, dataStage } = config;
+  const { title, description, dataType, actionButtonLabel, actionButtonIcon, emptyStateText, dataStatus} = config;
   const ActionIcon = actionButtonIcon ? iconMap[actionButtonIcon] : FolderSync;
 
   const [scanState, setScanState] = React.useState<{ open: boolean; book: EnrichedBook | null; folderName: string | null; fileCount: number | null; }>({ open: false, book: null, folderName: null, fileCount: null });
   const [selection, setSelection] = React.useState<string[]>([]);
   const [confirmationState, setConfirmationState] = React.useState({ open: false, title: '', description: '', onConfirm: () => {} });
   const [assignState, setAssignState] = React.useState<{ open: boolean; book: EnrichedBook | null; role: AssignmentRole | null }>({ open: false, book: null, role: null });
-  const [bulkAssignState, setBulkAssignState] = React.useState<{ open: boolean; role: AssignmentRole | null }>({ open: false, role: null });
+  const [bulkAssignState, setBulkAssignState] = React.useState<{ open: boolean; role: 'indexer' | 'qc' | 'scanner' | null, selectedUserId: string }>({ open: false, role: null, selectedUserId: '' });
   const [pullTaskState, setPullTaskState] = React.useState<{ open: boolean; stage: string; role: AssignmentRole | null }>({ open: false, stage: '', role: null });
   const [pendingTasksState, setPendingTasksState] = React.useState<{ open: boolean; tasks: EnrichedBook[], bookToStart: EnrichedBook, role: AssignmentRole }>({ open: false, tasks: [], bookToStart: {} as EnrichedBook, role: 'scanner' });
 
   const [selectedUserId, setSelectedUserId] = React.useState<string>("");
-  const [selectedBulkUserId, setSelectedBulkUserId] = React.useState<string>("");
+  //const [selectedBulkUserId, setSelectedBulkUserId] = React.useState<string>("");
   const [detailsState, setDetailsState] = React.useState<{ open: boolean; book?: EnrichedBook }>({ open: false });
   const [currentPage, setCurrentPage] = React.useState(1);
   const [columnFilters, setColumnFilters] = React.useState<{ [key: string]: string }>({});
@@ -246,8 +236,8 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     // This is crucial for handleActionClick to find books in "Started" states.
     if (dataType === 'book') {
         items = books;
-    } else if (dataType === 'document' && dataStage) {
-      items = documents.filter(doc => doc.status === dataStage);
+    } else if (dataType === 'document' && dataStatus) {
+      items = documents.filter(doc => doc.status === dataStatus);
     } else {
       items = [];
     }
@@ -300,7 +290,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     }
 
     return items;
-  }, [books, documents, dataType, dataStatus, dataStage, currentUser, permissions, config.assigneeRole, users, canViewAll, selectedProjectId]);
+  }, [books, documents, dataType, dataStatus, currentUser, permissions, config.assigneeRole, users, canViewAll, selectedProjectId]);
 
   const handleColumnFilterChange = (columnId: string, value: string) => {
     setColumnFilters(prev => ({ ...prev, [columnId]: value }));
@@ -535,31 +525,25 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     }
   };
   
-  const openBulkAssignmentDialog = (role: AssignmentRole) => {
-    setBulkAssignState({ open: true, role });
+  const openBulkAssignmentDialog = (role: 'indexer' | 'qc' | 'scanner') => {
+    setBulkAssignState({ open: true, role, selectedUserId: '' });
   };
-  
+
   const closeBulkAssignmentDialog = () => {
-    setBulkAssignState({ open: false, role: null });
-    setSelectedBulkUserId('');
+    setBulkAssignState({ open: false, role: null, selectedUserId: '' });
   };
 
   const handleBulkAssignmentSubmit = () => {
-    const role = bulkAssignState.role;
-    if (!selectedBulkUserId || !role) {
-      toast({ title: "No User Selected", description: "Please select a user to assign the books.", variant: "destructive" });
-      return;
+    if (bulkAssignState.role && bulkAssignState.selectedUserId && selection.length > 0) {
+      selection.forEach(bookId => {
+        const book = Object.values(groupedByBook).find(g => g.book.id === bookId)?.book;
+        if(book) {
+            handleAssignUser(book.id, bulkAssignState.selectedUserId, bulkAssignState.role!);
+        }
+      });
+      closeBulkAssignmentDialog();
+      setSelection([]);
     }
-
-    selection.forEach(bookId => {
-      const book = allDisplayItems.find(b => b.id === bookId) as EnrichedBook;
-      if (book) {
-        handleAssignUser(book.id, selectedBulkUserId, role);
-      }
-    });
-
-    closeBulkAssignmentDialog();
-    setSelection([]);
   };
 
   const isCancelable = ['Scanning Started', 'Indexing Started', 'Checking Started'].includes(config.dataStatus as string);
@@ -627,7 +611,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
             description: `This will perform the action for "${book.name}".`,
             onConfirm: () => {
                 if (stage === 'to-scan') handleStartTask(book.id, 'scanner');
-                else if (stage === 'to-indexing') handleStartTask(book.id, 'indexing');
+                else if (stage === 'to-indexing') handleStartTask(book.id, 'indexer');
                 else if (stage === 'to-checking') handleStartTask(book.id, 'qc');
             }
         });
@@ -660,11 +644,12 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     }
     
     if (stage === 'ready-for-processing') {
+      /*
          openConfirmationDialog({
             title: `Confirm: Start Processing?`,
             description: `This will begin automated processing for "${book.name}".`,
             onConfirm: () => handleStartProcessing(book.id)
-        });
+        });*/
         return;
     }
 
@@ -994,7 +979,7 @@ const handleMainAction = (book: EnrichedBook) => {
 
   const handleRejectSubmit = () => {
     if (!currentBook) return;
-    handleClientAction(currentBook.id, 'reject', rejectionComment);
+    //handleClientAction(currentBook.id, 'reject', rejectionComment);
     setRejectionComment("");
     setCurrentBook(null);
   }
@@ -1036,7 +1021,7 @@ const handleMainAction = (book: EnrichedBook) => {
   
   const renderBulkActions = () => {
     if (selection.length === 0) return null;
-    
+    /*
     if (stage === 'pending-deliveries') {
       return (
          <div className="flex items-center gap-2">
@@ -1053,7 +1038,8 @@ const handleMainAction = (book: EnrichedBook) => {
             </Button>
          </div>
       );
-    } else if (stage === 'corrected') {
+    } else*/
+     if (stage === 'corrected') {
       return (
         <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">{selection.length} selected</span>
@@ -1262,12 +1248,12 @@ const handleMainAction = (book: EnrichedBook) => {
                             <DropdownMenuLabel>Export Selected ({selection.length})</DropdownMenuLabel>
                             <DropdownMenuItem onSelect={() => exportXLSX(selectedItems)} disabled={selection.length === 0}>Export as XLSX</DropdownMenuItem>
                             <DropdownMenuItem onSelect={() => exportJSON(selectedItems)} disabled={selection.length === 0}>Export as JSON</DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => exportCSV(selectedItems, Object.keys(selectedItems[0] || {}))} disabled={selection.length === 0}>Export as CSV</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => exportCSV(selectedItems)} disabled={selection.length === 0}>Export as CSV</DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuLabel>Export All ({sortedAndFilteredItems.length})</DropdownMenuLabel>
                             <DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredItems)} disabled={sortedAndFilteredItems.length === 0}>Export as XLSX</DropdownMenuItem>
                             <DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredItems)} disabled={sortedAndFilteredItems.length === 0}>Export as JSON</DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredItems, Object.keys(sortedAndFilteredItems[0] || {}))} disabled={sortedAndFilteredItems.length === 0}>Export as CSV</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredItems)} disabled={sortedAndFilteredItems.length === 0}>Export as CSV</DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>

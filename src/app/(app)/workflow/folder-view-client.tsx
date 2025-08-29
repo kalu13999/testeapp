@@ -27,10 +27,10 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { AppDocument, EnrichedBook, User, RejectionTag } from "@/context/workflow-context";
+import { AppDocument, EnrichedBook, RejectionTag } from "@/context/workflow-context";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage } from "@/lib/workflow-config";
+import { STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage, StageConfigItem} from "@/lib/workflow-config";
 import type { LucideIcon } from "lucide-react";
 import {
   DropdownMenu,
@@ -88,19 +88,9 @@ const iconMap: { [key: string]: LucideIcon } = {
     MoreHorizontal,
 };
 
-interface WorkflowClientProps {
-  config: {
-    title: string;
-    description: string;
-    dataType: 'book' | 'document';
-    actionButtonLabel?: string;
-    actionButtonIcon?: keyof typeof iconMap;
-    emptyStateText: string;
-    dataStatus?: string; // For books
-    dataStage?: string; // For documents
-    assigneeRole?: 'scanner' | 'indexer' | 'qc';
-  };
+interface FolderViewClientProps {
   stage: string;
+  config: StageConfigItem; 
 }
 
 type BadgeVariant = "default" | "destructive" | "secondary" | "outline";
@@ -154,7 +144,6 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     documents, 
     books, 
     handleMoveBookToNextStage,
-    handleClientAction,
     handleFinalize,
     handleMarkAsCorrected,
     handleResubmit,
@@ -247,7 +236,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     }
     
     if (stage === 'storage' && selectedStorageId !== 'all') {
-      const selectedStorageName = storages.find(s => s.id === selectedStorageId)?.nome;
+      const selectedStorageName = storages.find(s => s.id.toString() === selectedStorageId)?.nome;
       if (selectedStorageName) {
         booksInStage = booksInStage.filter(book => book.storageName === selectedStorageName);
       }
@@ -290,7 +279,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
 
   const handleRejectSubmit = () => {
     if (!currentBook) return;
-    handleClientAction(currentBook.id, 'reject', rejectionComment);
+    //handleClientAction(currentBook.id, 'reject', rejectionComment);
     setRejectionComment("");
     setCurrentBook(null);
   }
@@ -515,7 +504,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   const renderBulkActions = () => {
     if (selection.length === 0) return null;
     
-    if (stage === 'pending-deliveries') {
+    /*if (stage === 'pending-deliveries') {
       return (
          <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">{selection.length} selected</span>
@@ -531,7 +520,8 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
             </Button>
          </div>
       );
-    } else if (stage === 'corrected') {
+    } else*/ 
+     if (stage === 'corrected') {
       return (
         <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">{selection.length} selected</span>
@@ -622,6 +612,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     }
 
     switch (stage) {
+      /*
       case 'pending-deliveries':
         return (
           <div className="flex gap-2">
@@ -638,7 +629,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
               <ThumbsUp className="mr-2 h-4 w-4" /> Approve
             </Button>
           </div>
-        );
+        );*/
       case 'finalized':
         return (
           <Button size="sm" onClick={() => openConfirmationDialog({
@@ -832,7 +823,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                     <SelectContent>
                         <SelectItem value="all">All Storages</SelectItem>
                         {storages.map(storage => (
-                            <SelectItem key={storage.id} value={storage.id}>{storage.nome}</SelectItem>
+                            <SelectItem key={storage.id} value={storage.id.toString()}>{storage.nome}</SelectItem>
                         ))}
                     </SelectContent>
                   </Select>

@@ -102,6 +102,10 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
             idealProjectId = accessibleProjectsForUser[0].id;
         }
         
+        if (localStorage.getItem('flowvault_projectid')){
+          idealProjectId = localStorage.getItem('flowvault_projectid');
+        }
+        
         if(selectedProjectId !== idealProjectId) {
           setSelectedProjectId(idealProjectId);
         }
