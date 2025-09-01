@@ -228,8 +228,8 @@ export default function ReassignUserClient() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-headline text-3xl font-bold tracking-tight">User Reassignment</h1>
-          <p className="text-muted-foreground">Change the assigned user for books currently in a personal queue.</p>
+          <h1 className="font-headline text-3xl font-bold tracking-tight">Reatribuição de Utilizador</h1>
+          <p className="text-muted-foreground">Altere o utilizador atribuído aos livros que se encontram atualmente numa fila pessoal.</p>
         </div>
       </div>
       <Card>
@@ -237,22 +237,22 @@ export default function ReassignUserClient() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>Book Name {getSortIndicator('name')}</div></TableHead>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('projectName', e.shiftKey)}>Project {getSortIndicator('projectName')}</div></TableHead>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Status {getSortIndicator('status')}</div></TableHead>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('scannerName', e.shiftKey)}>Scanner {getSortIndicator('scannerName')}</div></TableHead>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('indexerName', e.shiftKey)}>Indexer {getSortIndicator('indexerName')}</div></TableHead>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('qcName', e.shiftKey)}>QC Specialist {getSortIndicator('qcName')}</div></TableHead>
-                <TableHead className="w-[150px] text-right">Actions</TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>Nome do Livro {getSortIndicator('name')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('projectName', e.shiftKey)}>Projeto {getSortIndicator('projectName')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Estado {getSortIndicator('status')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('scannerName', e.shiftKey)}>Digitalizador {getSortIndicator('scannerName')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('indexerName', e.shiftKey)}>Indexador {getSortIndicator('indexerName')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('qcName', e.shiftKey)}>Especialista QC {getSortIndicator('qcName')}</div></TableHead>
+                <TableHead className="w-[150px] text-right">Ações</TableHead>
               </TableRow>
               <TableRow>
-                <TableHead><Input placeholder="Filter by name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/></TableHead>
-                <TableHead><Input placeholder="Filter by project..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/></TableHead>
-                <TableHead><Input placeholder="Filter by status..." value={columnFilters['status'] || ''} onChange={(e) => handleColumnFilterChange('status', e.target.value)} className="h-8"/></TableHead>
-                <TableHead><Input placeholder="Filter by scanner..." value={columnFilters['scannerName'] || ''} onChange={(e) => handleColumnFilterChange('scannerName', e.target.value)} className="h-8"/></TableHead>
-                <TableHead><Input placeholder="Filter by indexer..." value={columnFilters['indexerName'] || ''} onChange={(e) => handleColumnFilterChange('indexerName', e.target.value)} className="h-8"/></TableHead>
-                <TableHead><Input placeholder="Filter by QC..." value={columnFilters['qcName'] || ''} onChange={(e) => handleColumnFilterChange('qcName', e.target.value)} className="h-8"/></TableHead>
-                <TableHead className="text-right"><Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Clear Filters</Button></TableHead>
+                <TableHead><Input placeholder="Filtrar nome..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filtrar projeto..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filtrar estado..." value={columnFilters['status'] || ''} onChange={(e) => handleColumnFilterChange('status', e.target.value)} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filtrar digitalizador..." value={columnFilters['scannerName'] || ''} onChange={(e) => handleColumnFilterChange('scannerName', e.target.value)} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filtrar indexador..." value={columnFilters['indexerName'] || ''} onChange={(e) => handleColumnFilterChange('indexerName', e.target.value)} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filtrar QC..." value={columnFilters['qcName'] || ''} onChange={(e) => handleColumnFilterChange('qcName', e.target.value)} className="h-8"/></TableHead>
+                <TableHead className="text-right"><Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Limpar Filtros</Button></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -267,14 +267,14 @@ export default function ReassignUserClient() {
                   <TableCell className="text-right">
                     <Button variant="secondary" size="sm" onClick={() => openDialog(book)}>
                         <UserCog className="mr-2 h-4 w-4" />
-                        Reassign
+                        Reatribuir
                     </Button>
                   </TableCell>
                 </TableRow>
               )) : (
                  <TableRow>
                   <TableCell colSpan={7} className="h-24 text-center">
-                    No books are currently in a state that allows for user reassignment.
+                    Não existem livros atualmente num estado que permita a reatribuição de utilizador.
                   </TableCell>
                 </TableRow>
               )}
@@ -283,7 +283,7 @@ export default function ReassignUserClient() {
         </CardContent>
         <CardFooter className="flex items-center justify-between">
             <div className="text-xs text-muted-foreground">
-               {`Showing ${paginatedBooks.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedBooks.length} of ${sortedAndFilteredBooks.length} assignable books`}
+               {`A mostrar ${paginatedBooks.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedBooks.length} de ${sortedAndFilteredBooks.length} livros atribuíveis`}
             </div>
             <PaginationNav />
         </CardFooter>
@@ -293,17 +293,17 @@ export default function ReassignUserClient() {
         <Dialog open={dialogState.open} onOpenChange={closeDialog}>
             <DialogContent className="sm:max-w-lg">
             <DialogHeader>
-                <DialogTitle>Reassign {dialogState.role} for: {dialogState.book?.name}</DialogTitle>
+                <DialogTitle>Reatribuir {dialogState.role === 'scanner' ? 'digitalizador' : dialogState.role === 'indexer' ? 'indexador' : 'QC'} para: {dialogState.book?.name}</DialogTitle>
                 <DialogDescription>
-                Select a new user to take over this task. The book will be moved to their queue.
+                Selecione um novo utilizador para assumir esta tarefa. O livro será movido para a fila desse utilizador.
                 </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                    <Label htmlFor="new-user">New User</Label>
+                    <Label htmlFor="new-user">Novo Utilizador</Label>
                     <Select value={newUserId} onValueChange={setNewUserId}>
                         <SelectTrigger id="new-user">
-                            <SelectValue placeholder={`Select a new ${dialogState.role}`} />
+                            <SelectValue placeholder={`Selecione um novo ${dialogState.role === 'scanner' ? 'digitalizador' : dialogState.role === 'indexer' ? 'indexador' : 'QC'}`} />
                         </SelectTrigger>
                         <SelectContent>
                             {getAssignableUsers(dialogState.role, dialogState.book!.projectId).map(user => (
@@ -314,9 +314,9 @@ export default function ReassignUserClient() {
                 </div>
             </div>
             <DialogFooter>
-                <Button variant="outline" onClick={closeDialog}>Cancel</Button>
+                <Button variant="outline" onClick={closeDialog}>Cancelar</Button>
                 <Button onClick={handleSave} disabled={!newUserId}>
-                Confirm and Reassign
+                Confirmar e Reatribuir
                 </Button>
             </DialogFooter>
             </DialogContent>

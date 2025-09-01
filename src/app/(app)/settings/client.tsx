@@ -84,7 +84,7 @@ export default function SettingsClient() {
   const onProfileSubmit = (data: ProfileFormValues) => {
     if (!currentUser) return;
     updateUser(currentUser.id, data);
-    toast({ title: "Profile Updated", description: "Your profile information has been saved." });
+    toast({ title: "Perfil Atualizado", description: "As informações do seu perfil foram guardadas." });
   };
 
   const onPasswordSubmit = async (data: PasswordFormValues) => {
@@ -109,23 +109,23 @@ export default function SettingsClient() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-headline text-3xl font-bold tracking-tight">Settings</h1>
+        <h1 className="font-headline text-3xl font-bold tracking-tight">Configurações</h1>
         <p className="text-muted-foreground">
-          Manage your account and application settings.
+          Gerir a conta e configurações da aplicação.
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1">
-          <h2 className="text-lg font-semibold">General</h2>
+          <h2 className="text-lg font-semibold">Geral</h2>
           <p className="text-sm text-muted-foreground">
-            Update your profile and application preferences.
+            Atualize seu perfil e preferências de aplicativo.
           </p>
         </div>
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle>Profile Information</CardTitle>
+              <CardTitle>Informações do Perfil</CardTitle>
             </CardHeader>
             <CardContent>
               <Form {...profileForm}>
@@ -135,7 +135,7 @@ export default function SettingsClient() {
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Full Name</FormLabel>
+                        <FormLabel>Nome Completo</FormLabel>
                         <FormControl><Input {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
@@ -157,7 +157,7 @@ export default function SettingsClient() {
                     name="phone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Phone Number</FormLabel>
+                        <FormLabel>Número de Telefone</FormLabel>
                         <FormControl><Input {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
@@ -168,13 +168,13 @@ export default function SettingsClient() {
                     name="jobTitle"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Job Title</FormLabel>
+                        <FormLabel>Cargo</FormLabel>
                         <FormControl><Input {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <Button type="submit">Save Changes</Button>
+                  <Button type="submit">Guardar Alterações</Button>
                 </form>
               </Form>
             </CardContent>
@@ -184,15 +184,15 @@ export default function SettingsClient() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-8 border-t">
         <div className="lg:col-span-1">
-          <h2 className="text-lg font-semibold">Security</h2>
+          <h2 className="text-lg font-semibold">Segurança</h2>
           <p className="text-sm text-muted-foreground">
-            Manage your password.
+            Gerir palavra-passe.
           </p>
         </div>
         <div className="lg:col-span-2">
            <Card>
             <CardHeader>
-              <CardTitle>Password</CardTitle>
+              <CardTitle>Palavra-passe</CardTitle>
             </CardHeader>
             <CardContent>
               <Form {...passwordForm}>
@@ -202,7 +202,7 @@ export default function SettingsClient() {
                     name="currentPassword"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Current Password</FormLabel>
+                        <FormLabel>Palavra-passe Atual</FormLabel>
                         <FormControl><Input type="password" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
@@ -213,7 +213,7 @@ export default function SettingsClient() {
                     name="newPassword"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>New Password</FormLabel>
+                        <FormLabel>Nova Palavra-passe</FormLabel>
                         <FormControl><Input type="password" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
@@ -224,13 +224,13 @@ export default function SettingsClient() {
                     name="confirmPassword"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Confirm New Password</FormLabel>
+                        <FormLabel>Confirmar Nova Palavra-passe</FormLabel>
                         <FormControl><Input type="password" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" variant="secondary">Change Password</Button>
+                  <Button type="submit" variant="secondary">Alterar Palavra-passe</Button>
                 </form>
               </Form>
             </CardContent>
@@ -240,23 +240,23 @@ export default function SettingsClient() {
 
        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-8 border-t">
         <div className="lg:col-span-1">
-          <h2 className="text-lg font-semibold">Appearance</h2>
+          <h2 className="text-lg font-semibold">Aparência</h2>
           <p className="text-sm text-muted-foreground">
-            Customize the look and feel of the application.
+            Personalize a aparência e a sensação do aplicativo.
           </p>
         </div>
         <div className="lg:col-span-2">
            <Card>
             <CardHeader>
-              <CardTitle>Theme</CardTitle>
-              <CardDescription>Select your preferred color scheme.</CardDescription>
+              <CardTitle>Tema</CardTitle>
+              <CardDescription>Selecione seu esquema de cores preferido.</CardDescription>
             </CardHeader>
             <CardContent>
                <div className="flex items-center space-x-2">
-                <Label htmlFor="dark-mode">Dark Mode</Label>
+                <Label htmlFor="dark-mode">Modo Escuro</Label>
                 <Switch id="dark-mode" disabled />
               </div>
-               <p className="text-xs text-muted-foreground mt-2">Theme switching is coming soon.</p>
+               <p className="text-xs text-muted-foreground mt-2">A alteração de tema estará disponível em breve.</p>
             </CardContent>
           </Card>
         </div>

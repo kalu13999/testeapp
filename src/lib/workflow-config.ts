@@ -150,7 +150,7 @@ export const WORKFLOW_PHASES = [
     stages: ["to-checking", "checking-started"],
     config: {
       'to-checking': {
-        title: "Verificação Pendente",
+        title: "PageChecker Pendente",
         description: "Livros indexados e prontos para controlo de qualidade inicial.",
         actionButtonLabel: "Iniciar Verificação",
         actionButtonIcon: "Play",
@@ -161,7 +161,7 @@ export const WORKFLOW_PHASES = [
         assigneeRole: 'qc',
       },
       'checking-started': {
-        title: "Verificação Iniciada",
+        title: "PageChecker Iniciada",
         description: "Livros atualmente em controlo de qualidade inicial.",
         actionButtonLabel: "Marcar como Concluído",
         actionButtonIcon: "Play",

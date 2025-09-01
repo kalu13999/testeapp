@@ -211,35 +211,35 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
                       />
                   </TableHead>
                   <TableHead className="w-[120px]">Action</TableHead>
-                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name')}>Book Name {getSortIndicator('name')}</div></TableHead>
-                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('projectName')}>Project {getSortIndicator('projectName')}</div></TableHead>
-                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('batchInfo')}>Processing Batch {getSortIndicator('batchInfo')}</div></TableHead>
+                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name')}>Nome do Livro {getSortIndicator('name')}</div></TableHead>
+                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('projectName')}>Projeto {getSortIndicator('projectName')}</div></TableHead>
+                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('batchInfo')}>Lote de Processamento {getSortIndicator('batchInfo')}</div></TableHead>
                   <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('scannerDeviceName')}>Scanner {getSortIndicator('scannerDeviceName')}</div></TableHead>
-                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('storageName')}>Storage {getSortIndicator('storageName')}</div></TableHead>
-                  <TableHead className="text-right"><div className="flex items-center justify-end gap-2 cursor-pointer select-none group" onClick={() => handleSort('expectedDocuments')}>Pages {getSortIndicator('expectedDocuments')}</div></TableHead>
+                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('storageName')}>Armazenamento {getSortIndicator('storageName')}</div></TableHead>
+                  <TableHead className="text-right"><div className="flex items-center justify-end gap-2 cursor-pointer select-none group" onClick={() => handleSort('expectedDocuments')}>Páginas {getSortIndicator('expectedDocuments')}</div></TableHead>
                 </TableRow>
                  <TableRow>
                     <TableHead />
                     <TableHead />
                     <TableHead>
-                        <Input placeholder="Filter by name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/>
+                        <Input placeholder="Filtrar nome..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/>
                     </TableHead>
                      <TableHead>
-                        <Input placeholder="Filter by project..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/>
+                        <Input placeholder="Filtrar projeto..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/>
                     </TableHead>
                     <TableHead>
                         <Input placeholder="Filter by batch..." value={columnFilters['batchInfo'] || ''} onChange={(e) => handleColumnFilterChange('batchInfo', e.target.value)} className="h-8"/>
                     </TableHead>
                     <TableHead>
-                        <Input placeholder="Filter by scanner..." value={columnFilters['scannerDeviceName'] || ''} onChange={(e) => handleColumnFilterChange('scannerDeviceName', e.target.value)} className="h-8"/>
+                        <Input placeholder="Filtrar scanner..." value={columnFilters['scannerDeviceName'] || ''} onChange={(e) => handleColumnFilterChange('scannerDeviceName', e.target.value)} className="h-8"/>
                     </TableHead>
                     <TableHead>
-                        <Input placeholder="Filter by storage..." value={columnFilters['storageName'] || ''} onChange={(e) => handleColumnFilterChange('storageName', e.target.value)} className="h-8"/>
+                        <Input placeholder="Filtrar armazenamento..." value={columnFilters['storageName'] || ''} onChange={(e) => handleColumnFilterChange('storageName', e.target.value)} className="h-8"/>
                     </TableHead>
                     <TableHead className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                             <Input placeholder="Pages..." value={columnFilters['expectedDocuments'] || ''} onChange={(e) => handleColumnFilterChange('expectedDocuments', e.target.value)} className="h-8 w-24 text-right"/>
-                             <Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Clear</Button>
+                             <Input placeholder="Filtrar páginas..." value={columnFilters['expectedDocuments'] || ''} onChange={(e) => handleColumnFilterChange('expectedDocuments', e.target.value)} className="h-8 w-24 text-right"/>
+                             <Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Limpar Filtros</Button>
                         </div>
                     </TableHead>
                 </TableRow>

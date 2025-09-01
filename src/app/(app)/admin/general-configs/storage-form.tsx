@@ -28,7 +28,7 @@ const formSchema = z.object({
   percentual_minimo_diario: z.coerce.number().min(0).max(100),
   minimo_diario_fixo: z.coerce.number().min(0),
   peso: z.coerce.number().min(1),
-  status: z.enum(["ativo", "inativo"]),
+  status: z.enum(["ativo", "inativo", "manutencao"]),
 })
 
 export type StorageFormValues = z.infer<typeof formSchema>
@@ -67,9 +67,9 @@ export function StorageForm({ storage, onSave, onCancel }: StorageFormProps) {
               name="nome"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Storage Name</FormLabel>
+                  <FormLabel>Nome do Armazenamento</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. Primary NAS" {...field} />
+                    <Input placeholder="ex.: Proc-01" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -80,9 +80,9 @@ export function StorageForm({ storage, onSave, onCancel }: StorageFormProps) {
               name="ip"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>IP Address</FormLabel>
+                  <FormLabel>Endereço IP</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. 192.168.1.100" {...field} />
+                    <Input placeholder="ex.: 192.168.1.100" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -95,9 +95,9 @@ export function StorageForm({ storage, onSave, onCancel }: StorageFormProps) {
               name="root_path"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Root Path</FormLabel>
+                  <FormLabel>Localização Raiz</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. /mnt/storage_1" {...field} />
+                    <Input placeholder="ex.: \\192.168.100.10\e$\DATA\0-mainFolder" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -108,9 +108,9 @@ export function StorageForm({ storage, onSave, onCancel }: StorageFormProps) {
               name="thumbs_path"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Thumbnails Path</FormLabel>
+                  <FormLabel>Localização de Thumbnails</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. /mnt/storage_1/thumbs" {...field} />
+                    <Input placeholder="ex.: Temp\Thumbs" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -123,11 +123,11 @@ export function StorageForm({ storage, onSave, onCancel }: StorageFormProps) {
             name="minimo_diario_fixo"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Daily Fixed Minimum (Pages)</FormLabel>
+                <FormLabel>Minimum Diário Fixo (Páginas)</FormLabel>
                 <FormControl>
                   <Input type="number" {...field} />
                 </FormControl>
-                 <FormDescription>Min. pages to send before using weights.</FormDescription>
+                 <FormDescription>Páginas mínimas a enviar antes de usar pesos.</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -137,11 +137,11 @@ export function StorageForm({ storage, onSave, onCancel }: StorageFormProps) {
             name="peso"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Distribution Weight</FormLabel>
+                <FormLabel>Peso de Distribuição</FormLabel>
                 <FormControl>
                   <Input type="number" {...field} />
                 </FormControl>
-                <FormDescription>Higher weight receives more books.</FormDescription>
+                <FormDescription>Peso maior recebe mais livros.</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -153,16 +153,17 @@ export function StorageForm({ storage, onSave, onCancel }: StorageFormProps) {
               name="status"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Status</FormLabel>
+                  <FormLabel>Estado</FormLabel>
                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                       <SelectTrigger>
-                          <SelectValue placeholder="Select a status" />
+                          <SelectValue placeholder="Selecione um estado" />
                       </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                          <SelectItem value="ativo">Active</SelectItem>
-                          <SelectItem value="inativo">Inactive</SelectItem>
+                          <SelectItem value="ativo">Ativo</SelectItem>
+                          <SelectItem value="inativo">Inativo</SelectItem>
+                          <SelectItem value="manutencao">Manutenção</SelectItem>
                       </SelectContent>
                   </Select>
                   <FormMessage />
@@ -172,9 +173,9 @@ export function StorageForm({ storage, onSave, onCancel }: StorageFormProps) {
         </div>
         <div className="flex justify-end gap-2 pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
+            Cancelar
           </Button>
-          <Button type="submit">Save Storage</Button>
+          <Button type="submit">Guardar Armazenamento</Button>
         </div>
       </form>
     </Form>

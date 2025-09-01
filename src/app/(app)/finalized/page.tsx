@@ -3,14 +3,15 @@ import FolderViewClient from "../workflow/folder-view-client";
 
 export default function FinalizedPage() {
   const config = {
-    title: "Finalized Documents",
-    description: "Documents that have completed the client validation phase and are ready for archival.",
-    actionButtonLabel: "Archive",
+    title: "Documentos Finalizados",
+    description: "Documentos que completaram a fase de validação pelo cliente e estão prontos para arquivamento.",
+    actionButtonLabel: "Arquivar",
     actionButtonIcon: "Archive",
-    emptyStateText: "No documents are currently finalized.",
+    emptyStateText: "Não há documentos finalizados no momento.",
     dataStatus: "Finalized",
+    dataType: "book",
     viewType: "folder",
-  };
+  } as const;
   
   return <FolderViewClient config={config} stage="finalized" />;
 }

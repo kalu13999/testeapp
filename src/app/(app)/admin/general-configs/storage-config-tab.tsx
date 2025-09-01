@@ -147,13 +147,13 @@ export function StorageConfigTab() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Storage Locations</CardTitle>
+              <CardTitle>Locais de Armazenamento</CardTitle>
               <CardDescription>
-                Manage the physical or network locations where scanned documents are stored.
+                Gerir os locais físicos ou de rede onde os documentos digitalizados são armazenados.
               </CardDescription>
             </div>
             <Button onClick={() => openDialog('new')}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Storage
+              <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Armazenamento
             </Button>
           </div>
         </CardHeader>
@@ -161,18 +161,18 @@ export function StorageConfigTab() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('nome')}>Name {getSortIndicator('nome')}</div></TableHead>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('ip')}>IP Address {getSortIndicator('ip')}</div></TableHead>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('root_path')}>Root Path {getSortIndicator('root_path')}</div></TableHead>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('status')}>Status {getSortIndicator('status')}</div></TableHead>
-                <TableHead><span className="sr-only">Actions</span></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('nome')}>Nome {getSortIndicator('nome')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('ip')}>Endereço IP {getSortIndicator('ip')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('root_path')}>Localização Raiz {getSortIndicator('root_path')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('status')}>Estado {getSortIndicator('status')}</div></TableHead>
+                <TableHead><span className="sr-only">Ações</span></TableHead>
               </TableRow>
                <TableRow>
-                <TableHead><Input placeholder="Filter name..." value={columnFilters['nome'] || ''} onChange={e => setColumnFilters(p => ({...p, nome: e.target.value}))} className="h-8"/></TableHead>
-                <TableHead><Input placeholder="Filter IP..." value={columnFilters['ip'] || ''} onChange={e => setColumnFilters(p => ({...p, ip: e.target.value}))} className="h-8"/></TableHead>
-                <TableHead><Input placeholder="Filter path..." value={columnFilters['root_path'] || ''} onChange={e => setColumnFilters(p => ({...p, root_path: e.target.value}))} className="h-8"/></TableHead>
-                <TableHead><Input placeholder="Filter status..." value={columnFilters['status'] || ''} onChange={e => setColumnFilters(p => ({...p, status: e.target.value}))} className="h-8"/></TableHead>
-                <TableHead><Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Clear Filters</Button></TableHead>
+                <TableHead><Input placeholder="Filtrar nome..." value={columnFilters['nome'] || ''} onChange={e => setColumnFilters(p => ({...p, nome: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filtrar IP..." value={columnFilters['ip'] || ''} onChange={e => setColumnFilters(p => ({...p, ip: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filtrar caminho..." value={columnFilters['root_path'] || ''} onChange={e => setColumnFilters(p => ({...p, root_path: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filtrar estado..." value={columnFilters['status'] || ''} onChange={e => setColumnFilters(p => ({...p, status: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead><Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Limpar Filtros</Button></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -196,12 +196,12 @@ export function StorageConfigTab() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuLabel>Ações</DropdownMenuLabel>
                         <DropdownMenuItem onSelect={() => openDialog('edit', storage)}>
-                          <Edit className="mr-2 h-4 w-4" /> Edit
+                          <Edit className="mr-2 h-4 w-4" /> Editar
                         </DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => setDeleteDialogState({ open: true, data: storage })} className="text-destructive">
-                          <Trash2 className="mr-2 h-4 w-4" /> Delete
+                          <Trash2 className="mr-2 h-4 w-4" /> Eliminar
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -210,7 +210,7 @@ export function StorageConfigTab() {
               )) : (
                  <TableRow>
                   <TableCell colSpan={6} className="h-24 text-center">
-                    No storage locations configured.
+                    Nenhum local de armazenamento configurado.
                   </TableCell>
                 </TableRow>
               )}
@@ -219,7 +219,7 @@ export function StorageConfigTab() {
         </CardContent>
          <CardFooter className="flex items-center justify-between">
             <div className="text-xs text-muted-foreground">
-              {`Showing ${paginatedStorages.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedStorages.length} of ${sortedAndFilteredStorages.length} storages`}
+              {`A mostrar ${paginatedStorages.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedStorages.length} de ${sortedAndFilteredStorages.length} locais de armazenamento`}
             </div>
             <PaginationNav />
         </CardFooter>
@@ -228,9 +228,9 @@ export function StorageConfigTab() {
       <Dialog open={dialogState.open} onOpenChange={closeDialog}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>{dialogState.type === 'new' ? 'Add New Storage' : 'Edit Storage'}</DialogTitle>
+            <DialogTitle>{dialogState.type === 'new' ? 'Adicionar Novo Armazenamento' : 'Editar Armazenamento'}</DialogTitle>
             <DialogDescription>
-              {dialogState.type === 'new' ? 'Configure a new storage location.' : `Editing storage: ${dialogState.data?.nome}`}
+              {dialogState.type === 'new' ? 'Configurar um novo local de armazenamento.' : `Editar armazenamento: ${dialogState.data?.nome}`}
             </DialogDescription>
           </DialogHeader>
           <StorageForm 
@@ -244,14 +244,14 @@ export function StorageConfigTab() {
       <AlertDialog open={deleteDialogState.open} onOpenChange={() => setDeleteDialogState({ open: false, data: undefined })}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Tem a certeza?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the storage location <span className="font-bold">{deleteDialogState.data?.nome}</span>.
+              Esta ação não pode ser desfeita. Isto irá eliminar permanentemente o local de armazenamento <span className="font-bold">{deleteDialogState.data?.nome}</span>.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteDialogState({ open: false, data: undefined })}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+            <AlertDialogCancel onClick={() => setDeleteDialogState({ open: false, data: undefined })}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Eliminar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

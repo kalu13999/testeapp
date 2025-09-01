@@ -48,7 +48,7 @@ export function ClientUserStatsTab() {
   const [dialogFilter, setDialogFilter] = React.useState('');
   const { toast } = useToast();
 
-  const clientUsers = React.useMemo(() => users.filter(u => u.role === 'Client'), [users]);
+  const clientUsers = React.useMemo(() => users.filter(u => u.clientId !== null), [users]);
   
   const clientUserStats = React.useMemo((): ClientUserStat[] => {
     return clientUsers.map(user => {
@@ -156,7 +156,7 @@ export function ClientUserStatsTab() {
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Client Users');
         XLSX.writeFile(workbook, 'client_users_stats.xlsx');
     }
-    toast({ title: 'Export Complete', description: `${data.length} client users exported.` });
+    toast({ title: "Exportação Concluída", description: `${data.length} utilizadores de cliente exportados.` });
   };
   
   const handleKpiClick = (title: string, items: UserData[]) => {
@@ -167,27 +167,27 @@ export function ClientUserStatsTab() {
   return (
     <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('All Client Users', kpiData.totalUsers.items)}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Client Users</CardTitle><User className="h-4 w-4 text-muted-foreground" /></CardHeader>
+            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Todos os Utilizadores de Cliente', kpiData.totalUsers.items)}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Utilizadores de Cliente</CardTitle><User className="h-4 w-4 text-muted-foreground" /></CardHeader>
                 <CardContent><div className="text-2xl font-bold">{kpiData.totalUsers.value}</div></CardContent>
             </Card>
-            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Active Client Users', kpiData.activeUsers.items)}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Active Users</CardTitle><UserCheck className="h-4 w-4 text-muted-foreground" /></CardHeader>
+            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Utilizadores Ativos', kpiData.activeUsers.items)}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Utilizadores Ativos</CardTitle><UserCheck className="h-4 w-4 text-muted-foreground" /></CardHeader>
                 <CardContent><div className="text-2xl font-bold">{kpiData.activeUsers.value}</div></CardContent>
             </Card>
-             <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Disabled Client Users', kpiData.disabledUsers.items)}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Disabled Users</CardTitle><UserX className="h-4 w-4 text-muted-foreground" /></CardHeader>
+             <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Utilizadores Desativados', kpiData.disabledUsers.items)}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Utilizadores Desativados</CardTitle><UserX className="h-4 w-4 text-muted-foreground" /></CardHeader>
                 <CardContent><div className="text-2xl font-bold">{kpiData.disabledUsers.value}</div></CardContent>
             </Card>
             <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Clients with Users</CardTitle><Users className="h-4 w-4 text-muted-foreground" /></CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Clientes com Utilizadores</CardTitle><Users className="h-4 w-4 text-muted-foreground" /></CardHeader>
                 <CardContent><div className="text-2xl font-bold">{kpiData.clientsWithUsers.value}</div></CardContent>
             </Card>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
             <Card>
-                <CardHeader><CardTitle>Client Users by Company</CardTitle></CardHeader>
+                <CardHeader><CardTitle>Utilizadores de Cliente por Empresa</CardTitle></CardHeader>
                 <CardContent>
                      <ChartContainer config={{}} className="h-[250px] w-full">
                         <PieChart>
@@ -198,7 +198,7 @@ export function ClientUserStatsTab() {
                 </CardContent>
             </Card>
             <Card>
-                <CardHeader><CardTitle>Users by Status</CardTitle></CardHeader>
+                <CardHeader><CardTitle>Utilizadores por Estado</CardTitle></CardHeader>
                 <CardContent>
                     <ChartContainer config={{}} className="h-[250px] w-full">
                        <BarChart data={[{name: 'Active', value: kpiData.activeUsers.value, fill: 'hsl(var(--chart-1))'}, {name: 'Disabled', value: kpiData.disabledUsers.value, fill: 'hsl(var(--destructive))'}]} layout="vertical">
@@ -216,17 +216,17 @@ export function ClientUserStatsTab() {
         <CardHeader>
             <div className="flex justify-between items-center">
                 <div>
-                    <CardTitle>Client User Accounts</CardTitle>
-                    <CardDescription>A list of all external client user accounts.</CardDescription>
+                    <CardTitle>Contas de Utilizador de Cliente</CardTitle>
+                    <CardDescription>Uma lista de todas as contas de utilizador de cliente externas.</CardDescription>
                 </div>
                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild><Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" /> Export</Button></DropdownMenuTrigger>
+                    <DropdownMenuTrigger asChild><Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" />Exportar</Button></DropdownMenuTrigger>
                     <DropdownMenuContent>
-                        <DropdownMenuLabel>Export Data</DropdownMenuLabel>
+                        <DropdownMenuLabel>Exportar Dados</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onSelect={() => exportData('xlsx')}>Export as XLSX</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => exportData('json')}>Export as JSON</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => exportData('csv')}>Export as CSV</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportData('xlsx')}>Exportar como XLSX</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportData('json')}>Exportar como JSON</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportData('csv')}>Exportar como CSV</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
@@ -235,16 +235,16 @@ export function ClientUserStatsTab() {
         <Table>
             <TableHeader>
             <TableRow>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name')}>User {getSortIndicator('name')}</div></TableHead>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('clientName')}>Client Company {getSortIndicator('clientName')}</div></TableHead>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('status')}>Status {getSortIndicator('status')}</div></TableHead>
-                <TableHead className="text-right"><div className="flex items-center justify-end gap-2 cursor-pointer select-none group" onClick={() => handleSort('lastLogin')}>Last Login {getSortIndicator('lastLogin')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name')}>Utilizador {getSortIndicator('name')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('clientName')}>Empresa do Cliente {getSortIndicator('clientName')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('status')}>Estado {getSortIndicator('status')}</div></TableHead>
+                <TableHead className="text-right"><div className="flex items-center justify-end gap-2 cursor-pointer select-none group" onClick={() => handleSort('lastLogin')}>Último Login {getSortIndicator('lastLogin')}</div></TableHead>
             </TableRow>
             <TableRow>
-                <TableHead><Input placeholder="Filter user..." value={columnFilters['name'] || ''} onChange={e => setColumnFilters(p => ({...p, name: e.target.value}))} className="h-8"/></TableHead>
-                <TableHead><Input placeholder="Filter company..." value={columnFilters['clientName'] || ''} onChange={e => setColumnFilters(p => ({...p, clientName: e.target.value}))} className="h-8"/></TableHead>
-                <TableHead><Input placeholder="Filter status..." value={columnFilters['status'] || ''} onChange={e => setColumnFilters(p => ({...p, status: e.target.value}))} className="h-8"/></TableHead>
-                <TableHead><div className="flex items-center justify-between"><Input placeholder="Filter login..." value={columnFilters['lastLogin'] || ''} onChange={e => setColumnFilters(p => ({...p, lastLogin: e.target.value}))} className="h-8"/><Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Clear Filters</Button></div></TableHead>
+                <TableHead><Input placeholder="Filtrar utilizador..." value={columnFilters['name'] || ''} onChange={e => setColumnFilters(p => ({...p, name: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filtrar empresa..." value={columnFilters['clientName'] || ''} onChange={e => setColumnFilters(p => ({...p, clientName: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filtrar estado..." value={columnFilters['status'] || ''} onChange={e => setColumnFilters(p => ({...p, status: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead><div className="flex items-center justify-between"><Input placeholder="Filter login..." value={columnFilters['lastLogin'] || ''} onChange={e => setColumnFilters(p => ({...p, lastLogin: e.target.value}))} className="h-8"/><Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Limpar Filtros</Button></div></TableHead>
             </TableRow>
             </TableHeader>
             <TableBody>
@@ -273,18 +273,18 @@ export function ClientUserStatsTab() {
             <DialogContent className="max-w-2xl">
                 <DialogHeader>
                     <DialogTitle>{dialogState.title}</DialogTitle>
-                    <DialogDescription>Showing {filteredDialogItems.length} of {dialogState.items.length} users.</DialogDescription>
+                    <DialogDescription>A mostrar {filteredDialogItems.length} de {dialogState.items.length} utilizadores.</DialogDescription>
                 </DialogHeader>
                  <div className="py-2">
                     <Input 
-                        placeholder="Filter users..."
+                        placeholder="Filtrar utilizadores..."
                         value={dialogFilter}
                         onChange={(e) => setDialogFilter(e.target.value)}
                     />
                 </div>
                 <div className="max-h-[60vh] overflow-y-auto pr-4">
                      <Table>
-                        <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Role</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                        <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Perfil</TableHead><TableHead>Estado</TableHead></TableRow></TableHeader>
                         <TableBody>
                             {filteredDialogItems.map(user => (
                                 <TableRow key={user.id}>

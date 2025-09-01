@@ -77,9 +77,9 @@ export function BookForm({ book, onSave, onCancel }: BookFormProps) {
             name="name"
             render={({ field }) => (
                 <FormItem>
-                <FormLabel>Book Name</FormLabel>
+                <FormLabel>Nome do Livro</FormLabel>
                 <FormControl>
-                    <Input placeholder="e.g. Financial Statements 2024" {...field} />
+                    <Input placeholder="ex.: Demonstrações Financeiras 2024" {...field} />
                 </FormControl>
                 <FormMessage />
                 </FormItem>
@@ -90,9 +90,9 @@ export function BookForm({ book, onSave, onCancel }: BookFormProps) {
             name="author"
             render={({ field }) => (
                 <FormItem>
-                <FormLabel>Author</FormLabel>
+                <FormLabel>Autor</FormLabel>
                 <FormControl>
-                    <Input placeholder="e.g. Finance Department" {...field} />
+                    <Input placeholder="ex.: Departamento Financeiro" {...field} />
                 </FormControl>
                 <FormMessage />
                 </FormItem>
@@ -107,7 +107,7 @@ export function BookForm({ book, onSave, onCancel }: BookFormProps) {
                 <FormItem>
                 <FormLabel>ISBN</FormLabel>
                 <FormControl>
-                    <Input placeholder="e.g. 978-3-16-148410-0" {...field} />
+                    <Input placeholder="ex.: 978-3-16-148410-0" {...field} />
                 </FormControl>
                 <FormMessage />
                 </FormItem>
@@ -118,9 +118,9 @@ export function BookForm({ book, onSave, onCancel }: BookFormProps) {
             name="publicationYear"
             render={({ field }) => (
                 <FormItem>
-                <FormLabel>Publication Year</FormLabel>
+                <FormLabel>Ano de Publicação</FormLabel>
                 <FormControl>
-                    <Input type="number" placeholder="e.g. 2024" {...field} />
+                    <Input type="number" placeholder="ex.: 2024" {...field} />
                 </FormControl>
                 <FormMessage />
                 </FormItem>
@@ -133,9 +133,9 @@ export function BookForm({ book, onSave, onCancel }: BookFormProps) {
             name="expectedDocuments"
             render={({ field }) => (
                 <FormItem>
-                <FormLabel>Expected Pages</FormLabel>
+                <FormLabel>Páginas Esperadas</FormLabel>
                 <FormControl>
-                    <Input type="number" placeholder="e.g. 150" {...field} />
+                    <Input type="number" placeholder="ex.: 150" {...field} />
                 </FormControl>
                 <FormMessage />
                 </FormItem>
@@ -146,17 +146,17 @@ export function BookForm({ book, onSave, onCancel }: BookFormProps) {
                 name="priority"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Priority</FormLabel>
+                    <FormLabel>Prioridade</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                         <SelectTrigger>
-                            <SelectValue placeholder="Select priority" />
+                            <SelectValue placeholder="Selecionar prioridade" />
                         </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                            <SelectItem value="Low">Low</SelectItem>
-                            <SelectItem value="Medium">Medium</SelectItem>
-                            <SelectItem value="High">High</SelectItem>
+                            <SelectItem value="Low">Baixa</SelectItem>
+                            <SelectItem value="Medium">Média</SelectItem>
+                            <SelectItem value="High">Alta</SelectItem>
                         </SelectContent>
                     </Select>
                     <FormMessage />
@@ -169,9 +169,9 @@ export function BookForm({ book, onSave, onCancel }: BookFormProps) {
             name="info"
             render={({ field }) => (
                 <FormItem>
-                <FormLabel>Additional Info</FormLabel>
+                <FormLabel>Informação Adicional</FormLabel>
                 <FormControl>
-                    <Textarea placeholder="Any extra notes about this book..." {...field} />
+                    <Textarea placeholder="Quaisquer notas adicionais sobre este livro..." {...field} />
                 </FormControl>
                 <FormMessage />
                 </FormItem>
@@ -179,9 +179,9 @@ export function BookForm({ book, onSave, onCancel }: BookFormProps) {
         />
         <div className="flex justify-end gap-2 pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
+            Cancelar
           </Button>
-          <Button type="submit">Save Book</Button>
+          <Button type="submit">Guardar Livro</Button>
         </div>
       </form>
     </Form>

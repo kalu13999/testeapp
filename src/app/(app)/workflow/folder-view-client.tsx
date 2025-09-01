@@ -365,21 +365,21 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   
   const handleMainAction = (book: EnrichedBook) => {
     if (!book.projectId) {
-        toast({ title: "Error", description: "Project ID not found for this book.", variant: "destructive" });
+        toast({ title: "Erro", description: "ID do projeto não encontrado para este livro.", variant: "destructive" });
         return;
     }
     
     const workflow = projectWorkflows[book.projectId] || [];
     const currentStageKey = findStageKeyFromStatus(book.status);
     if (!currentStageKey) {
-        toast({ title: "Workflow Error", description: `Cannot find a workflow stage for status: "${book.status}"`, variant: "destructive" });
+        toast({ title: "Erro de Workflow", description: `Não foi possível encontrar uma etapa de workflow para o status: "${book.status}"`, variant: "destructive" });
         return;
     }
     
     const nextStage = getNextEnabledStage(currentStageKey, workflow);
     
     if (!nextStage) {
-      toast({ title: "Workflow End", description: "This is the final step for this project.", variant: "default" });
+      toast({ title: "Fim de Workflow", description: "Esta é a última etapa para este projeto.", variant: "default" });
       handleMoveBookToNextStage(book.id, book.status);
       return;
     }
@@ -487,15 +487,32 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   const handleBulkResubmit = (targetStage: string) => {
     const stageKey = findStageKeyFromStatus(targetStage);
     if (!stageKey) {
-      toast({ title: "Workflow Error", description: `Could not find configuration for stage: ${targetStage}`, variant: "destructive" });
+      toast({ title: "Erro de Workflow", description: `Não foi possível encontrar a configuração para a etapa: ${targetStage}`, variant: "destructive" });
       return;
     }
     const stageConfig = STAGE_CONFIG[stageKey];
     openConfirmationDialog({
-      title: `Resubmit ${selection.length} books?`,
-      description: `This will resubmit all selected books to the "${stageConfig.title}" stage.`,
+      title: `Reenviar ${selection.length} livros?`,
+      description: `Isso reenviará todos os livros selecionados para a etapa "${stageConfig.title}".`,
       onConfirm: () => {
         selection.forEach(bookId => handleResubmit(bookId, targetStage));
+        setSelection([]);
+      }
+    });
+  }
+
+    const handleBulkResubmitMoveTifs = (targetStage: string) => {
+    const stageKey = findStageKeyFromStatus(targetStage);
+    if (!stageKey) {
+      toast({ title: "Erro de Workflow", description: `Não foi possível encontrar a configuração para a etapa: ${targetStage}`, variant: "destructive" });
+      return;
+    }
+    const stageConfig = STAGE_CONFIG[stageKey];
+    openConfirmationDialog({
+      title: `Reenviar ${selection.length} livros?`,
+      description: `Isso reenviará todos os livros selecionados para a etapa "${stageConfig.title}".`,
+      onConfirm: () => {
+        selection.forEach(bookId => handleResubmitMoveTifs(bookId, targetStage));
         setSelection([]);
       }
     });
@@ -525,18 +542,53 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
       return (
         <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">{selection.length} selected</span>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm">
-                  <Send className="mr-2 h-4 w-4" /> Resubmit Selected To...
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => handleBulkResubmit('To Indexing')}>Indexing</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleBulkResubmit('To Checking')}>Quality Control</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleBulkResubmit('Delivery')}>Delivery</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                    <div className="flex gap-2">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="sm">
+                          <Send className="mr-2 h-4 w-4" /> Send Only Tifs To...
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem
+                          onClick={() => handleBulkResubmitMoveTifs("Storage")}
+                        >
+                          Storage
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleBulkResubmitMoveTifs("To Indexing")}
+                        >
+                          Indexing
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleBulkResubmitMoveTifs("To Checking")}
+                        >
+                          Quality Control
+                        </DropdownMenuItem>
+                        
+                        <DropdownMenuItem
+                          onClick={() => handleBulkResubmitMoveTifs("Ready for Processing")}
+                        >
+                          Ready for Processing
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="sm" variant="secondary">
+                          <Send className="mr-2 h-4 w-4" /> Send All To...
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem
+                          onClick={() => handleBulkResubmit("Final Quality Control")}
+                        >
+                          Final Quality Control
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
         </div>
       );
     } else if (stage === 'client-rejections') {
@@ -544,8 +596,8 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">{selection.length} selected</span>
            <Button size="sm" onClick={() => openConfirmationDialog({
-             title: `Mark ${selection.length} books as corrected?`,
-             description: `This will move all selected books to the next stage.`,
+             title: `Marcar ${selection.length} livros como corrigidos?`,
+             description: `Isso moverá todos os livros selecionados para a próxima etapa.`,
              onConfirm: () => {
                selection.forEach(bookId => handleMarkAsCorrected(bookId));
                setSelection([]);
@@ -633,21 +685,21 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
       case 'finalized':
         return (
           <Button size="sm" onClick={() => openConfirmationDialog({
-              title: 'Archive Book?',
-              description: `This will archive all documents for "${bookName}". This is a final action.`,
+              title: 'Arquivar Livro?',
+              description: `Isso arquivará todos os documentos para "${bookName}". Esta é uma ação final.`,
               onConfirm: () => handleFinalize(bookId)
           })}>
-            <Archive className="mr-2 h-4 w-4" /> Archive
+            <Archive className="mr-2 h-4 w-4" /> Arquivar
           </Button>
         );
        case 'client-rejections':
         return (
            <Button size="sm" onClick={() => openConfirmationDialog({
-              title: 'Mark as Corrected?',
-              description: `This will mark "${bookName}" as corrected and make it available for resubmission.`,
+              title: 'Marcar como Corrigido?',
+              description: `Isso marcará "${bookName}" como corrigido e o tornará disponível para reenvio.`,
               onConfirm: () => handleMarkAsCorrected(bookId)
            })}>
-            <Undo2 className="mr-2 h-4 w-4" /> Mark as Corrected
+            <Undo2 className="mr-2 h-4 w-4" /> Marcar como Corrigido
           </Button>
         );
        case 'corrected':
@@ -656,54 +708,54 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="sm">
-                <Send className="mr-2 h-4 w-4" /> Send Only Tifs To...
+                <Send className="mr-2 h-4 w-4" /> Enviar Apenas TIFFs Para...
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               <DropdownMenuItem
                 onClick={() =>
                   openConfirmationDialog({
-                    title: "Are you sure?",
-                    description: `This will resubmit only TIFFs of "${bookName}" to Storage.`,
+                    title: "Tem a certeza?",
+                    description: `Isto irá reenviar apenas os TIFFs de "${bookName}" para o Armazenamento.`,
                     onConfirm: () => handleResubmitMoveTifs(bookId, "Storage"),
                   })
                 }
               >
-                Storage
+                Armazenamento
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() =>
                   openConfirmationDialog({
-                    title: "Are you sure?",
-                    description: `This will resubmit only TIFFs of "${bookName}" to Indexing.`,
+                    title: "Tem a certeza?",
+                    description: `Isto irá reenviar apenas os TIFFs de "${bookName}" para a Indexação.`,
                     onConfirm: () => handleResubmitMoveTifs(bookId, "To Indexing"),
                   })
                 }
               >
-                Indexing
+                Indexação
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() =>
                   openConfirmationDialog({
-                    title: "Are you sure?",
-                    description: `This will resubmit only TIFFs of "${bookName}" to Quality Control.`,
+                    title: "Tem a certeza?",
+                    description: `Isto irá reenviar apenas os TIFFs de "${bookName}" para o Controle de Qualidade.`,
                     onConfirm: () => handleResubmitMoveTifs(bookId, "To Checking"),
                   })
                 }
               >
-                Quality Control
+                Controlo de Qualidade
               </DropdownMenuItem>
               
                <DropdownMenuItem
                 onClick={() =>
                   openConfirmationDialog({
-                    title: "Are you sure?",
-                    description: `This will resubmit all formats of "${bookName}" to Ready for Processing.`,
+                    title: "Tem a certeza?",
+                    description: `Isto irá reenviar todos os formatos de "${bookName}" para Pronto para Processamento.`,
                     onConfirm: () => handleResubmitMoveTifs(bookId, "Ready for Processing"),
                   })
                 }
               >
-                Ready for Processing
+                Pronto para Processamento
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -718,13 +770,13 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
               <DropdownMenuItem
                 onClick={() =>
                   openConfirmationDialog({
-                    title: "Are you sure?",
-                    description: `This will resubmit all formats of "${bookName}" to Final Quality Control.`,
+                    title: "Tem a certeza?",
+                    description: `Isto irá reenviar todos os formatos de "${bookName}" para o Controle de Qualidade Final.`,
                     onConfirm: () => handleResubmit(bookId, "Final Quality Control"),
                   })
                 }
               >
-                Final Quality Control
+                Controlo de Qualidade Final
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -738,8 +790,8 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
             <Button 
                 size="sm" 
                 onClick={() => openConfirmationDialog({
-                  title: `Are you sure?`,
-                  description: `This will perform the action "${config.actionButtonLabel}" on "${bookName}".`,
+                  title: `Tem a certeza?`,
+                  description: `Isso irá realizar a ação "${config.actionButtonLabel}" em "${bookName}".`,
                   onConfirm: () => handleMainAction(book)
                 })}
                 disabled={hasError}
@@ -797,13 +849,13 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
             </div>
              {stage === 'final-quality-control' && (
                 <div className="pt-4">
-                  <Label htmlFor="batch-select">Filter by Processing Batch</Label>
+                  <Label htmlFor="batch-select">Filtrar por Lote de Processamento</Label>
                   <Select value={selectedBatchId} onValueChange={setSelectedBatchId}>
                     <SelectTrigger id="batch-select" className="w-[300px]">
-                        <SelectValue placeholder="Select a batch..." />
+                        <SelectValue placeholder="Selecionar um lote..." />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="all">All Batches</SelectItem>
+                        <SelectItem value="all">Todos os Lotes</SelectItem>
                         {availableBatches.map(batch => (
                             <SelectItem key={batch.id} value={batch.id}>
                                 {batch.timestamp.replace('Process started on ', '')}
@@ -815,13 +867,13 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
               )}
               {stage === 'storage' && (
                 <div className="pt-4">
-                  <Label htmlFor="storage-select">Filter by Storage Location</Label>
+                  <Label htmlFor="storage-select">Filtrar por Localização de Armazenamento</Label>
                   <Select value={selectedStorageId} onValueChange={setSelectedStorageId}>
                     <SelectTrigger id="storage-select" className="w-[300px]">
-                        <SelectValue placeholder="Select a storage..." />
+                        <SelectValue placeholder="Selecionar um armazenamento..." />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="all">All Storages</SelectItem>
+                        <SelectItem value="all">Todos os Armazenamentos</SelectItem>
                         {storages.map(storage => (
                             <SelectItem key={storage.id} value={storage.id.toString()}>{storage.nome}</SelectItem>
                         ))}
@@ -852,7 +904,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                                             : prev.filter(id => id !== book.id)
                                     );
                                 }}
-                                aria-label={`Select book ${book.name}`}
+                                aria-label={`Selecionar livro ${book.name}`}
                             />
                         </div>
                         <AccordionTrigger className="flex-1 px-4 py-2">
@@ -885,24 +937,24 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                           <Card>
                             <CardHeader className="flex flex-row items-center gap-2 pb-2">
                                 <Info className="h-4 w-4" />
-                                <CardTitle className="text-base">Book Details</CardTitle>
+                                <CardTitle className="text-base">Detalhes do Livro</CardTitle>
                             </CardHeader>
                             <CardContent className="text-sm space-y-4">
-                                <DetailItem label="Book" value={<Link href={`/books/${book.id}`} className="text-primary hover:underline">{book.name}</Link>} />
-                                {batchInfo && <DetailItem label="Batch" value={<Link href={`/processing-batches/${batchInfo.id}`} className="text-primary hover:underline">{batchInfo.timestampStr.replace('Process started on ', '').replace(/ (AM|PM)$/, '')}</Link>} />}
-                                <DetailItem label="Project" value={book.projectName} />
-                                <DetailItem label="Client" value={book.clientName} />
+                                <DetailItem label="Livro" value={<Link href={`/books/${book.id}`} className="text-primary hover:underline">{book.name}</Link>} />
+                                {batchInfo && <DetailItem label="Lote" value={<Link href={`/processing-batches/${batchInfo.id}`} className="text-primary hover:underline">{batchInfo.timestampStr.replace('Process started on ', '').replace(/ (AM|PM)$/, '')}</Link>} />}
+                                <DetailItem label="Projeto" value={book.projectName} />
+                                <DetailItem label="Cliente" value={book.clientName} />
                                 <Separator />
-                                <DetailItem label="Author" value={book.author || '—'} />
+                                <DetailItem label="Autor" value={book.author || '—'} />
                                 <DetailItem label="ISBN" value={book.isbn || '—'} />
-                                <DetailItem label="Publication Year" value={book.publicationYear || '—'} />
+                                <DetailItem label="Ano de Publicação" value={book.publicationYear || '—'} />
                                 <Separator />
-                                <DetailItem label="Priority" value={book.priority || '—'} />
+                                <DetailItem label="Prioridade" value={book.priority || '—'} />
                                 {book.info && (
                                 <>
                                 <Separator />
                                 <div className="pt-2 grid grid-cols-1 gap-2">
-                                    <p className="text-muted-foreground">Additional Info</p>
+                                    <p className="text-muted-foreground">Informação Adicional</p>
                                     <p className="font-medium whitespace-pre-wrap">{book.info}</p>
                                 </div>
                                 </>
@@ -913,17 +965,17 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                             <Card className="bg-destructive/10 border-destructive/50">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="flex items-center gap-2 text-base text-destructive font-semibold">
-                                        <MessageSquareWarning className="h-5 w-5" /> Client Rejection Reason
+                                        <MessageSquareWarning className="h-5 w-5" /> Motivo de Rejeição do Cliente
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <p className="text-sm text-destructive-foreground/90">{book.rejectionReason || "No reason provided."}</p>
+                                    <p className="text-sm text-destructive-foreground/90">{book.rejectionReason || "Nenhum motivo fornecido."}</p>
                                 </CardContent>
                             </Card>
                           )}
 
                           <div className="flex items-center justify-end gap-4">
-                            <Label htmlFor={`columns-slider-${book.id}`} className="text-sm whitespace-nowrap">Thumbnail Size:</Label>
+                            <Label htmlFor={`columns-slider-${book.id}`} className="text-sm whitespace-nowrap">Tamanho da Miniatura:</Label>
                             <Slider
                                 id={`columns-slider-${book.id}`}
                                 min={1}
@@ -1065,7 +1117,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
               <Label htmlFor="rejection-comment">Comment</Label>
               <Textarea 
                   id="rejection-comment"
-                  placeholder="e.g., Page 5 is blurry, please re-scan."
+                  placeholder="ex.:, Page 5 is blurry, please re-scan."
                   value={rejectionComment}
                   onChange={(e) => setRejectionComment(e.target.value)}
               />

@@ -191,7 +191,7 @@ export function BookStatsTab() {
 
   const exportData = (format: 'xlsx' | 'json' | 'csv', dataToExport: EnrichedBook[]) => {
     if (dataToExport.length === 0) {
-        toast({ title: 'No Data to Export', description: 'There are no items to export.' });
+        toast({ title: "Sem Dados para Exportar", description: "Não existem itens para exportar." }); 
         return;
     }
     if (format === 'json') {
@@ -206,7 +206,7 @@ export function BookStatsTab() {
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Books');
         XLSX.writeFile(workbook, 'books.xlsx');
     }
-    toast({ title: 'Export Complete', description: `${dataToExport.length} books exported.` });
+    toast({ title: "Exportação Concluída", description: `${dataToExport.length} livros exportados.` });
   };
   
   const handleKpiClick = (title: string, items: EnrichedBook[]) => {
@@ -231,20 +231,20 @@ export function BookStatsTab() {
   return (
     <div className="space-y-6">
        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Total Books', kpiData.total.items)}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Books</CardTitle><Briefcase className="h-4 w-4 text-muted-foreground" /></CardHeader>
+            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Total de Livros', kpiData.total.items)}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total de Livros</CardTitle><Briefcase className="h-4 w-4 text-muted-foreground" /></CardHeader>
                 <CardContent><div className="text-2xl font-bold">{kpiData.total.value}</div></CardContent>
             </Card>
-            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Books In Workflow', kpiData.inWorkflow.items)}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">In Workflow</CardTitle><BookCopy className="h-4 w-4 text-muted-foreground" /></CardHeader>
+            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Livros em Workflow', kpiData.inWorkflow.items)}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Em Workflow</CardTitle><BookCopy className="h-4 w-4 text-muted-foreground" /></CardHeader>
                 <CardContent><div className="text-2xl font-bold">{kpiData.inWorkflow.value}</div></CardContent>
             </Card>
-             <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Finalized Books', kpiData.finalized.items)}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Finalized</CardTitle><CheckCheck className="h-4 w-4 text-muted-foreground" /></CardHeader>
+             <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Livros Finalizados', kpiData.finalized.items)}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Finalizados</CardTitle><CheckCheck className="h-4 w-4 text-muted-foreground" /></CardHeader>
                 <CardContent><div className="text-2xl font-bold">{kpiData.finalized.value}</div></CardContent>
             </Card>
-            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Books with Errors', kpiData.withErrors.items)}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">With Errors</CardTitle><AlertTriangle className="h-4 w-4 text-muted-foreground" /></CardHeader>
+            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Livros com Erros', kpiData.withErrors.items)}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Com Erros</CardTitle><AlertTriangle className="h-4 w-4 text-muted-foreground" /></CardHeader>
                 <CardContent><div className="text-2xl font-bold text-destructive">{kpiData.withErrors.value}</div></CardContent>
             </Card>
         </div>
@@ -252,8 +252,8 @@ export function BookStatsTab() {
         <div className="grid gap-6 md:grid-cols-2">
             <Card>
                 <CardHeader>
-                    <CardTitle>Books by Status</CardTitle>
-                    <CardDescription>Distribution of all books by their current workflow stage.</CardDescription>
+                    <CardTitle>Livros por Estado</CardTitle>
+                    <CardDescription>Distribuição de todos os livros pelo estado atual no workflow.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <ChartContainer
@@ -281,7 +281,7 @@ export function BookStatsTab() {
                 </CardContent>
             </Card>
             <Card>
-                <CardHeader><CardTitle>Top 10 Projects by Book Count</CardTitle></CardHeader>
+                <CardHeader><CardTitle>Top 10 Projetos por Número de Livros</CardTitle></CardHeader>
                 <CardContent>
                     <ChartContainer config={chartConfig} className="h-[300px] w-full">
                         <BarChart data={booksByProjectChartData} layout="vertical" margin={{ left: 100 }}>
@@ -300,21 +300,21 @@ export function BookStatsTab() {
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle>All Books</CardTitle>
-              <CardDescription>A detailed list of all books in the system.</CardDescription>
+              <CardTitle>Todos os Livros</CardTitle>
+              <CardDescription>Lista detalhada de todos os livros no sistema.</CardDescription>
             </div>
             <DropdownMenu>
-              <DropdownMenuTrigger asChild><Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" /> Export</Button></DropdownMenuTrigger>
+              <DropdownMenuTrigger asChild><Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" /> Exportar</Button></DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuLabel>Export Selected ({selection.length})</DropdownMenuLabel>
-                <DropdownMenuItem onSelect={() => exportData('xlsx', selectedBooks)} disabled={selection.length === 0}>Export as XLSX</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => exportData('json', selectedBooks)} disabled={selection.length === 0}>Export as JSON</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => exportData('csv', selectedBooks)} disabled={selection.length === 0}>Export as CSV</DropdownMenuItem>
+                <DropdownMenuLabel>Exportar Selecionados ({selection.length})</DropdownMenuLabel>
+                <DropdownMenuItem onSelect={() => exportData('xlsx', selectedBooks)} disabled={selection.length === 0}>Exportar como XLSX</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => exportData('json', selectedBooks)} disabled={selection.length === 0}>Exportar como JSON</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => exportData('csv', selectedBooks)} disabled={selection.length === 0}>Exportar como CSV</DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuLabel>Export All ({sortedAndFilteredBooks.length})</DropdownMenuLabel>
-                <DropdownMenuItem onSelect={() => exportData('xlsx', sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Export as XLSX</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => exportData('json', sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Export as JSON</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => exportData('csv', sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Export as CSV</DropdownMenuItem>
+                <DropdownMenuLabel>Exportar Todos ({sortedAndFilteredBooks.length})</DropdownMenuLabel>
+                <DropdownMenuItem onSelect={() => exportData('xlsx', sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Exportar como XLSX</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => exportData('json', sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Exportar como JSON</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => exportData('csv', sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Exportar como CSV</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -327,25 +327,25 @@ export function BookStatsTab() {
                     <Checkbox
                         onCheckedChange={(checked) => setSelection(checked ? paginatedBooks.map(b => b.id) : [])}
                         checked={paginatedBooks.length > 0 && paginatedBooks.every(b => selection.includes(b.id))}
-                        aria-label="Select all on this page"
+                        aria-label="Selecionar todos nesta página"
                     />
                 </TableHead>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name')}>Book Name {getSortIndicator('name')}</div></TableHead>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('projectName')}>Project {getSortIndicator('projectName')}</div></TableHead>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('clientName')}>Client {getSortIndicator('clientName')}</div></TableHead>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('status')}>Status {getSortIndicator('status')}</div></TableHead>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('priority')}>Priority {getSortIndicator('priority')}</div></TableHead>
-                <TableHead>Progress</TableHead>
-                <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('documentCount')}>Pages {getSortIndicator('documentCount')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name')}>Nome do Livro {getSortIndicator('name')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('projectName')}>Projeto {getSortIndicator('projectName')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('clientName')}>Cliente {getSortIndicator('clientName')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('status')}>Estado {getSortIndicator('status')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('priority')}>Prioridade {getSortIndicator('priority')}</div></TableHead>
+                <TableHead>Progresso</TableHead>
+                <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('documentCount')}>Páginas {getSortIndicator('documentCount')}</div></TableHead>
               </TableRow>
               <TableRow>
                 <TableHead />
-                <TableHead><Input placeholder="Filter name..." value={columnFilters['name'] || ''} onChange={e => setColumnFilters(p => ({...p, name: e.target.value}))} className="h-8"/></TableHead>
-                <TableHead><Input placeholder="Filter project..." value={columnFilters['projectName'] || ''} onChange={e => setColumnFilters(p => ({...p, projectName: e.target.value}))} className="h-8"/></TableHead>
-                <TableHead><Input placeholder="Filter client..." value={columnFilters['clientName'] || ''} onChange={e => setColumnFilters(p => ({...p, clientName: e.target.value}))} className="h-8"/></TableHead>
-                <TableHead><Input placeholder="Filter status..." value={columnFilters['status'] || ''} onChange={e => setColumnFilters(p => ({...p, status: e.target.value}))} className="h-8"/></TableHead>
-                <TableHead><Input placeholder="Filter priority..." value={columnFilters['priority'] || ''} onChange={e => setColumnFilters(p => ({...p, priority: e.target.value}))} className="h-8"/></TableHead>
-                <TableHead colSpan={2}><Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Clear Filters</Button></TableHead>
+                <TableHead><Input placeholder="Filtrar nome..." value={columnFilters['name'] || ''} onChange={e => setColumnFilters(p => ({...p, name: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filtrar projeto..." value={columnFilters['projectName'] || ''} onChange={e => setColumnFilters(p => ({...p, projectName: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filtrar cliente..." value={columnFilters['clientName'] || ''} onChange={e => setColumnFilters(p => ({...p, clientName: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filtrar estado..." value={columnFilters['status'] || ''} onChange={e => setColumnFilters(p => ({...p, status: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filtrar prioridade..." value={columnFilters['priority'] || ''} onChange={e => setColumnFilters(p => ({...p, priority: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead colSpan={2}><Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Limpar Filtros</Button></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -361,7 +361,7 @@ export function BookStatsTab() {
                                       : selection.filter((id) => id !== book.id)
                               )
                           }}
-                          aria-label={`Select book ${book.name}`}
+                          aria-label={`Selecionar livro ${book.name}`}
                       />
                   </TableCell>
                   <TableCell className="font-medium"><Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link></TableCell>
@@ -378,7 +378,7 @@ export function BookStatsTab() {
         </CardContent>
         <CardFooter className="flex items-center justify-between">
             <div className="text-xs text-muted-foreground">
-              {selection.length > 0 ? `${selection.length} of ${sortedAndFilteredBooks.length} book(s) selected.` : `Showing ${paginatedBooks.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedBooks.length} of ${sortedAndFilteredBooks.length} books`}
+              {selection.length > 0 ? `${selection.length} de ${sortedAndFilteredBooks.length} livro(s) selecionado(s).` : `A mostrar ${paginatedBooks.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedBooks.length} de ${sortedAndFilteredBooks.length} livros`}
             </div>
             <PaginationNav />
         </CardFooter>
@@ -388,18 +388,18 @@ export function BookStatsTab() {
             <DialogContent className="max-w-4xl">
                 <DialogHeader>
                     <DialogTitle>{dialogState.title}</DialogTitle>
-                    <DialogDescription>Showing {filteredDialogItems.length} of {dialogState.items.length} books.</DialogDescription>
+                    <DialogDescription>A mostrar {filteredDialogItems.length} de {dialogState.items.length} livros.</DialogDescription>
                 </DialogHeader>
                 <div className="py-2">
                     <Input 
-                        placeholder="Filter books..."
+                        placeholder="Filtrar livros..."
                         value={dialogFilter}
                         onChange={(e) => setDialogFilter(e.target.value)}
                     />
                 </div>
                 <div className="max-h-[60vh] overflow-y-auto pr-4">
                      <Table>
-                        <TableHeader><TableRow><TableHead>Book</TableHead><TableHead>Project</TableHead><TableHead>Client</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                        <TableHeader><TableRow><TableHead>Livro</TableHead><TableHead>Projeto</TableHead><TableHead>Cliente</TableHead><TableHead>Estado</TableHead></TableRow></TableHeader>
                         <TableBody>
                             {filteredDialogItems.map(book => (
                                 <TableRow key={book.id}>

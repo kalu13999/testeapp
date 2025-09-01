@@ -121,16 +121,16 @@ function ProjectDashboard() {
 
 
         const kpiData = [
-            { title: "Pending Shipping", value: pendingShippingBooks.length.toLocaleString(), icon: Package, description: "Books awaiting client shipment", items: pendingShippingBooks, type: 'books' as const },
-            { title: "In Transit", value: inTransitBooks.length.toLocaleString(), icon: Send, description: "Books shipped by the client", items: inTransitBooks, type: 'books' as const },
-            { title: "Received by Us", value: receivedBooks.length.toLocaleString(), icon: ArrowDownToLine, description: "Books confirmed at our facility", items: receivedBooks, type: 'books' as const },
-            { title: "Pending Client Action", value: pendingValidationBooks.length.toLocaleString(), icon: UserCheck, description: "Books awaiting client approval", items: pendingValidationBooks, type: 'books' as const },
-            { title: "Books in Workflow", value: workflowBooks.length.toLocaleString(), icon: BookCopy, description: "Active books being processed", items: workflowBooks, type: 'books' as const },
-            { title: "Finalized Books", value: finalizedBooks.length.toLocaleString(), icon: CheckCheck, description: "Books that are approved", items: finalizedBooks, type: 'books' as const },
-            { title: "Document Errors", value: errorDocs.length.toLocaleString(), icon: ShieldAlert, description: "Pages flagged with errors", items: booksWithErrors, type: 'books' as const },
-            { title: "Document Warnings", value: warningDocs.length.toLocaleString(), icon: AlertTriangle, description: "Pages flagged with warnings", items: booksWithWarnings, type: 'books' as const },
-            { title: "Actions Today", value: actionsTodayLogs.length.toLocaleString(), icon: Activity, description: "Actions recorded today", items: actionsTodayLogs, type: 'activities' as const },
-        ];
+            { title: "Envios Pendentes", value: pendingShippingBooks.length.toLocaleString(), icon: Package, description: "Livros à espera de envio do cliente", items: pendingShippingBooks, type: 'books' as const },
+            { title: "Em Transporte", value: inTransitBooks.length.toLocaleString(), icon: Send, description: "Livros enviados pelo cliente", items: inTransitBooks, type: 'books' as const },
+            { title: "Recebidos", value: receivedBooks.length.toLocaleString(), icon: ArrowDownToLine, description: "Livros com receção confirmada", items: receivedBooks, type: 'books' as const },
+            { title: "Ação Pendente do Cliente", value: pendingValidationBooks.length.toLocaleString(), icon: UserCheck, description: "Livros à espera de aprovação do cliente", items: pendingValidationBooks, type: 'books' as const },
+            { title: "Livros em Processamento", value: workflowBooks.length.toLocaleString(), icon: BookCopy, description: "Livros ativos a ser processados", items: workflowBooks, type: 'books' as const },
+            { title: "Livros Finalizados", value: finalizedBooks.length.toLocaleString(), icon: CheckCheck, description: "Livros aprovados", items: finalizedBooks, type: 'books' as const },
+            { title: "Erros de Documento", value: errorDocs.length.toLocaleString(), icon: ShieldAlert, description: "Páginas com erros identificados", items: booksWithErrors, type: 'books' as const },
+            { title: "Avisos de Documento", value: warningDocs.length.toLocaleString(), icon: AlertTriangle, description: "Páginas com alertas", items: booksWithWarnings, type: 'books' as const },
+            { title: "Ações de Hoje", value: actionsTodayLogs.length.toLocaleString(), icon: Activity, description: "Registos de ações efetuadas hoje", items: actionsTodayLogs, type: 'activities' as const },
+        ]
 
         const orderedStageNames = [
           'In Transit', 'Received', 'To Scan', 'Scanning Started', 'Storage', 'To Indexing', 'Indexing Started', 'To Checking', 'Checking Started', 'Ready for Processing', 'In Processing', 'Processed', 'Final Quality Control', 'Delivery', 'Pending Validation', 'Client Rejected', 'Corrected', 'Finalized'
@@ -282,17 +282,20 @@ function ProjectDashboard() {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Data");
         XLSX.writeFile(workbook, filename);
-        toast({ title: "Export Successful", description: `${data.length} items exported as XLSX.` });
+        toast({ title: "Exportação Concluída", description: `${data.length} itens exportados em formato XLSX.` });
     }
-    const exportJSON = (data: any[], filename: string) => { if(data.length === 0) return; downloadFile(JSON.stringify(data, null, 2), filename, 'application/json'); toast({ title: "Export Successful", description: `${data.length} items exported as JSON.` }); };
-    const exportCSV = (data: any[], headers: string[], filename: string) => { if (data.length === 0) return; const csvContent = [headers.join(','), ...data.map(item => headers.map(header => { let value = item[header as keyof typeof item] ?? ''; if (typeof value === 'string' && value.includes(',')) return `"${value.replace(/"/g, '""')}"`; return value; }).join(','))].join('\n'); downloadFile(csvContent, filename, 'text/csv;charset=utf-8;'); toast({ title: "Export Successful", description: `${data.length} items exported as CSV.` }); };
+    const exportJSON = (data: any[], filename: string) => { if(data.length === 0) return; downloadFile(JSON.stringify(data, null, 2), filename, 'application/json');
+        toast({ title: "Exportação Concluída", description: `${data.length} itens exportados em formato JSON.` });
+    };
+    const exportCSV = (data: any[], headers: string[], filename: string) => { if (data.length === 0) return; const csvContent = [headers.join(','), ...data.map(item => headers.map(header => { let value = item[header as keyof typeof item] ?? ''; if (typeof value === 'string' && value.includes(',')) return `"${value.replace(/"/g, '""')}"`; return value; }).join(','))].join('\n'); downloadFile(csvContent, filename, 'text/csv;charset=utf-8;');
+        toast({ title: "Exportação Concluída", description: `${data.length} itens exportados em formato CSV.` }); };
 
     const handleKpiClick = (kpi: typeof dashboardData.kpiData[0]) => {
         if (!kpi.items || kpi.items.length === 0 || !kpi.type) return;
         setDetailFilter('');
         setDetailState({
             open: true,
-            title: `Details for: ${kpi.title}`,
+            title: `Detalhes de: ${kpi.title}`,
             items: kpi.items,
             type: kpi.type
         });
@@ -302,7 +305,7 @@ function ProjectDashboard() {
     const handleWorkflowChartClick = (data: any) => {
         if (!data || !data.activePayload?.length) return;
         const stageName = data.activePayload[0].payload.name as string;
-        setDetailState({ open: true, title: `Books in Stage: ${stageName}`, items: dashboardData.booksByStage[stageName] || [], type: 'books' });
+        setDetailState({ open: true, title: `Livros no Estado: ${stageName}`, items: dashboardData.booksByStage[stageName] || [], type: 'books' });
     };
     const handleDailyChartClick = (data: any) => {
         if (!data || !data.activePayload?.length) return;
@@ -348,21 +351,21 @@ function ProjectDashboard() {
                     <CardHeader>
                         <div className="flex items-start justify-between">
                             <div>
-                                <CardTitle>Project Details</CardTitle>
-                                <CardDescription>At-a-glance project information.</CardDescription>
+                                <CardTitle>Detalhes do Projeto</CardTitle>
+                                <CardDescription>Informação e configuração rápida do projeto</CardDescription>
                             </div>
                             <Button asChild variant="outline" size="sm">
-                                <Link href={`/projects/${project.id}`}>View Full Project Details</Link>
+                                <Link href={`/projects/${project.id}`}>Ver Detalhes Completos do Projeto</Link>
                             </Button>
                         </div>
                          <Separator className="my-4" />
                         <div className="flex justify-between items-center text-sm">
                             <div>
-                                <span className="text-muted-foreground">Client: </span>
+                                <span className="text-muted-foreground">Cliente: </span>
                                 <Link href={`/clients`} className="font-semibold hover:underline">{project.clientName}</Link>
                             </div>
                              <div className="flex items-center gap-2">
-                                <span className="text-muted-foreground">Status: </span>
+                                <span className="text-muted-foreground">Estado: </span>
                                 <Badge variant={getStatusBadgeVariant(project.status)}>{project.status}</Badge>
                             </div>
                         </div>
@@ -387,10 +390,10 @@ function ProjectDashboard() {
                 <Card>
                     <CardHeader className="flex flex-row items-start justify-between">
                         <div>
-                            <CardTitle className="font-headline flex items-center gap-2"><BarChart2 className="h-5 w-5"/> Workflow State</CardTitle>
-                            <CardDescription>Number of books in each phase. Click for details.</CardDescription>
+                            <CardTitle className="font-headline flex items-center gap-2"><BarChart2 className="h-5 w-5"/>Estados no fluxo de trabalho</CardTitle>
+                            <CardDescription>Número de livros em cada fase. Clique para detalhes.</CardDescription>
                         </div>
-                        <Tabs value={chartType} onValueChange={(value) => setChartType(value as any)} className="w-auto"><TabsList><TabsTrigger value="bar">Bar</TabsTrigger><TabsTrigger value="line">Line</TabsTrigger><TabsTrigger value="area">Area</TabsTrigger></TabsList></Tabs>
+                        <Tabs value={chartType} onValueChange={(value) => setChartType(value as any)} className="w-auto"><TabsList><TabsTrigger value="bar">Barras</TabsTrigger><TabsTrigger value="line">Linhas</TabsTrigger><TabsTrigger value="area">Área</TabsTrigger></TabsList></Tabs>
                     </CardHeader>
                     <CardContent>
                         <ChartContainer config={workflowChartConfig} className="h-[300px] w-full cursor-pointer">
@@ -403,8 +406,8 @@ function ProjectDashboard() {
                 <Card>
                    <CardHeader className="flex flex-row items-center justify-between">
                         <div>
-                            <CardTitle className="font-headline flex items-center gap-2"><TrendingUp className="h-5 w-5"/> Daily Throughput</CardTitle>
-                            <CardDescription>Count of books completing key stages. Click a point for details.</CardDescription>
+                            <CardTitle className="font-headline flex items-center gap-2"><TrendingUp className="h-5 w-5"/>Produção Diária</CardTitle>
+                            <CardDescription>Número de livros que completam etapas-chave. Clique em um ponto para detalhes.</CardDescription>
                         </div>
                         <DatePickerWithRange date={dateRange} onDateChange={setDateRange} />
                     </CardHeader>
@@ -426,13 +429,13 @@ function ProjectDashboard() {
                     <Card>
                         <CardHeader className="flex items-center justify-between">
                             <div><CardTitle className="font-headline flex items-center gap-2"><ListTodo className="h-5 w-5" /> Book Progress</CardTitle><CardDescription>Detailed progress for each book in the project.</CardDescription></div>
-                            <DropdownMenu><DropdownMenuTrigger asChild><Button size="sm" variant="outline" className="h-9 gap-1"><Download className="h-3.5 w-3.5" /><span>Export</span></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuLabel>Export All ({sortedAndFilteredBooks.length})</DropdownMenuLabel><DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredBooks, 'project_books.xlsx')}>Export as XLSX</DropdownMenuItem><DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredBooks, 'project_books.json')}>Export as JSON</DropdownMenuItem><DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredBooks, ['name', 'status', 'progress'], 'project_books.csv')}>Export as CSV</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
+                            <DropdownMenu><DropdownMenuTrigger asChild><Button size="sm" variant="outline" className="h-9 gap-1"><Download className="h-3.5 w-3.5" /><span>Exportar</span></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuLabel>Exportar Todos ({sortedAndFilteredBooks.length})</DropdownMenuLabel><DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredBooks, 'project_books.xlsx')}>Exportar como XLSX</DropdownMenuItem><DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredBooks, 'project_books.json')}>Exportar como JSON</DropdownMenuItem><DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredBooks, ['name', 'status', 'progress'], 'project_books.csv')}>Exportar como CSV</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
                         </CardHeader>
                         <CardContent>
                             <Table>
                                 <TableHeader>
-                                    <TableRow><TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name', bookSorting, setBookSorting, setBookCurrentPage)}>Book Name {getSortIndicator('name', bookSorting)}</div></TableHead><TableHead className="w-40"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('status', bookSorting, setBookSorting, setBookCurrentPage)}>Status {getSortIndicator('status', bookSorting)}</div></TableHead><TableHead className="w-48"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('progress', bookSorting, setBookSorting, setBookCurrentPage)}>Progress {getSortIndicator('progress', bookSorting)}</div></TableHead></TableRow>
-                                    <TableRow><TableHead><Input placeholder="Filter name..." value={bookColumnFilters['name'] || ''} onChange={e => setBookColumnFilters(p => ({...p, name: e.target.value}))} className="h-8"/></TableHead><TableHead><Input placeholder="Filter status..." value={bookColumnFilters['status'] || ''} onChange={e => setBookColumnFilters(p => ({...p, status: e.target.value}))} className="h-8"/></TableHead><TableHead/></TableRow>
+                                    <TableRow><TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name', bookSorting, setBookSorting, setBookCurrentPage)}>Nome do Livro {getSortIndicator('name', bookSorting)}</div></TableHead><TableHead className="w-40"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('status', bookSorting, setBookSorting, setBookCurrentPage)}>Estado {getSortIndicator('status', bookSorting)}</div></TableHead><TableHead className="w-48"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('progress', bookSorting, setBookSorting, setBookCurrentPage)}>Progresso {getSortIndicator('progress', bookSorting)}</div></TableHead></TableRow>
+                                    <TableRow><TableHead><Input placeholder="Filtrar nome..." value={bookColumnFilters['name'] || ''} onChange={e => setBookColumnFilters(p => ({...p, name: e.target.value}))} className="h-8"/></TableHead><TableHead><Input placeholder="Filtrar estado..." value={bookColumnFilters['status'] || ''} onChange={e => setBookColumnFilters(p => ({...p, status: e.target.value}))} className="h-8"/></TableHead><TableHead/></TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {paginatedBooks.length > 0 ? paginatedBooks.map(book => (<TableRow key={book.id}><TableCell className="font-medium"><Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link></TableCell><TableCell><Badge variant="outline">{book.status}</Badge></TableCell><TableCell>{/* Progress bar removed as it's redundant */}</TableCell></TableRow>)) : <TableRow><TableCell colSpan={3} className="h-24 text-center">No books match your filters.</TableCell></TableRow>}
@@ -443,14 +446,14 @@ function ProjectDashboard() {
                     </Card>
                     <Card>
                         <CardHeader className="flex items-center justify-between">
-                            <div><CardTitle className="font-headline flex items-center gap-2"><Activity className="h-5 w-5" /> Recent Activity</CardTitle><CardDescription>Latest actions performed in this project.</CardDescription></div>
-                            <DropdownMenu><DropdownMenuTrigger asChild><Button size="sm" variant="outline" className="h-9 gap-1"><Download className="h-3.5 w-3.5" /><span>Export</span></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuLabel>Export All ({sortedAndFilteredActivities.length})</DropdownMenuLabel><DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredActivities, 'project_activity.xlsx')}>Export as XLSX</DropdownMenuItem><DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredActivities, 'project_activity.json')}>Export as JSON</DropdownMenuItem><DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredActivities, ['action', 'details', 'user', 'date'], 'project_activity.csv')}>Export as CSV</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
+                            <div><CardTitle className="font-headline flex items-center gap-2"><Activity className="h-5 w-5" />Atividade Recente</CardTitle><CardDescription>Últimas ações realizadas neste projeto.</CardDescription></div>
+                            <DropdownMenu><DropdownMenuTrigger asChild><Button size="sm" variant="outline" className="h-9 gap-1"><Download className="h-3.5 w-3.5" /><span>Exportar</span></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuLabel>Exportar Todos ({sortedAndFilteredActivities.length})</DropdownMenuLabel><DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredActivities, 'project_activity.xlsx')}>Exportar como XLSX</DropdownMenuItem><DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredActivities, 'project_activity.json')}>Exportar como JSON</DropdownMenuItem><DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredActivities, ['action', 'details', 'user', 'date'], 'project_activity.csv')}>Exportar como CSV</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
                         </CardHeader>
                         <CardContent>
                             <Table>
                                 <TableHeader>
-                                    <TableRow><TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('action', activitySorting, setActivitySorting, setActivityCurrentPage)}>Action {getSortIndicator('action', activitySorting)}</div></TableHead><TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('user', activitySorting, setActivitySorting, setActivityCurrentPage)}>User {getSortIndicator('user', activitySorting)}</div></TableHead><TableHead className="w-48"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('date', activitySorting, setActivitySorting, setActivityCurrentPage)}>Date {getSortIndicator('date', activitySorting)}</div></TableHead></TableRow>
-                                    <TableRow><TableHead><Input placeholder="Filter action..." value={activityColumnFilters['action'] || ''} onChange={e => setActivityColumnFilters(p => ({...p, action: e.target.value}))} className="h-8"/></TableHead><TableHead><Input placeholder="Filter user..." value={activityColumnFilters['user'] || ''} onChange={e => setActivityColumnFilters(p => ({...p, user: e.target.value}))} className="h-8"/></TableHead><TableHead/></TableRow>
+                                    <TableRow><TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('action', activitySorting, setActivitySorting, setActivityCurrentPage)}>Ação {getSortIndicator('action', activitySorting)}</div></TableHead><TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('user', activitySorting, setActivitySorting, setActivityCurrentPage)}>Utilizador {getSortIndicator('user', activitySorting)}</div></TableHead><TableHead className="w-48"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('date', activitySorting, setActivitySorting, setActivityCurrentPage)}>Data {getSortIndicator('date', activitySorting)}</div></TableHead></TableRow>
+                                    <TableRow><TableHead><Input placeholder="Filtrar ação..." value={activityColumnFilters['action'] || ''} onChange={e => setActivityColumnFilters(p => ({...p, action: e.target.value}))} className="h-8"/></TableHead><TableHead><Input placeholder="Filtrar utilizador..." value={activityColumnFilters['user'] || ''} onChange={e => setActivityColumnFilters(p => ({...p, user: e.target.value}))} className="h-8"/></TableHead><TableHead/></TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {paginatedActivities.length > 0 ? paginatedActivities.map(activity => (<TableRow key={activity.id}><TableCell><Link href={`/books/${activity.bookId}`} className="font-medium truncate hover:underline">{activity.action}</Link><div className="text-xs text-muted-foreground truncate">{activity.details}</div></TableCell><TableCell>{activity.user}</TableCell><TableCell className="text-xs">{new Date(activity.date).toLocaleString()}</TableCell></TableRow>)) : <TableRow><TableCell colSpan={3} className="h-24 text-center">No recent activity for this project.</TableCell></TableRow>}
@@ -461,7 +464,7 @@ function ProjectDashboard() {
                     </Card>
                 </div>
             </div>
-            <Dialog open={detailState.open} onOpenChange={handleCloseDetailDialog}><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>{detailState.title}</DialogTitle><DialogDescription>Showing {filteredDialogItems.length} of {detailState.items.length} total items.</DialogDescription></DialogHeader><div className="py-2"><Input placeholder={detailState.type === 'books' ? "Filter by book name..." : "Filter by action, details, or user..."} value={detailFilter} onChange={(e) => setDetailFilter(e.target.value)} /></div><div className="max-h-[60vh] overflow-y-auto pr-4">{filteredDialogItems.length > 0 ? (<>{detailState.type === 'books' && (<Table><TableHeader><TableRow><TableHead>Book Name</TableHead><TableHead>Project</TableHead><TableHead>Client</TableHead></TableRow></TableHeader><TableBody>{(filteredDialogItems as EnrichedBook[]).map(book => (<TableRow key={book.id}><TableCell className="font-medium"><Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link></TableCell><TableCell>{book.projectName}</TableCell><TableCell>{book.clientName}</TableCell></TableRow>))}</TableBody></Table>)}{detailState.type === 'activities' && (<Table><TableHeader><TableRow><TableHead>Action</TableHead><TableHead>Details</TableHead><TableHead>User</TableHead><TableHead>Time</TableHead></TableRow></TableHeader><TableBody>{(filteredDialogItems as EnrichedAuditLog[]).map(log => (<TableRow key={log.id}><TableCell className="font-medium">{log.action}</TableCell><TableCell>{log.details}</TableCell><TableCell>{log.user}</TableCell><TableCell>{new Date(log.date).toLocaleTimeString()}</TableCell></TableRow>))}</TableBody></Table>)}</>) : (<div className="text-center py-10 text-muted-foreground"><p>No items match your filter.</p></div>)}</div></DialogContent></Dialog>
+            <Dialog open={detailState.open} onOpenChange={handleCloseDetailDialog}><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>{detailState.title}</DialogTitle><DialogDescription>A mostrar {filteredDialogItems.length} de {detailState.items.length} itens totais.</DialogDescription></DialogHeader><div className="py-2"><Input placeholder={detailState.type === 'books' ? "Filtrar por nome do livro..." : "Filtrar por ação, detalhes ou utilizador..."} value={detailFilter} onChange={(e) => setDetailFilter(e.target.value)} /></div><div className="max-h-[60vh] overflow-y-auto pr-4">{filteredDialogItems.length > 0 ? (<>{detailState.type === 'books' && (<Table><TableHeader><TableRow><TableHead>Nome do Livro</TableHead><TableHead>Projeto</TableHead><TableHead>Cliente</TableHead></TableRow></TableHeader><TableBody>{(filteredDialogItems as EnrichedBook[]).map(book => (<TableRow key={book.id}><TableCell className="font-medium"><Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link></TableCell><TableCell>{book.projectName}</TableCell><TableCell>{book.clientName}</TableCell></TableRow>))}</TableBody></Table>)}{detailState.type === 'activities' && (<Table><TableHeader><TableRow><TableHead>Ação</TableHead><TableHead>Detalhes</TableHead><TableHead>Utilizador</TableHead><TableHead>Hora</TableHead></TableRow></TableHeader><TableBody>{(filteredDialogItems as EnrichedAuditLog[]).map(log => (<TableRow key={log.id}><TableCell className="font-medium">{log.action}</TableCell><TableCell>{log.details}</TableCell><TableCell>{log.user}</TableCell><TableCell>{new Date(log.date).toLocaleTimeString()}</TableCell></TableRow>))}</TableBody></Table>)}</>) : (<div className="text-center py-10 text-muted-foreground"><p>Nenhum item corresponde ao seu filtro.</p></div>)}</div></DialogContent></Dialog>
         </>
     )
 }
@@ -488,82 +491,82 @@ function ClientDashboard() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Pending Shipping</CardTitle>
+                        <CardTitle className="text-sm font-medium">Envios Pendentes</CardTitle>
                         <Package className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{clientData.pendingShipping.length}</div>
-                        <p className="text-xs text-muted-foreground">Batches ready for you to send</p>
+                        <p className="text-xs text-muted-foreground">Livros à espera de envio</p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">In Transit</CardTitle>
+                        <CardTitle className="text-sm font-medium">Em Trânsito</CardTitle>
                         <Send className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{clientData.inTransit.length}</div>
-                        <p className="text-xs text-muted-foreground">Batches you have shipped to us</p>
+                        <p className="text-xs text-muted-foreground">Livros enviados</p>
                     </CardContent>
                 </Card>
                  <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Received by Us</CardTitle>
+                        <CardTitle className="text-sm font-medium">Enviados e Confirmados</CardTitle>
                         <ArrowDownToLine className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{clientData.received.length}</div>
-                        <p className="text-xs text-muted-foreground">Batches confirmed at our facility</p>
+                        <p className="text-xs text-muted-foreground">Receção confirmada dos Livros</p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Pending Approval</CardTitle>
+                        <CardTitle className="text-sm font-medium">A Aguardar Aprovação</CardTitle>
                         <FileClock className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{clientData.pendingValidation.length}</div>
-                        <p className="text-xs text-muted-foreground">Batches awaiting your review</p>
+                        <p className="text-xs text-muted-foreground">Lotes de entrega a aguardar revisão</p>
                     </CardContent>
                 </Card>
             </div>
             <div className="grid gap-6 md:grid-cols-2">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Ready to Ship</CardTitle>
-                        <CardDescription>These batches are ready to be sent to us for processing.</CardDescription>
+                        <CardTitle>Pronto para Envio</CardTitle>
+                        <CardDescription>Estes livros estão prontos para serem enviados.</CardDescription>
                     </CardHeader>
                     <CardContent>
                          <Table>
-                            <TableHeader><TableRow><TableHead>Batch Name</TableHead><TableHead>Project</TableHead><TableHead>Action</TableHead></TableRow></TableHeader>
+                            <TableHeader><TableRow><TableHead>Nome do Lote</TableHead><TableHead>Projeto</TableHead><TableHead>Ação</TableHead></TableRow></TableHeader>
                             <TableBody>
                                 {clientData.pendingShipping.length > 0 ? clientData.pendingShipping.map(book => (
                                     <TableRow key={book.id}>
                                         <TableCell className="font-medium">{book.name}</TableCell>
                                         <TableCell>{book.projectName}</TableCell>
-                                        <TableCell><Button asChild variant="secondary" size="sm"><Link href="/shipments">Prepare Shipment</Link></Button></TableCell>
+                                        <TableCell><Button asChild variant="secondary" size="sm"><Link href="/shipments">Preparar Envio</Link></Button></TableCell>
                                     </TableRow>
                                 )) : (
-                                    <TableRow><TableCell colSpan={3} className="h-24 text-center">You have no batches to ship.</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={3} className="h-24 text-center">Não tem livros para enviar.</TableCell></TableRow>
                                 )}
                             </TableBody>
                         </Table>
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardHeader><CardTitle>Awaiting Your Validation</CardTitle><CardDescription>These batches are ready for your review and approval.</CardDescription></CardHeader>
+                    <CardHeader><CardTitle>A Aguardar Validação</CardTitle><CardDescription>Estes lotes estão prontos para revisão e aprovação.</CardDescription></CardHeader>
                     <CardContent>
                         <Table>
-                            <TableHeader><TableRow><TableHead>Batch Name</TableHead><TableHead>Project</TableHead><TableHead>Action</TableHead></TableRow></TableHeader>
+                            <TableHeader><TableRow><TableHead>Nome do Lote</TableHead><TableHead>Projeto</TableHead><TableHead>Ação</TableHead></TableRow></TableHeader>
                             <TableBody>
                                 {clientData.pendingValidation.length > 0 ? clientData.pendingValidation.map(book => (
                                     <TableRow key={book.id}>
                                         <TableCell className="font-medium">{book.name}</TableCell>
                                         <TableCell>{book.projectName}</TableCell>
-                                        <TableCell><Button asChild variant="secondary" size="sm"><Link href="/pending-deliveries">Review Batch</Link></Button></TableCell>
+                                        <TableCell><Button asChild variant="secondary" size="sm"><Link href="/pending-deliveries">Revisar Lote</Link></Button></TableCell>
                                     </TableRow>
                                 )) : (
-                                    <TableRow><TableCell colSpan={3} className="h-24 text-center">No batches are awaiting your approval.</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={3} className="h-24 text-center">Nenhum lote está a aguardar aprovação.</TableCell></TableRow>
                                 )}
                             </TableBody>
                         </Table>
@@ -600,8 +603,8 @@ export default function DashboardClient() {
             default:
                 return (
                     <Card>
-                        <CardHeader><CardTitle>Welcome, {currentUser.name}</CardTitle></CardHeader>
-                        <CardContent><p>Select an item from the menu to get started.</p></CardContent>
+                        <CardHeader><CardTitle>Bem-vindo, {currentUser.name}</CardTitle></CardHeader>
+                        <CardContent><p>Selecione um item no menu para começar.</p></CardContent>
                     </Card>
                 );
         }

@@ -65,7 +65,7 @@ export default function ProfileClient() {
     }, [currentUser, permissions]);
 
     const getAssignedDateString = (book: EnrichedBook): string => {
-        let date: string | undefined;
+        let date: string | null | undefined;
 
         switch (book.status) {
             case 'Scanning Started': date = book.scanStartTime; break;
@@ -141,7 +141,7 @@ export default function ProfileClient() {
         if (data.length === 0) return;
         const jsonString = JSON.stringify(data, null, 2);
         downloadFile(jsonString, filename, 'application/json');
-        toast({ title: "Export Successful", description: `${data.length} items exported as JSON.` });
+        toast({ title: "Exportação Concluída", description: `${data.length} itens exportados em formato JSON.` });
     }
     const exportCSV = (data: any[], headers: string[], filename: string) => {
         if (data.length === 0) return;
@@ -154,7 +154,7 @@ export default function ProfileClient() {
             }).join(','))
         ].join('\n');
         downloadFile(csvContent, filename, 'text/csv;charset=utf-8;');
-        toast({ title: "Export Successful", description: `${data.length} items exported as CSV.` });
+        toast({ title: "Exportação Concluída", description: `${data.length} itens exportados em formato CSV.` });
     }
     const exportXLSX = (data: any[], filename: string) => {
         if (data.length === 0) return;
@@ -162,7 +162,7 @@ export default function ProfileClient() {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Data");
         XLSX.writeFile(workbook, filename);
-        toast({ title: "Export Successful", description: `${data.length} items exported as XLSX.` });
+        toast({ title: "Exportação Concluída", description: `${data.length} itens exportados em formato XLSX.` });
     }
 
     // --- QUEUE TABLE LOGIC ---
@@ -253,11 +253,38 @@ export default function ProfileClient() {
                         </div>
                         {hasSettingsPermission && (<Button asChild variant="outline" size="icon"><Link href="/settings" aria-label="Go to settings"><Settings className="h-4 w-4" /></Link></Button>)}
                     </CardHeader>
-                    <CardContent className="text-sm text-muted-foreground"><p>{currentUser.department} Department</p><p>{currentUser.email}</p></CardContent>
+                    <CardContent className="text-sm text-muted-foreground"><p>{currentUser.department} Departamento</p><p>{currentUser.email}</p></CardContent>
                 </Card>
                 <div className="md:col-span-2 grid grid-cols-2 gap-6">
-                    <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">{canViewAllData ? 'Total Tasks in Queues' : 'Tasks in My Queue'}</CardTitle><Clock className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{userStats.tasksInQueue}</div><p className="text-xs text-muted-foreground">{canViewAllData ? 'Across all users' : 'Books currently assigned to you'}</p></CardContent></Card>
-                    <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">{canViewAllData ? 'Total Tasks Completed Today' : 'Tasks Completed Today'}</CardTitle><BookCheck className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{userStats.tasksToday}</div><p className="text-xs text-muted-foreground">{canViewAllData ? 'Across all users' : 'Number of books processed today'}</p></CardContent></Card>
+                <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                    {canViewAllData ? 'Total de Tarefas Pendentes' : 'Minhas Tarefas Pendentes'}
+                    </CardTitle>
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{userStats.tasksInQueue}</div>
+                    <p className="text-xs text-muted-foreground">
+                    {canViewAllData ? 'Em todos os utilizadores' : 'Livros atualmente atribuídos a si'}
+                    </p>
+                </CardContent>
+                </Card>
+
+                <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                    {canViewAllData ? 'Total de Tarefas Concluídas Hoje' : 'Tarefas Concluídas Hoje'}
+                    </CardTitle>
+                    <BookCheck className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{userStats.tasksToday}</div>
+                    <p className="text-xs text-muted-foreground">
+                    {canViewAllData ? 'Em todos os utilizadores' : 'Número de livros processados hoje'}
+                    </p>
+                </CardContent>
+                </Card>
                 </div>
             </div>
 
@@ -266,10 +293,14 @@ export default function ProfileClient() {
                     <CardHeader>
                         <div className="flex items-center justify-between">
                           <div>
-                            <CardTitle className="font-headline flex items-center gap-2"><Files className="h-5 w-5"/>{canViewAllData ? 'System-wide Task Queue' : 'My Queue'}</CardTitle>
-                            <CardDescription>{canViewAllData ? 'All books currently assigned to any user for action.' : 'All books and tasks currently assigned to you for action.'}</CardDescription>
+                            <CardTitle className="font-headline flex items-center gap-2"><Files className="h-5 w-5"/>{canViewAllData ? 'Todas as Tarefas Pendentes do Sistema' : 'As Minhas Tarefas Pendentes'}</CardTitle>
+                            <CardDescription>
+                            {canViewAllData 
+                                ? 'Todos os livros atualmente atribuídos a qualquer utilizador para ação.' 
+                                : 'Todos os livros e tarefas atualmente atribuídos a si para ação.'}
+                            </CardDescription>
                           </div>
-                           {canViewAllData && (<DropdownMenu><DropdownMenuTrigger asChild><Button size="sm" variant="outline" className="h-9 gap-1"><Download className="h-3.5 w-3.5" /><span>Export</span></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuLabel>Export All ({sortedAndFilteredQueue.length})</DropdownMenuLabel><DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredQueue, 'queue_export.xlsx')}>Export as XLSX</DropdownMenuItem><DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredQueue, 'queue_export.json')}>Export as JSON</DropdownMenuItem><DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredQueue, ['name', 'projectName', 'status', 'assigneeName'], 'queue_export.csv')}>Export as CSV</DropdownMenuItem></DropdownMenuContent></DropdownMenu>)}
+                           {canViewAllData && (<DropdownMenu><DropdownMenuTrigger asChild><Button size="sm" variant="outline" className="h-9 gap-1"><Download className="h-3.5 w-3.5" /><span>Exportar</span></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuLabel>Exportar Todos ({sortedAndFilteredQueue.length})</DropdownMenuLabel><DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredQueue, 'queue_export.xlsx')}>Exportar como XLSX</DropdownMenuItem><DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredQueue, 'queue_export.json')}>Exportar como JSON</DropdownMenuItem><DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredQueue, ['name', 'projectName', 'status', 'assigneeName'], 'queue_export.csv')}>Exportar como CSV</DropdownMenuItem></DropdownMenuContent></DropdownMenu>)}
                         </div>
                     </CardHeader>
                     <CardContent>
@@ -278,20 +309,20 @@ export default function ProfileClient() {
                                 {canViewAllData ? (
                                     <>
                                         <TableRow>
-                                            <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name', queueSorting, setQueueSorting)}>Book Name {getSortIndicator('name', queueSorting)}</div></TableHead>
-                                            <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('projectName', queueSorting, setQueueSorting)}>Project {getSortIndicator('projectName', queueSorting)}</div></TableHead>
-                                            <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('status', queueSorting, setQueueSorting)}>Status {getSortIndicator('status', queueSorting)}</div></TableHead>
-                                            <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('assigneeName', queueSorting, setQueueSorting)}>Assigned To {getSortIndicator('assigneeName', queueSorting)}</div></TableHead>
+                                            <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name', queueSorting, setQueueSorting)}>Nome do Livro {getSortIndicator('name', queueSorting)}</div></TableHead>
+                                            <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('projectName', queueSorting, setQueueSorting)}>Projeto {getSortIndicator('projectName', queueSorting)}</div></TableHead>
+                                            <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('status', queueSorting, setQueueSorting)}>Estado {getSortIndicator('status', queueSorting)}</div></TableHead>
+                                            <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('assigneeName', queueSorting, setQueueSorting)}>Atribuído a {getSortIndicator('assigneeName', queueSorting)}</div></TableHead>
                                         </TableRow>
                                         <TableRow>
-                                            <TableHead><Input placeholder="Filter name..." value={queueColumnFilters['name'] || ''} onChange={(e) => setQueueColumnFilters(p => ({...p, name: e.target.value}))} className="h-8"/></TableHead>
-                                            <TableHead><Input placeholder="Filter project..." value={queueColumnFilters['projectName'] || ''} onChange={(e) => setQueueColumnFilters(p => ({...p, projectName: e.target.value}))} className="h-8"/></TableHead>
-                                            <TableHead><Input placeholder="Filter status..." value={queueColumnFilters['status'] || ''} onChange={(e) => setQueueColumnFilters(p => ({...p, status: e.target.value}))} className="h-8"/></TableHead>
-                                            <TableHead><Input placeholder="Filter user..." value={queueColumnFilters['assigneeName'] || ''} onChange={(e) => setQueueColumnFilters(p => ({...p, assigneeName: e.target.value}))} className="h-8"/></TableHead>
+                                            <TableHead><Input placeholder="Filtrar nome..." value={queueColumnFilters['name'] || ''} onChange={(e) => setQueueColumnFilters(p => ({...p, name: e.target.value}))} className="h-8"/></TableHead>
+                                            <TableHead><Input placeholder="Filtrar projeto..." value={queueColumnFilters['projectName'] || ''} onChange={(e) => setQueueColumnFilters(p => ({...p, projectName: e.target.value}))} className="h-8"/></TableHead>
+                                            <TableHead><Input placeholder="Filtrar estado..." value={queueColumnFilters['status'] || ''} onChange={(e) => setQueueColumnFilters(p => ({...p, status: e.target.value}))} className="h-8"/></TableHead>
+                                            <TableHead><Input placeholder="Filtrar utilizador..." value={queueColumnFilters['assigneeName'] || ''} onChange={(e) => setQueueColumnFilters(p => ({...p, assigneeName: e.target.value}))} className="h-8"/></TableHead>
                                         </TableRow>
                                     </>
                                 ) : (
-                                    <TableRow><TableHead>Book Name</TableHead><TableHead>Project</TableHead><TableHead>Status</TableHead><TableHead>Assigned On</TableHead></TableRow>
+                                    <TableRow><TableHead>Nome do Livro</TableHead><TableHead>Projeto</TableHead><TableHead>Estado</TableHead><TableHead>Atribuído Em</TableHead></TableRow>
                                 )}
                             </TableHeader>
                             <TableBody>
@@ -315,10 +346,10 @@ export default function ProfileClient() {
                      <CardHeader>
                         <div className="flex items-center justify-between">
                           <div>
-                            <CardTitle className="font-headline flex items-center gap-2"><History className="h-5 w-5"/>{canViewAllData ? 'System Recent Activity' : 'My Recent Activity'}</CardTitle>
-                            <CardDescription>{canViewAllData ? 'All actions recorded in the system.' : 'Your last 15 actions recorded in the system.'}</CardDescription>
+                            <CardTitle className="font-headline flex items-center gap-2"><History className="h-5 w-5"/>{canViewAllData ? 'Atividade Recente' : 'Minhas Atividades Recentes'}</CardTitle>
+                            <CardDescription>{canViewAllData ? 'Todas as ações registradas no sistema.' : 'Últimas 15 ações registradas no sistema.'}</CardDescription>
                            </div>
-                           {canViewAllData && (<DropdownMenu><DropdownMenuTrigger asChild><Button size="sm" variant="outline" className="h-9 gap-1"><Download className="h-3.5 w-3.5" /><span>Export</span></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuLabel>Export All ({sortedAndFilteredHistory.length})</DropdownMenuLabel><DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredHistory, 'history_export.xlsx')}>Export as XLSX</DropdownMenuItem><DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredHistory, 'history_export.json')}>Export as JSON</DropdownMenuItem><DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredHistory, ['action', 'details', 'user', 'date'], 'history_export.csv')}>Export as CSV</DropdownMenuItem></DropdownMenuContent></DropdownMenu>)}
+                           {canViewAllData && (<DropdownMenu><DropdownMenuTrigger asChild><Button size="sm" variant="outline" className="h-9 gap-1"><Download className="h-3.5 w-3.5" /><span>Exportar</span></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuLabel>Exportar Todos ({sortedAndFilteredHistory.length})</DropdownMenuLabel><DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredHistory, 'history_export.xlsx')}>Exportar como XLSX</DropdownMenuItem><DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredHistory, 'history_export.json')}>Exportar como JSON</DropdownMenuItem><DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredHistory, ['action', 'details', 'user', 'date'], 'history_export.csv')}>Exportar como CSV</DropdownMenuItem></DropdownMenuContent></DropdownMenu>)}
                         </div>
                     </CardHeader>
                     <CardContent>
@@ -333,10 +364,10 @@ export default function ProfileClient() {
                                             <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('date', historySorting, setHistorySorting)}>Date {getSortIndicator('date', historySorting)}</div></TableHead>
                                         </TableRow>
                                         <TableRow>
-                                            <TableHead><Input placeholder="Filter action..." value={historyColumnFilters['action'] || ''} onChange={(e) => setHistoryColumnFilters(p => ({...p, action: e.target.value}))} className="h-8"/></TableHead>
-                                            <TableHead><Input placeholder="Filter details..." value={historyColumnFilters['details'] || ''} onChange={(e) => setHistoryColumnFilters(p => ({...p, details: e.target.value}))} className="h-8"/></TableHead>
-                                            <TableHead><Input placeholder="Filter user..." value={historyColumnFilters['user'] || ''} onChange={(e) => setHistoryColumnFilters(p => ({...p, user: e.target.value}))} className="h-8"/></TableHead>
-                                            <TableHead><Input placeholder="Filter date..." value={historyColumnFilters['date'] || ''} onChange={(e) => setHistoryColumnFilters(p => ({...p, date: e.target.value}))} className="h-8"/></TableHead>
+                                            <TableHead><Input placeholder="Filtrar ação..." value={historyColumnFilters['action'] || ''} onChange={(e) => setHistoryColumnFilters(p => ({...p, action: e.target.value}))} className="h-8"/></TableHead>
+                                            <TableHead><Input placeholder="Filtrar detalhes..." value={historyColumnFilters['details'] || ''} onChange={(e) => setHistoryColumnFilters(p => ({...p, details: e.target.value}))} className="h-8"/></TableHead>
+                                            <TableHead><Input placeholder="Filtrar utilizador..." value={historyColumnFilters['user'] || ''} onChange={(e) => setHistoryColumnFilters(p => ({...p, user: e.target.value}))} className="h-8"/></TableHead>
+                                            <TableHead><Input placeholder="Filtrar data..." value={historyColumnFilters['date'] || ''} onChange={(e) => setHistoryColumnFilters(p => ({...p, date: e.target.value}))} className="h-8"/></TableHead>
                                         </TableRow>
                                     </>
                                 ) : (

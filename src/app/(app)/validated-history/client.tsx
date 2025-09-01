@@ -237,7 +237,7 @@ export default function ValidatedHistoryClient() {
         if (data.length === 0) return;
         const jsonString = JSON.stringify(data, null, 2);
         downloadFile(jsonString, 'history_export.json', 'application/json');
-        toast({ title: "Export Successful", description: `${data.length} items exported as JSON.` });
+        toast({ title: "Exportação Concluída", description: `${data.length} itens exportados em formato JSON.` });
     }
 
     const exportCSV = (data: ValidatedBook[]) => {
@@ -256,7 +256,7 @@ export default function ValidatedHistoryClient() {
             )
         ].join('\n');
         downloadFile(csvContent, 'history_export.csv', 'text/csv;charset=utf-8;');
-        toast({ title: "Export Successful", description: `${data.length} items exported as CSV.` });
+        toast({ title: "Exportação Concluída", description: `${data.length} itens exportados em formato CSV.` });
     }
 
     const exportXLSX = (data: ValidatedBook[]) => {
@@ -265,7 +265,7 @@ export default function ValidatedHistoryClient() {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Validated History");
         XLSX.writeFile(workbook, "history_export.xlsx");
-        toast({ title: "Export Successful", description: `${data.length} items exported as XLSX.` });
+        toast({ title: "Exportação Concluída", description: `${data.length} itens exportados em formato XLSX.` });
     }
 
 
@@ -305,26 +305,26 @@ export default function ValidatedHistoryClient() {
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <div>
-                            <CardTitle className="font-headline">Validated History</CardTitle>
-                            <CardDescription>History of all approved and rejected document batches.</CardDescription>
+                            <CardTitle className="font-headline">Histórico de Validações</CardTitle>
+                            <CardDescription>Histórico de todos os lotes de documentos aprovados e rejeitados.</CardDescription>
                         </div>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button size="sm" variant="outline" className="h-9 gap-1">
                                     <Download className="h-3.5 w-3.5" />
-                                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Export</span>
+                                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Exportar</span>
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Export Selected ({selection.length})</DropdownMenuLabel>
-                                <DropdownMenuItem onSelect={() => exportXLSX(selectedHistory)} disabled={selection.length === 0}>Export as XLSX</DropdownMenuItem>
-                                <DropdownMenuItem onSelect={() => exportJSON(selectedHistory)} disabled={selection.length === 0}>Export as JSON</DropdownMenuItem>
-                                <DropdownMenuItem onSelect={() => exportCSV(selectedHistory)} disabled={selection.length === 0}>Export as CSV</DropdownMenuItem>
+                                <DropdownMenuLabel>Exportar Seleção ({selection.length})</DropdownMenuLabel>
+                                <DropdownMenuItem onSelect={() => exportXLSX(selectedHistory)} disabled={selection.length === 0}>Exportar como XLSX</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => exportJSON(selectedHistory)} disabled={selection.length === 0}>Exportar como JSON</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => exportCSV(selectedHistory)} disabled={selection.length === 0}>Exportar como CSV</DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuLabel>Export All ({sortedAndFilteredHistory.length})</DropdownMenuLabel>
-                                <DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredHistory)} disabled={sortedAndFilteredHistory.length === 0}>Export as XLSX</DropdownMenuItem>
-                                <DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredHistory)} disabled={sortedAndFilteredHistory.length === 0}>Export as JSON</DropdownMenuItem>
-                                <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredHistory)} disabled={sortedAndFilteredHistory.length === 0}>Export as CSV</DropdownMenuItem>
+                                <DropdownMenuLabel>Exportar Todos ({sortedAndFilteredHistory.length})</DropdownMenuLabel>
+                                <DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredHistory)} disabled={sortedAndFilteredHistory.length === 0}>Exportar como XLSX</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredHistory)} disabled={sortedAndFilteredHistory.length === 0}>Exportar como JSON</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredHistory)} disabled={sortedAndFilteredHistory.length === 0}>Exportar como CSV</DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
@@ -337,52 +337,52 @@ export default function ValidatedHistoryClient() {
                                     <Checkbox
                                         onCheckedChange={(checked) => setSelection(checked ? paginatedHistory.map(h => h.id) : [])}
                                         checked={paginatedHistory.length > 0 && paginatedHistory.every(h => selection.includes(h.id))}
-                                        aria-label="Select all on this page"
+                                        aria-label="Selecionar todos nesta página"
                                     />
                                 </TableHead>
                                 <TableHead>
                                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>
-                                        Batch Name {getSortIndicator('name')}
+                                        Nome do Lote {getSortIndicator('name')}
                                     </div>
                                 </TableHead>
                                 <TableHead>
                                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('deliveryBatchInfo', e.shiftKey)}>
-                                        Delivery Batch {getSortIndicator('deliveryBatchInfo')}
+                                        Lote de Entrega {getSortIndicator('deliveryBatchInfo')}
                                     </div>
                                 </TableHead>
                                 <TableHead>
                                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('projectName', e.shiftKey)}>
-                                        Project {getSortIndicator('projectName')}
+                                        Projeto {getSortIndicator('projectName')}
                                     </div>
                                 </TableHead>
                                 <TableHead>
                                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('validationStatus', e.shiftKey)}>
-                                        Outcome {getSortIndicator('validationStatus')}
+                                        Resultado {getSortIndicator('validationStatus')}
                                     </div>
                                 </TableHead>
                                 <TableHead>
                                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('validatorName', e.shiftKey)}>
-                                        Validator {getSortIndicator('validatorName')}
+                                        Validador {getSortIndicator('validatorName')}
                                     </div>
                                 </TableHead>
                                 <TableHead>
                                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('validationDate', e.shiftKey)}>
-                                        Date {getSortIndicator('validationDate')}
+                                        Data {getSortIndicator('validationDate')}
                                     </div>
                                 </TableHead>
-                                <TableHead className="w-[80px] text-center">Reason</TableHead>
-                                <TableHead><span className="sr-only">Actions</span></TableHead>
+                                <TableHead className="w-[80px] text-center">Razão</TableHead>
+                                <TableHead><span className="sr-only">Ações</span></TableHead>
                             </TableRow>
                             <TableRow>
                                 <TableHead/>
                                 <TableHead>
-                                    <Input placeholder="Filter name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/>
+                                    <Input placeholder="Filtrar nome..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/>
                                 </TableHead>
                                  <TableHead>
                                     <Input placeholder="Filter batch..." value={columnFilters['deliveryBatchInfo'] || ''} onChange={(e) => handleColumnFilterChange('deliveryBatchInfo', e.target.value)} className="h-8"/>
                                 </TableHead>
                                 <TableHead>
-                                    <Input placeholder="Filter project..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/>
+                                    <Input placeholder="Filtrar projeto..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/>
                                 </TableHead>
                                 <TableHead>
                                     <Input placeholder="Filter outcome..." value={columnFilters['validationStatus'] || ''} onChange={(e) => handleColumnFilterChange('validationStatus', e.target.value)} className="h-8"/>
@@ -391,10 +391,10 @@ export default function ValidatedHistoryClient() {
                                     <Input placeholder="Filter validator..." value={columnFilters['validatorName'] || ''} onChange={(e) => handleColumnFilterChange('validatorName', e.target.value)} className="h-8"/>
                                 </TableHead>
                                 <TableHead>
-                                    <Input placeholder="Filter date..." value={columnFilters['validationDate'] || ''} onChange={(e) => handleColumnFilterChange('validationDate', e.target.value)} className="h-8"/>
+                                    <Input placeholder="Filtrar data..." value={columnFilters['validationDate'] || ''} onChange={(e) => handleColumnFilterChange('validationDate', e.target.value)} className="h-8"/>
                                 </TableHead>
                                 <TableHead colSpan={2} className="text-right">
-                                    <Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Clear Filters</Button>
+                                    <Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Limpar Filtros</Button>
                                 </TableHead>
                             </TableRow>
                         </TableHeader>
@@ -412,7 +412,7 @@ export default function ValidatedHistoryClient() {
                                                     : selection.filter((id) => id !== book.id)
                                                 )
                                             }}
-                                            aria-label={`Select item ${book.name}`}
+                                            aria-label={`Selecionar item ${book.name}`}
                                             />
                                         </TableCell>
                                         <TableCell className="font-medium">
@@ -426,12 +426,12 @@ export default function ValidatedHistoryClient() {
                                             {book.validationStatus === 'Approved' ? (
                                                 <Badge variant="default" className="bg-green-600 hover:bg-green-600/90">
                                                     <CheckCircle2 className="mr-2 h-4 w-4"/>
-                                                    Approved
+                                                    Aprovado
                                                 </Badge>
                                             ) : (
                                                 <Badge variant="destructive">
                                                     <XCircle className="mr-2 h-4 w-4"/>
-                                                    Rejected
+                                                    Rejeitado
                                                 </Badge>
                                             )}
                                         </TableCell>
@@ -460,9 +460,9 @@ export default function ValidatedHistoryClient() {
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
-                                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                    <DropdownMenuLabel>Ações</DropdownMenuLabel>
                                                     <DropdownMenuItem onSelect={() => setDetailsState({ open: true, book })}>
-                                                        <Info className="mr-2 h-4 w-4" /> Details
+                                                        <Info className="mr-2 h-4 w-4" /> Detalhes
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
@@ -471,7 +471,7 @@ export default function ValidatedHistoryClient() {
                                 ))
                             ) : (
                             <TableRow><TableCell colSpan={9} className="h-24 text-center">
-                                    No validated history found matching your filters.
+                                    Nenhum histórico de validações encontrado correspondente aos filtros.
                                 </TableCell>
                             </TableRow>
                             )}
@@ -480,7 +480,7 @@ export default function ValidatedHistoryClient() {
                 </CardContent>
                 <CardFooter className="flex items-center justify-between">
                     <div className="text-xs text-muted-foreground">
-                    {selection.length > 0 ? `${selection.length} of ${sortedAndFilteredHistory.length} item(s) selected.` : `Showing ${paginatedHistory.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedHistory.length} of ${sortedAndFilteredHistory.length} validated batches`}
+                    {selection.length > 0 ? `${selection.length} de ${sortedAndFilteredHistory.length} item(s) selecionados.` : `A mostrar ${paginatedHistory.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedHistory.length} de ${sortedAndFilteredHistory.length} lotes validados`}
                     </div>
                     {totalPages > 1 && <PaginationNav />}
                 </CardFooter>
@@ -489,32 +489,32 @@ export default function ValidatedHistoryClient() {
             <Dialog open={detailsState.open} onOpenChange={(open) => !open && setDetailsState({ open: false, book: undefined })}>
                 <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Book Details</DialogTitle>
+                    <DialogTitle>Detalhes do Livro</DialogTitle>
                     <DialogDescription>{detailsState.book?.name}</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4 text-sm">
-                    <DetailItem label="Project" value={detailsState.book?.projectName} />
+                    <DetailItem label="Projeto" value={detailsState.book?.projectName} />
                     <Separator />
-                    <DetailItem label="Author" value={detailsState.book?.author || '—'} />
+                    <DetailItem label="Autor" value={detailsState.book?.author || '—'} />
                     <DetailItem label="ISBN" value={detailsState.book?.isbn || '—'} />
-                    <DetailItem label="Publication Year" value={detailsState.book?.publicationYear || '—'} />
+                    <DetailItem label="Ano de Publicação" value={detailsState.book?.publicationYear || '—'} />
                     <Separator />
-                    <DetailItem label="Priority" value={detailsState.book?.priority || '—'} />
-                    <DetailItem label="Outcome" value={detailsState.book?.validationStatus} />
-                    <DetailItem label="Validator" value={detailsState.book?.validatorName || 'N/A'} />
-                    <DetailItem label="Validated On" value={detailsState.book?.validationDate ? format(new Date(detailsState.book.validationDate), "PPP") : 'N/A'} />
+                    <DetailItem label="Prioridade" value={detailsState.book?.priority || '—'} />
+                    <DetailItem label="Resultado" value={detailsState.book?.validationStatus} />
+                    <DetailItem label="Validador" value={detailsState.book?.validatorName || 'N/A'} />
+                    <DetailItem label="Validado Em" value={detailsState.book?.validationDate ? format(new Date(detailsState.book.validationDate), "PPP") : 'N/A'} />
                     {detailsState.book?.info && (
                     <>
                     <Separator />
                     <div className="pt-2 grid grid-cols-1 gap-2">
-                        <p className="text-muted-foreground">Additional Info</p>
+                        <p className="text-muted-foreground">Informações Adicionais</p>
                         <p className="font-medium whitespace-pre-wrap">{detailsState.book.info}</p>
                     </div>
                     </>
                     )}
                 </div>
                 <DialogFooter>
-                    <Button type="button" variant="secondary" onClick={() => setDetailsState({ open: false, book: undefined })}>Close</Button>
+                    <Button type="button" variant="secondary" onClick={() => setDetailsState({ open: false, book: undefined })}>Fechar</Button>
                 </DialogFooter>
                 </DialogContent>
             </Dialog>

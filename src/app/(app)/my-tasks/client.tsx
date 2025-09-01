@@ -109,7 +109,7 @@ export default function MyTasksClient() {
   const handleApprove = (item: ValidationTask) => {
     setProvisionalDeliveryStatus(item.item.id, item.book.id, 'approved');
     setReviewState({ open: false, task: null });
-    toast({ title: `Book "${item.book.name}" Approved` });
+    toast({ title: `Livro "${item.book.name}" Aprovado` });
   };
   
   const handleRejectSubmit = () => {
@@ -118,7 +118,7 @@ export default function MyTasksClient() {
     setReviewState({ open: false, task: null });
     setRejectionDialog(null);
     setRejectionComment("");
-    toast({ title: `Book "${rejectionDialog.bookName}" Rejected`, variant: "destructive" });
+    toast({ title: `Livro "${rejectionDialog.bookName}" Rejeitado`, variant: "destructive" });
   };
 
   const openTaggingDialog = (doc: AppDocument) => {
@@ -155,18 +155,18 @@ export default function MyTasksClient() {
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="font-headline">My Tasks</CardTitle>
-          <CardDescription>Review and approve or reject the books assigned to you for validation.</CardDescription>
+          <CardTitle className="font-headline">Tarefas</CardTitle>
+          <CardDescription>Analise e aprove ou rejeite os livros atribuídos a você para validação.</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Book Name</TableHead>
-                <TableHead>Project</TableHead>
-                <TableHead>Delivery Batch Date</TableHead>
-                {canViewAll && <TableHead>Assigned To</TableHead>}
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>Nome do Livro</TableHead>
+                <TableHead>Projeto</TableHead>
+                <TableHead>Data do Lote de Entrega</TableHead>
+                {canViewAll && <TableHead>Atribuído a</TableHead>}
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -179,7 +179,7 @@ export default function MyTasksClient() {
                     {canViewAll && <TableCell>{task.assigneeName}</TableCell>}
                     <TableCell className="text-right">
                        <Button size="sm" onClick={() => setReviewState({ open: true, task })}>
-                         <Eye className="mr-2 h-4 w-4" /> Review Book
+                         <Eye className="mr-2 h-4 w-4" /> Analisar Livro
                        </Button>
                     </TableCell>
                   </TableRow>
@@ -187,7 +187,7 @@ export default function MyTasksClient() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={canViewAll ? 5 : 4} className="h-24 text-center">
-                    You have no pending validation tasks.
+                    Você não tem tarefas de validação pendentes.
                   </TableCell>
                 </TableRow>
               )}
@@ -200,9 +200,9 @@ export default function MyTasksClient() {
       <Dialog open={reviewState.open} onOpenChange={(isOpen) => !isOpen && setReviewState({ open: false, task: null })}>
           <DialogContent className="max-w-[90vw] h-[95vh] flex flex-col">
               <DialogHeader>
-                  <DialogTitle>Reviewing: {reviewState.task?.book.name}</DialogTitle>
+                  <DialogTitle>Analisar: {reviewState.task?.book.name}</DialogTitle>
                   <DialogDescription>
-                    Review all pages. You can tag individual pages with issues before making a final decision.
+                    Analise todas as páginas. Você pode marcar páginas individuais com problemas antes de tomar uma decisão final.
                   </DialogDescription>
               </DialogHeader>
               <div className="flex-1 min-h-0">
@@ -235,10 +235,10 @@ export default function MyTasksClient() {
               </div>
               <DialogFooter className="pt-4 border-t">
                   <Button variant="destructive" onClick={() => reviewState.task && setRejectionDialog({ open: true, bookId: reviewState.task.book.id, deliveryItemId: reviewState.task.item.id, bookName: reviewState.task.book.name })}>
-                      <ThumbsDown className="mr-2 h-4 w-4"/> Reject Book
+                      <ThumbsDown className="mr-2 h-4 w-4"/> Rejeitar Livro
                   </Button>
                   <Button onClick={() => reviewState.task && handleApprove(reviewState.task)}>
-                      <ThumbsUp className="mr-2 h-4 w-4"/> Approve Book
+                      <ThumbsUp className="mr-2 h-4 w-4"/> Aprovar Livro
                   </Button>
               </DialogFooter>
           </DialogContent>
@@ -248,24 +248,24 @@ export default function MyTasksClient() {
        <Dialog open={!!rejectionDialog} onOpenChange={(isOpen) => !isOpen && setRejectionDialog(null)}>
           <DialogContent>
               <DialogHeader>
-                  <DialogTitle>Reason for Rejection</DialogTitle>
+                  <DialogTitle>Motivo da Rejeição</DialogTitle>
                   <DialogDescription>
-                      Please provide a reason for rejecting the book "{rejectionDialog?.bookName}". This will be sent to the internal team for correction.
+                      Por favor, forneça um motivo para rejeitar o livro "{rejectionDialog?.bookName}". Isso será enviado à equipe interna para correção.
                   </DialogDescription>
               </DialogHeader>
               <div className="space-y-2 py-4">
-                  <Label htmlFor="rejection-comment">Comment</Label>
+                  <Label htmlFor="rejection-comment">Comentário</Label>
                   <Textarea 
                       id="rejection-comment"
-                      placeholder="e.g., Page 5 is blurry, please re-scan."
+                      placeholder="ex.: Página 5 está desfocada."
                       value={rejectionComment}
                       onChange={(e) => setRejectionComment(e.target.value)}
                   />
               </div>
               <DialogFooter>
-                  <Button variant="outline" onClick={() => setRejectionDialog(null)}>Cancel</Button>
+                  <Button variant="outline" onClick={() => setRejectionDialog(null)}>Cancelar</Button>
                   <Button variant="destructive" onClick={handleRejectSubmit} disabled={!rejectionComment.trim()}>
-                      Submit Rejection
+                      Enviar Rejeição
                   </Button>
               </DialogFooter>
           </DialogContent>
@@ -310,7 +310,7 @@ function TaggingDialog({ isOpen, onClose, doc, availableTags, onSave }: TaggingD
           <DialogHeader>
               <DialogTitle>Tag "{doc.name}"</DialogTitle>
               <DialogDescription>
-                  Select one or more rejection reasons for this page.
+                  Selecione um ou mais motivos de rejeição para esta página.
               </DialogDescription>
           </DialogHeader>
           <div className="py-4">
@@ -336,13 +336,13 @@ function TaggingDialog({ isOpen, onClose, doc, availableTags, onSave }: TaggingD
                                   </Label>
                               </div>
                           ))
-                      ) : (<p className="text-sm text-muted-foreground text-center">No rejection tags have been defined for this client.</p>)}
+                      ) : (<p className="text-sm text-muted-foreground text-center">Nenhuma tag de rejeição foi definida para este cliente.</p>)}
                   </div>
               </ScrollArea>
           </div>
           <DialogFooter>
-              <Button variant="outline" onClick={onClose}>Cancel</Button>
-              <Button onClick={() => onSave(selectedTags)}>Save Tags</Button>
+              <Button variant="outline" onClick={onClose}>Cancelar</Button>
+              <Button onClick={() => onSave(selectedTags)}>Guardar Tags</Button>
           </DialogFooter>
       </DialogContent>
   </Dialog>

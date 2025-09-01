@@ -145,7 +145,7 @@ export function HistoryStatsTab() {
         XLSX.utils.book_append_sheet(workbook, worksheet, 'History');
         XLSX.writeFile(workbook, 'history.xlsx');
     }
-    toast({ title: 'Export Complete', description: `${data.length} log entries exported.` });
+    toast({ title: "Exportação Concluída", description: `${data.length} registos de log exportados.` });
   };
 
   const handleKpiClick = (title: string, items: EnrichedAuditLog[]) => {
@@ -192,23 +192,23 @@ export function HistoryStatsTab() {
   return (
     <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-3">
-            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('All Log Entries', kpiData.total.items)}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Log Entries</CardTitle><History className="h-4 w-4 text-muted-foreground" /></CardHeader>
+            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Todos os Registos', kpiData.total.items)}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total de Registos</CardTitle><History className="h-4 w-4 text-muted-foreground" /></CardHeader>
                 <CardContent><div className="text-2xl font-bold">{kpiData.total.value}</div></CardContent>
             </Card>
-            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Todays Log Entries', kpiData.today.items)}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Logs Today</CardTitle><CalendarDays className="h-4 w-4 text-muted-foreground" /></CardHeader>
+            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Registos Hoje', kpiData.today.items)}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Registos Hoje</CardTitle><CalendarDays className="h-4 w-4 text-muted-foreground" /></CardHeader>
                 <CardContent><div className="text-2xl font-bold">{kpiData.today.value}</div></CardContent>
             </Card>
-            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('This Weeks Log Entries', kpiData.week.items)}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Logs This Week</CardTitle><ListChecks className="h-4 w-4 text-muted-foreground" /></CardHeader>
+            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Registos Esta Semana', kpiData.week.items)}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Registos Esta Semana</CardTitle><ListChecks className="h-4 w-4 text-muted-foreground" /></CardHeader>
                 <CardContent><div className="text-2xl font-bold">{kpiData.week.value}</div></CardContent>
             </Card>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
             <Card>
-                <CardHeader><CardTitle>Activity by Type</CardTitle></CardHeader>
+                <CardHeader><CardTitle>Atividade por Tipo</CardTitle></CardHeader>
                 <CardContent>
                      <ChartContainer config={{}} className="h-[250px] w-full">
                         <PieChart>
@@ -219,7 +219,7 @@ export function HistoryStatsTab() {
                 </CardContent>
             </Card>
             <Card>
-                <CardHeader><CardTitle>Activity (Last 14 Days)</CardTitle></CardHeader>
+                <CardHeader><CardTitle>Atividade (Últimos 14 Dias)</CardTitle></CardHeader>
                 <CardContent>
                     <ChartContainer config={chartConfig} className="h-[250px] w-full">
                         <LineChart data={activityByDayChartData} margin={{ left: 12, right: 12 }}>
@@ -238,17 +238,17 @@ export function HistoryStatsTab() {
         <CardHeader>
             <div className="flex justify-between items-center">
                 <div>
-                    <CardTitle>System Audit Log</CardTitle>
-                    <CardDescription>A complete log of all actions performed across the application.</CardDescription>
+                    <CardTitle>Registo de Auditoria do Sistema</CardTitle>
+                    <CardDescription>Um registo completo de todas as ações realizadas na aplicação.</CardDescription>
                 </div>
                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild><Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" /> Export</Button></DropdownMenuTrigger>
+                    <DropdownMenuTrigger asChild><Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" />Exportar</Button></DropdownMenuTrigger>
                     <DropdownMenuContent>
-                        <DropdownMenuLabel>Export Data</DropdownMenuLabel>
+                        <DropdownMenuLabel>Exportar Dados</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onSelect={() => exportData('xlsx')}>Export as XLSX</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => exportData('json')}>Export as JSON</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => exportData('csv')}>Export as CSV</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportData('xlsx')}>Exportar como XLSX</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportData('json')}>Exportar como JSON</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportData('csv')}>Exportar como CSV</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
@@ -263,13 +263,13 @@ export function HistoryStatsTab() {
                 <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('details')}>Details {getSortIndicator('details')}</div></TableHead>
             </TableRow>
             <TableRow>
-                <TableHead><Input placeholder="Filter date..." value={columnFilters['date'] || ''} onChange={e => setColumnFilters(p => ({...p, date: e.target.value}))} className="h-8"/></TableHead>
-                <TableHead><Input placeholder="Filter action..." value={columnFilters['action'] || ''} onChange={e => setColumnFilters(p => ({...p, action: e.target.value}))} className="h-8"/></TableHead>
-                <TableHead><Input placeholder="Filter user..." value={columnFilters['user'] || ''} onChange={e => setColumnFilters(p => ({...p, user: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filtrar data..." value={columnFilters['date'] || ''} onChange={e => setColumnFilters(p => ({...p, date: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filtrar ação..." value={columnFilters['action'] || ''} onChange={e => setColumnFilters(p => ({...p, action: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filtrar utilizador..." value={columnFilters['user'] || ''} onChange={e => setColumnFilters(p => ({...p, user: e.target.value}))} className="h-8"/></TableHead>
                 <TableHead>
                     <div className="flex items-center justify-between">
-                        <Input placeholder="Filter details..." value={columnFilters['details'] || ''} onChange={e => setColumnFilters(p => ({...p, details: e.target.value}))} className="h-8"/>
-                        <Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Clear Filters</Button>
+                        <Input placeholder="Filtrar detalhes..." value={columnFilters['details'] || ''} onChange={e => setColumnFilters(p => ({...p, details: e.target.value}))} className="h-8"/>
+                        <Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Limpar Filtros</Button>
                     </div>
                 </TableHead>
             </TableRow>
@@ -294,7 +294,7 @@ export function HistoryStatsTab() {
         </CardContent>
         <CardFooter className="flex items-center justify-between pt-2">
             <div className="text-xs text-muted-foreground">
-                {`Showing ${paginatedLogs.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0} to ${(currentPage - 1) * ITEMS_PER_PAGE + paginatedLogs.length} of ${sortedAndFilteredLogs.length} log entries`}
+                {`A mostrar ${paginatedLogs.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0} a ${(currentPage - 1) * ITEMS_PER_PAGE + paginatedLogs.length} de ${sortedAndFilteredLogs.length} registos`}
             </div>
             <PaginationNav />
         </CardFooter>
@@ -304,18 +304,18 @@ export function HistoryStatsTab() {
             <DialogContent className="max-w-4xl">
                 <DialogHeader>
                     <DialogTitle>{dialogState.title}</DialogTitle>
-                    <DialogDescription>Showing {filteredDialogItems.length} of {dialogState.items.length} log entries.</DialogDescription>
+                    <DialogDescription>A mostrar {filteredDialogItems.length} de {dialogState.items.length} registos.</DialogDescription>
                 </DialogHeader>
                 <div className="py-2">
                     <Input 
-                        placeholder="Filter logs..."
+                        placeholder="Filtrar registos..."
                         value={dialogFilter}
                         onChange={(e) => setDialogFilter(e.target.value)}
                     />
                 </div>
                 <div className="max-h-[60vh] overflow-y-auto pr-4">
                      <Table>
-                        <TableHeader><TableRow><TableHead>Action</TableHead><TableHead>User</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
+                        <TableHeader><TableRow><TableHead>Ação</TableHead><TableHead>Utilizador</TableHead><TableHead>Data</TableHead></TableRow></TableHeader>
                         <TableBody>
                             {filteredDialogItems.map(log => (
                                 <TableRow key={log.id}>

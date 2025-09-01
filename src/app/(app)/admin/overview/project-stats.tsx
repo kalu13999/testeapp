@@ -156,7 +156,7 @@ export function ProjectStatsTab() {
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Projects');
         XLSX.writeFile(workbook, 'projects.xlsx');
     }
-    toast({ title: 'Export Complete', description: `${data.length} projects exported.` });
+    toast({ title: "Exportação Concluída", description: `${data.length} projetos exportados.` });
   };
   
   const handleKpiClick = (title: string, items: EnrichedProject[]) => {
@@ -167,27 +167,27 @@ export function ProjectStatsTab() {
   return (
     <div className="space-y-6">
        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Total Projects', allProjects)}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Projects</CardTitle><Briefcase className="h-4 w-4 text-muted-foreground" /></CardHeader>
+            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Total Projetos', allProjects)}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Projetos</CardTitle><Briefcase className="h-4 w-4 text-muted-foreground" /></CardHeader>
                 <CardContent><div className="text-2xl font-bold">{kpiData.total.value}</div></CardContent>
             </Card>
-            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('In Progress Projects', kpiData.inProgress.items)}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">In Progress</CardTitle><Clock className="h-4 w-4 text-muted-foreground" /></CardHeader>
+            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Projetos em Execução', kpiData.inProgress.items)}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Em Execução</CardTitle><Clock className="h-4 w-4 text-muted-foreground" /></CardHeader>
                 <CardContent><div className="text-2xl font-bold">{kpiData.inProgress.value}</div></CardContent>
             </Card>
-             <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('On Hold Projects', kpiData.onHold.items)}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">On Hold</CardTitle><CircleOff className="h-4 w-4 text-muted-foreground" /></CardHeader>
+             <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Projetos em Espera', kpiData.onHold.items)}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Em Espera</CardTitle><CircleOff className="h-4 w-4 text-muted-foreground" /></CardHeader>
                 <CardContent><div className="text-2xl font-bold">{kpiData.onHold.value}</div></CardContent>
             </Card>
-            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Completed Projects', kpiData.complete.items)}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Complete</CardTitle><CheckCircle className="h-4 w-4 text-muted-foreground" /></CardHeader>
+            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Projetos Concluídos', kpiData.complete.items)}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Concluído</CardTitle><CheckCircle className="h-4 w-4 text-muted-foreground" /></CardHeader>
                 <CardContent><div className="text-2xl font-bold">{kpiData.complete.value}</div></CardContent>
             </Card>
         </div>
         
         <div className="grid gap-6 md:grid-cols-2">
             <Card>
-                <CardHeader><CardTitle>Projects by Status</CardTitle></CardHeader>
+                <CardHeader><CardTitle>Projetos por Estado</CardTitle></CardHeader>
                 <CardContent>
                      <ChartContainer config={{}} className="h-[250px] w-full">
                         <PieChart>
@@ -199,7 +199,7 @@ export function ProjectStatsTab() {
                 </CardContent>
             </Card>
             <Card>
-                <CardHeader><CardTitle>Top 10 Projects by Book Count</CardTitle></CardHeader>
+                <CardHeader><CardTitle>Top 10 Projetos por Contagem de Livros</CardTitle></CardHeader>
                 <CardContent>
                     <ChartContainer config={chartConfig} className="h-[250px] w-full">
                         <BarChart data={booksPerProjectChartData} layout="vertical" margin={{ left: 50 }}>
@@ -218,17 +218,17 @@ export function ProjectStatsTab() {
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle>All Projects</CardTitle>
-              <CardDescription>A detailed list of all projects in the system.</CardDescription>
+              <CardTitle>Todos os Projetos</CardTitle>
+              <CardDescription>Uma lista detalhada de todos os projetos no sistema.</CardDescription>
             </div>
             <DropdownMenu>
-              <DropdownMenuTrigger asChild><Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" /> Export</Button></DropdownMenuTrigger>
+              <DropdownMenuTrigger asChild><Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" />Exportar</Button></DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuLabel>Export Data</DropdownMenuLabel>
+                <DropdownMenuLabel>Exportar Dados</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => exportData('xlsx')}>Export as XLSX</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => exportData('json')}>Export as JSON</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => exportData('csv')}>Export as CSV</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => exportData('xlsx')}>Exportar como XLSX</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => exportData('json')}>Exportar como JSON</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => exportData('csv')}>Exportar como CSV</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -237,21 +237,21 @@ export function ProjectStatsTab() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name')}>Project Name {getSortIndicator('name')}</div></TableHead>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('clientName')}>Client {getSortIndicator('clientName')}</div></TableHead>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('status')}>Status {getSortIndicator('status')}</div></TableHead>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('timeline')}>Timeline {getSortIndicator('timeline')}</div></TableHead>
-                <TableHead>Progress</TableHead>
-                <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('totalExpected')}>Total Pages {getSortIndicator('totalExpected')}</div></TableHead>
-                <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('finalizedBooksCount')}>Finalized Books {getSortIndicator('finalizedBooksCount')}</div></TableHead>
-                <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('errorBooksCount')}>Books with Errors {getSortIndicator('errorBooksCount')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name')}>Nome do Projeto {getSortIndicator('name')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('clientName')}>Cliente {getSortIndicator('clientName')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('status')}>Estado {getSortIndicator('status')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('timeline')}>Linha do Tempo {getSortIndicator('timeline')}</div></TableHead>
+                <TableHead>Progresso</TableHead>
+                <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('totalExpected')}>Total de Páginas {getSortIndicator('totalExpected')}</div></TableHead>
+                <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('finalizedBooksCount')}>Livros Finalizados {getSortIndicator('finalizedBooksCount')}</div></TableHead>
+                <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('errorBooksCount')}>Livros com Erros {getSortIndicator('errorBooksCount')}</div></TableHead>
               </TableRow>
               <TableRow>
-                <TableHead><Input placeholder="Filter name..." value={columnFilters['name'] || ''} onChange={e => setColumnFilters(p => ({...p, name: e.target.value}))} className="h-8"/></TableHead>
-                <TableHead><Input placeholder="Filter client..." value={columnFilters['clientName'] || ''} onChange={e => setColumnFilters(p => ({...p, clientName: e.target.value}))} className="h-8"/></TableHead>
-                <TableHead><Input placeholder="Filter status..." value={columnFilters['status'] || ''} onChange={e => setColumnFilters(p => ({...p, status: e.target.value}))} className="h-8"/></TableHead>
-                <TableHead><Input placeholder="Filter timeline..." value={columnFilters['timeline'] || ''} onChange={e => setColumnFilters(p => ({...p, timeline: e.target.value}))} className="h-8"/></TableHead>
-                <TableHead colSpan={4}><Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Clear Filters</Button></TableHead>
+                <TableHead><Input placeholder="Filtrar nome..." value={columnFilters['name'] || ''} onChange={e => setColumnFilters(p => ({...p, name: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filtrar cliente..." value={columnFilters['clientName'] || ''} onChange={e => setColumnFilters(p => ({...p, clientName: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filtrar estado..." value={columnFilters['status'] || ''} onChange={e => setColumnFilters(p => ({...p, status: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filtrar linha temporal..." value={columnFilters['timeline'] || ''} onChange={e => setColumnFilters(p => ({...p, timeline: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead colSpan={4}><Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Limpar Filtros</Button></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -276,18 +276,18 @@ export function ProjectStatsTab() {
             <DialogContent className="max-w-4xl">
                 <DialogHeader>
                     <DialogTitle>{dialogState.title}</DialogTitle>
-                    <DialogDescription>Showing {filteredDialogItems.length} of {dialogState.items.length} projects.</DialogDescription>
+                    <DialogDescription>A mostrar {filteredDialogItems.length} de {dialogState.items.length} projetos.</DialogDescription>
                 </DialogHeader>
                 <div className="py-2">
-                    <Input 
-                        placeholder="Filter projects..."
+                    <Input
+                        placeholder="Filtrar projetos..."
                         value={dialogFilter}
                         onChange={(e) => setDialogFilter(e.target.value)}
                     />
                 </div>
                 <div className="max-h-[60vh] overflow-y-auto pr-4">
                      <Table>
-                        <TableHeader><TableRow><TableHead>Project</TableHead><TableHead>Client</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                        <TableHeader><TableRow><TableHead>Projeto</TableHead><TableHead>Cliente</TableHead><TableHead>Estado</TableHead></TableRow></TableHeader>
                         <TableBody>
                             {filteredDialogItems.map(project => (
                                 <TableRow key={project.id}>

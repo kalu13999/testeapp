@@ -192,7 +192,7 @@ export default function ClientsClient() {
     if (data.length === 0) return;
     const jsonString = JSON.stringify(data, null, 2);
     downloadFile(jsonString, 'clients_export.json', 'application/json');
-    toast({ title: "Export Successful", description: `${data.length} clients exported as JSON.` });
+    toast({ title: "Exportação Concluída", description: `${data.length} clientes exportados em formato JSON.` });
   }
 
   const exportCSV = (data: Client[]) => {
@@ -211,7 +211,7 @@ export default function ClientsClient() {
         )
     ].join('\n');
     downloadFile(csvContent, 'clients_export.csv', 'text/csv;charset=utf-8;');
-    toast({ title: "Export Successful", description: `${data.length} clients exported as CSV.` });
+    toast({ title: "Exportação Concluída", description: `${data.length} clientes exportados em formato CSV.` });
   }
 
   const exportXLSX = (data: Client[]) => {
@@ -220,7 +220,7 @@ export default function ClientsClient() {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Clients");
     XLSX.writeFile(workbook, "clients_export.xlsx");
-    toast({ title: "Export Successful", description: `${data.length} clients exported as XLSX.` });
+    toast({ title: "Exportação Concluída", description: `${data.length} clientes exportados em formato XLSX.` });
   }
 
   const PaginationNav = () => {
@@ -280,32 +280,32 @@ export default function ClientsClient() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-headline text-3xl font-bold tracking-tight">Clients</h1>
-          <p className="text-muted-foreground">Manage all company clients.</p>
+          <h1 className="font-headline text-3xl font-bold tracking-tight">Clientes</h1>
+          <p className="text-muted-foreground">Gerir todos os clientes da empresa.</p>
         </div>
         <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="sm" variant="outline" className="h-9 gap-1">
                     <Download className="h-3.5 w-3.5" />
-                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Export</span>
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Exportar</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Export Selected ({selection.length})</DropdownMenuLabel>
-                  <DropdownMenuItem onSelect={() => exportXLSX(selectedClients)} disabled={selection.length === 0}>Export as XLSX</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => exportJSON(selectedClients)} disabled={selection.length === 0}>Export as JSON</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => exportCSV(selectedClients)} disabled={selection.length === 0}>Export as CSV</DropdownMenuItem>
+                  <DropdownMenuLabel>Exportar Seleção ({selection.length})</DropdownMenuLabel>
+                  <DropdownMenuItem onSelect={() => exportXLSX(selectedClients)} disabled={selection.length === 0}>Exportar como XLSX</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportJSON(selectedClients)} disabled={selection.length === 0}>Exportar como JSON</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportCSV(selectedClients)} disabled={selection.length === 0}>Exportar como CSV</DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuLabel>Export All ({sortedAndFilteredClients.length})</DropdownMenuLabel>
-                  <DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredClients)} disabled={sortedAndFilteredClients.length === 0}>Export as XLSX</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredClients)} disabled={sortedAndFilteredClients.length === 0}>Export as JSON</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredClients)} disabled={sortedAndFilteredClients.length === 0}>Export as CSV</DropdownMenuItem>
+                  <DropdownMenuLabel>Exportar Todos ({sortedAndFilteredClients.length})</DropdownMenuLabel>
+                  <DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredClients)} disabled={sortedAndFilteredClients.length === 0}>Exportar como XLSX</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredClients)} disabled={sortedAndFilteredClients.length === 0}>Exportar como JSON</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredClients)} disabled={sortedAndFilteredClients.length === 0}>Exportar como CSV</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <Button onClick={() => openDialog('new')}>
                 <PlusCircle className="mr-2 h-4 w-4" />
-                New Client
+               Novo Cliente
             </Button>
         </div>
       </div>
@@ -323,33 +323,33 @@ export default function ClientsClient() {
                 </TableHead>
                 <TableHead>
                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>
-                        Client Name {getSortIndicator('name')}
+                        Nome do Cliente {getSortIndicator('name')}
                     </div>
                 </TableHead>
                 <TableHead>
                      <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('contactEmail', e.shiftKey)}>
-                        Contact Email {getSortIndicator('contactEmail')}
+                        Email de Contato {getSortIndicator('contactEmail')}
                     </div>
                 </TableHead>
                 <TableHead>
                      <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('contactPhone', e.shiftKey)}>
-                        Phone {getSortIndicator('contactPhone')}
+                        Telefone {getSortIndicator('contactPhone')}
                     </div>
                 </TableHead>
                 <TableHead>
                      <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('since', e.shiftKey)}>
-                        Client Since {getSortIndicator('since')}
+                        Cliente Desde {getSortIndicator('since')}
                     </div>
                 </TableHead>
                 <TableHead>
-                  <span className="sr-only">Actions</span>
+                  <span className="sr-only">Ações</span>
                 </TableHead>
               </TableRow>
               <TableRow>
                     <TableHead/>
                     <TableHead>
                         <Input
-                            placeholder="Filter by name..."
+                            placeholder="Filtrar nome..."
                             value={columnFilters['name'] || ''}
                             onChange={(e) => handleColumnFilterChange('name', e.target.value)}
                             className="h-8"
@@ -357,7 +357,7 @@ export default function ClientsClient() {
                     </TableHead>
                     <TableHead>
                         <Input
-                            placeholder="Filter by email..."
+                            placeholder="Filtrar e-mail..."
                             value={columnFilters['contactEmail'] || ''}
                             onChange={(e) => handleColumnFilterChange('contactEmail', e.target.value)}
                             className="h-8"
@@ -365,7 +365,7 @@ export default function ClientsClient() {
                     </TableHead>
                     <TableHead>
                         <Input
-                            placeholder="Filter by phone..."
+                            placeholder="Filtrar telefone..."
                             value={columnFilters['contactPhone'] || ''}
                             onChange={(e) => handleColumnFilterChange('contactPhone', e.target.value)}
                             className="h-8"
@@ -373,7 +373,7 @@ export default function ClientsClient() {
                     </TableHead>
                     <TableHead>
                         <Input
-                            placeholder="Filter by date..."
+                            placeholder="Filtrar data..."
                             value={columnFilters['since'] || ''}
                             onChange={(e) => handleColumnFilterChange('since', e.target.value)}
                             className="h-8"
@@ -411,16 +411,16 @@ export default function ClientsClient() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuLabel>Ações</DropdownMenuLabel>
                         <DropdownMenuItem onSelect={() => openDialog('details', client)}>
-                           <Info className="mr-2 h-4 w-4" /> Details
+                           <Info className="mr-2 h-4 w-4" /> Detalhes
                         </DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => openDialog('edit', client)}>
-                           <Edit className="mr-2 h-4 w-4" /> Edit
+                           <Edit className="mr-2 h-4 w-4" /> Editar
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onSelect={() => openDialog('delete', client)} className="text-destructive">
-                           <Trash2 className="mr-2 h-4 w-4" /> Delete
+                           <Trash2 className="mr-2 h-4 w-4" /> Eliminar
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -429,7 +429,7 @@ export default function ClientsClient() {
               )) : (
                  <TableRow>
                   <TableCell colSpan={6} className="h-24 text-center">
-                    No clients found matching your search.
+                    Nenhum cliente encontrado correspondente à sua pesquisa.
                   </TableCell>
                 </TableRow>
               )}
@@ -438,7 +438,7 @@ export default function ClientsClient() {
         </CardContent>
         <CardFooter className="flex items-center justify-between">
             <div className="text-xs text-muted-foreground">
-               {selection.length > 0 ? `${selection.length} of ${sortedAndFilteredClients.length} client(s) selected.` : `Showing ${paginatedClients.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedClients.length} of ${sortedAndFilteredClients.length} clients`}
+               {selection.length > 0 ? `${selection.length} de ${sortedAndFilteredClients.length} cliente(s) selecionado(s).` : `A mostrar ${paginatedClients.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedClients.length} de ${sortedAndFilteredClients.length} clientes`}
             </div>
             <PaginationNav />
         </CardFooter>
@@ -447,9 +447,9 @@ export default function ClientsClient() {
       <Dialog open={dialogState.open && (dialogState.type === 'new' || dialogState.type === 'edit')} onOpenChange={closeDialog}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{dialogState.type === 'new' ? 'Create New Client' : 'Edit Client'}</DialogTitle>
+            <DialogTitle>{dialogState.type === 'new' ? 'Criar Novo Cliente' : 'Editar Cliente'}</DialogTitle>
             <DialogDescription>
-              {dialogState.type === 'new' ? 'Add a new client to the system.' : `Editing client: ${dialogState.data?.name}`}
+              {dialogState.type === 'new' ? 'Adicionar um novo cliente ao sistema.' : `Editar cliente: ${dialogState.data?.name}`}
             </DialogDescription>
           </DialogHeader>
           <ClientForm client={dialogState.data} onSave={handleSave} onCancel={closeDialog} />
@@ -459,14 +459,14 @@ export default function ClientsClient() {
       <AlertDialog open={dialogState.open && dialogState.type === 'delete'} onOpenChange={closeDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Tem a certeza?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the client <span className="font-bold">{dialogState.data?.name}</span> and all of its associated projects and books.
+              Esta ação não pode ser desfeita. Isso irá eliminar permanentemente o cliente <span className="font-bold">{dialogState.data?.name}</span> e todos os seus projetos e livros associados.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={closeDialog}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+            <AlertDialogCancel onClick={closeDialog}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Eliminar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -474,16 +474,16 @@ export default function ClientsClient() {
       <Dialog open={dialogState.open && dialogState.type === 'details'} onOpenChange={closeDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Client Details</DialogTitle>
+            <DialogTitle>Detalhes do Cliente</DialogTitle>
             <DialogDescription>{dialogState.data?.name}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4 text-sm">
             <div className="grid grid-cols-3 items-center gap-x-4">
-              <p className="text-muted-foreground">Contact Email</p>
+              <p className="text-muted-foreground">Email de Contato</p>
               <p className="col-span-2 font-medium">{dialogState.data?.contactEmail}</p>
             </div>
             <div className="grid grid-cols-3 items-center gap-x-4">
-              <p className="text-muted-foreground">Contact Phone</p>
+              <p className="text-muted-foreground">Telefone de Contato</p>
               <p className="col-span-2 font-medium">{dialogState.data?.contactPhone}</p>
             </div>
              <div className="grid grid-cols-3 items-center gap-x-4">
@@ -491,22 +491,22 @@ export default function ClientsClient() {
               <a href={dialogState.data?.website} target="_blank" rel="noopener noreferrer" className="col-span-2 font-medium text-primary hover:underline">{dialogState.data?.website}</a>
             </div>
             <div className="grid grid-cols-3 items-start gap-x-4">
-              <p className="text-muted-foreground">Address</p>
+              <p className="text-muted-foreground">Morada</p>
               <p className="col-span-2 font-medium">{dialogState.data?.address}</p>
             </div>
              <div className="grid grid-cols-3 items-center gap-x-4">
-              <p className="text-muted-foreground">Client Since</p>
+              <p className="text-muted-foreground">Cliente Desde</p>
               <p className="col-span-2 font-medium">{dialogState.data?.since ? format(new Date(dialogState.data.since), "yyyy-MM-dd") : '—'}</p>
             </div>
             {dialogState.data?.info && (
               <div className="grid grid-cols-3 items-start gap-x-4">
-                <p className="text-muted-foreground">Additional Info</p>
+                <p className="text-muted-foreground">Informação Adicional</p>
                 <p className="col-span-2 font-medium whitespace-pre-wrap">{dialogState.data.info}</p>
               </div>
             )}
           </div>
            <DialogFooter>
-              <Button type="button" variant="secondary" onClick={closeDialog}>Close</Button>
+              <Button type="button" variant="secondary" onClick={closeDialog}>Fechar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

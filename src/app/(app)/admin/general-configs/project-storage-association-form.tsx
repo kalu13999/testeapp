@@ -23,7 +23,7 @@ import { Textarea } from "@/components/ui/textarea"
 
 const formSchema = z.object({
   projectId: z.string({ required_error: "A project is required." }),
-  storageId: z.string({ required_error: "A storage location is required." }),
+  storageId: z.number({ required_error: "A storage location is required." }),
   peso: z.coerce.number().min(1, "Weight must be at least 1."),
   minimo_diario_fixo: z.coerce.number().min(0, "Cannot be negative."),
   percentual_minimo_diario: z.coerce.number().min(0).max(100, "Must be between 0 and 100."),
@@ -54,7 +54,7 @@ export function ProjectStorageAssociationForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
       projectId: association?.projectId || "",
-      storageId: association?.storageId || "",
+      storageId: association?.storageId || 0,
       peso: association?.peso || 1,
       minimo_diario_fixo: association?.minimo_diario_fixo || 0,
       percentual_minimo_diario: association?.percentual_minimo_diario || 0,
@@ -66,7 +66,7 @@ export function ProjectStorageAssociationForm({
   React.useEffect(() => {
     form.reset({
       projectId: association?.projectId || "",
-      storageId: association?.storageId || "",
+      storageId: association?.storageId || 0,
       peso: association?.peso || 1,
       minimo_diario_fixo: association?.minimo_diario_fixo || 0,
       percentual_minimo_diario: association?.percentual_minimo_diario || 0,
@@ -88,11 +88,11 @@ export function ProjectStorageAssociationForm({
             name="projectId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Project</FormLabel>
+                <FormLabel>Projeto</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isEditing}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a project" />
+                      <SelectValue placeholder="Selecionar um projeto" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -112,11 +112,11 @@ export function ProjectStorageAssociationForm({
             name="storageId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Storage</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value} disabled={isEditing}>
+                <FormLabel>Armazenamento</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value.toString()} disabled={isEditing}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a storage location" />
+                      <SelectValue placeholder="Selecionar um armazenamento" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -139,9 +139,9 @@ export function ProjectStorageAssociationForm({
             name="peso"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Distribution Weight</FormLabel>
+                <FormLabel>Peso de Distribuição</FormLabel>
                 <FormControl><Input type="number" {...field} /></FormControl>
-                <FormDescription className="text-xs">Higher weight gets more books.</FormDescription>
+                <FormDescription className="text-xs">Peso maior recebe mais livros.</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -151,9 +151,9 @@ export function ProjectStorageAssociationForm({
             name="minimo_diario_fixo"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Daily Fixed Minimum</FormLabel>
+                <FormLabel>Mínimo Fixo Diário</FormLabel>
                 <FormControl><Input type="number" {...field} /></FormControl>
-                 <FormDescription className="text-xs">Min. pages before weighting.</FormDescription>
+                 <FormDescription className="text-xs">Min. páginas antes da ponderação.</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -163,9 +163,9 @@ export function ProjectStorageAssociationForm({
             name="percentual_minimo_diario"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Daily Percent Minimum</FormLabel>
+                <FormLabel>% Mínimo Diário</FormLabel>
                 <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
-                <FormDescription className="text-xs">Min. % of daily total.</FormDescription>
+                <FormDescription className="text-xs">Min. % do total diário.</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -177,9 +177,9 @@ export function ProjectStorageAssociationForm({
           name="descricao"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Description</FormLabel>
+              <FormLabel>Descrição</FormLabel>
               <FormControl>
-                <Textarea placeholder="Optional: Describe the purpose of this link..." {...field} />
+                <Textarea placeholder="Opcional: Descrever a associação..." {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -188,9 +188,9 @@ export function ProjectStorageAssociationForm({
         
         <div className="flex justify-end gap-2 pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
+            Cancelar
           </Button>
-          <Button type="submit">Save Association</Button>
+          <Button type="submit">Guardar Associação</Button>
         </div>
       </form>
     </Form>

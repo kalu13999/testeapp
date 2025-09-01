@@ -144,13 +144,13 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
           <CardTitle className="font-headline">{config.title}</CardTitle>
           <CardDescription>{config.description}</CardDescription>
             <div className="pt-4">
-              <Label htmlFor="storage-select">Filter by Storage Location</Label>
+              <Label htmlFor="storage-select">Filtrar por Local de Armazenamento</Label>
                <Select value={selectedStorageId} onValueChange={setSelectedStorageId}>
                   <SelectTrigger id="storage-select" className="w-[300px]">
-                      <SelectValue placeholder="Select a storage..." />
+                      <SelectValue placeholder="Selecionar um armazenamento..." />
                   </SelectTrigger>
                   <SelectContent>
-                      <SelectItem value="all">All Storages</SelectItem>
+                      <SelectItem value="all">Todos os Armazenamentos</SelectItem>
                       {storages.map(storage => (
                           <SelectItem key={storage.id} value={String(storage.id)}>{storage.nome}</SelectItem>
                       ))}
@@ -174,14 +174,14 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
                           <StatusIcon className={`h-5 w-5 ${statusColor} ${statusAnimation}`} />
                           <div>
                               <p className="font-semibold text-base">{batch.timestampStr}</p>
-                              <p className="text-sm text-muted-foreground">{batch.items.length} book(s) in this batch</p>
-                              <p className="text-xs text-muted-foreground">Storage: {batch.storageName}</p>
+                              <p className="text-sm text-muted-foreground">{batch.items.length} livro(s) neste lote</p>
+                              <p className="text-xs text-muted-foreground">Armazenamento: {batch.storageName}</p>
                           </div>
                         </div>
                       </AccordionTrigger>
                       <div className="px-4 w-1/3">
                         <div className="flex justify-between items-center mb-1">
-                            <span className="text-sm font-medium">Overall Progress</span>
+                            <span className="text-sm font-medium">Progresso Geral</span>
                             <span className="text-sm text-muted-foreground">{batch.progress || 0}%</span>
                         </div>
                          <Progress value={batch.progress || 0} />
@@ -189,13 +189,13 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
                       <div className="px-4">
                         {batch.status === 'In Progress' && (
                            <Button size="sm" onClick={() => openConfirmationDialog(batch, "Complete")}>
-                             Mark as Complete
+                             Marcar Completo
                            </Button>
                         )}
                          {batch.status === 'Failed' && (
                            <Button size="sm" variant="destructive" onClick={() => openConfirmationDialog(batch, "Open Protocol")}>
                             <RefreshCw className="mr-2 h-4 w-4"/>
-                             Retry/Resolve
+                             Reprocessar/Corrigir
                            </Button>
                         )}
                       </div>
@@ -203,20 +203,20 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
                     <AccordionContent className="px-4 py-4 space-y-4">
                        <div className="text-right">
                           <Button asChild variant="link" size="sm">
-                              <Link href={`/processing-batches/${batch.id}`}>View Full Details</Link>
+                              <Link href={`/processing-batches/${batch.id}`}>Ver Detalhes Completos</Link>
                           </Button>
                       </div>
 
                        <div>
-                         <h4 className="text-sm font-medium mb-2">Books in Batch</h4>
+                         <h4 className="text-sm font-medium mb-2">Livros no Lote</h4>
                          <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Book Name</TableHead>
-                              <TableHead>Status</TableHead>
-                              <TableHead>Start Time</TableHead>
-                              <TableHead>End Time</TableHead>
-                              <TableHead className="text-right">Pages</TableHead>
+                              <TableHead>Nome do Livro</TableHead>
+                              <TableHead>Estado</TableHead>
+                              <TableHead>Início</TableHead>
+                              <TableHead>Fim</TableHead>
+                              <TableHead className="text-right">Páginas</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -248,7 +248,7 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
                                     <span className="text-muted-foreground">{format(new Date(log.timestamp), 'HH:mm:ss')}</span>
                                     <span className={`ml-2 ${log.level === 'ERROR' ? 'text-destructive' : ''}`}>{log.message}</span>
                                  </p>
-                               )) : <p>No log entries yet.</p>}
+                               )) : <p>Nenhum log encontrado.</p>}
                             </div>
                            </ScrollArea>
                       </div>
@@ -266,7 +266,7 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
         </CardContent>
         <CardFooter>
           <div className="text-xs text-muted-foreground">
-            Showing <strong>{batchesForDisplay.length}</strong> processing batch(es).
+            A mostrar <strong>{batchesForDisplay.length}</strong> lote(s) em processamento.
           </div>
         </CardFooter>
       </Card>
@@ -281,17 +281,17 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
             </DialogTitle>
             <DialogDescription>
               {confirmationState.status === 'Complete' &&
-                `This will mark the entire batch from "${confirmationState.batch?.timestampStr}" as complete and move all associated books to the next stage. This action cannot be undone.`}
+                `Isto marcará o lote inteiro de "${confirmationState.batch?.timestampStr}" como completo e moverá todos os livros associados para a próxima etapa. Esta ação não pode ser desfeita.`}
 
               {confirmationState.status === 'Open Protocol' &&
-                `This will open the failure protocol for the batch from "${confirmationState.batch?.timestampStr}". Use this to investigate and resolve issues before retrying.`}
+                `Isto abrirá o protocolo de falha para o lote de "${confirmationState.batch?.timestampStr}". Use isto para investigar e resolver problemas antes de tentar novamente.`}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={closeConfirmationDialog}>
-              Cancel
+              Cancelar
             </Button>
-            <Button onClick={handleConfirm}>Confirm</Button>
+            <Button onClick={handleConfirm}>Confirmar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

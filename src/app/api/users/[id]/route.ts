@@ -37,7 +37,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   let connection: PoolConnection | null = null;
   try {
     const userData = await request.json();
-    const { name, email, username, password, role, phone, jobTitle, department, info, clientId, projectIds } = userData;
+    const { name, email, username, password, role, phone, jobTitle, department, info, clientId, projectIds, lastLogin } = userData;
 
     connection = await getConnection();
     await connection.beginTransaction();
@@ -52,6 +52,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     if (jobTitle !== undefined) updateFields.jobTitle = jobTitle;
     if (department !== undefined) updateFields.department = department;
     if (info !== undefined) updateFields.info = info;
+    if (lastLogin !== undefined) updateFields.lastLogin = lastLogin;
     
     // Explicitly handle clientId based on role
     if (role !== undefined) {

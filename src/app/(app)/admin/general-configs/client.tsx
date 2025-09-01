@@ -11,16 +11,16 @@ export default function GeneralConfigsClient() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-headline text-3xl font-bold tracking-tight">General Configurations</h1>
+        <h1 className="font-headline text-3xl font-bold tracking-tight">Configurações Gerais</h1>
         <p className="text-muted-foreground">
-          Manage core application settings like storage locations, scanners, and their associations with projects.
+          Gerir configurações principais do aplicativo, como locais de armazenamento, scanners e suas associações com projetos.
         </p>
       </div>
       <Tabs defaultValue="storages">
         <TabsList>
-          <TabsTrigger value="storages">Storages</TabsTrigger>
-           <TabsTrigger value="scanners">Scanners</TabsTrigger>
-          <TabsTrigger value="project-storages">Project-Storage</TabsTrigger>
+          <TabsTrigger value="storages">Armazenamento</TabsTrigger>
+          <TabsTrigger value="scanners">Scanners</TabsTrigger>
+          <TabsTrigger value="project-storages">Associações de Projetos</TabsTrigger>
         </TabsList>
         <TabsContent value="storages" className="pt-4">
           <StorageConfigTab />

@@ -67,9 +67,9 @@ export function RoleForm({ initialData, allPermissions, onSave, onCancel, isEdit
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Role Name</FormLabel>
+              <FormLabel>Nome Perfil</FormLabel>
               <FormControl>
-                <Input placeholder="e.g. Quality Control Manager" {...field} disabled={isEditing} />
+                <Input placeholder="ex.: Gestor de Qualidade" {...field} disabled={isEditing} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -81,7 +81,7 @@ export function RoleForm({ initialData, allPermissions, onSave, onCancel, isEdit
           render={() => (
             <FormItem>
               <div className="mb-4">
-                <FormLabel className="text-base">Permissions</FormLabel>
+                <FormLabel className="text-base">Permissões</FormLabel>
               </div>
               <ScrollArea className="h-72 w-full rounded-md border p-4">
                 <div className="space-y-4">
@@ -150,9 +150,9 @@ export function RoleForm({ initialData, allPermissions, onSave, onCancel, isEdit
         />
         <div className="flex justify-end gap-2 pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
+            Cancelar
           </Button>
-          <Button type="submit">Save Role</Button>
+          <Button type="submit">Guardar Perfil</Button>
         </div>
       </form>
     </Form>

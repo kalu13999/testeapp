@@ -50,7 +50,7 @@ interface ProjectStorageFormProps {
 type FormData = Omit<ProjectStorage, 'projectId'>
 
 const defaultFormData: FormData = {
-  storageId: '',
+  storageId: 0,
   peso: 1,
   minimo_diario_fixo: 0,
   percentual_minimo_diario: 0,
@@ -61,7 +61,7 @@ const defaultFormData: FormData = {
 export function ProjectStorageForm({ open, onOpenChange, project }: ProjectStorageFormProps) {
   const { storages, projectStorages, addProjectStorage, updateProjectStorage, deleteProjectStorage } = useAppContext();
   const [formData, setFormData] = React.useState<FormData>(defaultFormData);
-  const [editingStorageId, setEditingStorageId] = React.useState<string | null>(null);
+  const [editingStorageId, setEditingStorageId] = React.useState<number | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = React.useState<{ open: boolean, association?: ProjectStorage & { storageName?: string }}>({ open: false });
 
   const { toast } = useToast();
@@ -93,14 +93,14 @@ export function ProjectStorageForm({ open, onOpenChange, project }: ProjectStora
   const handleSave = () => {
     if (editingStorageId) { // Update
       updateProjectStorage({ ...formData, projectId: project.id });
-      toast({ title: "Association Updated" });
+      toast({ title: "Associação Atualizada" });
     } else { // Create
       if (!formData.storageId) {
-        toast({ title: "No Storage Selected", description: "Please select a storage location.", variant: "destructive" });
+        toast({ title: "Nenhum Armazenamento Selecionado", description: "Por favor, selecione um local de armazenamento.", variant: "destructive" });
         return;
       }
       addProjectStorage({ ...formData, projectId: project.id });
-      toast({ title: "Association Added" });
+      toast({ title: "Associação Adicionada" });
     }
     resetForm();
   }
@@ -112,7 +112,7 @@ export function ProjectStorageForm({ open, onOpenChange, project }: ProjectStora
   const handleDeleteConfirm = () => {
     if(deleteConfirmation.association) {
         deleteProjectStorage(project.id, deleteConfirmation.association.storageId);
-        toast({ title: "Association Removed", variant: 'destructive' });
+        toast({ title: "Associação Removida", variant: 'destructive' });
         setDeleteConfirmation({ open: false });
     }
   }
@@ -122,19 +122,19 @@ export function ProjectStorageForm({ open, onOpenChange, project }: ProjectStora
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>Manage Storages for: {project.name}</DialogTitle>
+            <DialogTitle>Gerir Armazenamentos para: {project.name}</DialogTitle>
             <DialogDescription>
-              Associate storages with this project and define their specific contribution rules.
+              Associe armazenamentos a este projeto e defina as regras de distribuição específicas.
             </DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-4">
             <div className="md:col-span-1 space-y-4 p-4 border rounded-md">
-                <h3 className="font-semibold">{editingStorageId ? "Edit Association" : "Add New Association"}</h3>
+                <h3 className="font-semibold">{editingStorageId ? "Editar Associação" : "Adicionar Nova Associação"}</h3>
                 <div className="space-y-2">
-                    <Label htmlFor="storage-select">Storage</Label>
+                    <Label htmlFor="storage-select">Armazenamento</Label>
                     <Select 
-                      value={formData.storageId}
-                      onValueChange={(value) => setFormData(fd => ({...fd, storageId: value}))}
+                      value={formData.storageId.toString()}
+                      onValueChange={(value) => setFormData(fd => ({...fd, storageId: Number(value)}))}
                       disabled={!!editingStorageId}
                     >
                         <SelectTrigger id="storage-select">
@@ -142,48 +142,48 @@ export function ProjectStorageForm({ open, onOpenChange, project }: ProjectStora
                         </SelectTrigger>
                         <SelectContent>
                             {editingStorageId 
-                              ? <SelectItem value={editingStorageId}>{currentProjectStorages.find(ps => ps.storageId === editingStorageId)?.storageName}</SelectItem>
-                              : availableStorages.map(s => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)
+                              ? <SelectItem value={editingStorageId.toString()}>{currentProjectStorages.find(ps => ps.storageId === editingStorageId)?.storageName}</SelectItem>
+                              : availableStorages.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.nome}</SelectItem>)
                             }
                         </SelectContent>
                     </Select>
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="peso">Distribution Weight</Label>
+                    <Label htmlFor="peso">Peso de Distribuição</Label>
                     <Input id="peso" type="number" value={formData.peso} onChange={e => setFormData(fd => ({...fd, peso: Number(e.target.value)}))} />
                 </div>
                  <div className="space-y-2">
-                    <Label htmlFor="minimo-fixo">Daily Fixed Minimum (Pages)</Label>
+                    <Label htmlFor="minimo-fixo">Mínimo Fixo Diário (Páginas)</Label>
                     <Input id="minimo-fixo" type="number" value={formData.minimo_diario_fixo} onChange={e => setFormData(fd => ({...fd, minimo_diario_fixo: Number(e.target.value)}))} />
                 </div>
                  <div className="space-y-2">
-                    <Label htmlFor="minimo-percent">Daily Percent Minimum (%)</Label>
+                    <Label htmlFor="minimo-percent">Mínimo Percentual Diário (%)</Label>
                     <Input id="minimo-percent" type="number" value={formData.percentual_minimo_diario} onChange={e => setFormData(fd => ({...fd, percentual_minimo_diario: Number(e.target.value)}))} />
                 </div>
                  <div className="space-y-2">
-                    <Label htmlFor="descricao">Description</Label>
+                    <Label htmlFor="descricao">Descrição</Label>
                     <Textarea id="descricao" value={formData.descricao || ''} onChange={e => setFormData(fd => ({...fd, descricao: e.target.value}))} />
                 </div>
                  <div className="space-y-2">
-                    <Label htmlFor="obs">Observations</Label>
+                    <Label htmlFor="obs">Observações</Label>
                     <Textarea id="obs" value={formData.obs || ''} onChange={e => setFormData(fd => ({...fd, obs: e.target.value}))} />
                 </div>
                 <div className="flex gap-2">
-                  <Button onClick={handleSave} className="w-full">{editingStorageId ? "Update" : "Add"}</Button>
-                  {editingStorageId && <Button variant="outline" onClick={resetForm} className="w-full">Cancel Edit</Button>}
+                  <Button onClick={handleSave} className="w-full">{editingStorageId ? "Atualizar" : "Adicionar"}</Button>
+                  {editingStorageId && <Button variant="outline" onClick={resetForm} className="w-full">Cancelar Edição</Button>}
                 </div>
             </div>
             <div className="md:col-span-2">
-                <h3 className="font-semibold mb-2">Current Associations</h3>
+                <h3 className="font-semibold mb-2">Associações Atuais</h3>
                  <Card>
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Storage</TableHead>
-                                <TableHead className="text-center">Weight</TableHead>
-                                <TableHead className="text-center">Fixed Min</TableHead>
-                                <TableHead className="text-center">% Min</TableHead>
-                                <TableHead>Actions</TableHead>
+                                <TableHead>Armazenamento</TableHead>
+                                <TableHead className="text-center">Peso</TableHead>
+                                <TableHead className="text-center">Mínimo Fixo</TableHead>
+                                <TableHead className="text-center">% Mínimo</TableHead>
+                                <TableHead>Ações</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -202,7 +202,7 @@ export function ProjectStorageForm({ open, onOpenChange, project }: ProjectStora
                                 </TableRow>
                             )) : (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center h-24">No storages associated.</TableCell>
+                                    <TableCell colSpan={5} className="text-center h-24">Nenhum armazenamento associado.</TableCell>
                                 </TableRow>
                             )}
                         </TableBody>
@@ -211,7 +211,7 @@ export function ProjectStorageForm({ open, onOpenChange, project }: ProjectStora
             </div>
           </div>
           <DialogFooter>
-            <Button variant="secondary" onClick={() => onOpenChange(false)}>Close</Button>
+            <Button variant="secondary" onClick={() => onOpenChange(false)}>Fechar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -219,14 +219,14 @@ export function ProjectStorageForm({ open, onOpenChange, project }: ProjectStora
       <AlertDialog open={deleteConfirmation.open} onOpenChange={(open) => !open && setDeleteConfirmation({ open: false, association: undefined })}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove Association?</AlertDialogTitle>
+            <AlertDialogTitle>Remover Associação?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to remove the association with the storage <span className="font-bold">{deleteConfirmation.association?.storageName}</span> for this project?
+              Tem a certeza de que pretende remover a associação ao armazenamento <span className="font-bold">{deleteConfirmation.association?.storageName}</span> para este projeto?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm}>Remove</AlertDialogAction>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm}>Remover</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

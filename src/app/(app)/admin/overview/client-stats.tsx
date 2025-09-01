@@ -159,7 +159,7 @@ export function ClientStatsTab() {
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Clients');
         XLSX.writeFile(workbook, 'clients_stats.xlsx');
     }
-    toast({ title: 'Export Complete', description: `${data.length} clients exported.` });
+    toast({ title: "Exportação Concluída", description: `${data.length} clientes exportados.` });
   };
   
   const handleKpiClick = (title: string, items: ClientStat[]) => {
@@ -170,23 +170,23 @@ export function ClientStatsTab() {
   return (
     <div className="space-y-6">
        <div className="grid gap-4 md:grid-cols-3">
-            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('All Clients', clientStats)}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Clients</CardTitle><Users className="h-4 w-4 text-muted-foreground" /></CardHeader>
+            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Todos os Clientes', clientStats)}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Clientes</CardTitle><Users className="h-4 w-4 text-muted-foreground" /></CardHeader>
                 <CardContent><div className="text-2xl font-bold">{kpiData.totalClients}</div></CardContent>
             </Card>
             <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Budget</CardTitle><DollarSign className="h-4 w-4 text-muted-foreground" /></CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Orçamento</CardTitle><DollarSign className="h-4 w-4 text-muted-foreground" /></CardHeader>
                 <CardContent><div className="text-2xl font-bold">{kpiData.totalBudget.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</div></CardContent>
             </Card>
              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Avg. Projects / Client</CardTitle><Briefcase className="h-4 w-4 text-muted-foreground" /></CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Média Projetos / Cliente</CardTitle><Briefcase className="h-4 w-4 text-muted-foreground" /></CardHeader>
                 <CardContent><div className="text-2xl font-bold">{kpiData.avgProjects}</div></CardContent>
             </Card>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
             <Card>
-                <CardHeader><CardTitle>Top 10 Clients by Project Count</CardTitle></CardHeader>
+                <CardHeader><CardTitle>Top 10 Clientes por Contagem de Projetos</CardTitle></CardHeader>
                 <CardContent>
                     <ChartContainer config={chartConfig} className="h-[250px] w-full">
                         <BarChart data={projectsPerClientChartData} layout="vertical" margin={{ left: 50 }}>
@@ -200,7 +200,7 @@ export function ClientStatsTab() {
                 </CardContent>
             </Card>
             <Card>
-                <CardHeader><CardTitle>Top 10 Clients by Total Budget</CardTitle></CardHeader>
+                <CardHeader><CardTitle>Top 10 Clientes por Orçamento Total</CardTitle></CardHeader>
                 <CardContent>
                     <ChartContainer config={chartConfig} className="h-[250px] w-full">
                         <BarChart data={budgetPerClientChartData} layout="vertical" margin={{ left: 50 }}>
@@ -219,17 +219,17 @@ export function ClientStatsTab() {
             <CardHeader>
                 <div className="flex justify-between items-center">
                     <div>
-                        <CardTitle>Client Statistics</CardTitle>
-                        <CardDescription>An aggregated overview of metrics for each client.</CardDescription>
+                        <CardTitle>Estatísticas do Cliente</CardTitle>
+                        <CardDescription>Resumo dos dados de cada cliente.</CardDescription>
                     </div>
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild><Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" /> Export</Button></DropdownMenuTrigger>
+                      <DropdownMenuTrigger asChild><Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" />Exportar</Button></DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        <DropdownMenuLabel>Export Data</DropdownMenuLabel>
+                        <DropdownMenuLabel>Exportar Dados</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onSelect={() => exportData('xlsx')}>Export as XLSX</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => exportData('json')}>Export as JSON</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => exportData('csv')}>Export as CSV</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportData('xlsx')}>Exportar como XLSX</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportData('json')}>Exportar como JSON</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportData('csv')}>Exportar como CSV</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
@@ -238,17 +238,17 @@ export function ClientStatsTab() {
             <Table>
                 <TableHeader>
                 <TableRow>
-                    <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name')}>Client Name {getSortIndicator('name')}</div></TableHead>
-                    <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('totalProjects')}>Total Projects {getSortIndicator('totalProjects')}</div></TableHead>
-                    <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('activeProjects')}>Active Projects {getSortIndicator('activeProjects')}</div></TableHead>
-                    <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('onHoldProjects')}>On Hold {getSortIndicator('onHoldProjects')}</div></TableHead>
-                    <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('totalBooks')}>Total Books {getSortIndicator('totalBooks')}</div></TableHead>
-                    <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('finalizedBooks')}>Finalized Books {getSortIndicator('finalizedBooks')}</div></TableHead>
-                    <TableHead className="text-right"><div className="flex items-center justify-end gap-2 cursor-pointer select-none group" onClick={() => handleSort('avgBudget')}>Avg. Project Budget {getSortIndicator('avgBudget')}</div></TableHead>
+                    <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name')}>Cliente {getSortIndicator('name')}</div></TableHead>
+                    <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('totalProjects')}>Total Projetos {getSortIndicator('totalProjects')}</div></TableHead>
+                    <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('activeProjects')}>Projetos Ativos {getSortIndicator('activeProjects')}</div></TableHead>
+                    <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('onHoldProjects')}>Projetos em Espera {getSortIndicator('onHoldProjects')}</div></TableHead>
+                    <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('totalBooks')}>Total de Livros {getSortIndicator('totalBooks')}</div></TableHead>
+                    <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('finalizedBooks')}>Livros Finalizados {getSortIndicator('finalizedBooks')}</div></TableHead>
+                    <TableHead className="text-right"><div className="flex items-center justify-end gap-2 cursor-pointer select-none group" onClick={() => handleSort('avgBudget')}>Média de Orçamento {getSortIndicator('avgBudget')}</div></TableHead>
                 </TableRow>
                 <TableRow>
-                    <TableHead><Input placeholder="Filter name..." value={columnFilters['name'] || ''} onChange={e => setColumnFilters(p => ({...p, name: e.target.value}))} className="h-8"/></TableHead>
-                    <TableHead colSpan={6}><Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Clear Filters</Button></TableHead>
+                    <TableHead><Input placeholder="Filtrar nome..." value={columnFilters['name'] || ''} onChange={e => setColumnFilters(p => ({...p, name: e.target.value}))} className="h-8"/></TableHead>
+                    <TableHead colSpan={6}><Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Limpar Filtros</Button></TableHead>
                 </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -272,18 +272,18 @@ export function ClientStatsTab() {
             <DialogContent className="max-w-2xl">
                 <DialogHeader>
                     <DialogTitle>{dialogState.title}</DialogTitle>
-                    <DialogDescription>Showing {filteredDialogItems.length} of {dialogState.items.length} clients.</DialogDescription>
+                    <DialogDescription>A mostrar {filteredDialogItems.length} de {dialogState.items.length} clientes.</DialogDescription>
                 </DialogHeader>
                 <div className="py-2">
                     <Input 
-                        placeholder="Filter clients..."
+                        placeholder="Filtrar clientes..."
                         value={dialogFilter}
                         onChange={(e) => setDialogFilter(e.target.value)}
                     />
                 </div>
                 <div className="max-h-[60vh] overflow-y-auto pr-4">
                      <Table>
-                        <TableHeader><TableRow><TableHead>Client</TableHead><TableHead>Total Projects</TableHead><TableHead>Avg. Budget</TableHead></TableRow></TableHeader>
+                        <TableHeader><TableRow><TableHead>Cliente</TableHead><TableHead>Total de Projetos</TableHead><TableHead>Média de Orçamento</TableHead></TableRow></TableHeader>
                         <TableBody>
                             {filteredDialogItems.map(client => (
                                 <TableRow key={client.id}>

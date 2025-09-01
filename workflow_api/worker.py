@@ -222,7 +222,7 @@ def main():
         return
 
     for scanner in scanners:
-        logging.info(f"=== Verificando Scanner: {scanner['nome']} em '{scanner['scanner_root_folder']}' ===")
+        logging.info(f"=== A verificar Scanner: {scanner['nome']} em '{scanner['scanner_root_folder']}' ===")
         os.makedirs(scanner['error_folder'], exist_ok=True)
         os.makedirs(scanner['success_folder'], exist_ok=True)
         

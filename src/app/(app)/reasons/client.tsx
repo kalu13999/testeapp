@@ -83,11 +83,7 @@ export default function RejectionReasonsClient() {
       const finalClientId = currentUser?.role === 'Admin' ? clientId : currentUser?.clientId;
 
       if (!finalClientId) {
-        toast({
-          title: "Client Not Specified",
-          description: "An admin must select a client for the new reason.",
-          variant: "destructive"
-        });
+        toast({title: "Cliente Não Especificado", description: "Um administrador deve selecionar um cliente.", variant: "destructive"});
         return;
       }
       addRejectionTag(tagData, finalClientId);
@@ -107,12 +103,12 @@ export default function RejectionReasonsClient() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-headline text-3xl font-bold tracking-tight">Rejection Reasons</h1>
-          <p className="text-muted-foreground">Manage custom tags for rejecting documents.</p>
+          <h1 className="font-headline text-3xl font-bold tracking-tight">Razões de Rejeição</h1>
+          <p className="text-muted-foreground">Gerir tags personalizadas para rejeitar documentos.</p>
         </div>
         <Button onClick={() => openDialog('new')}>
             <PlusCircle className="mr-2 h-4 w-4" />
-            New Reason
+            Nova Razão
         </Button>
       </div>
       <Card>
@@ -120,11 +116,11 @@ export default function RejectionReasonsClient() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Label</TableHead>
-                <TableHead>Description</TableHead>
-                {currentUser?.role === 'Admin' && <TableHead>Client</TableHead>}
+                <TableHead>Rótulo</TableHead>
+                <TableHead>Descrição</TableHead>
+                {currentUser?.role === 'Admin' && <TableHead>Cliente</TableHead>}
                 <TableHead>
-                  <span className="sr-only">Actions</span>
+                  <span className="sr-only">Ações</span>
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -143,12 +139,12 @@ export default function RejectionReasonsClient() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuLabel>Ações</DropdownMenuLabel>
                         <DropdownMenuItem onSelect={() => openDialog('edit', tag)}>
-                           <Edit className="mr-2 h-4 w-4" /> Edit
+                           <Edit className="mr-2 h-4 w-4" /> Editar
                         </DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => setDeleteDialogState({ open: true, data: tag })} className="text-destructive">
-                           <Trash2 className="mr-2 h-4 w-4" /> Delete
+                           <Trash2 className="mr-2 h-4 w-4" /> Eliminar
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -157,7 +153,7 @@ export default function RejectionReasonsClient() {
               )) : (
                  <TableRow>
                   <TableCell colSpan={currentUser?.role === 'Admin' ? 4 : 3} className="h-24 text-center">
-                    No rejection reasons defined. Add one to get started.
+                    Nenhuma razão de rejeição definida. Adicione uma para começar.
                   </TableCell>
                 </TableRow>
               )}
@@ -169,9 +165,9 @@ export default function RejectionReasonsClient() {
       <Dialog open={dialogState.open} onOpenChange={closeDialog}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{dialogState.type === 'new' ? 'Create New Reason' : 'Edit Reason'}</DialogTitle>
+            <DialogTitle>{dialogState.type === 'new' ? 'Criar Nova Razão' : 'Editar Razão'}</DialogTitle>
             <DialogDescription>
-              {dialogState.type === 'new' ? 'Add a new rejection tag for a client to use.' : `Editing reason: ${dialogState.data?.label}`}
+              {dialogState.type === 'new' ? 'Adicione uma nova tag de rejeição para um cliente usar.' : `Editar razão: ${dialogState.data?.label}`}
             </DialogDescription>
           </DialogHeader>
           <ReasonForm 
@@ -188,14 +184,14 @@ export default function RejectionReasonsClient() {
       <AlertDialog open={deleteDialogState.open} onOpenChange={() => setDeleteDialogState({ open: false, data: undefined })}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Tem a certeza?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the reason <span className="font-bold">{deleteDialogState.data?.label}</span>.
+              Esta ação não pode ser desfeita. Isto irá eliminar permanentemente a razão <span className="font-bold">{deleteDialogState.data?.label}</span>.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteDialogState({ open: false, data: undefined })}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+            <AlertDialogCancel onClick={() => setDeleteDialogState({ open: false, data: undefined })}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Eliminar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

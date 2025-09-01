@@ -72,7 +72,7 @@ export default function ManageDeliveriesClient() {
   const getAssignableUsers = (batch: (DeliveryBatch & { books: EnrichedBook[] })) => {
     if (!batch || batch.books.length === 0) return [];
     const batchClientId = batch.books[0].clientId;
-    return users.filter(u => u.role === 'Client Operator' && u.clientId === batchClientId);
+    return users.filter(u => u.clientId !== null && u.clientId === batchClientId);
   };
 
   const openDistributionDialog = (batch: DeliveryBatch & { books: EnrichedBook[] }) => {
@@ -119,17 +119,17 @@ export default function ManageDeliveriesClient() {
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="font-headline">Manage Deliveries</CardTitle>
-          <CardDescription>Distribute validation tasks for received delivery batches.</CardDescription>
+          <CardTitle className="font-headline">Gerir Entregas</CardTitle>
+          <CardDescription>Distribuir tarefas de validação para lotes de entrega recebidos.</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Delivery Date</TableHead>
-                <TableHead>Books Ready</TableHead>
-                <TableHead>Total Pages</TableHead>
-                <TableHead className="text-right">Action</TableHead>
+                <TableHead>Data de Entrega</TableHead>
+                <TableHead>Livros Prontos</TableHead>
+                <TableHead>Páginas Totais</TableHead>
+                <TableHead className="text-right">Ação</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -142,7 +142,7 @@ export default function ManageDeliveriesClient() {
                       <TableCell>{batch.books.length}</TableCell>
                       <TableCell>{totalPages.toLocaleString()}</TableCell>
                       <TableCell className="text-right">
-                        <Button size="sm" onClick={() => openDistributionDialog(batch)}>Distribute Sample</Button>
+                        <Button size="sm" onClick={() => openDistributionDialog(batch)}>Distribuir Amostra</Button>
                       </TableCell>
                     </TableRow>
                   );
@@ -150,7 +150,7 @@ export default function ManageDeliveriesClient() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={4} className="h-24 text-center">
-                    No delivery batches are ready for distribution.
+                    Nenhum lote de entrega está pronto para distribuição.
                   </TableCell>
                 </TableRow>
               )}
@@ -163,28 +163,28 @@ export default function ManageDeliveriesClient() {
         <Dialog open={dialogState.open} onOpenChange={closeDialog}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Distribute Sample for Batch from {new Date(dialogState.state.batch.creationDate).toLocaleDateString()}</DialogTitle>
-              <DialogDescription>Select a sample size and assign operators for validation.</DialogDescription>
+              <DialogTitle>Distribuir Amostra para Lote de {new Date(dialogState.state.batch.creationDate).toLocaleDateString()}</DialogTitle>
+              <DialogDescription>Selecione um tamanho de amostra e atribua operadores para validação.</DialogDescription>
             </DialogHeader>
             <div className="grid grid-cols-2 gap-6 py-4">
                 <div className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="sample-percentage" className="flex items-center gap-2"><Percent className="h-4 w-4"/> Sample Size</Label>
+                        <Label htmlFor="sample-percentage" className="flex items-center gap-2"><Percent className="h-4 w-4"/> Tamanho da Amostra</Label>
                         <Select 
                             value={String(dialogState.state.percentage)} 
                             onValueChange={(val) => setDialogState(p => ({...p, state: {...p.state, percentage: Number(val)}}))}
                         >
                             <SelectTrigger id="sample-percentage"><SelectValue /></SelectTrigger>
                             <SelectContent>
-                                {[10, 25, 50, 75, 100].map(p => <SelectItem key={p} value={String(p)}>{p}%</SelectItem>)}
+                                {[10, 15, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100].map(p => <SelectItem key={p} value={String(p)}>{p}%</SelectItem>)}
                             </SelectContent>
                         </Select>
                         <p className="text-sm text-muted-foreground">
-                            This will select <strong>{dialogState.state.sampleBookIds.length}</strong> of <strong>{dialogState.state.batch.books.length}</strong> books randomly.
+                            Esta seleção irá escolher <strong>{dialogState.state.sampleBookIds.length}</strong> de <strong>{dialogState.state.batch.books.length}</strong> livros aleatoriamente.
                         </p>
                     </div>
                     <div className="space-y-2">
-                         <Label htmlFor="operators" className="flex items-center gap-2"><Users className="h-4 w-4"/> Assign To</Label>
+                         <Label htmlFor="operators" className="flex items-center gap-2"><Users className="h-4 w-4"/> Atribuir a</Label>
                          <ScrollArea className="h-48 rounded-md border p-4">
                             {assignableUsersInDialog.map(user => (
                                 <div key={user.id} className="flex items-center space-x-2 mb-2">
@@ -203,7 +203,7 @@ export default function ManageDeliveriesClient() {
                     </div>
                 </div>
                 <div className="space-y-2">
-                    <Label className="flex items-center gap-2"><Package className="h-4 w-4"/> Books in Sample</Label>
+                    <Label className="flex items-center gap-2"><Package className="h-4 w-4"/> Livros na Amostra</Label>
                     <ScrollArea className="h-[23rem] rounded-md border">
                         <div className="p-4 space-y-2 text-sm">
                             {dialogState.state.sampleBookIds.map(bookId => {
@@ -215,9 +215,9 @@ export default function ManageDeliveriesClient() {
                 </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={closeDialog}>Cancel</Button>
+              <Button variant="outline" onClick={closeDialog}>Cancelar</Button>
               <Button onClick={handleDistribution} disabled={dialogState.state.sampleBookIds.length === 0 || dialogState.state.selectedUserIds.length === 0}>
-                <Send className="mr-2 h-4 w-4"/> Distribute Tasks
+                <Send className="mr-2 h-4 w-4"/> Distribuir Tarefas
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -18,12 +18,12 @@ export default function LoginPage() {
   const { login, permissions } = useAppContext();
   const { toast } = useToast();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const user = login(username, password);
+    const user = await login(username, password);
 
     if (user) {
-      toast({ title: "Login Successful", description: "Welcome back!" });
+      toast({ title: "Login Efectuado", description: "Bem-vindo de volta!" });
 
       const userPermissions = permissions[user.role] || [];
       const canAccessDashboard = userPermissions.includes('/dashboard') || userPermissions.includes('*');
@@ -34,11 +34,7 @@ export default function LoginPage() {
         router.push('/profile');
       }
     } else {
-      toast({
-        title: "Login Failed",
-        description: "Invalid username or password. Please try again.",
-        variant: "destructive"
-      });
+      toast({title: "Falha no Login", description: "Nome de utilizador ou palavra-passe inválidos. Tente novamente.", variant: "destructive"});
     }
   };
 
@@ -61,7 +57,7 @@ export default function LoginPage() {
               <Input 
                 id="username" 
                 type="text" 
-                placeholder="e.g. admin" 
+                placeholder="ex.: admin" 
                 required 
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}

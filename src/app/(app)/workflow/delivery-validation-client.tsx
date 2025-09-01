@@ -278,7 +278,7 @@ export default function DeliveryValidationClient({ config }: DeliveryValidationC
                 <Label htmlFor="rejection-comment">Comment</Label>
                 <Textarea 
                     id="rejection-comment"
-                    placeholder="e.g., Page 5 is blurry, please re-scan."
+                    placeholder="ex.:, Page 5 is blurry, please re-scan."
                     value={rejectionComment}
                     onChange={(e) => setRejectionComment(e.target.value)}
                 />

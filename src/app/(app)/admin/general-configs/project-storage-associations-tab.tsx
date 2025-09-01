@@ -156,13 +156,13 @@ export function ProjectStorageAssociationsTab() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Project-Storage Associations</CardTitle>
+              <CardTitle>Associações Projeto-Armazenamento</CardTitle>
               <CardDescription>
-                Centrally manage which storages are assigned to which projects and their distribution rules.
+                Gerir quais armazenamentos estão atribuídos a quais projetos e as regras de distribuição.
               </CardDescription>
             </div>
             <Button onClick={() => openDialog('new')}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Association
+              <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Associação
             </Button>
           </div>
         </CardHeader>
@@ -170,18 +170,18 @@ export function ProjectStorageAssociationsTab() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('projectName')}>Project {getSortIndicator('projectName')}</div></TableHead>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('storageName')}>Storage {getSortIndicator('storageName')}</div></TableHead>
-                <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('peso')}>Weight {getSortIndicator('peso')}</div></TableHead>
-                <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('minimo_diario_fixo')}>Fixed Min {getSortIndicator('minimo_diario_fixo')}</div></TableHead>
-                <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('percentual_minimo_diario')}>% Min {getSortIndicator('percentual_minimo_diario')}</div></TableHead>
-                <TableHead><span className="sr-only">Actions</span></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('projectName')}>Projeto {getSortIndicator('projectName')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('storageName')}>Armazenamento {getSortIndicator('storageName')}</div></TableHead>
+                <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('peso')}>Peso {getSortIndicator('peso')}</div></TableHead>
+                <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('minimo_diario_fixo')}>Mínimo Fixo {getSortIndicator('minimo_diario_fixo')}</div></TableHead>
+                <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('percentual_minimo_diario')}>% Mínimo {getSortIndicator('percentual_minimo_diario')}</div></TableHead>
+                <TableHead><span className="sr-only">Ações</span></TableHead>
               </TableRow>
                <TableRow>
-                <TableHead><Input placeholder="Filter project..." value={columnFilters['projectName'] || ''} onChange={e => setColumnFilters(p => ({...p, projectName: e.target.value}))} className="h-8"/></TableHead>
-                <TableHead><Input placeholder="Filter storage..." value={columnFilters['storageName'] || ''} onChange={e => setColumnFilters(p => ({...p, storageName: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filtrar projeto..." value={columnFilters['projectName'] || ''} onChange={e => setColumnFilters(p => ({...p, projectName: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filtrar armazenamento..." value={columnFilters['storageName'] || ''} onChange={e => setColumnFilters(p => ({...p, storageName: e.target.value}))} className="h-8"/></TableHead>
                 <TableHead colSpan={3} />
-                <TableHead><Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Clear Filters</Button></TableHead>
+                <TableHead><Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Limpar Filtros</Button></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -201,12 +201,12 @@ export function ProjectStorageAssociationsTab() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuLabel>Ações</DropdownMenuLabel>
                         <DropdownMenuItem onSelect={() => openDialog('edit', assoc)}>
-                          <Edit className="mr-2 h-4 w-4" /> Edit
+                          <Edit className="mr-2 h-4 w-4" /> Editar
                         </DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => setDeleteDialogState({ open: true, data: assoc })} className="text-destructive">
-                          <Trash2 className="mr-2 h-4 w-4" /> Delete
+                          <Trash2 className="mr-2 h-4 w-4" /> Eliminar
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -215,7 +215,7 @@ export function ProjectStorageAssociationsTab() {
               )) : (
                  <TableRow>
                   <TableCell colSpan={6} className="h-24 text-center">
-                    No project-storage associations configured.
+                    Nenhuma associação projeto-armazenamento configurada.
                   </TableCell>
                 </TableRow>
               )}
@@ -224,7 +224,7 @@ export function ProjectStorageAssociationsTab() {
         </CardContent>
          <CardFooter className="flex items-center justify-between">
             <div className="text-xs text-muted-foreground">
-              {`Showing ${paginatedAssociations.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedAssociations.length} of ${sortedAndFilteredAssociations.length} associations`}
+              {`A mostrar ${paginatedAssociations.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedAssociations.length} de ${sortedAndFilteredAssociations.length} associações`}
             </div>
             <PaginationNav />
         </CardFooter>
@@ -233,9 +233,9 @@ export function ProjectStorageAssociationsTab() {
       <Dialog open={dialogState.open} onOpenChange={closeDialog}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>{dialogState.type === 'new' ? 'Add New Association' : 'Edit Association'}</DialogTitle>
+            <DialogTitle>{dialogState.type === 'new' ? 'Adicionar Nova Associação' : 'Editar Associação'}</DialogTitle>
             <DialogDescription>
-              {dialogState.type === 'new' ? 'Configure a new link between a project and a storage location.' : `Editing association for: ${allProjects.find(p=>p.id === dialogState.data?.projectId)?.name}`}
+              {dialogState.type === 'new' ? 'Configurar uma nova associação entre um projeto e uma localização de armazenamento.' : `Editar associação para: ${allProjects.find(p=>p.id === dialogState.data?.projectId)?.name}`}
             </DialogDescription>
           </DialogHeader>
           <ProjectStorageAssociationForm 
@@ -252,14 +252,14 @@ export function ProjectStorageAssociationsTab() {
       <AlertDialog open={deleteDialogState.open} onOpenChange={() => setDeleteDialogState({ open: false, data: undefined })}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Tem a certeza?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the association between <span className="font-bold">{deleteDialogState.data?.projectName}</span> and <span className="font-bold">{deleteDialogState.data?.storageName}</span>.
+              Esta ação não pode ser desfeita. Isto irá eliminar permanentemente a associação entre <span className="font-bold">{deleteDialogState.data?.projectName}</span> e <span className="font-bold">{deleteDialogState.data?.storageName}</span>.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteDialogState({ open: false, data: undefined })}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+            <AlertDialogCancel onClick={() => setDeleteDialogState({ open: false, data: undefined })}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Eliminar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

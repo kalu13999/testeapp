@@ -126,7 +126,7 @@ export default function MyValidationsClient() {
 
   const handleApprove = (item: ValidationTask) => {
     setProvisionalDeliveryStatus(item.item.id, item.book.id, 'approved');
-    toast({ title: `Book "${item.book.name}" Approved` });
+    toast({ title: `Livro "${item.book.name}" Aprovado` });
   };
   
   const handleRejectSubmit = () => {
@@ -134,7 +134,7 @@ export default function MyValidationsClient() {
     setProvisionalDeliveryStatus(rejectionDialog.deliveryItemId, rejectionDialog.bookId, 'rejected', rejectionComment);
     setRejectionDialog(null);
     setRejectionComment("");
-    toast({ title: `Book "${rejectionDialog.bookName}" Rejected`, variant: "destructive" });
+    toast({ title: `Livro "${rejectionDialog.bookName}" Rejeitado`, variant: "destructive" });
   };
 
   const openTaggingDialog = (doc: AppDocument) => {
@@ -175,8 +175,8 @@ export default function MyValidationsClient() {
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="font-headline">My Validations</CardTitle>
-          <CardDescription>Review and approve or reject the books assigned to you for validation.</CardDescription>
+          <CardTitle className="font-headline">Validações</CardTitle>
+          <CardDescription>Analise e aprove ou rejeite os livros atribuídos para validação.</CardDescription>
         </CardHeader>
         <CardContent>
           {batchesToValidate.length > 0 ? (
@@ -189,9 +189,9 @@ export default function MyValidationsClient() {
                             <FileClock className="h-5 w-5 text-primary" />
                             <div>
                                 <p className="font-semibold text-base">
-                                  Delivery Batch - {new Date(creationDate).toLocaleDateString()}
+                                  Lote de Entrega - {new Date(creationDate).toLocaleDateString()}
                                 </p>
-                                <p className="text-sm text-muted-foreground">{booksInBatch.length} book(s) in this batch</p>
+                                <p className="text-sm text-muted-foreground">{booksInBatch.length} livro(s) neste lote</p>
                             </div>
                         </div>
                     </AccordionTrigger>
@@ -220,10 +220,10 @@ export default function MyValidationsClient() {
                                         </AccordionTrigger>
                                         <div className="flex justify-end gap-2 px-4">
                                             <Button size="sm" variant="destructive" onClick={() => setRejectionDialog({ open: true, bookId: book.id, deliveryItemId: task.item.id, bookName: book.name })}>
-                                                <ThumbsDown className="mr-2 h-4 w-4" /> Reject
+                                                <ThumbsDown className="mr-2 h-4 w-4" /> Rejeitar
                                             </Button>
                                             <Button size="sm" onClick={() => handleApprove(task)}>
-                                                <ThumbsUp className="mr-2 h-4 w-4" /> Approve
+                                                <ThumbsUp className="mr-2 h-4 w-4" /> Aprovar
                                             </Button>
                                         </div>
                                     </div>
@@ -265,7 +265,7 @@ export default function MyValidationsClient() {
           ) : (
             <div className="text-center py-10 text-muted-foreground flex flex-col items-center gap-4">
               <FileClock className="h-12 w-12"/>
-              <p>You have no pending validation tasks.</p>
+              <p>Não tem tarefas de validação pendentes.</p>
            </div>
           )}
         </CardContent>
@@ -275,24 +275,24 @@ export default function MyValidationsClient() {
        <Dialog open={!!rejectionDialog} onOpenChange={(isOpen) => !isOpen && setRejectionDialog(null)}>
           <DialogContent>
               <DialogHeader>
-                  <DialogTitle>Reason for Rejection</DialogTitle>
+                  <DialogTitle>Motivo da Rejeição</DialogTitle>
                   <DialogDescription>
-                      Please provide a reason for rejecting the book "{rejectionDialog?.bookName}". This will be sent to the internal team for correction.
+                      Por favor, forneça um motivo para rejeitar o livro "{rejectionDialog?.bookName}". Isso será enviado para a equipe interna para correção.
                   </DialogDescription>
               </DialogHeader>
               <div className="space-y-2 py-4">
-                  <Label htmlFor="rejection-comment">Comment</Label>
+                  <Label htmlFor="rejection-comment">Comentário</Label>
                   <Textarea 
                       id="rejection-comment"
-                      placeholder="e.g., Page 5 is blurry, please re-scan."
+                      placeholder="ex.:, Página 5 está desfocada."
                       value={rejectionComment}
                       onChange={(e) => setRejectionComment(e.target.value)}
                   />
               </div>
               <DialogFooter>
-                  <Button variant="outline" onClick={() => setRejectionDialog(null)}>Cancel</Button>
+                  <Button variant="outline" onClick={() => setRejectionDialog(null)}>Cancelar</Button>
                   <Button variant="destructive" onClick={handleRejectSubmit} disabled={!rejectionComment.trim()}>
-                      Submit Rejection
+                      Enviar Rejeição
                   </Button>
               </DialogFooter>
           </DialogContent>
@@ -337,7 +337,7 @@ function TaggingDialog({ isOpen, onClose, doc, availableTags, onSave }: TaggingD
           <DialogHeader>
               <DialogTitle>Tag "{doc.name}"</DialogTitle>
               <DialogDescription>
-                  Select one or more rejection reasons for this page.
+                  Selecione um ou mais motivos de rejeição para esta página.
               </DialogDescription>
           </DialogHeader>
           <div className="py-4">
@@ -363,13 +363,13 @@ function TaggingDialog({ isOpen, onClose, doc, availableTags, onSave }: TaggingD
                                   </Label>
                               </div>
                           ))
-                      ) : (<p className="text-sm text-muted-foreground text-center">No rejection tags have been defined for this client.</p>)}
+                      ) : (<p className="text-sm text-muted-foreground text-center">Nenhuma tag de rejeição foi definida para este cliente.</p>)}
                   </div>
               </ScrollArea>
           </div>
           <DialogFooter>
-              <Button variant="outline" onClick={onClose}>Cancel</Button>
-              <Button onClick={() => onSave(selectedTags)}>Save Tags</Button>
+              <Button variant="outline" onClick={onClose}>Cancelar</Button>
+              <Button onClick={() => onSave(selectedTags)}>Guardar Tags</Button>
           </DialogFooter>
       </DialogContent>
   </Dialog>

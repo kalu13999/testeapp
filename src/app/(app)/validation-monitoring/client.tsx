@@ -113,8 +113,8 @@ export default function ValidationMonitoringClient() {
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="font-headline">Validation Monitoring</CardTitle>
-          <CardDescription>Track the progress of delivery batches currently under validation.</CardDescription>
+          <CardTitle className="font-headline">Controlo e Acompanhamento de Validação</CardTitle>
+          <CardDescription>Acompanhe o progresso dos lotes de entrega atualmente em validação.</CardDescription>
         </CardHeader>
         <CardContent>
           {batchesToMonitor.length > 0 ? (
@@ -127,30 +127,30 @@ export default function ValidationMonitoringClient() {
                             <MonitorCheck className="h-5 w-5 text-primary" />
                             <div>
                                 <p className="font-semibold text-base">
-                                  Delivery Batch - {new Date(creationDate).toLocaleDateString()}
+                                  Lote de Entrega - {new Date(creationDate).toLocaleDateString()}
                                 </p>
-                                <p className="text-sm text-muted-foreground">{stats.total} book(s) in this batch</p>
+                                <p className="text-sm text-muted-foreground">{stats.total} livro(s) neste lote</p>
                             </div>
                         </div>
                     </AccordionTrigger>
                      <div className="px-4 w-1/3">
                         <div className="flex justify-between items-center mb-1">
-                            <span className="text-sm font-medium">Validation Progress</span>
+                            <span className="text-sm font-medium">Progresso da Validação</span>
                             <span className="text-sm text-muted-foreground">{stats.progress.toFixed(0)}%</span>
                         </div>
                          <Progress value={stats.progress} />
                          <div className="text-xs text-muted-foreground flex justify-between mt-1">
-                            <span className="text-green-600">{stats.approved} approved</span>
-                            <span className="text-destructive">{stats.rejected} rejected</span>
-                            <span>{stats.pending} pending</span>
+                            <span className="text-green-600">{stats.approved} aprovado</span>
+                            <span className="text-destructive">{stats.rejected} rejeitado</span>
+                            <span>{stats.pending} pendente</span>
                          </div>
                       </div>
                     <div className="flex justify-end gap-2 px-4">
                         <Button size="sm" variant="destructive" onClick={() => openConfirmationDialog(batchId, 'reject_all')}>
-                            <ThumbsDown className="mr-2 h-4 w-4" /> Reject All
+                            <ThumbsDown className="mr-2 h-4 w-4" /> Rejeitar Todos
                         </Button>
                         <Button size="sm" onClick={() => openConfirmationDialog(batchId, 'approve_remaining')}>
-                            <ThumbsUp className="mr-2 h-4 w-4" /> Approve Remaining
+                            <ThumbsUp className="mr-2 h-4 w-4" /> Aprovar Restantes
                         </Button>
                     </div>
                   </div>
@@ -158,10 +158,10 @@ export default function ValidationMonitoringClient() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Book</TableHead>
-                          <TableHead>Project</TableHead>
-                          <TableHead>Assigned To</TableHead>
-                          <TableHead>Status</TableHead>
+                          <TableHead>Livro</TableHead>
+                          <TableHead>Projeto</TableHead>
+                          <TableHead>Atribuído a</TableHead>
+                          <TableHead>Estado</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -187,7 +187,7 @@ export default function ValidationMonitoringClient() {
             </Accordion>
           ) : (
             <div className="text-center py-10 text-muted-foreground">
-              <p>No delivery batches are currently being validated.</p>
+              <p>Nenhum lote de entrega está atualmente em validação.</p>
             </div>
           )}
         </CardContent>
@@ -200,8 +200,8 @@ export default function ValidationMonitoringClient() {
                 <AlertDialogDescription>{confirmationState.description}</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleConfirm} className={confirmationState.finalDecision === 'reject_all' ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}>Confirm</AlertDialogAction>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirm} className={confirmationState.finalDecision === 'reject_all' ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}>Confirmar</AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

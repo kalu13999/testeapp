@@ -196,7 +196,7 @@ export default function BookManagementClient() {
     if (data.length === 0) return;
     const jsonString = JSON.stringify(data, null, 2);
     downloadFile(jsonString, 'books_export.json', 'application/json');
-    toast({ title: "Export Successful", description: `${data.length} books exported as JSON.` });
+    toast({ title: "Exportação Bem-Sucedida", description: `${data.length} livro(s) exportado(s) em formato JSON.` });
   }
 
   const exportCSV = (data: EnrichedBook[]) => {
@@ -215,7 +215,7 @@ export default function BookManagementClient() {
         )
     ].join('\n');
     downloadFile(csvContent, 'books_export.csv', 'text/csv;charset=utf-8;');
-    toast({ title: "Export Successful", description: `${data.length} books exported as CSV.` });
+    toast({ title: "Exportação Bem-Sucedida", description: `${data.length} livro(s) exportado(s) em formato CSV.` });
   }
 
   const exportXLSX = (data: EnrichedBook[]) => {
@@ -224,16 +224,16 @@ export default function BookManagementClient() {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Books");
     XLSX.writeFile(workbook, "books_export.xlsx");
-    toast({ title: "Export Successful", description: `${data.length} books exported as XLSX.` });
+    toast({ title: "Exportação Bem-Sucedida", description: `${data.length} livro(s) exportado(s) em formato XLSX.` });
   }
 
   const copyToClipboardJSON = (data: EnrichedBook[]) => {
     if (data.length === 0) return;
     const jsonString = JSON.stringify(data, null, 2);
     navigator.clipboard.writeText(jsonString).then(() => {
-        toast({ title: "Copied to Clipboard", description: `${data.length} book(s) copied as JSON.` });
+        toast({ title: "Copiado para a Área de Transferência", description: `${data.length} livro(s) copiado(s) em formato JSON.` });
     }, () => {
-        toast({ title: "Copy Failed", description: "Could not copy to clipboard.", variant: "destructive" });
+        toast({ title: "Falha ao Copiar", description: "Não foi possível copiar para a área de transferência.", variant: "destructive" });
     });
   }
 
@@ -253,9 +253,9 @@ export default function BookManagementClient() {
         )
     ].join('\n');
     navigator.clipboard.writeText(csvContent).then(() => {
-        toast({ title: "Copied to Clipboard", description: `${data.length} book(s) copied as CSV.` });
+        toast({ title: "Copiado para a Área de Transferência", description: `${data.length} livro(s) copiado(s) em formato CSV.` });
     }, () => {
-        toast({ title: "Copy Failed", description: "Could not copy to clipboard.", variant: "destructive" });
+        toast({ title: "Falha ao Copiar", description: "Não foi possível copiar para a área de transferência.", variant: "destructive" });
     });
   }
 
@@ -291,11 +291,7 @@ export default function BookManagementClient() {
 
   const openDialog = (type: 'new' | 'edit' | 'delete' | 'import' | 'details', data?: EnrichedBook) => {
     if ((type === 'new' || type === 'import') && !selectedProjectId) {
-      toast({
-          title: "No Project Selected",
-          description: "Please select a project from the global filter in the header before adding or importing books.",
-          variant: "destructive"
-      });
+      toast({ title: "Nenhum Projeto Selecionado", description: "Por favor, selecione um projeto no filtro global do cabeçalho antes de adicionar ou importar livros.", variant: "destructive" });
       return;
     }
     setDialogState({ open: true, type, data })
@@ -340,16 +336,12 @@ export default function BookManagementClient() {
     try {
         const parsedBooks: BookImport[] = JSON.parse(importJson);
         if (!Array.isArray(parsedBooks) || !parsedBooks.every(b => b.name && typeof b.expectedDocuments === 'number')) {
-            throw new Error("Invalid JSON format.");
+            throw new Error("Formato JSON inválido.");
         }
         importBooks(selectedProjectId, parsedBooks);
         closeDialog();
     } catch (error) {
-        toast({
-            title: "Import Failed",
-            description: "The provided text is not valid JSON or doesn't match the required format.",
-            variant: "destructive"
-        });
+        toast({ title: "Importação Falhou", description: "O texto fornecido não é JSON válido ou não corresponde ao formato exigido.", variant: "destructive" });
     }
   }
 
@@ -357,34 +349,34 @@ export default function BookManagementClient() {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-headline text-3xl font-bold tracking-tight">Book Management</h1>
-          <p className="text-muted-foreground">Load and manage the list of books for each project.</p>
+          <h1 className="font-headline text-3xl font-bold tracking-tight">Gestão de Livros</h1>
+          <p className="text-muted-foreground">Carregar e gerir a lista de livros para cada projeto.</p>
         </div>
         <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => openDialog('import')} disabled={!selectedProjectId}>
-                <BookUp className="mr-2 h-4 w-4"/> Import Book List (JSON)
+                <BookUp className="mr-2 h-4 w-4"/> Importar Lista de Livros (JSON)
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="sm" variant="outline" className="h-9 gap-1" disabled={!selectedProjectId}>
                     <Download className="h-3.5 w-3.5" />
-                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Export</span>
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Exportar</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Export Selected ({selection.length})</DropdownMenuLabel>
-                  <DropdownMenuItem onSelect={() => exportXLSX(selectedBooks)} disabled={selection.length === 0}>Export as XLSX</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => exportJSON(selectedBooks)} disabled={selection.length === 0}>Export as JSON</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => exportCSV(selectedBooks)} disabled={selection.length === 0}>Export as CSV</DropdownMenuItem>
+                  <DropdownMenuLabel>Exportar Seleção ({selection.length})</DropdownMenuLabel>
+                  <DropdownMenuItem onSelect={() => exportXLSX(selectedBooks)} disabled={selection.length === 0}>Exportar como XLSX</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportJSON(selectedBooks)} disabled={selection.length === 0}>Exportar como JSON</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportCSV(selectedBooks)} disabled={selection.length === 0}>Exportar como CSV</DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuLabel>Copy Selected ({selection.length})</DropdownMenuLabel>
-                  <DropdownMenuItem onSelect={() => copyToClipboardJSON(selectedBooks)} disabled={selection.length === 0}>Copy as JSON</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => copyToClipboardCSV(selectedBooks)} disabled={selection.length === 0}>Copy as CSV</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => copyToClipboardJSON(selectedBooks)} disabled={selection.length === 0}>Copiar como JSON</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => copyToClipboardCSV(selectedBooks)} disabled={selection.length === 0}>Copiar como CSV</DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuLabel>Export All ({sortedAndFilteredBooks.length})</DropdownMenuLabel>
-                  <DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Export as XLSX</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Export as JSON</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Export as CSV</DropdownMenuItem>
+                  <DropdownMenuLabel>Exportar Todos ({sortedAndFilteredBooks.length})</DropdownMenuLabel>
+                  <DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Exportar como XLSX</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Exportar como JSON</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Exportar como CSV</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
         </div>
@@ -394,14 +386,14 @@ export default function BookManagementClient() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Book Manifest</CardTitle>
+              <CardTitle>Lista de Livros</CardTitle>
               <CardDescription>
-                {selectedProjectId ? "Showing books for the selected project." : "Select a project from the top bar to manage its books."}
+                {selectedProjectId ? "A mostrar livros para o projeto selecionado." : "Selecione um projeto na barra superior para gerir os seus livros."}
               </CardDescription>
             </div>
             <div className="flex gap-2">
                 <Button onClick={() => openDialog('new')} disabled={!selectedProjectId}>
-                  <PlusCircle className="mr-2 h-4 w-4" /> Add Book
+                  <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Livro
                 </Button>
             </div>
           </div>
@@ -414,37 +406,37 @@ export default function BookManagementClient() {
                           <Checkbox
                               onCheckedChange={(checked) => setSelection(checked ? paginatedBooks.map(b => b.id) : [])}
                               checked={paginatedBooks.length > 0 && paginatedBooks.every(b => selection.includes(b.id))}
-                              aria-label="Select all on this page"
+                              aria-label="Selecionar todos nesta página"
                               disabled={paginatedBooks.length === 0}
                           />
                       </TableHead>
                       <TableHead>
                         <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>
-                            Book Name {getSortIndicator('name')}
+                            Nome do Livro {getSortIndicator('name')}
                         </div>
                       </TableHead>
                       <TableHead>
                          <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>
-                            Status {getSortIndicator('status')}
+                            Estado {getSortIndicator('status')}
                          </div>
                       </TableHead>
                       <TableHead>
                          <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('priority', e.shiftKey)}>
-                           Priority {getSortIndicator('priority')}
+                           Prioridade {getSortIndicator('priority')}
                          </div>
                       </TableHead>
                       <TableHead className="text-center">
                         <div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('expectedDocuments', e.shiftKey)}>
-                            Expected Pages {getSortIndicator('expectedDocuments')}
+                            Páginas Previstas {getSortIndicator('expectedDocuments')}
                         </div>
                       </TableHead>
-                      <TableHead><span className="sr-only">Actions</span></TableHead>
+                      <TableHead><span className="sr-only">Ações</span></TableHead>
                   </TableRow>
                    <TableRow>
                         <TableHead />
                         <TableHead>
                             <Input
-                                placeholder="Filter by name..."
+                                placeholder="Filtrar nome..."
                                 value={columnFilters['name'] || ''}
                                 onChange={(e) => handleColumnFilterChange('name', e.target.value)}
                                 className="h-8"
@@ -452,7 +444,7 @@ export default function BookManagementClient() {
                         </TableHead>
                         <TableHead>
                             <Input
-                                placeholder="Filter by status..."
+                                placeholder="Filtrar estado..."
                                 value={columnFilters['status'] || ''}
                                 onChange={(e) => handleColumnFilterChange('status', e.target.value)}
                                 className="h-8"
@@ -460,7 +452,7 @@ export default function BookManagementClient() {
                         </TableHead>
                         <TableHead>
                             <Input
-                                placeholder="Filter by priority..."
+                                placeholder="Filtrar prioridade..."
                                 value={columnFilters['priority'] || ''}
                                 onChange={(e) => handleColumnFilterChange('priority', e.target.value)}
                                 className="h-8"
@@ -468,7 +460,7 @@ export default function BookManagementClient() {
                         </TableHead>
                         <TableHead>
                             <Input
-                                placeholder="Filter by pages..."
+                                placeholder="Filtrar páginas..."
                                 value={columnFilters['expectedDocuments'] || ''}
                                 onChange={(e) => handleColumnFilterChange('expectedDocuments', e.target.value)}
                                 className="h-8"
@@ -485,7 +477,7 @@ export default function BookManagementClient() {
                               <Checkbox
                                   checked={selection.includes(book.id)}
                                   onCheckedChange={(checked) => setSelection(checked ? [...selection, book.id] : selection.filter((id) => id !== book.id))}
-                                  aria-label={`Select book ${book.name}`}
+                                  aria-label={`Selecionar livro ${book.name}`}
                               />
                           </TableCell>
                           <TableCell className="font-medium">{book.name}</TableCell>
@@ -501,16 +493,16 @@ export default function BookManagementClient() {
                                       </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
-                                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                      <DropdownMenuLabel>Ações</DropdownMenuLabel>
                                        <DropdownMenuItem onSelect={() => openDialog('details', book)}>
-                                        <Info className="mr-2 h-4 w-4" /> Details
+                                        <Info className="mr-2 h-4 w-4" /> Detalhes
                                       </DropdownMenuItem>
                                       <DropdownMenuItem onSelect={() => openDialog('edit', book)}>
-                                        <Edit className="mr-2 h-4 w-4" /> Edit
+                                        <Edit className="mr-2 h-4 w-4" /> Editar
                                       </DropdownMenuItem>
                                       <DropdownMenuSeparator />
                                       <DropdownMenuItem onSelect={() => openDialog('delete', book)} className="text-destructive">
-                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                        <Trash2 className="mr-2 h-4 w-4" /> Eliminar
                                       </DropdownMenuItem>
                                   </DropdownMenuContent>
                               </DropdownMenu>
@@ -519,7 +511,7 @@ export default function BookManagementClient() {
                   )) : (
                     <TableRow>
                       <TableCell colSpan={6} className="h-24 text-center">
-                        No books found for this project.
+                        Nenhum livro encontrado para este projeto.
                       </TableCell>
                     </TableRow>
                   )
@@ -528,8 +520,8 @@ export default function BookManagementClient() {
                     <TableCell colSpan={6} className="h-24 text-center">
                        <div className="flex flex-col items-center gap-2">
                             <FolderSearch className="h-10 w-10 text-muted-foreground"/>
-                            <span className="font-medium">No Project Selected</span>
-                            <p className="text-muted-foreground">Please use the global filter in the header to select a project.</p>
+                            <span className="font-medium">Nenhum Projeto Selecionado</span>
+                            <p className="text-muted-foreground">Por favor, use o filtro global no cabeçalho para selecionar um projeto.</p>
                        </div>
                     </TableCell>
                   </TableRow>
@@ -539,7 +531,7 @@ export default function BookManagementClient() {
         </CardContent>
         <CardFooter className="flex items-center justify-between">
           <div className="text-xs text-muted-foreground">
-            {selection.length > 0 ? `${selection.length} of ${sortedAndFilteredBooks.length} book(s) selected.` : `Showing ${paginatedBooks.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedBooks.length} of ${sortedAndFilteredBooks.length} books`}
+            {selection.length > 0 ? `${selection.length} de ${sortedAndFilteredBooks.length} livro(s) selecionado(s).` : `A mostrar ${paginatedBooks.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedBooks.length} de ${sortedAndFilteredBooks.length} livro(s)`}
           </div>
           <PaginationNav />
         </CardFooter>
@@ -548,9 +540,9 @@ export default function BookManagementClient() {
       <Dialog open={dialogState.open && (dialogState.type === 'new' || dialogState.type === 'edit')} onOpenChange={closeDialog}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{dialogState.type === 'new' ? 'Add New Book' : 'Edit Book'}</DialogTitle>
+            <DialogTitle>{dialogState.type === 'new' ? 'Adicionar Novo Livro' : 'Editar Livro'}</DialogTitle>
             <DialogDescription>
-              {dialogState.type === 'new' ? 'Add a new book to the selected project.' : `Editing book: ${dialogState.data?.name}`}
+              {dialogState.type === 'new' ? 'Adicionar um novo livro ao projeto selecionado.' : `Editar livro: ${dialogState.data?.name}`}
             </DialogDescription>
           </DialogHeader>
           <BookForm book={dialogState.data} onSave={handleSave} onCancel={closeDialog} />
@@ -560,14 +552,14 @@ export default function BookManagementClient() {
       <AlertDialog open={dialogState.open && dialogState.type === 'delete'} onOpenChange={closeDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Tem a certeza?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the book <span className="font-bold">{dialogState.data?.name}</span> from the project manifest.
+              Esta ação não pode ser desfeita. Isso irá excluir permanentemente o livro <span className="font-bold">{dialogState.data?.name}</span> do manifesto do projeto.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={closeDialog}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete Book</AlertDialogAction>
+            <AlertDialogCancel onClick={closeDialog}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Eliminar Livro</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -575,20 +567,20 @@ export default function BookManagementClient() {
       <Dialog open={dialogState.open && dialogState.type === 'import'} onOpenChange={closeDialog}>
         <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
-                <DialogTitle>Import Books from JSON</DialogTitle>
+                <DialogTitle>Importar Livros de JSON</DialogTitle>
                 <DialogDescription>
-                    Upload or paste a JSON file with an array of books.
-                    Each object should have a `name` (string) and `expectedDocuments` (number).
+                    Faça upload ou cole um arquivo JSON com um array de livros.
+                    Cada objeto deve ter um `name` (string) e `expectedDocuments` (número).
                 </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>Upload File</Button>
-                    <p className="text-sm text-muted-foreground">Or paste content below.</p>
+                    <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>Carregar Ficheiro</Button>
+                    <p className="text-sm text-muted-foreground">Ou cole o conteúdo abaixo.</p>
                     <Input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json" />
                 </div>
                 <div className="grid w-full gap-1.5">
-                    <Label htmlFor="json-input">JSON Content</Label>
+                    <Label htmlFor="json-input">Conteúdo JSON</Label>
                     <Textarea 
                         id="json-input"
                         placeholder='[{"name": "Book A", "expectedDocuments": 50}, {"name": "Book B", "expectedDocuments": 120}]'
@@ -599,8 +591,8 @@ export default function BookManagementClient() {
                 </div>
             </div>
             <DialogFooter>
-                <Button type="button" variant="outline" onClick={closeDialog}>Cancel</Button>
-                <Button type="submit" onClick={handleImport} disabled={!importJson}>Import Books</Button>
+                <Button type="button" variant="outline" onClick={closeDialog}>Cancelar</Button>
+                <Button type="submit" onClick={handleImport} disabled={!importJson}>Importar Livros</Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -608,12 +600,12 @@ export default function BookManagementClient() {
        <Dialog open={dialogState.open && dialogState.type === 'details'} onOpenChange={closeDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Book Details</DialogTitle>
+            <DialogTitle>Detalhes do Livro</DialogTitle>
             <DialogDescription>{dialogState.data?.name}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4 text-sm">
             <div className="grid grid-cols-3 items-center gap-x-4">
-              <p className="text-muted-foreground">Author</p>
+              <p className="text-muted-foreground">Autor</p>
               <p className="col-span-2 font-medium">{dialogState.data?.author || '—'}</p>
             </div>
             <div className="grid grid-cols-3 items-center gap-x-4">
@@ -621,22 +613,22 @@ export default function BookManagementClient() {
               <p className="col-span-2 font-medium">{dialogState.data?.isbn || '—'}</p>
             </div>
              <div className="grid grid-cols-3 items-center gap-x-4">
-              <p className="text-muted-foreground">Publication Year</p>
+              <p className="text-muted-foreground">Ano de Publicação</p>
               <p className="col-span-2 font-medium">{dialogState.data?.publicationYear || '—'}</p>
             </div>
             <div className="grid grid-cols-3 items-center gap-x-4">
-              <p className="text-muted-foreground">Priority</p>
+              <p className="text-muted-foreground">Prioridade</p>
               <p className="col-span-2 font-medium">{dialogState.data?.priority || '—'}</p>
             </div>
             {dialogState.data?.info && (
               <div className="grid grid-cols-3 items-start gap-x-4">
-                <p className="text-muted-foreground">Additional Info</p>
+                <p className="text-muted-foreground">Informação Adicional</p>
                 <p className="col-span-2 font-medium whitespace-pre-wrap">{dialogState.data.info}</p>
               </div>
             )}
           </div>
            <DialogFooter>
-              <Button type="button" variant="secondary" onClick={closeDialog}>Close</Button>
+              <Button type="button" variant="secondary" onClick={closeDialog}>Fechar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

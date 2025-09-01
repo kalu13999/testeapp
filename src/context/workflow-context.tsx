@@ -10,6 +10,7 @@ import * as dataApi from '@/lib/data';
 import { UserFormValues } from '@/app/(app)/users/user-form';
 import { StorageFormValues } from '@/app/(app)/admin/general-configs/storage-form';
 import { ScannerFormValues } from '@/app/(app)/admin/general-configs/scanner-form';
+import { format } from 'date-fns';
 
 export type { EnrichedBook, RejectionTag };
 
@@ -39,7 +40,7 @@ type AppContextType = {
   
   // Auth state
   currentUser: User | null;
-  login: (username: string, password: string) => User | null;
+  login: (username: string, password: string) => Promise<User | null>;
   logout: () => void;
   changePassword: (userId: string, currentPassword: string, newPassword: string) => Promise<boolean | undefined>;
 
@@ -218,7 +219,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         return result;
     } catch (error: any) {
         console.error("A mutation failed:", error);
-        toast({ title: "Operation Failed", description: error.message, variant: "destructive" });
+        toast({ title: "Operação Falhou", description: error.message, variant: "destructive" });
     } finally {
         setIsMutating(false);
     }
@@ -283,11 +284,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             }
         } catch (error) {
             console.error("Failed to load initial data", error);
-            toast({
-                title: "Error Loading Data",
-                description: "Could not connect to the server. Please check your connection and refresh.",
-                variant: "destructive"
-            });
+            toast({title: "Erro ao Carregar Dados", description: "Não foi possível conectar ao servidor. Por favor, verifique a sua conexão e atualize.", variant: "destructive"});
         } finally {
             setLoading(false);
         }
@@ -296,17 +293,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   }, [toast]);
 
 
-  const login = (username: string, password: string): User | null => {
+  const login = async (username: string, password: string): Promise<User | null> => {
     const user = users.find(u => u.username === username && u.password === password);
     if (user) {
       if (user.status === 'disabled') {
-        toast({
-          title: "Login Failed",
-          description: "Your account is disabled. Please contact an administrator.",
-          variant: "destructive"
-        });
+        toast({title: "Login Falhou", description: "A sua conta está desativada. Por favor, contacte um administrador.", variant: "destructive"});
         return null;
       }
+
       setSelectedProjectId(null);
       setCurrentUser(user);
       localStorage.setItem('flowvault_userid', user.id);
@@ -319,6 +313,9 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       } else {
         setNavigationHistory([]);
       }
+
+      await regLastLogin(user);
+      
       return user;
     }
     return null;
@@ -331,6 +328,23 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     localStorage.removeItem('flowvault_userid');
   };
   
+  const regLastLogin = (
+    user: User
+  ) => {
+    try {
+      const now = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
+      fetch(`/api/users/${user.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lastLogin: now }),
+      });
+    } catch (error) {
+      console.error("Falha ao registar o lastLogin", error);
+    }
+  };
+
+
+
   const changePassword = async (userId: string, currentPassword: string, newPassword: string): Promise<boolean | undefined> => {
     return withMutation(async () => {
       try {
@@ -349,10 +363,10 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
           ));
 
           logAction('Password Changed', `User changed their password.`, { userId: userId });
-          toast({ title: "Password Changed Successfully" });
+          toast({ title: "Palavra-passe alterada com sucesso" });
           return true;
       } catch (error: any) {
-          toast({ title: "Password Change Failed", description: error.message, variant: "destructive" });
+          toast({ title: "Falha ao Alterar Palavra-passe", description: error.message, variant: "destructive" });
           return false;
       }
     }) ?? false;
@@ -518,16 +532,16 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(clientData),
           });
-          if (!response.ok) throw new Error('Failed to create client');
+          if (!response.ok) throw new Error('Falha ao criar cliente');
           
           const newClient = await response.json();
           
           setClients(prev => [...prev, newClient].sort((a, b) => a.name.localeCompare(b.name)));
           logAction('Client Created', `New client "${newClient.name}" added.`, {});
-          toast({ title: "Client Added", description: `Client "${newClient.name}" has been created.` });
+          toast({ title: "Cliente Adicionado", description: `Cliente "${newClient.name}" foi criado.` });
       } catch (error) {
           console.error(error);
-          toast({ title: "Error", description: "Could not create client.", variant: "destructive" });
+          toast({ title: "Erro", description: "Não foi possível criar o cliente.", variant: "destructive" });
       }
     });
   };
@@ -548,10 +562,10 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
           const updatedClient = await response.json();
           setClients(prev => prev.map(c => c.id === clientId ? updatedClient as Client : c));
           logAction('Client Updated', `Details for "${updatedClient.name}" updated.`, {});
-          toast({ title: "Client Updated", description: "Client details have been saved." });
+          toast({ title: "Cliente Atualizado", description: "Os detalhes do cliente foram guardados." });
       } catch (error) {
           console.error(error);
-          toast({ title: "Error", description: "Could not update client.", variant: "destructive" });
+          toast({ title: "Erro", description: "Não foi possível atualizar o cliente.", variant: "destructive" });
       }
     });
   };
@@ -563,10 +577,10 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
           const response = await fetch(`/api/clients/${clientId}`, { method: 'DELETE' });
           if (!response.ok) {
               if (response.status === 409) {
-                   toast({ title: "Deletion Failed", description: "Cannot delete client with associated projects. Please reassign or delete projects first.", variant: "destructive" });
+                   toast({ title: "Falha na Eliminação", description: "Não é possível eliminar o cliente com projetos associados. Por favor, reatribua ou elimine os projetos primeiro.", variant: "destructive" });
                    return;
               }
-              throw new Error('Failed to delete client');
+              throw new Error('Falha ao eliminar cliente');
           }
           
           const associatedProjectIds = rawProjects.filter(p => p.clientId === clientId).map(p => p.id);
@@ -579,10 +593,10 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
           if (associatedProjectIds.includes(selectedProjectId!)) setSelectedProjectId(null);
           logAction('Client Deleted', `Client "${clientToDelete?.name}" was deleted.`, {});
-          toast({ title: "Client Deleted", description: "The client has been deleted.", variant: "destructive" });
+          toast({ title: "Cliente Eliminado", description: "O cliente foi eliminado.", variant: "destructive" });
       } catch (error) {
           console.error(error);
-          toast({ title: "Error", description: "Could not delete client.", variant: "destructive" });
+          toast({ title: "Erro", description: "Não foi possível eliminar o cliente.", variant: "destructive" });
       }
     });
   };
@@ -597,15 +611,15 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
           });
           if (!response.ok) {
               const error = await response.json();
-              throw new Error(error.error || 'Failed to create user');
+              throw new Error(error.error || 'Falha ao criar o utilizador');
           }
           const newUser: User = await response.json();
           setUsers(prev => [...prev, newUser]);
           logAction('User Created', `New user "${newUser.name}" added with role ${newUser.role}.`, {});
-          toast({ title: "User Added", description: `User "${newUser.name}" has been created.` });
+          toast({ title: "Utilizador Adicionado", description: `O utilizador "${newUser.name}" foi criado.` });
       } catch (error) {
           console.error(error);
-          toast({ title: "Error", description: "Could not create user.", variant: "destructive" });
+          toast({ title: "Erro", description: "Não foi possível criar o utilizador.", variant: "destructive" });
       }
     });
   };
@@ -618,14 +632,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(userData),
           });
-          if (!response.ok) throw new Error('Failed to update user');
+          if (!response.ok) throw new Error('Falha ao atualizar utilizador');
           const updatedUser = await response.json();
           setUsers(prev => prev.map(u => (u.id === userId ? updatedUser : u)));
           logAction('User Updated', `Details for user "${updatedUser.name}" updated.`, {});
-          toast({ title: "User Updated" });
+          toast({ title: "Utilizador Atualizado" });
       } catch (error) {
           console.error(error);
-          toast({ title: "Error", description: "Could not update user.", variant: "destructive" });
+          toast({ title: "Erro", description: "Não foi possível atualizar o utilizador.", variant: "destructive" });
       }
     });
   };
@@ -641,14 +655,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ status: newStatus }),
           });
-          if (!response.ok) throw new Error('Failed to toggle user status');
+          if (!response.ok) throw new Error('Falha ao alternar estado do utilizador');
           const updatedUser = await response.json();
           setUsers(prev => prev.map(u => (u.id === userId ? updatedUser : u)));
           logAction('User Status Changed', `User "${user.name}" was ${newStatus}.`, {});
-          toast({ title: `User ${newStatus === 'active' ? 'Enabled' : 'Disabled'}` });
+          toast({ title: `Utilizador ${newStatus === 'active' ? 'Ativado' : 'Desativado'}` });
       } catch (error) {
           console.error(error);
-          toast({ title: "Error", description: "Could not update user status.", variant: "destructive" });
+          toast({ title: "Erro", description: "Não foi possível atualizar o estado do utilizador.", variant: "destructive" });
       }
     });
   };
@@ -659,13 +673,13 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       if (!userToDelete || userToDelete.role === 'System') return;
       try {
           const response = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
-          if (!response.ok) throw new Error('Failed to delete user');
+          if (!response.ok) throw new Error('Falha ao eliminar utilizador');
           setUsers(prev => prev.filter(u => u.id !== userId));
           logAction('User Deleted', `User "${userToDelete?.name}" was deleted.`, {});
-          toast({ title: "User Deleted", description: "The user has been deleted.", variant: "destructive" });
+          toast({ title: "Utilizador Eliminado", description: "O utilizador foi eliminado.", variant: "destructive" });
       } catch (error) {
           console.error(error);
-          toast({ title: "Error", description: "Could not delete user.", variant: "destructive" });
+          toast({ title: "Erro", description: "Não foi possível eliminar o utilizador.", variant: "destructive" });
       }
     });
   };
@@ -678,17 +692,17 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ defaultProjectId: projectId }),
         });
-        if (!response.ok) throw new Error("Failed to update user's default project.");
+        if (!response.ok) throw new Error("Falha ao atualizar o projeto padrão do utilizador.");
         const updatedUser = await response.json();
         setUsers(prev => prev.map(u => u.id === userId ? updatedUser : u));
         if (currentUser?.id === userId) {
           setCurrentUser(updatedUser);
         }
         logAction('Default Project Set', `Default project for user ${updatedUser.name} set.`, {});
-        toast({ title: "Default Project Updated" });
+        toast({ title: "Projeto Padrão Atualizado" });
       } catch (error: any) {
         console.error(error);
-        toast({ title: "Error", description: error.message, variant: "destructive" });
+        toast({ title: "Erro", description: error.message, variant: "destructive" });
       }
     });
   };
@@ -701,15 +715,15 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(projectData),
           });
-          if (!response.ok) throw new Error('Failed to create project');
+          if (!response.ok) throw new Error('Falha ao criar o projeto');
           const newProject = await response.json();
           setRawProjects(prev => [...prev, newProject]);
           setProjectWorkflows(prev => ({ ...prev, [newProject.id]: WORKFLOW_SEQUENCE }));
           logAction('Project Created', `New project "${newProject.name}" added.`, {});
-          toast({ title: "Project Added", description: `Project "${newProject.name}" has been created.` });
+          toast({ title: "Projeto Adicionado", description: `O projeto "${newProject.name}" foi criado.` });
       } catch (error) {
           console.error(error);
-          toast({ title: "Error", description: "Could not create project.", variant: "destructive" });
+          toast({ title: "Erro", description: "Não foi possível criar o projeto.", variant: "destructive" });
       }
     });
   };
@@ -724,14 +738,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(updatedProjectData),
           });
-          if (!response.ok) throw new Error('Failed to update project');
+          if (!response.ok) throw new Error('Falha ao atualizar o projeto');
           const updatedProject = await response.json();
           setRawProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...updatedProject } : p));
           logAction('Project Updated', `Details for project "${updatedProject.name}" updated.`, {});
-          toast({ title: "Project Updated" });
+          toast({ title: "Projeto Atualizado" });
       } catch (error) {
           console.error(error);
-          toast({ title: "Error", description: "Could not update project.", variant: "destructive" });
+          toast({ title: "Erro", description: "Não foi possível atualizar o projeto.", variant: "destructive" });
       }
     });
   };
@@ -741,7 +755,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         const projectToDelete = rawProjects.find(p => p.id === projectId);
         try {
             const response = await fetch(`/api/projects/${projectId}`, { method: 'DELETE' });
-            if (!response.ok) throw new Error('Failed to delete project');
+            if (!response.ok) throw new Error('Falha ao eliminar projeto');
             if (selectedProjectId === projectId) setSelectedProjectId(null);
             setRawProjects(prev => prev.filter(p => p.id !== projectId));
             setRawBooks(prev => prev.filter(b => b.projectId !== projectId));
@@ -752,10 +766,10 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
                 return newWorkflows;
             });
             logAction('Project Deleted', `Project "${projectToDelete?.name}" was deleted.`, {});
-            toast({ title: "Project Deleted", variant: "destructive" });
+            toast({ title: "Projeto Eliminado", variant: "destructive" });
         } catch (error) {
             console.error(error);
-            toast({ title: "Error", description: "Could not delete project.", variant: "destructive" });
+            toast({ title: "Erro", description: "Não foi possível eliminar o projeto.", variant: "destructive" });
         }
     });
   };
@@ -764,20 +778,20 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       await withMutation(async () => {
         try {
             const statusId = statuses.find(s => s.name === 'Pending Shipment')?.id;
-            if (!statusId) throw new Error("Could not find 'Pending Shipment' status.");
+            if (!statusId) throw new Error("Não foi possível encontrar o estado 'Envio Pendente'.");
             const response = await fetch('/api/books', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ projectId, book: {...bookData, statusId } }),
             });
-            if (!response.ok) throw new Error('Failed to create book');
+            if (!response.ok) throw new Error('Falha ao criar livro');
             const newRawBook = await response.json();
             setRawBooks(prev => [...prev, newRawBook]);
             logAction('Book Added', `Book "${newRawBook.name}" was added to project.`, { bookId: newRawBook.id });
-            toast({ title: "Book Added", description: `Book "${newRawBook.name}" has been added.` });
+            toast({ title: "Livro Adicionado", description: `O livro "${newRawBook.name}" foi adicionado.` });
         } catch (error) {
             console.error(error);
-            toast({ title: "Error", description: "Could not create book.", variant: "destructive" });
+            toast({ title: "Erro", description: "Não foi possível criar o livro.", variant: "destructive" });
         }
       });
   };
@@ -790,14 +804,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(bookData),
             });
-            if (!response.ok) throw new Error('Failed to update book');
+            if (!response.ok) throw new Error('Falha ao atualizar livro');
             const updatedRawBook = await response.json();
             setRawBooks(prev => prev.map(b => b.id === bookId ? updatedRawBook : b));
             logAction('Book Updated', `Details for book "${updatedRawBook.name}" were updated.`, { bookId });
-            toast({ title: "Book Updated" });
+            toast({ title: "Livro Atualizado" });
         } catch (error) {
             console.error(error);
-            toast({ title: "Error", description: "Could not update book.", variant: "destructive" });
+            toast({ title: "Erro", description: "Não foi possível atualizar o livro.", variant: "destructive" });
         }
       });
   };
@@ -807,14 +821,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         const bookToDelete = rawBooks.find(b => b.id === bookId);
         try {
             const response = await fetch(`/api/books/${bookId}`, { method: 'DELETE' });
-            if (!response.ok) throw new Error('Failed to delete book');
+            if (!response.ok) throw new Error('Falha ao eliminar livro');
             setRawBooks(prev => prev.filter(b => b.id !== bookId));
             setRawDocuments(prev => prev.filter(d => d.bookId !== bookId));
             logAction('Book Deleted', `Book "${bookToDelete?.name}" and its pages were deleted.`, { bookId });
-            toast({ title: "Book Deleted", variant: "destructive" });
+            toast({ title: "Livro Eliminado", variant: "destructive" });
         } catch (error) {
             console.error(error);
-            toast({ title: "Error", description: "Could not delete book.", variant: "destructive" });
+            toast({ title: "Erro", description: "Não foi possível eliminar o livro.", variant: "destructive" });
         }
       });
   };
@@ -827,17 +841,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ projectId, books: newBooks }),
             });
-            if (!response.ok) throw new Error('Failed to import books');
+            if (!response.ok) throw new Error('Falha ao importar livros');
             const createdBooks = await response.json();
             setRawBooks(prev => [...prev, ...createdBooks]);
             logAction('Books Imported', `${createdBooks.length} books imported for project.`, {});
-            toast({
-                title: "Import Successful",
-                description: `${createdBooks.length} books have been added to the project.`
-            });
+            toast({title: "Importação Bem-Sucedida", description: `${createdBooks.length} livros foram adicionados ao projeto.`});
         } catch (error) {
             console.error(error);
-            toast({ title: "Import Failed", description: "Could not import books.", variant: "destructive" });
+            toast({ title: "Erro", description: "Não foi possível importar livros.", variant: "destructive" });
         }
       });
   };
@@ -845,13 +856,13 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const addRole = (roleName: string, rolePermissions: string[]) => {
     withMutation(async () => {
       if (roles.includes(roleName)) {
-        toast({ title: "Role Exists", description: "A role with this name already exists.", variant: "destructive" });
+        toast({ title: "Perfil Já Existe", description: "Já existe um perfil com este nome.", variant: "destructive" });
         return;
       }
       setRoles(prev => [...prev, roleName]);
       setPermissions(prev => ({...prev, [roleName]: rolePermissions }));
       logAction('Role Created', `New role "${roleName}" was created.`, {});
-      toast({ title: "Role Created", description: `Role "${roleName}" has been added.` });
+      toast({ title: "Perfil Criado", description: `Perfil "${roleName}" foi adicionado.` });
     });
   };
 
@@ -864,14 +875,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
           body: JSON.stringify({ role: roleName, permissions: rolePermissions }),
         });
         if (!response.ok) {
-          throw new Error('Failed to save permissions to the database.');
+          throw new Error('Falha ao guardar permissões no banco de dados.');
         }
         setPermissions(prev => ({ ...prev, [roleName]: rolePermissions }));
         logAction('Role Updated', `Permissions for role "${roleName}" were updated.`, {});
-        toast({ title: "Role Updated", description: `Permissions for "${roleName}" have been saved.` });
+        toast({ title: "Perfil Atualizado", description: `Permissões para "${roleName}" foram guardadas.` });
       } catch (error) {
         console.error(error);
-        toast({ title: "Error", description: "Could not update role permissions.", variant: "destructive" });
+        toast({ title: "Erro", description: "Não foi possível atualizar as permissões do perfil.", variant: "destructive" });
       }
     });
   };
@@ -886,7 +897,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       });
       setUsers(prev => prev.map(u => u.role === roleName ? { ...u, role: '' } : u));
       logAction('Role Deleted', `Role "${roleName}" was deleted.`, {});
-      toast({ title: "Role Deleted", description: `Role "${roleName}" has been deleted.`, variant: "destructive" });
+      toast({ title: "Perfil Eliminado", description: `Perfil "${roleName}" foi eliminado.`, variant: "destructive" });
     });
   };
 
@@ -898,14 +909,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ workflow }),
         });
-        if (!response.ok) throw new Error("Failed to update workflow on the server.");
-        
+        if (!response.ok) throw new Error("Falha ao atualizar o fluxo de trabalho no servidor.");
+
         setProjectWorkflows(prev => ({ ...prev, [projectId]: workflow }));
         logAction('Project Workflow Updated', `Workflow for project ID ${projectId} was updated.`, {});
-        toast({ title: "Project Workflow Updated" });
+        toast({ title: "Fluxo de Trabalho do Projeto Atualizado" });
       } catch (error) {
         console.error(error);
-        toast({ title: "Error", description: "Could not save workflow changes.", variant: "destructive" });
+        toast({ title: "Erro", description: "Não foi possível guardar as alterações no fluxo de trabalho.", variant: "destructive" });
       }
     });
   };
@@ -913,7 +924,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const addRejectionTag = async (tagData: Omit<RejectionTag, 'id' | 'clientId'>, clientId: string) => {
     await withMutation(async () => {
       if (!clientId) {
-        toast({ title: "Client ID is missing", variant: "destructive" });
+        toast({ title: "ID do Cliente está ausente", variant: "destructive" });
         return;
       }
       try {
@@ -922,15 +933,15 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ ...tagData, clientId }),
           });
-          if (!response.ok) throw new Error('Failed to create rejection tag');
+          if (!response.ok) throw new Error('Falha ao criar tag de rejeição');
           const newTag = await response.json();
           setRejectionTags(prev => [...prev, newTag]);
           const client = clients.find(c => c.id === clientId);
-          logAction('Rejection Tag Created', `Tag "${newTag.label}" created for client "${client?.name}".`, {});
-          toast({ title: "Rejection Reason Added" });
+          logAction('Rejection Tag Created', `Tag "${newTag.label}" criada para o cliente "${client?.name}".`, {});
+          toast({ title: "Motivo de Rejeição Adicionado" });
       } catch (error) {
           console.error(error);
-          toast({ title: "Error", description: "Could not create rejection reason.", variant: "destructive" });
+          toast({ title: "Erro", description: "Não foi possível criar o motivo de rejeição.", variant: "destructive" });
       }
     });
   };
@@ -943,14 +954,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(tagData),
           });
-          if (!response.ok) throw new Error('Failed to update rejection tag');
+          if (!response.ok) throw new Error('Falha ao atualizar tag de rejeição');
           const updatedTag = await response.json();
           setRejectionTags(prev => prev.map(t => t.id === tagId ? updatedTag : t));
           logAction('Rejection Tag Updated', `Tag "${updatedTag.label}" updated.`, {});
-          toast({ title: "Rejection Reason Updated" });
+          toast({ title: "Motivo de Rejeição Atualizado" });
       } catch (error) {
           console.error(error);
-          toast({ title: "Error", description: "Could not update rejection reason.", variant: "destructive" });
+          toast({ title: "Erro", description: "Não foi possível atualizar o motivo de rejeição.", variant: "destructive" });
       }
     });
   };
@@ -960,13 +971,13 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       const tag = rejectionTags.find(t => t.id === tagId);
       try {
           const response = await fetch(`/api/rejection-tags/${tagId}`, { method: 'DELETE' });
-          if (!response.ok) throw new Error('Failed to delete rejection tag');
+          if (!response.ok) throw new Error('Falha ao eliminar etiqueta de rejeição');
           setRejectionTags(prev => prev.filter(t => t.id !== tagId));
           logAction('Rejection Tag Deleted', `Tag "${tag?.label}" deleted.`, {});
-          toast({ title: "Rejection Reason Deleted", variant: "destructive" });
+          toast({ title: "Etiqueta de Rejeição Eliminada", variant: "destructive" });
       } catch (error) {
           console.error(error);
-          toast({ title: "Error", description: "Could not delete rejection reason.", variant: "destructive" });
+          toast({ title: "Erro", description: "Não foi possível eliminar a etiqueta de rejeição.", variant: "destructive" });
       }
     });
   };
@@ -979,14 +990,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(storageData),
           });
-          if (!response.ok) throw new Error('Failed to create storage');
+          if (!response.ok) throw new Error('Falha ao criar Armazenamento');
           const newStorage = await response.json();
           setStorages(prev => [...prev, newStorage]);
           logAction('Storage Created', `New storage location "${newStorage.nome}" added.`, {});
-          toast({ title: "Storage Added" });
+          toast({ title: "Armazenamento Adicionado" });
       } catch (error) {
           console.error(error);
-          toast({ title: "Error", description: "Could not create storage.", variant: "destructive" });
+          toast({ title: "Erro", description: "Não foi possível criar o armazenamento.", variant: "destructive" });
       }
     });
   };
@@ -999,14 +1010,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(storageData),
           });
-          if (!response.ok) throw new Error('Failed to update storage');
+          if (!response.ok) throw new Error('Falha ao atualizar o armazenamento');
           const updatedStorage = await response.json();
           setStorages(prev => prev.map(s => s.id === Number(storageId) ? updatedStorage : s));
           logAction('Storage Updated', `Storage location "${updatedStorage.nome}" updated.`, {});
-          toast({ title: "Storage Updated" });
+          toast({ title: "Armazenamento Atualizado" });
       } catch (error) {
           console.error(error);
-          toast({ title: "Error", description: "Could not update storage.", variant: "destructive" });
+          toast({ title: "Erro", description: "Não foi possível atualizar o armazenamento.", variant: "destructive" });
       }
     });
   };
@@ -1016,13 +1027,13 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       const storage = storages.find(s => s.id === Number(storageId));
       try {
           const response = await fetch(`/api/storages/${storageId}`, { method: 'DELETE' });
-          if (!response.ok) throw new Error('Failed to delete storage');
+          if (!response.ok) throw new Error('Falha ao eliminar armazenamento');
           setStorages(prev => prev.filter(s => s.id !== Number(storageId)));
           logAction('Storage Deleted', `Storage location "${storage?.nome}" deleted.`, {});
-          toast({ title: "Storage Deleted", variant: "destructive" });
+          toast({ title: "Armazenamento Eliminado", variant: "destructive" });
       } catch (error) {
           console.error(error);
-          toast({ title: "Error", description: "Could not delete storage.", variant: "destructive" });
+          toast({ title: "Erro", description: "Não foi possível eliminar o armazenamento.", variant: "destructive" });
       }
     });
   };
@@ -1035,14 +1046,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(scannerData),
           });
-          if (!response.ok) throw new Error('Failed to create scanner');
+          if (!response.ok) throw new Error('Falha ao criar scanner');
           const newScanner = await response.json();
           setScanners(prev => [...prev, newScanner]);
           logAction('Scanner Created', `New scanner "${newScanner.nome}" added.`, {});
-          toast({ title: "Scanner Added" });
+          toast({ title: "Scanner Adicionado" });
       } catch (error) {
           console.error(error);
-          toast({ title: "Error", description: "Could not create scanner.", variant: "destructive" });
+          toast({ title: "Erro", description: "Não foi possível criar o scanner.", variant: "destructive" });
       }
     });
   };
@@ -1055,14 +1066,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(scannerData),
           });
-          if (!response.ok) throw new Error('Failed to update scanner');
+          if (!response.ok) throw new Error('Falha ao atualizar scanner');
           const updatedScanner = await response.json();
           setScanners(prev => prev.map(s => s.id === scannerId ? updatedScanner : s));
           logAction('Scanner Updated', `Scanner "${updatedScanner.nome}" updated.`, {});
-          toast({ title: "Scanner Updated" });
+          toast({ title: "Scanner Atualizado" });
       } catch (error) {
           console.error(error);
-          toast({ title: "Error", description: "Could not update scanner.", variant: "destructive" });
+          toast({ title: "Erro", description: "Não foi possível atualizar o scanner.", variant: "destructive" });
       }
     });
   };
@@ -1072,13 +1083,13 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       const scanner = scanners.find(s => s.id === scannerId);
       try {
           const response = await fetch(`/api/scanners/${scannerId}`, { method: 'DELETE' });
-          if (!response.ok) throw new Error('Failed to delete scanner');
+          if (!response.ok) throw new Error('Falha ao eliminar scanner');
           setScanners(prev => prev.filter(s => s.id !== scannerId));
           logAction('Scanner Deleted', `Scanner "${scanner?.nome}" deleted.`, {});
-          toast({ title: "Scanner Deleted", variant: "destructive" });
+          toast({ title: "Scanner Eliminado", variant: "destructive" });
       } catch (error) {
           console.error(error);
-          toast({ title: "Error", description: "Could not delete scanner.", variant: "destructive" });
+          toast({ title: "Erro", description: "Não foi possível eliminar o scanner.", variant: "destructive" });
       }
     });
   };
@@ -1091,13 +1102,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(associationData),
         });
-        if (!response.ok) throw new Error('Failed to add project-storage association');
+        if (!response.ok) throw new Error('Falha ao adicionar associação de armazenamento ao projeto');
         const newAssociation = await response.json();
         setProjectStorages(prev => [...prev, newAssociation]);
         logAction('Project Storage Added', `Storage associated with project.`, {});
+        toast({ title: "Associação Adicionada" });
       } catch (error) {
         console.error(error);
-        toast({ title: "Error", description: "Could not add association.", variant: "destructive" });
+        toast({ title: "Erro", description: "Não foi possível adicionar a associação.", variant: "destructive" });
       }
     });
   };
@@ -1110,7 +1122,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(associationData),
         });
-        if (!response.ok) throw new Error('Failed to update project-storage association');
+        if (!response.ok) throw new Error('Falha ao atualizar associação de armazenamento do projeto');
         const updatedAssociation = await response.json();
         setProjectStorages(prev => prev.map(ps => 
             (ps.projectId === updatedAssociation.projectId && ps.storageId === updatedAssociation.storageId)
@@ -1118,9 +1130,10 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             : ps
         ));
         logAction('Project Storage Updated', `Association for project ${associationData.projectId} updated.`, {});
+        toast({ title: "Associação Atualizada" });
       } catch (error) {
         console.error(error);
-        toast({ title: "Error", description: "Could not update association.", variant: "destructive" });
+        toast({ title: "Erro", description: "Não foi possível atualizar a associação.", variant: "destructive" });
       }
     });
   };
@@ -1133,12 +1146,13 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ projectId, storageId }),
         });
-        if (!response.ok) throw new Error('Failed to delete project-storage association');
+        if (!response.ok) throw new Error('Falha ao eliminar associação de armazenamento do projeto');
         setProjectStorages(prev => prev.filter(ps => !(ps.projectId === projectId && ps.storageId === storageId)));
         logAction('Project Storage Removed', `Association between project ${projectId} and storage ${storageId} removed.`, {});
+        toast({ title: "Associação Eliminada" });
       } catch (error) {
         console.error(error);
-        toast({ title: "Error", description: "Could not remove association.", variant: "destructive" });
+        toast({ title: "Erro", description: "Não foi possível eliminar a associação.", variant: "destructive" });
       }
     });
   };
@@ -1154,7 +1168,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(data),
           });
-          if (!response.ok) throw new Error('Failed to update document');
+          if (!response.ok) throw new Error('Falha ao atualizar documento');
           const updatedDocData = await response.json();
           setRawDocuments(prev => prev.map(d => (d.id === docId ? { ...d, ...updatedDocData } : d)));
           
@@ -1162,10 +1176,10 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
           if (data.tags) logDetails = `Tags for document "${doc.name}" updated to: ${data.tags.join(', ') || 'None'}.`;
           if (data.flag !== undefined) logDetails = `Flag for document "${doc.name}" set to ${data.flag || 'None'}.`;
           logAction('Document Updated', logDetails, { documentId: docId, bookId: doc.bookId ?? undefined });
-          toast({ title: "Document Updated" });
+          toast({ title: "Documento Atualizado" });
       } catch (error) {
           console.error(error);
-          toast({ title: "Error", description: "Could not update document.", variant: "destructive" });
+          toast({ title: "Erro", description: "Não foi possível atualizar o documento.", variant: "destructive" });
       }
     });
   };
@@ -1196,7 +1210,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       };
       try {
           const response = await fetch('/api/documents', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newPage) });
-          if (!response.ok) throw new Error('Failed to add page');
+          if (!response.ok) throw new Error('Falha ao adicionar página');
           const createdPage = await response.json();
           setRawDocuments(prevDocs => {
             const otherPages = prevDocs.filter(p => p.bookId !== bookId);
@@ -1206,10 +1220,10 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
           });
           setRawBooks(prev => prev.map(b => b.id === bookId ? { ...b, expectedDocuments: (b.expectedDocuments || 0) + 1 } : b));
           logAction('Page Added', `New page added to "${book.name}" at position ${position}.`, { bookId, documentId: newPageId });
-          toast({ title: "Page Added" });
+          toast({ title: "Página Adicionada" });
       } catch (error) {
           console.error(error);
-          toast({ title: "Error", description: "Could not add page.", variant: "destructive" });
+          toast({ title: "Erro", description: "Não foi possível adicionar a página.", variant: "destructive" });
       }
     });
   }
@@ -1219,14 +1233,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         const page = rawDocuments.find(p => p.id === pageId);
         try {
             const response = await fetch(`/api/documents/${pageId}`, { method: 'DELETE' });
-            if (!response.ok) throw new Error('Failed to delete page');
+            if (!response.ok) throw new Error('Falha ao eliminar página');
             setRawDocuments(prev => prev.filter(p => p.id !== pageId));
             setRawBooks(prev => prev.map(b => b.id === bookId ? {...b, expectedDocuments: (b.expectedDocuments || 1) - 1 } : b));
             logAction('Page Deleted', `Page "${page?.name}" was deleted from book.`, { bookId, documentId: pageId });
-            toast({ title: "Page Deleted", variant: "destructive" });
+            toast({ title: "Página Eliminada", variant: "destructive" });
         } catch (error) {
             console.error(error);
-            toast({ title: "Error", description: "Could not delete page.", variant: "destructive" });
+            toast({ title: "Erro", description: "Não foi possível eliminar a página.", variant: "destructive" });
         }
     });
   };
@@ -1237,7 +1251,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     const statusId = statuses.find(s => s.name === newStatusName)?.id;
     if (!statusId) throw new Error(`Status ${newStatusName} not found.`);
     const response = await fetch(`/api/books/${bookId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ statusId, ...additionalUpdates }) });
-    if (!response.ok) throw new Error('Failed to update book status');
+    if (!response.ok) throw new Error('Falha ao atualizar o estado do livro');
     return await response.json();
   }, [statuses]);
 
@@ -1248,12 +1262,12 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     const toStatus = statuses.find(s => s.name === toStatusName);
     
     if (!fromStatus) {
-        toast({ title: "Workflow Config Error", description: `Source status "${fromStatusName}" not found.`, variant: "destructive" });
+        toast({ title: "Erro de Configuração do Fluxo de Trabalho", description: `Estado de origem "${fromStatusName}" não encontrado.`, variant: "destructive" });
         console.error(`[moveBookFolder] Source status "${fromStatusName}" not found.`);
         return false;
     }
      if (!toStatus) {
-        toast({ title: "Workflow Config Error", description: `Destination status "${toStatusName}" not found.`, variant: "destructive" });
+        toast({ title: "Erro de Configuração do Fluxo de Trabalho", description: `Estado de destino "${toStatusName}" não encontrado.`, variant: "destructive" });
         console.error(`[moveBookFolder] Destination status "${toStatusName}" not found.`);
         return false;
     }
@@ -1279,17 +1293,17 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
         if (!response.ok) {
             const errorData = await response.json();
-            const errorMessage = errorData.error || `Failed to move folder. API responded with status ${response.status}`;
+            const errorMessage = errorData.error || `Falha ao mover pasta. API respondeu com estado ${response.status}`;
             console.error(`[moveBookFolder] API Error: ${errorMessage}`);
             logAction('System Alert', `Failed to move folder for book "${bookName}" from ${fromStatusName} to ${toStatusName}. Reason: ${errorMessage}`, { userId: 'u_system' });
-            toast({ title: "Folder Move Failed", description: errorMessage, variant: "destructive", duration: 10000 });
+            toast({ title: "Erro ao Mover Pasta", description: errorMessage, variant: "destructive", duration: 10000 });
             return false;
         }
         console.log(`[moveBookFolder] Successfully moved folder for ${bookName}.`);
         return true;
     } catch (error: any) {
         console.error("[moveBookFolder] Network or fetch error:", error);
-        toast({ title: "Folder Move Error", description: `Could not move folder for "${bookName}". Please check API logs.`, variant: "destructive" });
+        toast({ title: "Erro ao mover pasta", description: `Não foi possível mover a pasta de "${bookName}". Verifique os logs da API.`, variant: "destructive" });
         logAction('System Alert', `Error moving folder for book "${bookName}". Reason: ${error.message}`, { userId: 'u_system' });
         return false;
     }
@@ -1302,12 +1316,12 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     const toStatus = statuses.find(s => s.name === toStatusName);
     
     if (!fromStatus) {
-        toast({ title: "Workflow Config Error", description: `Source status "${fromStatusName}" not found.`, variant: "destructive" });
+        toast({ title: "Erro de Configuração do Fluxo de Trabalho", description: `Estado de origem "${fromStatusName}" não encontrado.`, variant: "destructive" });
         console.error(`[moveTifsBookFolder] Source status "${fromStatusName}" not found.`);
         return false;
     }
     if (!toStatus) {
-        toast({ title: "Workflow Config Error", description: `Destination status "${toStatusName}" not found.`, variant: "destructive" });
+        toast({ title: "Erro de Configuração do Fluxo de Trabalho", description: `Estado de destino "${toStatusName}" não encontrado.`, variant: "destructive" });
         console.error(`[moveTifsBookFolder] Destination status "${toStatusName}" not found.`);
         return false;
     }
@@ -1333,18 +1347,18 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
       if (!response.ok) {
           const errorData = await response.json();
-          const errorMessage = errorData.error || `Failed to move TIFFs. API responded with status ${response.status}`;
+          const errorMessage = errorData.error || `Falha ao mover TIFFs. API respondeu com estado ${response.status}`;
           console.error(`[moveTifsBookFolder] API Error: ${errorMessage}`);
           logAction('System Alert', `Failed to move TIFFs for book "${bookName}" from ${fromStatusName} to ${toStatusName}. Reason: ${errorMessage}`, { userId: 'u_system' });
-          toast({ title: "TIFF Move Failed", description: errorMessage, variant: "destructive", duration: 10000 });
+          toast({ title: "Erro ao Mover TIFFs", description: errorMessage, variant: "destructive", duration: 10000 });
           return false;
       }
       console.log(`[moveTifsBookFolder] Successfully moved only TIFFs for ${bookName}.`);
-      //toast({ title: "TIFFs Moved", description: `TIFF files for "${bookName}" successfully moved from ${fromStatusName} to ${toStatusName}.` });
+      //tkoast({ title: "TIFFs Moved", description: `TIFF files for "${bookName}" successfully moved from ${fromStatusName} to ${toStatusName}.` });
       return true;
   } catch (error: any) {
       console.error("[moveTifsBookFolder] Network or fetch error:", error);
-      toast({ title: "TIFF Move Error", description: `Could not move TIFFs for "${bookName}". Please check API logs.`, variant: "destructive" });
+      toast({ title: "Erro ao Mover TIFFs", description: `Não foi possível mover os TIFFs para "${bookName}". Verifique os logs da API.`, variant: "destructive" });
       logAction('System Alert', `Error moving TIFFs for book "${bookName}". Reason: ${error.message}`, { userId: 'u_system' });
       return false;
   }
@@ -1358,12 +1372,12 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
   const toStatus = statuses.find(s => s.name === toStatusName);
   
   if (!fromStatus) {
-      toast({ title: "Workflow Config Error", description: `Source status "${fromStatusName}" not found.`, variant: "destructive" });
+      toast({ title: "Erro de Configuração do Fluxo de Trabalho", description: `Estado de origem "${fromStatusName}" não encontrado.`, variant: "destructive" });
       console.error(`[copyTifsBookFolder] Source status "${fromStatusName}" not found.`);
       return false;
   }
    if (!toStatus) {
-      toast({ title: "Workflow Config Error", description: `Destination status "${toStatusName}" not found.`, variant: "destructive" });
+      toast({ title: "Erro de Configuração do Fluxo de Trabalho", description: `Estado de destino "${toStatusName}" não encontrado.`, variant: "destructive" });
       console.error(`[copyTifsBookFolder] Destination status "${toStatusName}" not found.`);
       return false;
   }
@@ -1389,17 +1403,17 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
 
       if (!response.ok) {
           const errorData = await response.json();
-          const errorMessage = errorData.error || `Failed to copy TIFFs. API responded with status ${response.status}`;
+          const errorMessage = errorData.error || `Falha ao copiar TIFFs. API respondeu com estado ${response.status}`;
           console.error(`[copyTifsBookFolder] API Error: ${errorMessage}`);
           logAction('System Alert', `Failed to copy TIFFs for book "${bookName}" from ${fromStatusName} to ${toStatusName}. Reason: ${errorMessage}`, { userId: 'u_system' });
-          toast({ title: "TIFF Copy Failed", description: errorMessage, variant: "destructive", duration: 10000 });
+          toast({ title: "Erro ao Copiar TIFFs", description: errorMessage, variant: "destructive", duration: 10000 });
           return false;
       }
       console.log(`[copyTifsBookFolder] Successfully copied only TIFFs for ${bookName}.`);
       return true;
   } catch (error: any) {
       console.error("[copyTifsBookFolder] Network or fetch error:", error);
-      toast({ title: "TIFF Copy Error", description: `Could not copy TIFFs for "${bookName}". Please check API logs.`, variant: "destructive" });
+      toast({ title: "Erro ao Copiar TIFFs", description: `Não foi possível copiar os TIFFs para "${bookName}". Verifique os logs da API.`, variant: "destructive" });
       logAction('System Alert', `Error copying TIFFs for book "${bookName}". Reason: ${error.message}`, { userId: 'u_system' });
       return false;
   }
@@ -1415,10 +1429,10 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
           setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
           logAction('Book Shipped', `Client marked book "${updatedBook?.name}" as shipped.`, { bookId });
         } catch (error) {
-           toast({ title: "Error", description: `Could not mark book ${bookId} as shipped.`, variant: "destructive" });
+           toast({ title: "Erro", description: `Não foi possível marcar o livro ${bookId} como enviado.`, variant: "destructive" });
         }
       }
-      toast({ title: `${bookIds.length} Book(s) Marked as Shipped` });
+      toast({ title: `${bookIds.length} Livro(s) Marcado(s) como Enviado(s)` });
     });
   };
 
@@ -1437,7 +1451,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
       const updatedBook = await updateBookStatus(bookId, newStatusName);
       setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
       logAction('Reception Confirmed', `Book "${updatedBook.name}" has been marked as received.`, { bookId });
-      toast({ title: "Reception Confirmed" });
+      toast({ title: "Recepção Confirmada" });
     });
   };
   
@@ -1474,11 +1488,11 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
         const currentStatusName = statuses.find(s => s.id === book.statusId)?.name || 'Unknown';
         const logMessage = findStageKeyFromStatus(currentStatusName) === 'already-received' ? 'Reception & Scan Skipped' : 'Scanning Finished';
         logAction(logMessage, `${payload.actualPageCount} pages created. Book "${book.name}" moved to Storage.`, { bookId });
-        toast({ title: "Task Complete", description: `Book moved to Storage.` });
-  
+        toast({ title: "Tarefa Completa", description: `Livro movido para o Armazenamento.` });
+
       } catch (error) {
         console.error(error);
-        toast({ title: "Error", description: "Could not complete the process.", variant: "destructive" });
+        toast({ title: "Erro", description: "Não foi possível completar o processo.", variant: "destructive" });
       } finally {
         setProcessingBookIds(prev => prev.filter(id => id !== bookId));
       }
@@ -1496,7 +1510,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
     const workflow = projectWorkflows[book.projectId] || [];
     const currentStageKey = findStageKeyFromStatus(currentStatus);
     if (!currentStageKey) {
-      toast({ title: "Workflow Error", description: `Cannot find workflow stage for status: "${currentStatus}".`, variant: "destructive" });
+      toast({ title: "Erro de Fluxo de Trabalho", description: `Não foi possível encontrar o estágio de fluxo para o status: "${currentStatus}".`, variant: "destructive" });
       console.error(`[handleMoveBookToNextStage] Workflow key not found for status: ${currentStatus}`);
       return false;
     }
@@ -1507,7 +1521,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
     
     const newStatusName = nextStageKey ? (STAGE_CONFIG[nextStageKey]?.dataStatus || 'Unknown') : 'Complete';
     if (newStatusName === 'Unknown') {
-      toast({ title: "Workflow Error", description: `Next stage "${nextStageKey}" has no configured status.`, variant: "destructive" });
+      toast({ title: "Erro de Fluxo de Trabalho", description: `Próximo estágio "${nextStageKey}" não tem status configurado.`, variant: "destructive" });
       console.error(`[handleMoveBookToNextStage] Next stage "${nextStageKey}" has no status.`);
       return false;
     }
@@ -1556,7 +1570,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
       setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
       
       logAction(logMsg, `Book "${book.name}" assigned to ${user.name}.`, { bookId });
-      toast({ title: "Book Assigned", description: `Assigned to ${user.name} for ${role}.` });
+      toast({ title: "Livro Atribuído", description: `Atribuído a ${user.name} para ${role}.` });
     });
   };
 
@@ -1569,7 +1583,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
       await updateBook(bookId, { [updateField]: newUserId });
       const oldUser = users.find(u => u.id === book[updateField]);
       logAction('User Reassigned', `Task for book "${book.name}" was reassigned from ${oldUser?.name || 'Unassigned'} to ${newUser.name}.`, { bookId });
-      toast({ title: "User Reassigned", description: `${newUser.name} is now responsible for this task.` });
+      toast({ title: "Utilizador Reatribuído", description: `${newUser.name} agora é responsável por esta tarefa.` });
     });
   };
 
@@ -1582,25 +1596,25 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
             const updatedBook = await updateBookStatus(bookId, 'Scanning Started', { scanStartTime: getDbSafeDate() });
             setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
             logAction('Scanning Started', `Scanning process initiated for book.`, { bookId });
-            toast({ title: "Scanning Started" });
+            toast({ title: "Digitalização Iniciada" });
             return;
         }
 
         const log = transferLogs.find(l => l.bookId === bookId && l.status === 'sucesso');
         if (!log) {
-            toast({ title: "Transfer Log Not Found", description: `Cannot find a successful transfer log for book "${book.name}".`, variant: "destructive" });
+            toast({ title: "Registro de Transferência Não Encontrado", description: `Não foi possível encontrar um registro de transferência bem-sucedido para o livro "${book.name}".`, variant: "destructive" });
             return;
         }
 
         const storage = storages.find(s => s.id === Number(log.storage_id));
         if (!storage) {
-            toast({ title: "Storage Not Found", description: `Cannot find storage with ID ${log.storage_id}.`, variant: "destructive" });
+            toast({ title: "Armazenamento Não Encontrado", description: `Não foi possível encontrar o armazenamento com ID ${log.storage_id}.`, variant: "destructive" });
             return;
         }
 
         const scanner = scanners.find(s => s.id === Number(log.scanner_id));
         if (!scanner) {
-            toast({ title: "Scanner Not Found", description: `Cannot find scanner with ID ${log.scanner_id}.`, variant: "destructive" });
+            toast({ title: "Scanner Não Encontrado", description: `Não foi possível encontrar o scanner com ID ${log.scanner_id}.`, variant: "destructive" });
             return;
         }
 
@@ -1617,13 +1631,13 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
 
         const newStageFolder = statuses.find(s => s.name === newStatusName)?.folderName;
         if (!newStageFolder) {
-            toast({ title: "Workflow Error", description: `Folder for status "${newStatusName}" is not defined.`, variant: "destructive" });
+            toast({ title: "Erro de Fluxo de Trabalho", description: `Pasta para o status "${newStatusName}" não está definida.`, variant: "destructive" });
             return;
         }
 
         const project = rawProjects.find(p => p.id === book.projectId);
         if (!project) {
-            toast({ title: "Project Not Found", description: `Cannot find project for book "${book.name}".`, variant: "destructive" });
+            toast({ title: "Projeto Não Encontrado", description: `Não foi possível encontrar o projeto para o livro "${book.name}".`, variant: "destructive" });
             return;
         }
         
@@ -1652,7 +1666,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
         const updatedBook = await updateBookStatus(bookId, newStatusName, updates);
         setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
 
-        logAction(logMsg, `${logMsg} process initiated for book.`, { bookId });
+        logAction(logMsg, `${logMsg} processo iniciado para o livro.`, { bookId });
         toast({ title: logMsg });
 
         if (appProtocol) {
@@ -1674,7 +1688,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
         await updateBook(bookId, update);
         const book = rawBooks.find(b => b.id === bookId);
         logAction('Task Completed', `Task "${stage}" completed for book "${book?.name}".`, { bookId });
-        toast({ title: 'Task Marked as Complete' });
+        toast({ title: 'Tarefa Marcada como Completa' });
       }
     });
   };
@@ -1697,8 +1711,8 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
           `Task "${stage}" cancelled for book "${book?.name}".`,
           { bookId }
         );
-  
-        toast({ title: 'Task Completion Cancelled' });
+
+        toast({ title: "Tarefa em Espera", description: "A tarefa ficou à espera de ser completada.", variant: "destructive" });
       }
     });
   };
@@ -1724,7 +1738,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
       setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
 
       logAction('Task Cancelled', `${update.logMsg} for book "${book.name}" was cancelled.`, { bookId });
-      toast({ title: 'Task Cancelled', description: `Book returned to ${update.bookStatus} Queue.`, variant: 'destructive' });
+      toast({ title: 'Tarefa Cancelada', description: `Livro retornado para a fila ${update.bookStatus}.`, variant: 'destructive' });
     });
   };
   
@@ -1748,7 +1762,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
       const updatedBook = await updateBookStatus(bookId, newStatus.name, updates);
       setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
       logAction('Admin Status Override', `Status of "${book.name}" manually changed to "${newStatus.name}". Reason: ${reason}`, { bookId });
-      toast({ title: "Status Overridden", description: `Book is now in status: ${newStatus.name}` });
+      toast({ title: "Status Sobrescrito", description: `Livro agora está no status: ${newStatus.name}` });
     });
   };
 
@@ -1774,7 +1788,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
   const startProcessingBatch = async (bookIds: string[], storageId: string) => {
     await withMutation(async () => {
       if (!currentUser) {
-        toast({ title: "Error", description: "Current user not found.", variant: "destructive" });
+        toast({ title: "Erro", description: "Utilizador atual não encontrado.", variant: "destructive" });
         return;
       }
       try {
@@ -1786,7 +1800,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
           if (book) {
             const moveResult = await moveBookFolder(book.name, fromStatusName, toStatusName);
             if (!moveResult) {
-              throw new Error(`Failed to move folder for book "${book.name}". Batch start aborted.`);
+              throw new Error(`Falha ao mover a pasta do livro "${book.name}". Início do lote abortado.`);
             }
           }
         }
@@ -1796,7 +1810,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ bookIds }),
         });
-        if (!response.ok) throw new Error('Failed to create processing batch');
+        if (!response.ok) throw new Error('Falha ao criar lote de processamento');
         const newBatch = await response.json();
         
         setProcessingBatches(prev => [newBatch, ...prev]);
@@ -1807,11 +1821,11 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
         
         logAction('Processing Batch Started', `Batch ${newBatch.id} started with ${bookIds.length} books.`, {});
         await logProcessingEvent(newBatch.id, `Batch ${newBatch.id} started with ${bookIds.length} books.`);
-        toast({ title: "Processing Batch Started" });
-        
+        toast({ title: "Lote de Processamento Iniciado" });
+
         const storage = storages.find(s => String(s.id) === storageId);
         if (!storage) {
-          toast({ title: "Error", description: `Storage with ID ${storageId} not found. Cannot launch local app.`, variant: "destructive" });
+          toast({ title: "Erro", description: `Armazenamento com ID ${storageId} não encontrado. Não é possível iniciar o aplicativo local.`, variant: "destructive" });
           return;
         }
 
@@ -1825,7 +1839,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
 
       } catch (error: any) {
         console.error(error);
-        toast({ title: "Error", description: error.message || "Could not start processing batch.", variant: "destructive" });
+        toast({ title: "Erro", description: error.message || "Não foi possível iniciar o lote de processamento.", variant: "destructive" });
       }
     });
   };
@@ -1838,11 +1852,11 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
       try {
         logAction('Processing Batch Retry', `User retrying failed batch ${batch.id}.`, { userId: currentUser.id });
         await logProcessingEvent(batch.id, `User ${currentUser.name} initiated a retry for this failed batch.`);
-        toast({ title: "Retrying Batch..." });
-        
+        toast({ title: "A Reiniciar Lote..." });
+
         const storage = storages.find(s => String(s.id) === storageId);
         if (!storage) {
-          toast({ title: "Error", description: `Storage with ID ${storageId} not found. Cannot launch local app.`, variant: "destructive" });
+          toast({ title: "Erro", description: `Armazenamento com ID ${storageId} não encontrado. Não é possível iniciar o aplicativo local.`, variant: "destructive" });
           return;
         }
 
@@ -1856,7 +1870,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
 
       } catch (error: any) {
         console.error(error);
-        toast({ title: "Error", description: error.message || "Could not start failed processing batch.", variant: "destructive" });
+        toast({ title: "Erro", description: error.message || "Não foi possível iniciar o lote de processamento.", variant: "destructive" });
       }
      
     });
@@ -1876,7 +1890,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: 'Complete', endTime: getDbSafeDate(), progress: 100 }),
         });
-        if (!response.ok) throw new Error('Failed to update batch');
+        if (!response.ok) throw new Error('Falha ao atualizar lote');
         const updatedBatch = await response.json();
         setProcessingBatches(prev => prev.map(b => b.id === batchId ? updatedBatch : b));
 
@@ -1886,10 +1900,10 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
 
         logAction('Processing Batch Completed', `Batch ${batchId} was completed.`, {});
         await logProcessingEvent(batchId, `Batch ${batchId} marked as completed by user.`);
-        toast({ title: "Processing Batch Completed" });
+        toast({ title: "Lote de Processamento Completo" });
       } catch(error) {
         console.error(error);
-        toast({ title: "Error", description: `Could not complete batch ${batchId}.`, variant: "destructive" });
+        toast({ title: "Erro", description: `Não foi possível completar o lote ${batchId}.`, variant: "destructive" });
       }
     });
   };
@@ -1910,7 +1924,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ status: moveResult ? 'Finalized' : 'CQ Failed' }),
                     });
-                     if (!itemUpdateResponse.ok) throw new Error('Failed to update item status');
+                     if (!itemUpdateResponse.ok) throw new Error('Falha ao atualizar status do item');
 
                     const updatedItem = await itemUpdateResponse.json();
                      setProcessingBatchItems(prev => prev.map(i => i.id === updatedItem.id ? updatedItem : i));
@@ -1946,13 +1960,9 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
         }
   
         if (failedBooks.length > 0) {
-            toast({
-                title: "Some Items Failed",
-                description: `Could not move the following books: ${failedBooks.join(', ')}. The batch remains in 'Processed' state.`,
-                variant: "destructive"
-            });
+            toast({title: "Alguns Itens Falharam", description: `Não foi possível mover os seguintes livros: ${failedBooks.join(', ')}. O lote permanece no estado 'Processado'.`, variant: "destructive"});
         } else {
-            toast({ title: "Batches Sent", description: `${batchIds.length} batch(es) moved to Final Quality Control.` });
+            toast({ title: "Lotes Enviados", description: `${batchIds.length} lote(s) movido(s) para o Controle de Qualidade Final.` });
         }
     });
   };
@@ -1966,8 +1976,8 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status: status, user_id: currentUser.id })
         });
-        if (!response.ok) throw new Error('Failed to update delivery item status.');
-        
+        if (!response.ok) throw new Error('Falha ao atualizar status do item de entrega.');
+
         const updatedItem = await response.json();
         setDeliveryBatchItems(prev => prev.map(i => i.id === updatedItem.id ? updatedItem : i));
         
@@ -1981,11 +1991,11 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
           }
            logAction('Approval Marked', `Book "${book?.name}" marked as approved by client.`, { bookId });
         }
-        
-        toast({ title: `Book Marked as ${status}` });
+
+        toast({ title: `Livro Marcado como ${status}` });
       } catch (error: any) {
         console.error(error);
-        toast({ title: "Error", description: error.message, variant: "destructive" });
+        toast({ title: "Erro", description: error.message, variant: "destructive" });
       }
     });
   };
@@ -2028,7 +2038,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ finalDecision, userId: currentUser.id }),
             });
-            if (!response.ok) throw new Error('Failed to finalize batch via API.');
+            if (!response.ok) throw new Error('Falha ao finalizar lote via API.');
 
             // Re-fetch all data to ensure client state is in sync with the backend
             const [
@@ -2047,10 +2057,10 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
             setAuditLogs(enrichedAuditLogs);
             
             logAction('Delivery Batch Finalized', `Batch ${deliveryId} was finalized by ${currentUser.name}. Decision: ${finalDecision}.`, { userId: currentUser.id });
-            toast({ title: "Validation Confirmed", description: "All books in the batch have been processed." });
+            toast({ title: "Validação Confirmada", description: "Todos os livros no lote foram processados." });
         } catch (error: any) {
             console.error(error);
-            toast({ title: "Error", description: error.message, variant: "destructive" });
+            toast({ title: "Erro", description: error.message, variant: "destructive" });
         }
     });
   };
@@ -2063,18 +2073,18 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ batchId, assignments }),
             });
-            if (!response.ok) throw new Error('Failed to distribute sample');
-            
+            if (!response.ok) throw new Error('Falha ao distribuir amostra');
+
             const { batch, items } = await response.json();
             
             setDeliveryBatches(prev => prev.map(b => b.id === batch.id ? batch : b));
             setDeliveryBatchItems(prev => [...prev.filter(i => i.deliveryId !== batchId), ...items]);
 
             logAction('Validation Distributed', `${assignments.length} items from batch ${batchId} distributed.`, {});
-            toast({ title: "Sample Distributed", description: "Tasks have been assigned to operators." });
+            toast({ title: "Amostra Distribuída", description: "As tarefas foram atribuídas aos operadores." });
         } catch (error: any) {
             console.error(error);
-            toast({ title: "Error", description: error.message, variant: "destructive" });
+            toast({ title: "Erro", description: error.message, variant: "destructive" });
         }
      });
    };
@@ -2105,7 +2115,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
       const updatedBook = await updateBookStatus(bookId, newStatus);
       setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
       logAction('Book Archived', `Book "${book?.name}" was finalized and moved to ${newStatus}.`, { bookId });
-      toast({ title: "Book Archived" });
+      toast({ title: "Livro Arquivado" });
     });
   };
   
@@ -2125,7 +2135,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
       const updatedBook = await updateBookStatus(bookId, newStatus, { rejectionReason: null });
       setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
       logAction('Marked as Corrected', `Book "${book.name}" marked as corrected after client rejection.`, { bookId });
-      toast({ title: "Book Corrected" });
+      toast({ title: "Livro Corrigido" });
     });
   };
 
@@ -2142,7 +2152,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
       const updatedBook = await updateBookStatus(bookId, targetStage);
       setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
       logAction('Book All Resubmitted', `Book "${book.name}" resubmitted to ${targetStage}.`, { bookId });
-      toast({ title: "Book All Resubmitted" });
+      toast({ title: "Todos os Livros Reenviados" });
     });
   };
 
@@ -2158,8 +2168,8 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
 
       const updatedBook = await updateBookStatus(bookId, targetStage);
       setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
-      logAction('Book Copy TifsR esubmitted', `Book "${book.name}" resubmitted to ${targetStage}.`, { bookId });
-      toast({ title: "Book Copy Tifs Resubmitted" });
+      logAction('Book Copy Tifs Resubmitted', `Book "${book.name}" resubmitted to ${targetStage}.`, { bookId });
+      toast({ title: "Reenvio de TIFs do Livro", description: `Livro "${book.name}" reenviado para ${targetStage}.` });
     });
   };
 
@@ -2177,7 +2187,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
       const updatedBook = await updateBookStatus(bookId, targetStage);
       setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
       logAction('Book Move Tifs Resubmitted', `Book "${book.name}" resubmitted to ${targetStage}.`, { bookId });
-      toast({ title: "Book Move Tifs Resubmitted" });
+      toast({ title: "Reenvio de TIFs do Livro", description: `Livro "${book.name}" reenviado para ${targetStage}.` });
     });
   };
 
@@ -2190,8 +2200,8 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ bookIds, userId: currentUser?.id }),
         });
-        if (!response.ok) throw new Error('Failed to create delivery batch');
-        
+        if (!response.ok) throw new Error('Falha ao criar lote de entrega');
+
         const newBatch = await response.json();
         setDeliveryBatches(prev => [newBatch, ...prev]);
 
@@ -2215,10 +2225,10 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
         }
         
         logAction('Delivery Batch Created', `Batch ${newBatch.id} created with ${bookIds.length} books and sent to client.`, {});
-        toast({ title: "Delivery Batch Created & Sent" });
+        toast({ title: "Lote de Entrega Criado e Enviado" });
       } catch (error) {
         console.error(error);
-        toast({ title: "Error", description: "Could not create delivery batch.", variant: "destructive" });
+        toast({ title: "Erro", description: "Não foi possível criar o lote de entrega.", variant: "destructive" });
       }
     });
   };
@@ -2227,32 +2237,32 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
     await withMutation(async () => {
         const assigneeId = userIdToAssign || currentUser?.id;
         if (!assigneeId) {
-            toast({ title: "Error", description: "No user specified for assignment.", variant: "destructive" });
+            toast({ title: "Erro", description: "Nenhum utilizador especificado para atribuição.", variant: "destructive" });
             return;
         }
 
         const user = users.find(u => u.id === assigneeId);
         if (!user) {
-            toast({ title: "Error", description: "Assignee not found.", variant: "destructive" });
+            toast({ title: "Erro", description: "Utilizador atribuído não encontrado.", variant: "destructive" });
             return;
         }
         
         const workflowConfig = STAGE_CONFIG[currentStageKey];
         if (!workflowConfig || !workflowConfig.assigneeRole) {
-            toast({ title: "Workflow Error", description: "Invalid stage for pulling tasks.", variant: "destructive" });
+            toast({ title: "Erro de Workflow", description: "Fase inválida para puxar tarefas.", variant: "destructive" });
             return;
         }
 
         const currentIndex = WORKFLOW_SEQUENCE.indexOf(currentStageKey);
         if (currentIndex === -1 || currentIndex === 0) {
-            toast({ title: "Workflow Error", description: "Cannot pull task from a starting stage.", variant: "destructive" });
+            toast({ title: "Erro de Workflow", description: "Não é possível puxar tarefa de uma fase inicial.", variant: "destructive" });
             return;
         }
 
         const previousStageKey = WORKFLOW_SEQUENCE[currentIndex - 1];
         const previousStageStatus = STAGE_CONFIG[previousStageKey]?.dataStatus;
         if (!previousStageStatus) {
-            toast({ title: "Workflow Error", description: `Previous stage (${previousStageKey}) has no defined status.`, variant: "destructive" });
+            toast({ title: "Erro de Workflow", description: `Fase anterior (${previousStageKey}) não tem status definido.`, variant: "destructive" });
             return;
         }
 
@@ -2263,12 +2273,12 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
         );
 
         if (!bookToAssign) {
-            toast({ title: "No Tasks Available", description: "There are no unassigned books in the previous stage.", variant: "default" });
+            toast({ title: "Sem Tarefas Disponíveis", description: "Não há livros não atribuídos na fase anterior.", variant: "default" });
             return;
         }
 
         handleAssignUser(bookToAssign.id, assigneeId, workflowConfig.assigneeRole);
-        toast({ title: "Task Pulled Successfully", description: `"${bookToAssign.name}" has been assigned to ${user.name}.` });
+        toast({ title: "Tarefa Puxada com Sucesso", description: `"${bookToAssign.name}" foi atribuído a ${user.name}.` });
     });
   }, [currentUser, users, enrichedBooks, selectedProjectId, handleAssignUser, toast]);
 

@@ -82,9 +82,9 @@ export function ProjectForm({ project, clients, onSave, onCancel }: ProjectFormP
             name="name"
             render={({ field }) => (
                 <FormItem>
-                <FormLabel>Project Name</FormLabel>
+                <FormLabel>Nome do Projeto</FormLabel>
                 <FormControl>
-                    <Input placeholder="e.g. Q4 Scanning" {...field} />
+                    <Input placeholder="ex.: Q4 Scanning" {...field} />
                 </FormControl>
                 <FormMessage />
                 </FormItem>
@@ -95,11 +95,11 @@ export function ProjectForm({ project, clients, onSave, onCancel }: ProjectFormP
             name="clientId"
             render={({ field }) => (
                 <FormItem>
-                <FormLabel>Client</FormLabel>
+                <FormLabel>Cliente</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                     <SelectTrigger>
-                        <SelectValue placeholder="Select a client" />
+                        <SelectValue placeholder="Selecione um cliente" />
                     </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -120,9 +120,9 @@ export function ProjectForm({ project, clients, onSave, onCancel }: ProjectFormP
             name="description"
             render={({ field }) => (
                 <FormItem>
-                <FormLabel>Description</FormLabel>
+                <FormLabel>Descrição</FormLabel>
                 <FormControl>
-                    <Textarea placeholder="A brief description of the project." {...field} />
+                    <Textarea placeholder="Uma breve descrição do projeto." {...field} />
                 </FormControl>
                 <FormMessage />
                 </FormItem>
@@ -134,7 +134,7 @@ export function ProjectForm({ project, clients, onSave, onCancel }: ProjectFormP
                 name="startDate"
                 render={({ field }) => (
                 <FormItem>
-                    <FormLabel>Start Date</FormLabel>
+                    <FormLabel>Data de Início</FormLabel>
                     <FormControl>
                     <Input type="date" {...field} />
                     </FormControl>
@@ -147,7 +147,7 @@ export function ProjectForm({ project, clients, onSave, onCancel }: ProjectFormP
                 name="endDate"
                 render={({ field }) => (
                 <FormItem>
-                    <FormLabel>End Date</FormLabel>
+                    <FormLabel>Data de Conclusão</FormLabel>
                     <FormControl>
                     <Input type="date" {...field} />
                     </FormControl>
@@ -162,9 +162,9 @@ export function ProjectForm({ project, clients, onSave, onCancel }: ProjectFormP
                 name="budget"
                 render={({ field }) => (
                 <FormItem>
-                    <FormLabel>Budget ($)</FormLabel>
+                    <FormLabel>Orçamento (€)</FormLabel>
                     <FormControl>
-                    <Input type="number" placeholder="e.g. 50000" {...field} />
+                    <Input type="number" placeholder="ex.: 50000" {...field} />
                     </FormControl>
                     <FormMessage />
                 </FormItem>
@@ -175,18 +175,18 @@ export function ProjectForm({ project, clients, onSave, onCancel }: ProjectFormP
                 name="status"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Status</FormLabel>
+                    <FormLabel>Estado</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                         <SelectTrigger>
-                            <SelectValue placeholder="Select a status" />
+                            <SelectValue placeholder="Selecione um estado" />
                         </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                            <SelectItem value="Planning">Planning</SelectItem>
-                            <SelectItem value="In Progress">In Progress</SelectItem>
-                            <SelectItem value="On Hold">On Hold</SelectItem>
-                            <SelectItem value="Complete">Complete</SelectItem>
+                            <SelectItem value="Planning">Planeamento</SelectItem>
+                            <SelectItem value="In Progress">Em Progresso</SelectItem>
+                            <SelectItem value="On Hold">Em Espera</SelectItem>
+                            <SelectItem value="Complete">Concluído</SelectItem>
                         </SelectContent>
                     </Select>
                     <FormMessage />
@@ -199,9 +199,9 @@ export function ProjectForm({ project, clients, onSave, onCancel }: ProjectFormP
             name="info"
             render={({ field }) => (
                 <FormItem>
-                <FormLabel>Additional Info</FormLabel>
+                <FormLabel>Informações Adicionais</FormLabel>
                 <FormControl>
-                    <Textarea placeholder="Any extra notes about this project..." {...field} />
+                    <Textarea placeholder="Notas adicionais sobre este projeto..." {...field} />
                 </FormControl>
                 <FormMessage />
                 </FormItem>
@@ -209,9 +209,9 @@ export function ProjectForm({ project, clients, onSave, onCancel }: ProjectFormP
         />
         <div className="flex justify-end gap-2 pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
+            Cancelar
           </Button>
-          <Button type="submit">Save Project</Button>
+          <Button type="submit">Gravar Projeto</Button>
         </div>
       </form>
     </Form>

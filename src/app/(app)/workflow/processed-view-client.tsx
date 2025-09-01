@@ -143,18 +143,18 @@ export default function ProcessedViewClient({ config }: ProcessedViewClientProps
               {selection.length > 0 && (
                  <Button size="sm" onClick={() => openConfirmationDialog(selection)}>
                     <Send className="mr-2 h-4 w-4"/>
-                    Send Selected ({selection.length}) to Final QC
+                    Enviar Selecionados ({selection.length}) para o QC Final
                  </Button>
               )}
            </div>
             <div className="pt-4">
-              <Label htmlFor="storage-select">Filter by Storage Location</Label>
+              <Label htmlFor="storage-select">Filtrar por Localização de Armazenamento</Label>
                <Select value={selectedStorageId} onValueChange={setSelectedStorageId}>
                   <SelectTrigger id="storage-select" className="w-[300px]">
-                      <SelectValue placeholder="Select a storage..." />
+                      <SelectValue placeholder="Selecione um armazenamento..." />
                   </SelectTrigger>
                   <SelectContent>
-                      <SelectItem value="all">All Storages</SelectItem>
+                      <SelectItem value="all">Todos os Armazenamentos</SelectItem>
                       {storages.map(storage => (
                           <SelectItem key={storage.id} value={String(storage.id)}>{storage.nome}</SelectItem>
                       ))}
@@ -190,14 +190,14 @@ export default function ProcessedViewClient({ config }: ProcessedViewClientProps
                           <StatusIcon className={`h-5 w-5 ${statusColor} ${statusAnimation}`} />
                           <div>
                               <p className="font-semibold text-base">{batch.timestampStr}</p>
-                              <p className="text-sm text-muted-foreground">{batch.items.length} book(s) in this batch</p>
-                              <p className="text-xs text-muted-foreground">Storage: {batch.storageName}</p>
+                              <p className="text-sm text-muted-foreground">{batch.items.length} livro(s) neste lote</p>
+                              <p className="text-xs text-muted-foreground">Armazenamento: {batch.storageName}</p>
                           </div>
                         </div>
                       </AccordionTrigger>
                       <div className="px-4 w-1/3">
                         <div className="flex justify-between items-center mb-1">
-                            <span className="text-sm font-medium">Overall Progress</span>
+                            <span className="text-sm font-medium">Progresso Geral</span>
                             <span className="text-sm text-muted-foreground">{batch.progress || 0}%</span>
                         </div>
                          <Progress value={batch.progress || 0} />
@@ -212,20 +212,20 @@ export default function ProcessedViewClient({ config }: ProcessedViewClientProps
                     <AccordionContent className="px-4 py-4 space-y-4">
                        <div className="text-right">
                           <Button asChild variant="link" size="sm">
-                              <Link href={`/processing-batches/${batch.id}`}>View Full Details</Link>
+                              <Link href={`/processing-batches/${batch.id}`}>Ver Detalhes Completos</Link>
                           </Button>
                       </div>
                       <div>
-                         <h4 className="text-sm font-medium mb-2">Books in Batch</h4>
+                         <h4 className="text-sm font-medium mb-2">Livros no Lote</h4>
                          <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Book Name</TableHead>
-                              <TableHead>Project</TableHead>
-                              <TableHead>Status</TableHead>
-                              <TableHead>Start Time</TableHead>
-                              <TableHead>End Time</TableHead>
-                              <TableHead className="text-right">Pages</TableHead>
+                              <TableHead>Nome do Livro</TableHead>
+                              <TableHead>Projeto</TableHead>
+                              <TableHead>Estado</TableHead>
+                              <TableHead>Início</TableHead>
+                              <TableHead>Fim</TableHead>
+                              <TableHead className="text-right">Páginas</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -264,7 +264,7 @@ export default function ProcessedViewClient({ config }: ProcessedViewClientProps
         </CardContent>
         <CardFooter>
           <div className="text-xs text-muted-foreground">
-            Showing <strong>{batchesForDisplay.length}</strong> completed batch(es).
+            A mostrar <strong>{batchesForDisplay.length}</strong> lote(s) concluído(s).
           </div>
         </CardFooter>
       </Card>
@@ -276,8 +276,8 @@ export default function ProcessedViewClient({ config }: ProcessedViewClientProps
             <DialogDescription>{confirmationState.description}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={closeConfirmationDialog}>Cancel</Button>
-            <Button onClick={handleConfirm}>Confirm</Button>
+            <Button variant="outline" onClick={closeConfirmationDialog}>Cancelar</Button>
+            <Button onClick={handleConfirm}>Confirmar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

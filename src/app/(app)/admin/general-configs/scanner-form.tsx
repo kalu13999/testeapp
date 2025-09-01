@@ -27,7 +27,7 @@ const formSchema = z.object({
   error_folder: z.string().min(1, "Error folder path is required."),
   success_folder: z.string().min(1, "Success folder path is required."),
   local_thumbs_path: z.string().min(1, "Local thumbnails path is required."),
-  status: z.enum(["ativo", "inativo"]),
+  status: z.enum(["ativo", "inativo", "manutencao"]),
 })
 
 export type ScannerFormValues = z.infer<typeof formSchema>
@@ -65,9 +65,9 @@ export function ScannerForm({ scanner, onSave, onCancel }: ScannerFormProps) {
               name="nome"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Scanner Name</FormLabel>
+                  <FormLabel>Nome do Scanner</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. Fujitsu-01" {...field} />
+                    <Input placeholder="ex.: SCAMAX-01" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -78,9 +78,9 @@ export function ScannerForm({ scanner, onSave, onCancel }: ScannerFormProps) {
               name="ip"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>IP Address</FormLabel>
+                  <FormLabel>Endereço IP</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. 192.168.1.50" {...field} />
+                    <Input placeholder="ex.: 192.168.1.50" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -92,11 +92,11 @@ export function ScannerForm({ scanner, onSave, onCancel }: ScannerFormProps) {
           name="scanner_root_folder"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Scanner Root Path</FormLabel>
+              <FormLabel>Localização Raiz</FormLabel>
               <FormControl>
-                <Input placeholder="e.g. /mnt/scans" {...field} />
+                <Input placeholder="ex.: \\192.168.1.50\e$\DIGITALIZAR\0-PRONTO" {...field} />
               </FormControl>
-              <FormDescription>The main folder watched by the worker.</FormDescription>
+              <FormDescription>A pasta principal monitorada pelo trabalhador.</FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -107,9 +107,9 @@ export function ScannerForm({ scanner, onSave, onCancel }: ScannerFormProps) {
               name="success_folder"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Success Path</FormLabel>
+                  <FormLabel>Localização de Sucessos</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. /mnt/scans/_success" {...field} />
+                    <Input placeholder="ex.: \\192.168.1.50\e$\DIGITALIZAR\_CONCLUIDOS" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -120,9 +120,9 @@ export function ScannerForm({ scanner, onSave, onCancel }: ScannerFormProps) {
               name="error_folder"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Error Path</FormLabel>
+                  <FormLabel>Localização de Erros</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. /mnt/scans/_error" {...field} />
+                    <Input placeholder="ex.: \\192.168.1.50\e$\DIGITALIZAR\_ERROS" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -134,11 +134,11 @@ export function ScannerForm({ scanner, onSave, onCancel }: ScannerFormProps) {
             name="local_thumbs_path"
             render={({ field }) => (
             <FormItem>
-                <FormLabel>Local Thumbnails Path</FormLabel>
+                <FormLabel>Localização de Thumbnails</FormLabel>
                 <FormControl>
-                <Input placeholder="e.g. C:\Temp\Thumbs" {...field} />
+                <Input placeholder="ex.: \Temp\Thumbs" {...field} />
                 </FormControl>
-                <FormDescription>Temporary folder on the worker machine for thumbnails.</FormDescription>
+                <FormDescription>Pasta temporária na máquina para thumbnails.</FormDescription>
                 <FormMessage />
             </FormItem>
             )}
@@ -148,16 +148,17 @@ export function ScannerForm({ scanner, onSave, onCancel }: ScannerFormProps) {
           name="status"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Status</FormLabel>
+              <FormLabel>Estado</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                   <SelectTrigger>
-                      <SelectValue placeholder="Select a status" />
+                      <SelectValue placeholder="Selecione um estado" />
                   </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                      <SelectItem value="ativo">Active</SelectItem>
-                      <SelectItem value="inativo">Inactive</SelectItem>
+                      <SelectItem value="ativo">Ativo</SelectItem>
+                      <SelectItem value="inativo">Inativo</SelectItem>
+                      <SelectItem value="manutencao">Manutenção</SelectItem>
                   </SelectContent>
               </Select>
               <FormMessage />
@@ -166,9 +167,9 @@ export function ScannerForm({ scanner, onSave, onCancel }: ScannerFormProps) {
         />
         <div className="flex justify-end gap-2 pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
+            Cancelar
           </Button>
-          <Button type="submit">Save Scanner</Button>
+          <Button type="submit">Guardar Scanner</Button>
         </div>
       </form>
     </Form>

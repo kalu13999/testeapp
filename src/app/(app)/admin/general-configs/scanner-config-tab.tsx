@@ -147,13 +147,13 @@ export function ScannerConfigTab() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Scanner Devices</CardTitle>
+              <CardTitle>Dispositivos de Scanner</CardTitle>
               <CardDescription>
-                Manage all registered scanner devices and their configurations.
+                Gerir todos os dispositivos de scanner registados e configurações de rede onde os documentos são digitalizados.
               </CardDescription>
             </div>
             <Button onClick={() => openDialog('new')}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Scanner
+              <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Scanner
             </Button>
           </div>
         </CardHeader>
@@ -161,18 +161,18 @@ export function ScannerConfigTab() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('nome')}>Name {getSortIndicator('nome')}</div></TableHead>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('ip')}>IP Address {getSortIndicator('ip')}</div></TableHead>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('scanner_root_folder')}>Root Path {getSortIndicator('scanner_root_folder')}</div></TableHead>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('status')}>Status {getSortIndicator('status')}</div></TableHead>
-                <TableHead><span className="sr-only">Actions</span></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('nome')}><span className="text-sm font-medium">Nome</span> {getSortIndicator('nome')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('ip')}><span className="text-sm font-medium">Endereço IP</span> {getSortIndicator('ip')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('scanner_root_folder')}><span className="text-sm font-medium">Localização Raiz</span> {getSortIndicator('scanner_root_folder')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('status')}><span className="text-sm font-medium">Estado</span> {getSortIndicator('status')}</div></TableHead>
+                <TableHead><span className="sr-only">Ações</span></TableHead>
               </TableRow>
                <TableRow>
-                <TableHead><Input placeholder="Filter name..." value={columnFilters['nome'] || ''} onChange={e => setColumnFilters(p => ({...p, nome: e.target.value}))} className="h-8"/></TableHead>
-                <TableHead><Input placeholder="Filter IP..." value={columnFilters['ip'] || ''} onChange={e => setColumnFilters(p => ({...p, ip: e.target.value}))} className="h-8"/></TableHead>
-                <TableHead><Input placeholder="Filter path..." value={columnFilters['scanner_root_folder'] || ''} onChange={e => setColumnFilters(p => ({...p, scanner_root_folder: e.target.value}))} className="h-8"/></TableHead>
-                <TableHead><Input placeholder="Filter status..." value={columnFilters['status'] || ''} onChange={e => setColumnFilters(p => ({...p, status: e.target.value}))} className="h-8"/></TableHead>
-                <TableHead><Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Clear Filters</Button></TableHead>
+                <TableHead><Input placeholder="Filtrar nome..." value={columnFilters['nome'] || ''} onChange={e => setColumnFilters(p => ({...p, nome: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filtrar IP..." value={columnFilters['ip'] || ''} onChange={e => setColumnFilters(p => ({...p, ip: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filtrar caminho..." value={columnFilters['scanner_root_folder'] || ''} onChange={e => setColumnFilters(p => ({...p, scanner_root_folder: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filtrar estado..." value={columnFilters['status'] || ''} onChange={e => setColumnFilters(p => ({...p, status: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead><Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Limpar Filtros</Button></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -196,12 +196,12 @@ export function ScannerConfigTab() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuLabel>Ações</DropdownMenuLabel>
                         <DropdownMenuItem onSelect={() => openDialog('edit', scanner)}>
-                          <Edit className="mr-2 h-4 w-4" /> Edit
+                          <Edit className="mr-2 h-4 w-4" /> Editar
                         </DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => setDeleteDialogState({ open: true, data: scanner })} className="text-destructive">
-                          <Trash2 className="mr-2 h-4 w-4" /> Delete
+                          <Trash2 className="mr-2 h-4 w-4" /> Eliminar
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -210,7 +210,7 @@ export function ScannerConfigTab() {
               )) : (
                  <TableRow>
                   <TableCell colSpan={5} className="h-24 text-center">
-                    No scanners configured.
+                    Nenhum scanner configurado.
                   </TableCell>
                 </TableRow>
               )}
@@ -219,7 +219,7 @@ export function ScannerConfigTab() {
         </CardContent>
          <CardFooter className="flex items-center justify-between">
             <div className="text-xs text-muted-foreground">
-              {`Showing ${paginatedScanners.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedScanners.length} of ${sortedAndFilteredScanners.length} scanners`}
+              {`A mostrar ${paginatedScanners.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedScanners.length} de ${sortedAndFilteredScanners.length} scanners`}
             </div>
             <PaginationNav />
         </CardFooter>
@@ -228,9 +228,9 @@ export function ScannerConfigTab() {
       <Dialog open={dialogState.open} onOpenChange={closeDialog}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>{dialogState.type === 'new' ? 'Add New Scanner' : 'Edit Scanner'}</DialogTitle>
+            <DialogTitle>{dialogState.type === 'new' ? 'Adicionar Novo Scanner' : 'Editar Scanner'}</DialogTitle>
             <DialogDescription>
-              {dialogState.type === 'new' ? 'Configure a new scanner device.' : `Editing scanner: ${dialogState.data?.nome}`}
+              {dialogState.type === 'new' ? 'Configurar um novo dispositivo de scanner.' : `Editar scanner: ${dialogState.data?.nome}`}
             </DialogDescription>
           </DialogHeader>
           <ScannerForm 
@@ -244,14 +244,14 @@ export function ScannerConfigTab() {
       <AlertDialog open={deleteDialogState.open} onOpenChange={() => setDeleteDialogState({ open: false, data: undefined })}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Tem a certeza?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the scanner <span className="font-bold">{deleteDialogState.data?.nome}</span>.
+              Esta ação não pode ser desfeita. Isto irá eliminar permanentemente o scanner <span className="font-bold">{deleteDialogState.data?.nome}</span>.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteDialogState({ open: false, data: undefined })}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+            <AlertDialogCancel onClick={() => setDeleteDialogState({ open: false, data: undefined })}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Eliminar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

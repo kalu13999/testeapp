@@ -412,7 +412,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     if (data.length === 0) return;
     const jsonString = JSON.stringify(data, null, 2);
     downloadFile(jsonString, `${stage}_export.json`, 'application/json');
-    toast({ title: "Export Successful", description: `${data.length} items exported as JSON.` });
+    toast({ title: "Exportação Concluída", description: `${data.length} itens exportados em formato JSON.` });
   }
 
   const exportCSV = (data: (EnrichedBook | AppDocument)[]) => {
@@ -433,7 +433,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         )
     ].join('\n');
     downloadFile(csvContent, `${stage}_export.csv`, 'text/csv;charset=utf-8;');
-    toast({ title: "Export Successful", description: `${data.length} items exported as CSV.` });
+    toast({ title: "Exportação Concluída", description: `${data.length} itens exportados em formato CSV.` });
   }
 
   const exportXLSX = (data: (EnrichedBook | AppDocument)[]) => {
@@ -452,7 +452,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, title);
     XLSX.writeFile(workbook, `${stage}_export.xlsx`);
-    toast({ title: "Export Successful", description: `${data.length} items exported as XLSX.` });
+    toast({ title: "Exportação Concluída", description: `${data.length} itens exportados em formato XLSX.` });
   }
 
   const handleDirectorySelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -466,7 +466,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
       const fileCount = tifFiles.length;
 
       if (!folderName) {
-        toast({ title: "Invalid Selection", description: "Please select a folder, not an individual file.", variant: "destructive" });
+        toast({ title: "Seleção Inválida", description: "Por favor, selecione uma pasta, não um arquivo individual.", variant: "destructive" });
         setScanState(prev => ({ ...prev, folderName: null, fileCount: null }));
       } else {
         setScanState(prev => ({ ...prev, folderName, fileCount }));
@@ -521,7 +521,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
       handleAssignUser(assignState.book.id, selectedUserId, assignState.role);
       closeAssignmentDialog();
     } else {
-      toast({ title: "No User Selected", description: "Please select a user to assign the task.", variant: "destructive" });
+      toast({ title: "Nenhum Utilizador Selecionado", description: "Por favor, selecione um utilizador para atribuir a tarefa.", variant: "destructive" });
     }
   };
   
@@ -628,14 +628,18 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     }
 
     if (stage === 'already-received') {
-        const projectWorkflow = projectWorkflows[book.projectId!] || [];
-        const isScanningEnabled = projectWorkflow.includes('to-scan');
-        if (isScanningEnabled) {
+      const projectWorkflow = projectWorkflows[book.projectId!] || [];
+      const isScanningEnabled = projectWorkflow.includes('to-scan');
+      if (isScanningEnabled) {
+        if (canViewAll) {
             openAssignmentDialog(book, 'scanner');
         } else {
-            setScanState({ open: true, book, folderName: null, fileCount: null });
+            handleAssignUser(book.id, currentUser!.id, 'scanner');
         }
-        return;
+      } else {
+          setScanState({ open: true, book, folderName: null, fileCount: null });
+      }
+      return;
     }
     
     if (stage === 'scanning-started') {
@@ -664,14 +668,14 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
 const handleMainAction = (book: EnrichedBook) => {
   if (!book.projectId) {
-      toast({ title: "Error", description: "Project ID not found for this book.", variant: "destructive" });
+      toast({ title: "Erro", description: "ID do projeto não encontrado para este livro.", variant: "destructive" });
       return;
   }
   
   const workflow = projectWorkflows[book.projectId] || [];
   const currentStageKey = findStageKeyFromStatus(book.status);
   if (!currentStageKey) {
-      toast({ title: "Workflow Error", description: `Cannot find a workflow stage for status: "${book.status}"`, variant: "destructive" });
+      toast({ title: "Erro de Workflow", description: `Não foi possível encontrar uma fase de workflow para o estado: "${book.status}"`, variant: "destructive" });
       return;
   }
   
@@ -735,12 +739,12 @@ const handleMainAction = (book: EnrichedBook) => {
         const role = STAGE_CONFIG[getNextEnabledStage(findStageKeyFromStatus(firstBook.status)!, projectWorkflows[firstBook.projectId] || [])!]?.assigneeRole;
         if(role) openBulkAssignmentDialog(role);
     } else if (actionType === 'FOLDER_SELECT') {
-        toast({ title: "Bulk Action Not Supported", description: "This action must be performed individually for each book.", variant: "destructive" });
+        toast({ title: "Ação em Massa Não Suportada", description: "Esta ação deve ser realizada individualmente para cada livro.", variant: "destructive" });
     } else {
         const actionLabel = getDynamicActionButtonLabel(firstBook);
         openConfirmationDialog({
-            title: `Perform action on ${selection.length} books?`,
-            description: `This will perform "${actionLabel}" for all selected books.`,
+            title: `Realizar ação em ${selection.length} livros?`,
+            description: `Isto irá realizar "${actionLabel}" para todos os livros selecionados.`,
             onConfirm: () => {
                 selection.forEach(bookId => {
                     const book = allDisplayItems.find(b => b.id === bookId) as EnrichedBook;
@@ -755,13 +759,13 @@ const handleMainAction = (book: EnrichedBook) => {
   const handleBulkResubmit = (targetStage: string) => {
     const stageKey = findStageKeyFromStatus(targetStage);
     if (!stageKey) {
-      toast({ title: "Workflow Error", description: `Could not find configuration for stage: ${targetStage}`, variant: "destructive" });
+      toast({ title: "Erro de Workflow", description: `Não foi possível encontrar uma configuração para a fase: ${targetStage}`, variant: "destructive" });
       return;
     }
     const stageConfig = STAGE_CONFIG[stageKey];
     openConfirmationDialog({
-      title: `Resubmit ${selection.length} books?`,
-      description: `This will resubmit all selected books to the "${stageConfig.title}" stage.`,
+      title: `Reenviar ${selection.length} livros?`,
+      description: `Isto irá reenviar todos os livros selecionados para a fase "${stageConfig.title}".`,
       onConfirm: () => {
         selection.forEach(bookId => handleResubmit(bookId, targetStage));
         setSelection([]);
@@ -781,9 +785,12 @@ const handleMainAction = (book: EnrichedBook) => {
       if (stage === 'already-received') {
           const projectWorkflow = projectWorkflows[book.projectId!] || [];
           const isScanningEnabled = projectWorkflow.includes('to-scan');
-          return isScanningEnabled
-              ? { label: 'Assign Scanner', icon: UserPlus, disabled: false }
-              : { label: 'Send to Storage', icon: FolderSync, disabled: false };
+    if (isScanningEnabled) {
+        const label = canViewAll ? 'Assign Scanner' : 'Assign to me';
+        return { label: label, icon: UserPlus, disabled: false };
+    } else {
+        return { label: 'Send to Storage', icon: FolderSync, disabled: false };
+    }
       }
 
       if(stage === 'scanning-started') {
@@ -816,7 +823,7 @@ const handleMainAction = (book: EnrichedBook) => {
                 onCheckedChange={(checked) => setSelection(
                     checked ? [...selection, item.id] : selection.filter((id) => id !== item.id)
                 )}
-                aria-label={`Select row ${index + 1}`}
+                aria-label={`Selecionar linha ${index + 1}`}
             />
         </TableCell>
         <TableCell className="font-medium">
@@ -835,7 +842,7 @@ const handleMainAction = (book: EnrichedBook) => {
             {isCancelable && hasEndTime ? (
               <Badge variant="default" className="bg-green-600 hover:bg-green-600/90">
                 <Check className="mr-2 h-4 w-4" />
-                Task Completed
+                Tarefa Completa
               </Badge>
             ) : isCancelable ? (
               <Button
@@ -843,14 +850,14 @@ const handleMainAction = (book: EnrichedBook) => {
                 variant="secondary"
                 onClick={() =>
                   openConfirmationDialog({
-                    title: "Confirm Complete Task",
-                    description: `Are you sure you want to mark "${item.name}" as complete?`,
+                    title: "Confirmar Tarefa Completa",
+                    description: `Tem a certeza de que deseja marcar "${item.name}" como completa?`,
                     onConfirm: () => handleCompleteTask(item.id, item.status),
                   })
                 }
               >
                 <Check className="mr-2 h-4 w-4" />
-                Complete Task
+                Completar Tarefa
               </Button>
             ) : null}
 
@@ -868,10 +875,10 @@ const handleMainAction = (book: EnrichedBook) => {
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuLabel>Ações</DropdownMenuLabel>
                     <DropdownMenuItem onSelect={() => setDetailsState({ open: true, book: item })}>
                         <Info className="mr-2 h-4 w-4" />
-                        Details
+                        Detalhes
                     </DropdownMenuItem>
                     {isCancelable && (
                       <>
@@ -880,12 +887,12 @@ const handleMainAction = (book: EnrichedBook) => {
                            <>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onSelect={() => openConfirmationDialog({
-                                  title: `Mark not Complete for "${item.name}"?`,
-                                  description: "This will undo the completion of this task, marking it as not completed.",
+                                  title: `Marcar "${item.name}" como Não Completo?`,
+                                  description: "Isto irá desfazer a conclusão desta tarefa, marcando-a como não completa.",
                                   onConfirm: () => handleCancelCompleteTask(item.id, item.status)
                               })}>
                               <RotateCcw className="mr-2 h-4 w-4" />
-                              Mark not Complete
+                              Marcar como Não Completo
                           </DropdownMenuItem>
                           </>
                         )}
@@ -893,12 +900,12 @@ const handleMainAction = (book: EnrichedBook) => {
                         <DropdownMenuSeparator />
 
                         <DropdownMenuItem onSelect={() => openConfirmationDialog({
-                                title: `Cancel task for "${item.name}"?`,
-                                description: "This will return the book to the previous step.",
+                                title: `Cancelar tarefa para "${item.name}"?`,
+                                description: "Isto irá devolver o livro à etapa anterior.",
                                 onConfirm: () => handleCancelTask(item.id, item.status)
                             })} className="text-destructive">
                             <Undo2 className="mr-2 h-4 w-4" />
-                            Cancel Task
+                            Cancelar Tarefa
                         </DropdownMenuItem>
                        
                       </>
@@ -919,7 +926,7 @@ const handleMainAction = (book: EnrichedBook) => {
                 onCheckedChange={(checked) => setSelection(
                     checked ? [...selection, item.id] : selection.filter((id) => id !== item.id)
                 )}
-                aria-label={`Select row ${index + 1}`}
+                aria-label={`Selecionar linha ${index + 1}`}
             />
         </TableCell>
       <TableCell className="font-medium">
@@ -935,8 +942,8 @@ const handleMainAction = (book: EnrichedBook) => {
         <TableCell>
           <div className="flex gap-2">
             <Button size="sm" onClick={() => openConfirmationDialog({
-                title: `Are you sure?`,
-                description: `This will move the book for "${item.name}" to the next stage.`,
+                title: `Tem a certeza?`,
+                description: `Isto irá mover o livro "${item.name}" para a fase seguinte.`,
                 onConfirm: () => handleMoveBookToNextStage(item.bookId!, item.status)
             })}>
                 {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
@@ -1050,9 +1057,9 @@ const handleMainAction = (book: EnrichedBook) => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => handleBulkResubmit('To Indexing')}>Indexing</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleBulkResubmit('To Checking')}>Quality Control</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleBulkResubmit('Delivery')}>Delivery</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleBulkResubmit('To Indexing')}>Indexing 1</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleBulkResubmit('To Checking')}>Quality Control 1</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleBulkResubmit('Delivery')}>Delivery 1</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
         </div>
@@ -1062,8 +1069,8 @@ const handleMainAction = (book: EnrichedBook) => {
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">{selection.length} selected</span>
            <Button size="sm" onClick={() => openConfirmationDialog({
-             title: `Mark ${selection.length} books as corrected?`,
-             description: `This will move all selected books to the next stage.`,
+             title: `Marcar ${selection.length} livros como corrigidos?`,
+             description: `Isto irá mover todos os livros selecionados para a fase seguinte.`,
              onConfirm: () => {
                selection.forEach(bookId => handleMarkAsCorrected(bookId));
                setSelection([]);
@@ -1157,11 +1164,11 @@ const handleMainAction = (book: EnrichedBook) => {
       <AlertDialog open={pendingTasksState.open} onOpenChange={(open) => !open && setPendingTasksState({ open: false, tasks: [], bookToStart: {} as EnrichedBook, role: 'scanner' })}>
         <AlertDialogContent>
             <AlertDialogHeader>
-                <AlertDialogTitle>You have tasks in progress</AlertDialogTitle>
+                <AlertDialogTitle>Você tem tarefas por terminar</AlertDialogTitle>
 
                   <AlertDialogDescription asChild>
                     <div>
-                      <p>The following books are still marked as "{pendingTasksState.role} started". Do you want to mark them as complete before starting "{pendingTasksState.bookToStart.name}"?</p>
+                      <p>Os seguintes livros ainda estão marcados como "{pendingTasksState.role} iniciado". Você deseja marcá-los como completos antes de iniciar "{pendingTasksState.bookToStart.name}"?</p>
                       <ul className="list-disc pl-5 mt-2">
                           {pendingTasksState.tasks.map(t => <li key={t.id}>{t.name}</li>)}
                       </ul>
@@ -1190,7 +1197,7 @@ const handleMainAction = (book: EnrichedBook) => {
                       })
                     }}
                   >
-                    Yes, Complete Old & Start New
+                    Sim, Completar Anterior & Iniciar Novo
                   </AlertDialogAction>
                 </li>
 
@@ -1207,14 +1214,14 @@ const handleMainAction = (book: EnrichedBook) => {
                       })
                     }}
                   >
-                    No, Just Start New Task
+                    Não, Apenas Iniciar Nova Tarefa
                   </AlertDialogCancel>
                 </li>
 
                 
                 <li>
                   <AlertDialogCancel className="w-full justify-center">
-                    Cancel
+                    Cancelar
                   </AlertDialogCancel>
                 </li>
               </ul>
@@ -1241,19 +1248,19 @@ const handleMainAction = (book: EnrichedBook) => {
                         <DropdownMenuTrigger asChild>
                             <Button size="sm" variant="outline" className="h-9 gap-1">
                                 <Download className="h-3.5 w-3.5" />
-                                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Export</span>
+                                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Exportar</span>
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Export Selected ({selection.length})</DropdownMenuLabel>
-                            <DropdownMenuItem onSelect={() => exportXLSX(selectedItems)} disabled={selection.length === 0}>Export as XLSX</DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => exportJSON(selectedItems)} disabled={selection.length === 0}>Export as JSON</DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => exportCSV(selectedItems)} disabled={selection.length === 0}>Export as CSV</DropdownMenuItem>
+                            <DropdownMenuLabel>Exportar Seleção ({selection.length})</DropdownMenuLabel>
+                            <DropdownMenuItem onSelect={() => exportXLSX(selectedItems)} disabled={selection.length === 0}>Exportar como XLSX</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => exportJSON(selectedItems)} disabled={selection.length === 0}>Exportar como JSON</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => exportCSV(selectedItems)} disabled={selection.length === 0}>Exportar como CSV</DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuLabel>Export All ({sortedAndFilteredItems.length})</DropdownMenuLabel>
-                            <DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredItems)} disabled={sortedAndFilteredItems.length === 0}>Export as XLSX</DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredItems)} disabled={sortedAndFilteredItems.length === 0}>Export as JSON</DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredItems)} disabled={sortedAndFilteredItems.length === 0}>Export as CSV</DropdownMenuItem>
+                            <DropdownMenuLabel>Exportar Todos ({sortedAndFilteredItems.length})</DropdownMenuLabel>
+                            <DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredItems)} disabled={sortedAndFilteredItems.length === 0}>Exportar como XLSX</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredItems)} disabled={sortedAndFilteredItems.length === 0}>Exportar como JSON</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredItems)} disabled={sortedAndFilteredItems.length === 0}>Exportar como CSV</DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
@@ -1269,23 +1276,23 @@ const handleMainAction = (book: EnrichedBook) => {
                           <Checkbox
                               checked={displayItems.length > 0 && selection.length === displayItems.length}
                               onCheckedChange={(checked) => setSelection(checked ? displayItems.map(item => item.id) : [])}
-                              aria-label="Select all"
+                              aria-label="Selecionar todos"
                           />
                       </TableHead>
-                      <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>Book Name {getSortIndicator('name')}</div></TableHead>
-                      <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('projectName', e.shiftKey)}>Project {getSortIndicator('projectName')}</div></TableHead>
-                      <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('clientName', e.shiftKey)}>Client {getSortIndicator('clientName')}</div></TableHead>
+                      <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>Nome do Livro {getSortIndicator('name')}</div></TableHead>
+                      <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('projectName', e.shiftKey)}>Projeto {getSortIndicator('projectName')}</div></TableHead>
+                      <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('clientName', e.shiftKey)}>Cliente {getSortIndicator('clientName')}</div></TableHead>
                       {canViewAll && config.assigneeRole && (
-                         <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('assigneeName', e.shiftKey)}>Assigned To {getSortIndicator('assigneeName')}</div></TableHead>
+                         <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('assigneeName', e.shiftKey)}>Atribuído a {getSortIndicator('assigneeName')}</div></TableHead>
                       )}
-                      <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Status {getSortIndicator('status')}</div></TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Estado {getSortIndicator('status')}</div></TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                   <TableRow>
                     <TableHead />
                     <TableHead>
                         <Input
-                            placeholder="Filter by name..."
+                            placeholder="Filtrar nome..."
                             value={columnFilters['name'] || ''}
                             onChange={(e) => handleColumnFilterChange('name', e.target.value)}
                             className="h-8"
@@ -1293,7 +1300,7 @@ const handleMainAction = (book: EnrichedBook) => {
                     </TableHead>
                     <TableHead>
                         <Input
-                            placeholder="Filter by project..."
+                            placeholder="Filtrar projeto..."
                             value={columnFilters['projectName'] || ''}
                             onChange={(e) => handleColumnFilterChange('projectName', e.target.value)}
                             className="h-8"
@@ -1301,7 +1308,7 @@ const handleMainAction = (book: EnrichedBook) => {
                     </TableHead>
                     <TableHead className="hidden md:table-cell">
                         <Input
-                            placeholder="Filter by client..."
+                            placeholder="Filtrar cliente..."
                             value={columnFilters['clientName'] || ''}
                             onChange={(e) => handleColumnFilterChange('clientName', e.target.value)}
                             className="h-8"
@@ -1310,7 +1317,7 @@ const handleMainAction = (book: EnrichedBook) => {
                      {canViewAll && config.assigneeRole && (
                        <TableHead>
                             <Input
-                                placeholder="Filter by user..."
+                                placeholder="Filtrar utilizador..."
                                 value={columnFilters['assigneeName'] || ''}
                                 onChange={(e) => handleColumnFilterChange('assigneeName', e.target.value)}
                                 className="h-8"
@@ -1319,14 +1326,14 @@ const handleMainAction = (book: EnrichedBook) => {
                      )}
                     <TableHead>
                          <Input
-                            placeholder="Filter by status..."
+                            placeholder="Filtrar estado..."
                             value={columnFilters['status'] || ''}
                             onChange={(e) => handleColumnFilterChange('status', e.target.value)}
                             className="h-8"
                         />
                     </TableHead>
                     <TableHead className="text-right">
-                      <Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Clear</Button>
+                      <Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Limpar Filtros</Button>
                     </TableHead>
                   </TableRow>
                   </>
@@ -1337,26 +1344,26 @@ const handleMainAction = (book: EnrichedBook) => {
                          <Checkbox
                               checked={displayItems.length > 0 && selection.length === displayItems.length}
                               onCheckedChange={(checked) => setSelection(checked ? displayItems.map(item => item.id) : [])}
-                              aria-label="Select all"
+                              aria-label="Selecionar todos"
                           />
                       </TableHead>
-                    <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>Document Name {getSortIndicator('name')}</div></TableHead>
-                    <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('client', e.shiftKey)}>Client {getSortIndicator('client')}</div></TableHead>
-                    <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('type', e.shiftKey)}>Type {getSortIndicator('type')}</div></TableHead>
-                    <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Status {getSortIndicator('status')}</div></TableHead>
-                    <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('lastUpdated', e.shiftKey)}>Last Updated {getSortIndicator('lastUpdated')}</div></TableHead>
+                    <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>Nome do Documento {getSortIndicator('name')}</div></TableHead>
+                    <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('client', e.shiftKey)}>Cliente {getSortIndicator('client')}</div></TableHead>
+                    <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('type', e.shiftKey)}>Tipo {getSortIndicator('type')}</div></TableHead>
+                    <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Estado {getSortIndicator('status')}</div></TableHead>
+                    <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('lastUpdated', e.shiftKey)}>Última Atualização {getSortIndicator('lastUpdated')}</div></TableHead>
                     {(actionButtonLabel) && (
-                      <TableHead>Actions</TableHead>
+                      <TableHead>Ações</TableHead>
                     )}
                   </TableRow>
                   <TableRow>
                     <TableHead />
-                    <TableHead><Input placeholder="Filter name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/></TableHead>
-                    <TableHead><Input placeholder="Filter client..." value={columnFilters['client'] || ''} onChange={(e) => handleColumnFilterChange('client', e.target.value)} className="h-8"/></TableHead>
+                    <TableHead><Input placeholder="Filtrar nome..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/></TableHead>
+                    <TableHead><Input placeholder="Filtrar cliente..." value={columnFilters['client'] || ''} onChange={(e) => handleColumnFilterChange('client', e.target.value)} className="h-8"/></TableHead>
                     <TableHead className="hidden md:table-cell"><Input placeholder="Filter type..." value={columnFilters['type'] || ''} onChange={(e) => handleColumnFilterChange('type', e.target.value)} className="h-8"/></TableHead>
-                    <TableHead><Input placeholder="Filter status..." value={columnFilters['status'] || ''} onChange={(e) => handleColumnFilterChange('status', e.target.value)} className="h-8"/></TableHead>
-                    <TableHead className="hidden md:table-cell"><Input placeholder="Filter date..." value={columnFilters['lastUpdated'] || ''} onChange={(e) => handleColumnFilterChange('lastUpdated', e.target.value)} className="h-8"/></TableHead>
-                    {(actionButtonLabel) && (<TableHead className="text-right"><Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Clear</Button></TableHead>)}
+                    <TableHead><Input placeholder="Filtrar estado..." value={columnFilters['status'] || ''} onChange={(e) => handleColumnFilterChange('status', e.target.value)} className="h-8"/></TableHead>
+                    <TableHead className="hidden md:table-cell"><Input placeholder="Filtrar data..." value={columnFilters['lastUpdated'] || ''} onChange={(e) => handleColumnFilterChange('lastUpdated', e.target.value)} className="h-8"/></TableHead>
+                    {(actionButtonLabel) && (<TableHead className="text-right"><Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Limpar Filtros</Button></TableHead>)}
                   </TableRow>
                   </>
                 )}
@@ -1380,7 +1387,7 @@ const handleMainAction = (book: EnrichedBook) => {
           </CardContent>
           <CardFooter className="flex items-center justify-between">
             <div className="text-xs text-muted-foreground">
-                {selection.length > 0 ? `${selection.length} of ${sortedAndFilteredItems.length} item(s) selected.` : `Showing ${displayItems.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + displayItems.length} of ${sortedAndFilteredItems.length} items`}
+                {selection.length > 0 ? `${selection.length} de ${sortedAndFilteredItems.length} item(s) selecionados.` : `A mostrar ${displayItems.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + displayItems.length} de ${sortedAndFilteredItems.length} itens`}
             </div>
             <PaginationNav />
           </CardFooter>
@@ -1388,24 +1395,24 @@ const handleMainAction = (book: EnrichedBook) => {
 
         <AlertDialogContent>
           <AlertDialogHeader>
-              <AlertDialogTitle>Reason for Rejection</AlertDialogTitle>
+              <AlertDialogTitle>Motivo da Rejeição</AlertDialogTitle>
               <AlertDialogDescription>
-                  Please provide a reason for rejecting the book "{currentBook?.name}". This will be sent to the internal team for correction.
+                  Por favor, forneça um motivo para rejeitar o livro "{currentBook?.name}". Isso será enviado para a equipe interna para correção.
               </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-2">
-              <Label htmlFor="rejection-comment">Comment</Label>
+              <Label htmlFor="rejection-comment">Comentário</Label>
               <Textarea 
                   id="rejection-comment"
-                  placeholder="e.g., Page 5 is blurry, please re-scan."
+                  placeholder="ex.:, Page 5 is blurry, please re-scan."
                   value={rejectionComment}
                   onChange={(e) => setRejectionComment(e.target.value)}
               />
           </div>
           <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
               <AlertDialogAction onClick={handleRejectSubmit} disabled={!rejectionComment.trim()}>
-                  Submit Rejection
+                  Enviar Rejeição
               </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1430,19 +1437,19 @@ const handleMainAction = (book: EnrichedBook) => {
     <Dialog open={scanState.open} onOpenChange={closeScanningDialog}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Confirm Scanning for "{scanState.book?.name}"</DialogTitle>
+          <DialogTitle>Confirmar Digitalização para "{scanState.book?.name}"</DialogTitle>
           <DialogDescription>
-            Select the folder containing the scanned pages. The folder name must match the book name.
+            Selecione a pasta contendo as páginas digitalizadas. O nome da pasta deve corresponder ao nome do livro.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="grid w-full items-center gap-1.5">
-              <Label htmlFor="folder-upload">Select Scanned Folder</Label>
+              <Label htmlFor="folder-upload">Selecionar Pasta Digitalizada</Label>
               <div className="flex items-center gap-2">
                 <Button asChild variant="outline">
                     <label htmlFor="folder-upload" className="cursor-pointer">
                         <Upload className="mr-2 h-4 w-4" />
-                        Choose Directory
+                        Escolher Diretório
                     </label>
                 </Button>
                 <Input {...{
@@ -1466,24 +1473,24 @@ const handleMainAction = (book: EnrichedBook) => {
           </div>
           {scanState.folderName && !isScanFolderMatch && (
               <p className="text-sm text-destructive">
-                  Folder name does not match book name. Expected: "{scanState.book?.name}".
+                  O nome da pasta não corresponde ao nome do livro. Esperado: "{scanState.book?.name}".
               </p>
           )}
           {scanState.book && scanState.fileCount !== null && scanState.fileCount !== scanState.book.expectedDocuments && (
             <Alert variant="destructive">
               <FileWarning className="h-4 w-4" />
-              <AlertTitle>File Count Mismatch</AlertTitle>
+              <AlertTitle>Incompatibilidade de Contagem de Arquivos</AlertTitle>
               <AlertDescription>
-                Found {scanState.fileCount} .tif files, but expected {scanState.book.expectedDocuments}.
-                Proceeding will only generate {scanState.fileCount} pages.
+                Encontrados {scanState.fileCount} arquivos .tif, mas esperado {scanState.book.expectedDocuments}.
+                Prosseguindo, serão geradas apenas {scanState.fileCount} páginas.
               </AlertDescription>
             </Alert>
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={closeScanningDialog}>Cancel</Button>
+          <Button variant="outline" onClick={closeScanningDialog}>Cancelar</Button>
           <Button onClick={stage === 'already-received' ? handleConfirmScanBypass : handleConfirmScan} disabled={!isScanFolderMatch || scanState.fileCount === 0}>
-            Confirm Scan
+            Confirmar Digitalização
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -1509,9 +1516,9 @@ const handleMainAction = (book: EnrichedBook) => {
           </Select>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={closeAssignmentDialog}>Cancel</Button>
+          <Button variant="outline" onClick={closeAssignmentDialog}>Cancelar</Button>
           <Button onClick={handleConfirmAssignment} disabled={!selectedUserId}>
-            Assign and Confirm
+            Atribuir e Confirmar
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -1522,7 +1529,7 @@ const handleMainAction = (book: EnrichedBook) => {
           <DialogHeader>
             <DialogTitle>{bulkAssignState.role ? assignmentConfig[bulkAssignState.role].title : 'Assign User'} for {selection.length} Books</DialogTitle>
             <DialogDescription>
-                Select a user to process all selected books. They will be added to their personal queue.
+                Selecione um utilizador para processar todos os livros selecionados. Eles serão adicionados à fila pessoal dele.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -1538,9 +1545,9 @@ const handleMainAction = (book: EnrichedBook) => {
             </Select>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={closeBulkAssignmentDialog}>Cancel</Button>
+            <Button variant="outline" onClick={closeBulkAssignmentDialog}>Cancelar</Button>
             <Button onClick={handleBulkAssignmentSubmit} disabled={!bulkAssignState.selectedUserId}>
-              Assign and Confirm
+              Atribuir e Confirmar
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1549,24 +1556,24 @@ const handleMainAction = (book: EnrichedBook) => {
     <Dialog open={flagDialogState.open} onOpenChange={closeFlagDialog}>
         <DialogContent>
             <DialogHeader>
-                <DialogTitle>Flag Document: "{flagDialogState.docName}"</DialogTitle>
+                <DialogTitle>Marcar Documento: "{flagDialogState.docName}"</DialogTitle>
                 <DialogDescription>
-                    Provide a comment for the flag. This will be visible to the team.
+                    Forneça um comentário para a marcação. Isso será visível para a equipe.
                 </DialogDescription>
             </DialogHeader>
             <div className="space-y-2 py-4">
-                <Label htmlFor="flag-comment">Comment</Label>
+                <Label htmlFor="flag-comment">Comentário</Label>
                 <Textarea
                     id="flag-comment"
-                    placeholder={`Reason for the ${flagDialogState.flag}...`}
+                    placeholder={`Motivo para a ${flagDialogState.flag}...`}
                     value={flagDialogState.comment}
                     onChange={(e) => setFlagDialogState(prev => ({...prev, comment: e.target.value}))}
                     className="min-h-[100px]"
                 />
             </div>
             <DialogFooter>
-                <Button variant="outline" onClick={closeFlagDialog}>Cancel</Button>
-                <Button onClick={handleFlagSubmit} disabled={!flagDialogState.comment.trim()}>Save Comment</Button>
+                <Button variant="outline" onClick={closeFlagDialog}>Cancelar</Button>
+                <Button onClick={handleFlagSubmit} disabled={!flagDialogState.comment.trim()}>Guardar Comentário</Button>
             </DialogFooter>
         </DialogContent>
     </Dialog>
@@ -1574,7 +1581,7 @@ const handleMainAction = (book: EnrichedBook) => {
     <Dialog open={detailsState.open} onOpenChange={() => setDetailsState({ open: false, book: undefined })}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Book Details</DialogTitle>
+            <DialogTitle>Detalhes do Livro</DialogTitle>
             <DialogDescription>{detailsState.book?.name}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4 text-sm">
@@ -1599,16 +1606,16 @@ const handleMainAction = (book: EnrichedBook) => {
     <Dialog open={pullTaskState.open} onOpenChange={(open) => !open && setPullTaskState({ open: false, stage: '', role: null })}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Get Next Task and Assign</DialogTitle>
+          <DialogTitle>Obter Próxima Tarefa e Atribuir</DialogTitle>
           <DialogDescription>
-            Find the next available book from the previous stage and assign it to a user.
+            Encontre o próximo livro disponível da etapa anterior e atribua-o a um usuário.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
-          <Label htmlFor="user-select">Assign To</Label>
+          <Label htmlFor="user-select">Atribuir a</Label>
           <Select value={selectedUserId} onValueChange={setSelectedUserId}>
             <SelectTrigger id="user-select">
-              <SelectValue placeholder={`Select a user...`} />
+              <SelectValue placeholder={`Selecione um usuário...`} />
             </SelectTrigger>
             <SelectContent>
               {pullTaskState.role && getAssignableUsers(pullTaskState.role).map(user => (
@@ -1618,13 +1625,13 @@ const handleMainAction = (book: EnrichedBook) => {
           </Select>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setPullTaskState({ open: false, stage: '', role: null })}>Cancel</Button>
+          <Button variant="outline" onClick={() => setPullTaskState({ open: false, stage: '', role: null })}>Cancelar</Button>
           <Button onClick={() => {
             handlePullNextTask(pullTaskState.stage, selectedUserId);
             setPullTaskState({ open: false, stage: '', role: null });
             setSelectedUserId('');
           }} disabled={!selectedUserId}>
-            Assign Task
+            Atribuir Tarefa
           </Button>
         </DialogFooter>
       </DialogContent>

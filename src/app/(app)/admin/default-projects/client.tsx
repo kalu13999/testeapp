@@ -112,16 +112,16 @@ export default function DefaultProjectsClient() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-headline text-3xl font-bold tracking-tight">Default Project Management</h1>
+        <h1 className="font-headline text-3xl font-bold tracking-tight">Gestão de Projeto Padrão</h1>
         <p className="text-muted-foreground">
-          Assign a default project for each user to see upon login.
+          Atribua um projeto padrão para cada utilizador visualizar ao iniciar sessão.
         </p>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>User Defaults</CardTitle>
+          <CardTitle>Projeto Padrão do Utilizador</CardTitle>
           <CardDescription>
-            Select a project from the dropdown to set it as the user's default.
+            Selecione um projeto disponivel para defini-lo como padrão do utilizador.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -130,7 +130,7 @@ export default function DefaultProjectsClient() {
               <TableRow>
                 <TableHead>
                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name')}>
-                        User {getSortIndicator('name')}
+                        Utilizador {getSortIndicator('name')}
                     </div>
                 </TableHead>
                 <TableHead className="w-[200px]">
@@ -140,15 +140,15 @@ export default function DefaultProjectsClient() {
                 </TableHead>
                 <TableHead className="w-[200px]">
                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('role')}>
-                        Role {getSortIndicator('role')}
+                        Perfil {getSortIndicator('role')}
                     </div>
                 </TableHead>
-                <TableHead className="w-[400px]">Default Project</TableHead>
+                <TableHead className="w-[400px]">Projeto Padrão</TableHead>
               </TableRow>
                <TableRow>
                 <TableHead>
                     <Input 
-                        placeholder="Filter by name..." 
+                        placeholder="Filtrar nome..." 
                         value={columnFilters['name'] || ''} 
                         onChange={e => setColumnFilters(p => ({...p, name: e.target.value}))} 
                         className="h-8"
@@ -156,7 +156,7 @@ export default function DefaultProjectsClient() {
                 </TableHead>
                 <TableHead>
                     <Input 
-                        placeholder="Filter by username..." 
+                        placeholder="Filtrar username..." 
                         value={columnFilters['username'] || ''} 
                         onChange={e => setColumnFilters(p => ({...p, username: e.target.value}))} 
                         className="h-8"
@@ -164,14 +164,14 @@ export default function DefaultProjectsClient() {
                 </TableHead>
                 <TableHead>
                     <Input 
-                        placeholder="Filter by role..." 
+                        placeholder="Filtrar perfil..." 
                         value={columnFilters['role'] || ''} 
                         onChange={e => setColumnFilters(p => ({...p, role: e.target.value}))} 
                         className="h-8"
                     />
                 </TableHead>
                 <TableHead>
-                    <Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Clear Filters</Button>
+                    <Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Limpar Filtros</Button>
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -198,7 +198,7 @@ export default function DefaultProjectsClient() {
                         disabled={availableProjects.length === 0}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Select a default project..." />
+                          <SelectValue placeholder="Selecionar um projeto padrão..." />
                         </SelectTrigger>
                         <SelectContent>
                           {availableProjects.length > 0 ? (
@@ -208,7 +208,7 @@ export default function DefaultProjectsClient() {
                               </SelectItem>
                             ))
                           ) : (
-                            <SelectItem value="none" disabled>No projects assigned</SelectItem>
+                            <SelectItem value="none" disabled>Sem projetos atribuídos</SelectItem>
                           )}
                         </SelectContent>
                       </Select>
@@ -218,7 +218,7 @@ export default function DefaultProjectsClient() {
               }) : (
                 <TableRow>
                   <TableCell colSpan={4} className="h-24 text-center">
-                    No applicable users found.
+                    Nenhum utilizador encontrado.
                   </TableCell>
                 </TableRow>
               )}

@@ -76,12 +76,7 @@ export function ClientValidationProvider({ children }: { children: React.ReactNo
         }
 
         if (failedMoves.length > 0) {
-            toast({
-                title: "Batch Finalization Failed",
-                description: `Could not move folders for the following books: ${failedMoves.join(', ')}. The batch status was not updated.`,
-                variant: "destructive",
-                duration: 10000,
-            });
+            toast({title: "Batch Finalization Failed", description: `Could not move folders for the following books: ${failedMoves.join(', ')}. The batch status was not updated.`, variant: "destructive", duration: 5000});
             return;
         }
 

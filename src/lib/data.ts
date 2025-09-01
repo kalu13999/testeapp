@@ -158,7 +158,7 @@ export interface ProcessingBatchItem {
   itemStartTime: string | null;
   itemEndTime: string | null;
   processedPages: Record<string, number> | null;
-  status: 'Pending' | 'In Progress' | 'Complete' | 'Failed';
+  status: 'Pending' | 'In Progress' | 'Complete' | 'Failed' | 'CQ Failed';
   info: string | null;
   obs: string | null;
 }
@@ -193,7 +193,7 @@ export interface Scanner {
   error_folder: string;
   success_folder: string;
   local_thumbs_path: string;
-  status: 'ativo' | 'inativo';
+  status: 'ativo' | 'inativo' | 'manutencao';
   obs?: string;
 }
 

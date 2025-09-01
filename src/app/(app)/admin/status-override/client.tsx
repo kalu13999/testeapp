@@ -184,7 +184,7 @@ export default function StatusOverrideClient({ allStatuses }: StatusOverrideClie
     if (data.length === 0) return;
     const jsonString = JSON.stringify(data, null, 2);
     downloadFile(jsonString, 'books_export.json', 'application/json');
-    toast({ title: "Export Successful", description: `${data.length} books exported as JSON.` });
+    toast({ title: "Exportação Concluída", description: `${data.length} livros exportados em formato JSON.` });
   }
 
   const exportCSV = (data: EnrichedBook[]) => {
@@ -203,7 +203,7 @@ export default function StatusOverrideClient({ allStatuses }: StatusOverrideClie
         )
     ].join('\n');
     downloadFile(csvContent, 'books_export.csv', 'text/csv;charset=utf-8;');
-    toast({ title: "Export Successful", description: `${data.length} books exported as CSV.` });
+    toast({ title: "Exportação Concluída", description: `${data.length} livros exportados em formato CSV.` });
   }
 
   const exportXLSX = (data: EnrichedBook[]) => {
@@ -212,16 +212,16 @@ export default function StatusOverrideClient({ allStatuses }: StatusOverrideClie
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Books");
     XLSX.writeFile(workbook, "books_export.xlsx");
-    toast({ title: "Export Successful", description: `${data.length} books exported as XLSX.` });
+    toast({ title: "Exportação Concluída", description: `${data.length} livros exportados em formato XLSX.` });
   }
 
   const copyToClipboardJSON = (data: EnrichedBook[]) => {
     if (data.length === 0) return;
     const jsonString = JSON.stringify(data, null, 2);
     navigator.clipboard.writeText(jsonString).then(() => {
-        toast({ title: "Copied to Clipboard", description: `${data.length} book(s) copied as JSON.` });
+        toast({ title: "Copiado para a Área de Transferência", description: `${data.length} livro(s) copiado(s) em formato JSON.` });
     }, () => {
-        toast({ title: "Copy Failed", description: "Could not copy to clipboard.", variant: "destructive" });
+        toast({ title: "Falha ao Copiar", description: "Não foi possível copiar para a área de transferência.", variant: "destructive" });
     });
   }
 
@@ -241,9 +241,9 @@ export default function StatusOverrideClient({ allStatuses }: StatusOverrideClie
         )
     ].join('\n');
     navigator.clipboard.writeText(csvContent).then(() => {
-        toast({ title: "Copied to Clipboard", description: `${data.length} book(s) copied as CSV.` });
+        toast({ title: "Copiado para a Área de Transferência", description: `${data.length} livro(s) copiado(s) em formato CSV.` });
     }, () => {
-        toast({ title: "Copy Failed", description: "Could not copy to clipboard.", variant: "destructive" });
+        toast({ title: "Falha ao Copiar", description: "Não foi possível copiar para a área de transferência.", variant: "destructive" });
     });
   }
 
@@ -300,34 +300,34 @@ export default function StatusOverrideClient({ allStatuses }: StatusOverrideClie
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-headline text-3xl font-bold tracking-tight">Admin Status Override</h1>
-          <p className="text-muted-foreground">Manually change the status of any book in the system. Use with caution.</p>
+          <h1 className="font-headline text-3xl font-bold tracking-tight">Sobrescrever Estado</h1>
+          <p className="text-muted-foreground">Altere manualmente o estado de qualquer livro no sistema. Requer atenção ao usar.</p>
         </div>
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
             <Button size="sm" variant="outline" className="h-9 gap-1">
                 <Download className="h-3.5 w-3.5" />
-                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Export</span>
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Exportar</span>
             </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Export Selected ({selection.length})</DropdownMenuLabel>
-                <DropdownMenuItem onSelect={() => exportXLSX(selectedBooks)} disabled={selection.length === 0}>Export as XLSX</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => exportJSON(selectedBooks)} disabled={selection.length === 0}>Export as JSON</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => exportCSV(selectedBooks)} disabled={selection.length === 0}>Export as CSV</DropdownMenuItem>
+                <DropdownMenuLabel>Exportar Seleção ({selection.length})</DropdownMenuLabel>
+                <DropdownMenuItem onSelect={() => exportXLSX(selectedBooks)} disabled={selection.length === 0}>Exportar como XLSX</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => exportJSON(selectedBooks)} disabled={selection.length === 0}>Exportar como JSON</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => exportCSV(selectedBooks)} disabled={selection.length === 0}>Exportar como CSV</DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel>Copy Selected ({selection.length})</DropdownMenuLabel>
-                <DropdownMenuItem onSelect={() => copyToClipboardJSON(selectedBooks)} disabled={selection.length === 0}>Copy as JSON</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => copyToClipboardCSV(selectedBooks)} disabled={selection.length === 0}>Copy as CSV</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => copyToClipboardJSON(selectedBooks)} disabled={selection.length === 0}>Copiar como JSON</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => copyToClipboardCSV(selectedBooks)} disabled={selection.length === 0}>Copiar como CSV</DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuLabel>Export All ({sortedAndFilteredBooks.length})</DropdownMenuLabel>
-                <DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Export as XLSX</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Export as JSON</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Export as CSV</DropdownMenuItem>
+                <DropdownMenuLabel>Exportar Todos ({sortedAndFilteredBooks.length})</DropdownMenuLabel>
+                <DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Exportar como XLSX</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Exportar como JSON</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Exportar como CSV</DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel>Copy All ({sortedAndFilteredBooks.length})</DropdownMenuLabel>
-                <DropdownMenuItem onSelect={() => copyToClipboardJSON(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Copy as JSON</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => copyToClipboardCSV(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Copy as CSV</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => copyToClipboardJSON(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Copiar como JSON</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => copyToClipboardCSV(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Copiar como CSV</DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -347,26 +347,26 @@ export default function StatusOverrideClient({ allStatuses }: StatusOverrideClie
                 </TableHead>
                 <TableHead>
                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>
-                        Book Name {getSortIndicator('name')}
+                        Nome do Livro {getSortIndicator('name')}
                     </div>
                 </TableHead>
                 <TableHead>
                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('projectName', e.shiftKey)}>
-                        Project {getSortIndicator('projectName')}
+                        Projeto {getSortIndicator('projectName')}
                     </div>
                 </TableHead>
                 <TableHead>
                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>
-                        Current Status {getSortIndicator('status')}
+                        Estado Atual {getSortIndicator('status')}
                     </div>
                 </TableHead>
-                <TableHead className="w-[150px] text-right">Actions</TableHead>
+                <TableHead className="w-[150px] text-right">Ações</TableHead>
               </TableRow>
               <TableRow>
                 <TableHead />
                 <TableHead>
                     <Input
-                        placeholder="Filter by name..."
+                        placeholder="Filtrar nome..."
                         value={columnFilters['name'] || ''}
                         onChange={(e) => handleColumnFilterChange('name', e.target.value)}
                         className="h-8"
@@ -374,7 +374,7 @@ export default function StatusOverrideClient({ allStatuses }: StatusOverrideClie
                 </TableHead>
                 <TableHead>
                     <Input
-                        placeholder="Filter by project..."
+                        placeholder="Filtrar projeto..."
                         value={columnFilters['projectName'] || ''}
                         onChange={(e) => handleColumnFilterChange('projectName', e.target.value)}
                         className="h-8"
@@ -382,14 +382,14 @@ export default function StatusOverrideClient({ allStatuses }: StatusOverrideClie
                 </TableHead>
                  <TableHead>
                     <Input
-                        placeholder="Filter by status..."
+                        placeholder="Filtrar estado..."
                         value={columnFilters['status'] || ''}
                         onChange={(e) => handleColumnFilterChange('status', e.target.value)}
                         className="h-8"
                     />
                 </TableHead>
                 <TableHead className="text-right">
-                  <Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Clear Filters</Button>
+                  <Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Limpar Filtros</Button>
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -419,14 +419,14 @@ export default function StatusOverrideClient({ allStatuses }: StatusOverrideClie
                   <TableCell className="text-right">
                     <Button variant="secondary" size="sm" onClick={() => openDialog(book)}>
                         <Sliders className="mr-2 h-4 w-4" />
-                        Change Status
+                        Alterar Estado
                     </Button>
                   </TableCell>
                 </TableRow>
               )) : (
                  <TableRow>
                   <TableCell colSpan={5} className="h-24 text-center">
-                    No books found matching your filters.
+                    Nenhum livro encontrado correspondente aos filtros.
                   </TableCell>
                 </TableRow>
               )}
@@ -444,17 +444,17 @@ export default function StatusOverrideClient({ allStatuses }: StatusOverrideClie
       <Dialog open={dialogState.open} onOpenChange={closeDialog}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Override Status for: {dialogState.book?.name}</DialogTitle>
+            <DialogTitle>Sobrescrever estado de: {dialogState.book?.name}</DialogTitle>
             <DialogDescription>
-              Select a new status and provide a mandatory reason for this override. This action will be logged.
+              Selecione um novo estado e forneça um motivo obrigatório para esta substituição. Esta ação será registrada.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-                <Label htmlFor="new-status">New Status</Label>
+                <Label htmlFor="new-status">Novo Estado</Label>
                  <Select value={newStatus} onValueChange={setNewStatus}>
                     <SelectTrigger id="new-status">
-                        <SelectValue placeholder="Select a new status" />
+                        <SelectValue placeholder="Selecione um novo estado" />
                     </SelectTrigger>
                     <SelectContent>
                         {allStatuses.map(status => (
@@ -464,19 +464,19 @@ export default function StatusOverrideClient({ allStatuses }: StatusOverrideClie
                 </Select>
             </div>
              <div className="space-y-2">
-                <Label htmlFor="reason">Reason for Override</Label>
+                <Label htmlFor="reason">Motivo para a Alteração</Label>
                 <Textarea 
                     id="reason"
-                    placeholder="e.g., Correcting an operator error during QC."
+                    placeholder="ex.: Erro de operador durante o QC."
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
                 />
              </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={closeDialog}>Cancel</Button>
+            <Button variant="outline" onClick={closeDialog}>Cancelar</Button>
             <Button onClick={handleSave} disabled={!newStatus || !reason.trim() || newStatus === dialogState.book?.status}>
-              Confirm and Save
+              Confirmar e Guardar
             </Button>
           </DialogFooter>
         </DialogContent>

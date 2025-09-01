@@ -174,7 +174,7 @@ export function OperationalUserStatsTab() {
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Operators');
         XLSX.writeFile(workbook, 'operator_stats.xlsx');
     }
-    toast({ title: 'Export Complete', description: `${data.length} operators exported.` });
+    toast({ title: "Exportação Concluída", description: `${data.length} operadores exportados.` });
   };
   
   const handleKpiClick = (title: string, items: UserData[]) => {
@@ -185,27 +185,27 @@ export function OperationalUserStatsTab() {
   return (
     <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('All Operators', kpiData.totalUsers.items)}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Operators</CardTitle><User className="h-4 w-4 text-muted-foreground" /></CardHeader>
+            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Todos os Operadores', kpiData.totalUsers.items)}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Operadores</CardTitle><User className="h-4 w-4 text-muted-foreground" /></CardHeader>
                 <CardContent><div className="text-2xl font-bold">{kpiData.totalUsers.value}</div></CardContent>
             </Card>
-            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Active Operators', kpiData.activeUsers.items)}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Active Operators</CardTitle><UserCheck className="h-4 w-4 text-muted-foreground" /></CardHeader>
+            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Operadores Ativos', kpiData.activeUsers.items)}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Operadores Ativos</CardTitle><UserCheck className="h-4 w-4 text-muted-foreground" /></CardHeader>
                 <CardContent><div className="text-2xl font-bold">{kpiData.activeUsers.value}</div></CardContent>
             </Card>
-             <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Disabled Operators', kpiData.disabledUsers.items)}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Disabled Operators</CardTitle><UserX className="h-4 w-4 text-muted-foreground" /></CardHeader>
+             <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Utilizadores Desativados', kpiData.disabledUsers.items)}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Operadores Desativados</CardTitle><UserX className="h-4 w-4 text-muted-foreground" /></CardHeader>
                 <CardContent><div className="text-2xl font-bold">{kpiData.disabledUsers.value}</div></CardContent>
             </Card>
             <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Most Active Operator</CardTitle><Activity className="h-4 w-4 text-muted-foreground" /></CardHeader>
-                <CardContent><div className="text-2xl font-bold">{kpiData.mostActiveUser.value}</div><p className="text-xs text-muted-foreground">{kpiData.mostActiveUser.actions} actions recorded</p></CardContent>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Operador Mais Ativo</CardTitle><Activity className="h-4 w-4 text-muted-foreground" /></CardHeader>
+                <CardContent><div className="text-2xl font-bold">{kpiData.mostActiveUser.value}</div><p className="text-xs text-muted-foreground">{kpiData.mostActiveUser.actions} ações registradas</p></CardContent>
             </Card>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
             <Card>
-                <CardHeader><CardTitle>Operators by Role</CardTitle></CardHeader>
+                <CardHeader><CardTitle>Operadores por Perfil</CardTitle></CardHeader>
                 <CardContent>
                      <ChartContainer config={{}} className="h-[250px] w-full">
                         <PieChart>
@@ -216,7 +216,7 @@ export function OperationalUserStatsTab() {
                 </CardContent>
             </Card>
             <Card>
-                <CardHeader><CardTitle>Top 10 Operators by Actions</CardTitle></CardHeader>
+                <CardHeader><CardTitle>Top 10 Operadores por Ações</CardTitle></CardHeader>
                 <CardContent>
                     <ChartContainer config={chartConfig} className="h-[250px] w-full">
                         <BarChart data={actionsPerUserChartData} layout="vertical" margin={{ left: 20 }}>
@@ -235,17 +235,17 @@ export function OperationalUserStatsTab() {
         <CardHeader>
             <div className="flex justify-between items-center">
                 <div>
-                    <CardTitle>Operator Productivity</CardTitle>
-                    <CardDescription>An overview of key productivity metrics for each operator.</CardDescription>
+                    <CardTitle>Produtividade do Operador</CardTitle>
+                    <CardDescription>Uma visão geral das principais métricas de produtividade para cada operador.</CardDescription>
                 </div>
                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild><Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" /> Export</Button></DropdownMenuTrigger>
+                    <DropdownMenuTrigger asChild><Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" />Exportar</Button></DropdownMenuTrigger>
                     <DropdownMenuContent>
-                        <DropdownMenuLabel>Export Data</DropdownMenuLabel>
+                        <DropdownMenuLabel>Exportar Dados</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onSelect={() => exportData('xlsx')}>Export as XLSX</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => exportData('json')}>Export as JSON</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => exportData('csv')}>Export as CSV</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportData('xlsx')}>Exportar como XLSX</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportData('json')}>Exportar como JSON</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportData('csv')}>Exportar como CSV</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
@@ -254,19 +254,19 @@ export function OperationalUserStatsTab() {
         <Table>
             <TableHeader>
             <TableRow>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name')}>User {getSortIndicator('name')}</div></TableHead>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('role')}>Role {getSortIndicator('role')}</div></TableHead>
-                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('status')}>Status {getSortIndicator('status')}</div></TableHead>
-                <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('totalActions')}>Total Actions {getSortIndicator('totalActions')}</div></TableHead>
-                <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('scannedCount')}>Books Scanned {getSortIndicator('scannedCount')}</div></TableHead>
-                <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('indexedCount')}>Books Indexed {getSortIndicator('indexedCount')}</div></TableHead>
-                <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('checkedCount')}>Books Checked {getSortIndicator('checkedCount')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name')}>Utilizador {getSortIndicator('name')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('role')}>Perfil {getSortIndicator('role')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('status')}>Estado {getSortIndicator('status')}</div></TableHead>
+                <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('totalActions')}>Total Ações {getSortIndicator('totalActions')}</div></TableHead>
+                <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('scannedCount')}>Livros Digitalizados {getSortIndicator('scannedCount')}</div></TableHead>
+                <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('indexedCount')}>Livros Indexados {getSortIndicator('indexedCount')}</div></TableHead>
+                <TableHead className="text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('checkedCount')}>Livros Verificados P.Checker {getSortIndicator('checkedCount')}</div></TableHead>
             </TableRow>
             <TableRow>
-                <TableHead><Input placeholder="Filter user..." value={columnFilters['name'] || ''} onChange={e => setColumnFilters(p => ({...p, name: e.target.value}))} className="h-8"/></TableHead>
-                <TableHead><Input placeholder="Filter role..." value={columnFilters['role'] || ''} onChange={e => setColumnFilters(p => ({...p, role: e.target.value}))} className="h-8"/></TableHead>
-                <TableHead><Input placeholder="Filter status..." value={columnFilters['status'] || ''} onChange={e => setColumnFilters(p => ({...p, status: e.target.value}))} className="h-8"/></TableHead>
-                <TableHead colSpan={4}><Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Clear Filters</Button></TableHead>
+                <TableHead><Input placeholder="Filtrar utilizador..." value={columnFilters['name'] || ''} onChange={e => setColumnFilters(p => ({...p, name: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filtrar perfil..." value={columnFilters['role'] || ''} onChange={e => setColumnFilters(p => ({...p, role: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filtrar estado..." value={columnFilters['status'] || ''} onChange={e => setColumnFilters(p => ({...p, status: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead colSpan={4}><Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Limpar Filtros</Button></TableHead>
             </TableRow>
             </TableHeader>
             <TableBody>
@@ -298,18 +298,18 @@ export function OperationalUserStatsTab() {
             <DialogContent className="max-w-2xl">
                 <DialogHeader>
                     <DialogTitle>{dialogState.title}</DialogTitle>
-                    <DialogDescription>Showing {filteredDialogItems.length} of {dialogState.items.length} users.</DialogDescription>
+                    <DialogDescription>A mostrar {filteredDialogItems.length} de {dialogState.items.length} utilizadores.</DialogDescription>
                 </DialogHeader>
                 <div className="py-2">
-                    <Input 
-                        placeholder="Filter users..."
+                    <Input
+                        placeholder="Filtrar utilizadores..."
                         value={dialogFilter}
                         onChange={(e) => setDialogFilter(e.target.value)}
                     />
                 </div>
                 <div className="max-h-[60vh] overflow-y-auto pr-4">
                      <Table>
-                        <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Role</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                        <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Perfil</TableHead><TableHead>Estado</TableHead></TableRow></TableHeader>
                         <TableBody>
                             {filteredDialogItems.map(user => (
                                 <TableRow key={user.id}>

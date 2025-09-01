@@ -180,7 +180,7 @@ export default function DocumentsClient() {
     if (data.length === 0) return;
     const jsonString = JSON.stringify(data, null, 2);
     downloadFile(jsonString, 'books_export.json', 'application/json');
-    toast({ title: "Export Successful", description: `${data.length} books exported as JSON.` });
+    toast({ title: "Exportação Concluída", description: `${data.length} livros exportados em formato JSON.` });
   }
 
   const exportCSV = (data: EnrichedBook[]) => {
@@ -199,7 +199,7 @@ export default function DocumentsClient() {
         )
     ].join('\n');
     downloadFile(csvContent, 'books_export.csv', 'text/csv;charset=utf-8;');
-    toast({ title: "Export Successful", description: `${data.length} books exported as CSV.` });
+    toast({ title: "Exportação Concluída", description: `${data.length} livros exportados em formato CSV.` });
   }
 
   const exportXLSX = (data: EnrichedBook[]) => {
@@ -208,16 +208,16 @@ export default function DocumentsClient() {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Books");
     XLSX.writeFile(workbook, "books_export.xlsx");
-    toast({ title: "Export Successful", description: `${data.length} books exported as XLSX.` });
+    toast({ title: "Exportação Concluída", description: `${data.length} livros exportados em formato XLSX.` });
   }
 
   const copyToClipboardJSON = (data: EnrichedBook[]) => {
     if (data.length === 0) return;
     const jsonString = JSON.stringify(data, null, 2);
     navigator.clipboard.writeText(jsonString).then(() => {
-        toast({ title: "Copied to Clipboard", description: `${data.length} book(s) copied as JSON.` });
+        toast({ title: "Copiado para a Área de Transferência", description: `${data.length} livro(s) copiado(s) em formato JSON.` });
     }, () => {
-        toast({ title: "Copy Failed", description: "Could not copy to clipboard.", variant: "destructive" });
+        toast({ title: "Falha ao Copiar", description: "Não foi possível copiar para a área de transferência.", variant: "destructive" });
     });
   }
 
@@ -237,9 +237,9 @@ export default function DocumentsClient() {
         )
     ].join('\n');
     navigator.clipboard.writeText(csvContent).then(() => {
-        toast({ title: "Copied to Clipboard", description: `${data.length} book(s) copied as CSV.` });
+        toast({ title: "Copiado para a Área de Transferência", description: `${data.length} livro(s) copiado(s) em formato CSV.` });
     }, () => {
-        toast({ title: "Copy Failed", description: "Could not copy to clipboard.", variant: "destructive" });
+        toast({ title: "Falha ao Copiar", description: "Não foi possível copiar para a área de transferência.", variant: "destructive" });
     });
   }
 
@@ -317,8 +317,8 @@ export default function DocumentsClient() {
     <div className="space-y-6">
        <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-headline text-3xl font-bold tracking-tight">All Books</h1>
-          <p className="text-muted-foreground">Manage and track all books in the workflow.</p>
+          <h1 className="font-headline text-3xl font-bold tracking-tight">Todos os Livros</h1>
+          <p className="text-muted-foreground">Gestão e acompanhamento de todos os livros no fluxo de trabalho.</p>
         </div>
         <div className="flex items-center gap-2">
             <DropdownMenu>
@@ -326,35 +326,35 @@ export default function DocumentsClient() {
                 <Button size="sm" variant="outline" className="h-9 gap-1">
                     <Download className="h-3.5 w-3.5" />
                     <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                        Export
+                        Exportar
                     </span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Export Selected ({selection.length})</DropdownMenuLabel>
-                  <DropdownMenuItem onSelect={() => exportXLSX(selectedBooks)} disabled={selection.length === 0}>Export as XLSX</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => exportJSON(selectedBooks)} disabled={selection.length === 0}>Export as JSON</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => exportCSV(selectedBooks)} disabled={selection.length === 0}>Export as CSV</DropdownMenuItem>
+                  <DropdownMenuLabel>Exportar Selecionados ({selection.length})</DropdownMenuLabel>
+                  <DropdownMenuItem onSelect={() => exportXLSX(selectedBooks)} disabled={selection.length === 0}>Exportar como XLSX</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportJSON(selectedBooks)} disabled={selection.length === 0}>Exportar como JSON</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportCSV(selectedBooks)} disabled={selection.length === 0}>Exportar como CSV</DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuLabel>Copy Selected ({selection.length})</DropdownMenuLabel>
+                  <DropdownMenuLabel>Copiar Selecionados ({selection.length})</DropdownMenuLabel>
                   <DropdownMenuItem onSelect={() => copyToClipboardJSON(selectedBooks)} disabled={selection.length === 0}>
-                      Copy as JSON
+                      Copiar como JSON
                    </DropdownMenuItem>
                    <DropdownMenuItem onSelect={() => copyToClipboardCSV(selectedBooks)} disabled={selection.length === 0}>
-                      Copy as CSV
+                      Copiar como CSV
                    </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuLabel>Export All ({sortedAndFilteredBooks.length})</DropdownMenuLabel>
-                  <DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Export as XLSX</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Export as JSON</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Export as CSV</DropdownMenuItem>
+                  <DropdownMenuLabel>Exportar Todos ({sortedAndFilteredBooks.length})</DropdownMenuLabel>
+                  <DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Exportar como XLSX</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Exportar como JSON</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>Exportar como CSV</DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuLabel>Copy All ({sortedAndFilteredBooks.length})</DropdownMenuLabel>
+                  <DropdownMenuLabel>Copiar Todos ({sortedAndFilteredBooks.length})</DropdownMenuLabel>
                    <DropdownMenuItem onSelect={() => copyToClipboardJSON(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>
-                      Copy as JSON
+                      Copiar como JSON
                    </DropdownMenuItem>
                    <DropdownMenuItem onSelect={() => copyToClipboardCSV(sortedAndFilteredBooks)} disabled={sortedAndFilteredBooks.length === 0}>
-                      Copy as CSV
+                      Copiar como CSV
                    </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -376,68 +376,68 @@ export default function DocumentsClient() {
                 </TableHead>
                 <TableHead>
                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>
-                        Book Name {getSortIndicator('name')}
+                        Nome do Livro {getSortIndicator('name')}
                     </div>
                 </TableHead>
                 <TableHead>
                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('projectName', e.shiftKey)}>
-                        Project {getSortIndicator('projectName')}
+                        Projeto {getSortIndicator('projectName')}
                     </div>
                 </TableHead>
                 <TableHead>
                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('clientName', e.shiftKey)}>
-                        Client {getSortIndicator('clientName')}
+                        Cliente {getSortIndicator('clientName')}
                     </div>
                 </TableHead>
                 <TableHead>
                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('scannerDeviceName', e.shiftKey)}>
-                        Scanner Device {getSortIndicator('scannerDeviceName')}
+                        Scanner {getSortIndicator('scannerDeviceName')}
                     </div>
                 </TableHead>
                 <TableHead>
                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('storageName', e.shiftKey)}>
-                        Storage {getSortIndicator('storageName')}
+                        Armazenamento {getSortIndicator('storageName')}
                     </div>
                 </TableHead>
                 <TableHead>
                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>
-                        Status {getSortIndicator('status')}
+                        Estado {getSortIndicator('status')}
                     </div>
                 </TableHead>
                 <TableHead>
                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('priority', e.shiftKey)}>
-                        Priority {getSortIndicator('priority')}
+                        Prioridade {getSortIndicator('priority')}
                     </div>
                 </TableHead>
-                <TableHead className="w-[150px]">Progress</TableHead>
+                <TableHead className="w-[150px]">Progresso</TableHead>
                 <TableHead className="text-center w-[120px]">
                      <div className="flex items-center gap-2 cursor-pointer select-none group justify-center" onClick={(e) => handleSort('documentCount', e.shiftKey)}>
-                        Pages {getSortIndicator('documentCount')}
+                        Páginas {getSortIndicator('documentCount')}
                     </div>
                 </TableHead>
               </TableRow>
               <TableRow>
                 <TableHead/>
                 <TableHead>
-                    <Input placeholder="Filter Name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/>
+                    <Input placeholder="Filtrar nome..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/>
                 </TableHead>
                 <TableHead>
-                    <Input placeholder="Filter Project..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/>
+                    <Input placeholder="Filtrar projeto..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/>
                 </TableHead>
                 <TableHead>
-                    <Input placeholder="Filter Client..." value={columnFilters['clientName'] || ''} onChange={(e) => handleColumnFilterChange('clientName', e.target.value)} className="h-8"/>
+                    <Input placeholder="Filtrar cliente..." value={columnFilters['clientName'] || ''} onChange={(e) => handleColumnFilterChange('clientName', e.target.value)} className="h-8"/>
                 </TableHead>
                  <TableHead>
-                    <Input placeholder="Filter Scanner..." value={columnFilters['scannerDeviceName'] || ''} onChange={(e) => handleColumnFilterChange('scannerDeviceName', e.target.value)} className="h-8"/>
+                    <Input placeholder="Filtrar scanner..." value={columnFilters['scannerDeviceName'] || ''} onChange={(e) => handleColumnFilterChange('scannerDeviceName', e.target.value)} className="h-8"/>
                 </TableHead>
                 <TableHead>
-                    <Input placeholder="Filter Storage..." value={columnFilters['storageName'] || ''} onChange={(e) => handleColumnFilterChange('storageName', e.target.value)} className="h-8"/>
+                    <Input placeholder="Filtrar armazenamento..." value={columnFilters['storageName'] || ''} onChange={(e) => handleColumnFilterChange('storageName', e.target.value)} className="h-8"/>
                 </TableHead>
                 <TableHead>
-                    <Input placeholder="Filter Status..." value={columnFilters['status'] || ''} onChange={(e) => handleColumnFilterChange('status', e.target.value)} className="h-8"/>
+                    <Input placeholder="Filtrar estado..." value={columnFilters['status'] || ''} onChange={(e) => handleColumnFilterChange('status', e.target.value)} className="h-8"/>
                 </TableHead>
                 <TableHead>
-                    <Input placeholder="Filter Priority..." value={columnFilters['priority'] || ''} onChange={(e) => handleColumnFilterChange('priority', e.target.value)} className="h-8"/>
+                    <Input placeholder="Filtrar prioridade..." value={columnFilters['priority'] || ''} onChange={(e) => handleColumnFilterChange('priority', e.target.value)} className="h-8"/>
                 </TableHead>
                 <TableHead/>
                 <TableHead/>
@@ -456,7 +456,7 @@ export default function DocumentsClient() {
                             : selection.filter((id) => id !== book.id)
                         )
                       }}
-                      aria-label={`Select book ${book.name}`}
+                      aria-label={`Selecionar livro ${book.name}`}
                     />
                   </TableCell>
                   <TableCell className="font-medium">
@@ -480,7 +480,7 @@ export default function DocumentsClient() {
               )) : (
                 <TableRow>
                   <TableCell colSpan={10} className="h-24 text-center">
-                    No books found matching your filters.
+                    Nenhum livro encontrado que corresponda aos seus filtros.
                   </TableCell>
                 </TableRow>
               )}

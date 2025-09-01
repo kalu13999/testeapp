@@ -124,9 +124,9 @@ export function UserForm({ user, roles, clients, projects, onSave, onCancel }: U
             name="name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Full Name</FormLabel>
+                <FormLabel>Nome Completo</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g. John Doe" {...field} />
+                  <Input placeholder="ex.: John Doe" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -139,7 +139,7 @@ export function UserForm({ user, roles, clients, projects, onSave, onCancel }: U
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g. john.doe@example.com" {...field} />
+                  <Input placeholder="ex.: john.doe@example.com" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -155,7 +155,7 @@ export function UserForm({ user, roles, clients, projects, onSave, onCancel }: U
                     <FormItem>
                     <FormLabel>Username</FormLabel>
                     <FormControl>
-                        <Input placeholder="e.g. jdoe" {...field} />
+                        <Input placeholder="ex.: jdoe" {...field} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
@@ -166,12 +166,12 @@ export function UserForm({ user, roles, clients, projects, onSave, onCancel }: U
                 name="password"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>Palavra-passe</FormLabel>
                     <FormControl>
                         <Input type="password" placeholder="••••••••" {...field} />
                     </FormControl>
                     <FormDescription>
-                        Leave blank to keep current password.
+                        Deixe em branco para manter a palavra-passe atual.
                     </FormDescription>
                     <FormMessage />
                     </FormItem>
@@ -185,9 +185,9 @@ export function UserForm({ user, roles, clients, projects, onSave, onCancel }: U
             name="phone"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Phone</FormLabel>
+                <FormLabel>Telefone</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g. 555-123-4567" {...field} />
+                  <Input placeholder="ex.: 912345678" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -198,11 +198,11 @@ export function UserForm({ user, roles, clients, projects, onSave, onCancel }: U
             name="role"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Role</FormLabel>
+                <FormLabel>Perfil</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a role" />
+                      <SelectValue placeholder="Selecionar um perfil" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -225,11 +225,11 @@ export function UserForm({ user, roles, clients, projects, onSave, onCancel }: U
             name="clientId"
             render={({ field }) => (
                 <FormItem>
-                <FormLabel>Associated Client</FormLabel>
+                <FormLabel>Cliente</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                     <SelectTrigger>
-                        <SelectValue placeholder="Select a client for this user" />
+                        <SelectValue placeholder="Selecionar um cliente para este utilizador" />
                     </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -252,7 +252,7 @@ export function UserForm({ user, roles, clients, projects, onSave, onCancel }: U
             name="projectIds"
             render={({ field }) => (
               <FormItem className="flex flex-col">
-                <FormLabel>Associated Projects</FormLabel>
+                <FormLabel>Projetos Associados</FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
                     <FormControl>
@@ -265,8 +265,8 @@ export function UserForm({ user, roles, clients, projects, onSave, onCancel }: U
                         )}
                       >
                         {field.value && field.value.length > 0
-                          ? `${field.value.length} project(s) selected`
-                          : "Select projects"}
+                          ? `${field.value.length} projeto(s) selecionado(s)`
+                          : "Selecionar projetos"}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </FormControl>
@@ -311,7 +311,7 @@ export function UserForm({ user, roles, clients, projects, onSave, onCancel }: U
                     </ScrollArea>
                   </PopoverContent>
                 </Popover>
-                <FormDescription>Leave blank to grant access to all non-client projects.</FormDescription>
+                <FormDescription>Deixe em branco para conceder acesso a todos os projetos.</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -324,9 +324,9 @@ export function UserForm({ user, roles, clients, projects, onSave, onCancel }: U
             name="jobTitle"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Job Title</FormLabel>
+                <FormLabel>Cargo</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g. Document Specialist" {...field} />
+                  <Input placeholder="ex.: Especialista em Documentos" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -337,9 +337,9 @@ export function UserForm({ user, roles, clients, projects, onSave, onCancel }: U
             name="department"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Department</FormLabel>
+                <FormLabel>Departamento</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g. Operations" {...field} />
+                  <Input placeholder="ex.: Operações" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -351,9 +351,9 @@ export function UserForm({ user, roles, clients, projects, onSave, onCancel }: U
             name="info"
             render={({ field }) => (
             <FormItem>
-                <FormLabel>Additional Info</FormLabel>
+                <FormLabel>Informação Adicional</FormLabel>
                 <FormControl>
-                <Textarea placeholder="Any extra notes about this user..." {...field} />
+                <Textarea placeholder="Notas adicionais sobre este utilizador..." {...field} />
                 </FormControl>
                 <FormMessage />
             </FormItem>
@@ -361,9 +361,9 @@ export function UserForm({ user, roles, clients, projects, onSave, onCancel }: U
         />
         <div className="flex justify-end gap-2 pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
+            Cancelar
           </Button>
-          <Button type="submit">Save User</Button>
+          <Button type="submit">Guardar Utilizador</Button>
         </div>
       </form>
     </Form>

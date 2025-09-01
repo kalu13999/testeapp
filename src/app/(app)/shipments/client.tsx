@@ -172,7 +172,7 @@ export default function ShipmentsClient() {
     if (data.length === 0) return;
     const jsonString = JSON.stringify(data, null, 2);
     downloadFile(jsonString, 'shipment_export.json', 'application/json');
-    toast({ title: "Export Successful", description: `${data.length} books exported as JSON.` });
+    toast({ title: "Exportação Concluída", description: `${data.length} livros exportados em formato JSON.` });
   }
 
   const exportCSV = (data: EnrichedBook[]) => {
@@ -191,7 +191,7 @@ export default function ShipmentsClient() {
         )
     ].join('\n');
     downloadFile(csvContent, 'shipment_export.csv', 'text/csv;charset=utf-8;');
-    toast({ title: "Export Successful", description: `${data.length} books exported as CSV.` });
+    toast({ title: "Exportação Concluída", description: `${data.length} livros exportados em formato CSV.` });
   }
 
   const exportXLSX = (data: EnrichedBook[]) => {
@@ -201,7 +201,7 @@ export default function ShipmentsClient() {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Shipment");
     XLSX.writeFile(workbook, "shipment_export.xlsx");
-    toast({ title: "Export Successful", description: `${data.length} books exported as XLSX.` });
+    toast({ title: "Exportação Concluída", description: `${data.length} livros exportados em formato XLSX.` });
   }
 
   return (
@@ -210,22 +210,22 @@ export default function ShipmentsClient() {
         <CardHeader>
           <div className="flex items-center justify-between">
               <div>
-                  <CardTitle className="font-headline">Prepare Shipment</CardTitle>
-                  <CardDescription>Select the books you are sending to us and mark them as shipped.</CardDescription>
+                  <CardTitle className="font-headline">Preparar Envio</CardTitle>
+                  <CardDescription>Selecione os livros que você está enviando para nós e marque-os como enviados.</CardDescription>
               </div>
               <div className="flex items-center gap-2">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button size="sm" variant="outline" className="h-9 gap-1">
                             <Download className="h-3.5 w-3.5" />
-                            <span>Export</span>
+                            <span>Exportar</span>
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Export Selected ({selection.length})</DropdownMenuLabel>
-                        <DropdownMenuItem onSelect={() => exportXLSX(selectedBooks)} disabled={selection.length === 0}>Export as XLSX</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => exportJSON(selectedBooks)} disabled={selection.length === 0}>Export as JSON</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => exportCSV(selectedBooks)} disabled={selection.length === 0}>Export as CSV</DropdownMenuItem>
+                        <DropdownMenuLabel>Exportar Seleção ({selection.length})</DropdownMenuLabel>
+                        <DropdownMenuItem onSelect={() => exportXLSX(selectedBooks)} disabled={selection.length === 0}>Exportar como XLSX</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportJSON(selectedBooks)} disabled={selection.length === 0}>Exportar como JSON</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportCSV(selectedBooks)} disabled={selection.length === 0}>Exportar como CSV</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
                 <Button 
@@ -233,7 +233,7 @@ export default function ShipmentsClient() {
                     onClick={() => setIsConfirmOpen(true)}
                 >
                     <Send className="mr-2 h-4 w-4" />
-                    Mark {selection.length > 0 ? selection.length : ''} Book(s) as Shipped
+                    Marcar {selection.length > 0 ? selection.length : ''} Livro(s) como Enviados
                 </Button>
               </div>
           </div>
@@ -246,45 +246,45 @@ export default function ShipmentsClient() {
                       <Checkbox
                           checked={sortedAndFilteredBooks.length > 0 && selection.length === sortedAndFilteredBooks.length}
                           onCheckedChange={(checked) => setSelection(checked ? sortedAndFilteredBooks.map(item => item.id) : [])}
-                          aria-label="Select all"
+                          aria-label="Selecionar todos"
                       />
                   </TableHead>
                   <TableHead>
                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>
-                      Book Name {getSortIndicator('name')}
+                      Nome do Livro {getSortIndicator('name')}
                     </div>
                   </TableHead>
                   <TableHead>
                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('projectName', e.shiftKey)}>
-                      Project {getSortIndicator('projectName')}
+                      Projeto {getSortIndicator('projectName')}
                     </div>
                   </TableHead>
                   <TableHead className="text-center">
                     <div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('expectedDocuments', e.shiftKey)}>
-                      Expected Pages {getSortIndicator('expectedDocuments')}
+                      Páginas Esperadas {getSortIndicator('expectedDocuments')}
                     </div>
                   </TableHead>
                   <TableHead>
                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('priority', e.shiftKey)}>
-                      Priority {getSortIndicator('priority')}
+                      Prioridade {getSortIndicator('priority')}
                     </div>
                   </TableHead>
                 </TableRow>
                 <TableRow>
                     <TableHead />
                     <TableHead>
-                        <Input placeholder="Filter name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/>
+                        <Input placeholder="Filtrar nome..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8"/>
                     </TableHead>
                     <TableHead>
-                        <Input placeholder="Filter project..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/>
+                        <Input placeholder="Filtrar projeto..." value={columnFilters['projectName'] || ''} onChange={(e) => handleColumnFilterChange('projectName', e.target.value)} className="h-8"/>
                     </TableHead>
                     <TableHead>
-                         <Input placeholder="Filter pages..." value={columnFilters['expectedDocuments'] || ''} onChange={(e) => handleColumnFilterChange('expectedDocuments', e.target.value)} className="h-8"/>
+                         <Input placeholder="Filtrar páginas..." value={columnFilters['expectedDocuments'] || ''} onChange={(e) => handleColumnFilterChange('expectedDocuments', e.target.value)} className="h-8"/>
                     </TableHead>
                     <TableHead>
                       <div className="flex items-center gap-2">
-                        <Input placeholder="Filter priority..." value={columnFilters['priority'] || ''} onChange={(e) => handleColumnFilterChange('priority', e.target.value)} className="h-8"/>
-                        <Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Clear</Button>
+                        <Input placeholder="Filtrar prioridade..." value={columnFilters['priority'] || ''} onChange={(e) => handleColumnFilterChange('priority', e.target.value)} className="h-8"/>
+                        <Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Limpar Filtros</Button>
                       </div>
                     </TableHead>
                 </TableRow>
@@ -299,7 +299,7 @@ export default function ShipmentsClient() {
                               onCheckedChange={(checked) => setSelection(
                                   checked ? [...selection, book.id] : selection.filter((id) => id !== book.id)
                               )}
-                              aria-label={`Select row ${index + 1}`}
+                              aria-label={`Selecionar linha ${index + 1}`}
                           />
                       </TableCell>
                       <TableCell className="font-medium">{book.name}</TableCell>
@@ -313,8 +313,8 @@ export default function ShipmentsClient() {
                     <TableCell colSpan={5} className="h-24 text-center">
                       <div className="flex flex-col items-center gap-4">
                         <PackageSearch className="h-16 w-16 text-muted-foreground" />
-                        <h3 className="text-xl font-semibold">All Caught Up!</h3>
-                        <p>You have no pending books to ship.</p>
+                        <h3 className="text-xl font-semibold">Tudo Pronto!</h3>
+                        <p>Não tem livros pendentes para enviar.</p>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -324,7 +324,7 @@ export default function ShipmentsClient() {
         </CardContent>
         <CardFooter>
           <div className="text-xs text-muted-foreground">
-            {selection.length > 0 ? `${selection.length} book(s) selected.` : `Showing ${sortedAndFilteredBooks.length} pending books.`}
+            {selection.length > 0 ? `${selection.length} livro(s) selecionado(s).` : `A mostrar ${sortedAndFilteredBooks.length} livro(s) pendente(s).`}
           </div>
         </CardFooter>
       </Card>
@@ -332,14 +332,14 @@ export default function ShipmentsClient() {
       <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
         <AlertDialogContent>
             <AlertDialogHeader>
-                <AlertDialogTitle>Confirm Shipment</AlertDialogTitle>
+                <AlertDialogTitle>Confirmar Envio</AlertDialogTitle>
                 <AlertDialogDescription>
-                    You are about to mark {selection.length} book(s) as shipped. Our team will be notified to expect their arrival. Are you sure?
+                    Você está prestes a marcar {selection.length} livro(s) como enviados. Nossa equipe será notificada para esperar a chegada deles. Você tem certeza?
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleConfirmShipment}>Confirm and Ship</AlertDialogAction>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirmShipment}>Confirmar e Enviar</AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
     </AlertDialog>

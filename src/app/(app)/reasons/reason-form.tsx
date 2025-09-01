@@ -80,9 +80,9 @@ export function ReasonForm({ reason, onSave, onCancel, clients, isEditing = fals
           name="label"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Label</FormLabel>
+              <FormLabel>Rótulo</FormLabel>
               <FormControl>
-                <Input placeholder="e.g. Blurry Scan" {...field} />
+                <Input placeholder="ex.: Digitalização Desfocada" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -93,9 +93,9 @@ export function ReasonForm({ reason, onSave, onCancel, clients, isEditing = fals
             name="description"
             render={({ field }) => (
             <FormItem>
-                <FormLabel>Description</FormLabel>
+                <FormLabel>Descrição</FormLabel>
                 <FormControl>
-                <Textarea placeholder="A brief description of what this means." {...field} />
+                <Textarea placeholder="Uma breve descrição do que isso significa." {...field} />
                 </FormControl>
                 <FormMessage />
             </FormItem>
@@ -107,11 +107,11 @@ export function ReasonForm({ reason, onSave, onCancel, clients, isEditing = fals
             name="clientId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Client</FormLabel>
+                <FormLabel>Cliente</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a client" />
+                      <SelectValue placeholder="Selecione um cliente" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -129,9 +129,9 @@ export function ReasonForm({ reason, onSave, onCancel, clients, isEditing = fals
         )}
         <div className="flex justify-end gap-2 pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
+            Cancelar
           </Button>
-          <Button type="submit">Save Reason</Button>
+          <Button type="submit">Guardar Razão</Button>
         </div>
       </form>
     </Form>

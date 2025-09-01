@@ -92,9 +92,9 @@ export default function RoleManagementClient() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-headline text-3xl font-bold tracking-tight">Role Management</h1>
+            <h1 className="font-headline text-3xl font-bold tracking-tight">Gestão de Perfis</h1>
             <p className="text-muted-foreground">
-              Define user roles and manage their page access permissions.
+              Configure os perfis dos utilizadores e administre as permissões de acesso às páginas.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -102,16 +102,16 @@ export default function RoleManagementClient() {
                 <Info className="h-4 w-4" />
             </Button>
             <Button onClick={() => openDialog('new')}>
-              <PlusCircle className="mr-2 h-4 w-4" /> New Role
+              <PlusCircle className="mr-2 h-4 w-4" /> Novo Perfil
             </Button>
           </div>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>System Roles & Permissions</CardTitle>
+            <CardTitle>Perfis do Sistema & Permissões</CardTitle>
             <CardDescription>
-              Add or edit roles to control access to different parts of the application.
+              Adicione ou edite perfis para controlar o acesso a diferentes partes da aplicação.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -123,14 +123,14 @@ export default function RoleManagementClient() {
                       <GanttChartSquare className="h-5 w-5 text-primary" />
                       <div>
                         <p className="font-semibold text-base">Admin</p>
-                        <p className="text-sm text-muted-foreground text-left">Full system access</p>
+                        <p className="text-sm text-muted-foreground text-left">Acesso total ao sistema</p>
                       </div>
                     </div>
                 </AccordionTrigger>
                  <AccordionContent className="p-4">
                     <div className="border rounded-md p-4 bg-muted/30">
-                      <h4 className="font-semibold mb-2">Allowed Page Routes:</h4>
-                      <Badge>All Permissions (*)</Badge>
+                      <h4 className="font-semibold mb-2">Rotas de Página Permitidas:</h4>
+                      <Badge>Todas as Permissões (*)</Badge>
                     </div>
                   </AccordionContent>
               </AccordionItem>
@@ -146,7 +146,7 @@ export default function RoleManagementClient() {
                           <div>
                             <p className="font-semibold text-base">{role}</p>
                             <p className="text-sm text-muted-foreground text-left">
-                                {`${rolePermissions.length} permissions granted`}
+                                {`${rolePermissions.length} permissões concedidas`}
                             </p>
                           </div>
                         </div>
@@ -160,12 +160,12 @@ export default function RoleManagementClient() {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuLabel>Ações</DropdownMenuLabel>
                                 <DropdownMenuItem onSelect={() => openDialog('edit', role)}>
-                                  <Edit className="mr-2 h-4 w-4" /> Edit
+                                  <Edit className="mr-2 h-4 w-4" /> Editar
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onSelect={() => setDeleteDialogState({ open: true, role })} className="text-destructive">
-                                  <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                  <Trash2 className="mr-2 h-4 w-4" /> Eliminar
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -173,7 +173,7 @@ export default function RoleManagementClient() {
                     </div>
                     <AccordionContent className="p-4">
                       <div className="border rounded-md p-4 bg-muted/30">
-                        <h4 className="font-semibold mb-2">Allowed Page Routes:</h4>
+                        <h4 className="font-semibold mb-2">Rotas de Página Permitidas:</h4>
                           <div className="flex flex-wrap gap-2">
                             {rolePermissions.length > 0 ? (
                               rolePermissions.map(permission => (
@@ -182,7 +182,7 @@ export default function RoleManagementClient() {
                                 </Badge>
                               ))
                             ) : (
-                              <p className="text-sm text-muted-foreground">No permissions assigned.</p>
+                              <p className="text-sm text-muted-foreground">Sem permissões atribuídas.</p>
                             )}
                           </div>
                       </div>
@@ -198,9 +198,11 @@ export default function RoleManagementClient() {
        <Dialog open={dialogState.open} onOpenChange={closeDialog}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{dialogState.type === 'new' ? 'Create New Role' : 'Edit Role'}</DialogTitle>
+            <DialogTitle>{dialogState.type === 'new' ? 'Criar Novo Perfil' : 'Editar Perfil'}</DialogTitle>
             <DialogDescription>
-              {dialogState.type === 'new' ? 'Define a new role and assign its permissions.' : `Editing permissions for role: ${dialogState.data?.name}`}
+              {dialogState.type === 'new' 
+              ? 'Crie um novo perfil e atribua as suas permissões.' 
+              : `A editar permissões do perfil: ${dialogState.data?.name}`}  
             </DialogDescription>
           </DialogHeader>
           <RoleForm 
@@ -216,15 +218,15 @@ export default function RoleManagementClient() {
       <AlertDialog open={deleteDialogState.open} onOpenChange={(open) => !open && setDeleteDialogState({ open: false })}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Tem a certeza?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the role <span className="font-bold">{deleteDialogState.role}</span>.
-              Users with this role will lose their specific permissions.
+              Esta ação não pode ser desfeita. Isto irá eliminar permanentemente o perfil <span className="font-bold">{deleteDialogState.role}</span>.
+              Os utilizadores com este perfil perderão as suas permissões específicas.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteDialogState({ open: false })}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => handleDelete(deleteDialogState.role!)}>Delete Role</AlertDialogAction>
+            <AlertDialogCancel onClick={() => setDeleteDialogState({ open: false })}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleDelete(deleteDialogState.role!)}>Eliminar Perfil</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -232,20 +234,20 @@ export default function RoleManagementClient() {
       <Dialog open={isInfoModalOpen} onOpenChange={setIsInfoModalOpen}>
         <DialogContent className="max-w-3xl">
             <DialogHeader>
-                <DialogTitle>About Role Management & Permissions</DialogTitle>
+                <DialogTitle>Sobre Gestão de Perfis e Permissões</DialogTitle>
                 <DialogDescription>
-                    Use roles to precisely control what each user can see and do within FlowVault.
+                    Utilize perfis para controlar com precisão o que cada utilizador pode ver e fazer dentro do FlowVault.
                 </DialogDescription>
             </DialogHeader>
             <div className="py-2 space-y-3 text-sm text-muted-foreground">
                 <p>
-                    A <strong className="text-foreground">Role</strong> is a collection of permissions that you can assign to a user. When you create or edit a role, you are choosing which pages and features users with that role can access.
+                    Um <strong className="text-foreground">Perfil</strong> é um conjunto de permissões que pode atribuir a um utilizador. Ao criar ou editar um perfil, está a definir a que páginas e funcionalidades os utilizadores com esse perfil podem aceder.
                 </p>
                 <p>
-                    The wildcard permission (<code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold">*</code>) grants access to all pages and features and should be reserved for <strong className="text-foreground">Admin</strong> roles only.
+                    A permissão universal (<code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold">*</code>) concede acesso a todas as páginas e funcionalidades e deve ser reservada apenas para perfis de <strong className="text-foreground">Administrador</strong>.
                 </p>
-                
-                <h4 className="font-medium text-foreground pt-3 border-t">Permission Details:</h4>
+
+                <h4 className="font-medium text-foreground pt-3 border-t">Detalhes da Permissão:</h4>
                 <ScrollArea className="h-[50vh] pr-4">
                     <div className="space-y-5">
                         {ALL_PERMISSIONS.map(group => (
@@ -256,7 +258,7 @@ export default function RoleManagementClient() {
                                 <div key={permission.id} className="pl-2">
                                     <p className="font-medium text-foreground">{permission.label}</p>
                                     <p className="text-xs text-muted-foreground pl-3 border-l-2 ml-1 mt-1">
-                                    {permissionDescriptions[permission.id] || `Grants access to the ${permission.label.toLowerCase()} page.`}
+                                    {permissionDescriptions[permission.id] || `Concede acesso à página ${permission.label.toLowerCase()}.`}
                                     </p>
                                 </div>
                                 ))}

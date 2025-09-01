@@ -198,7 +198,7 @@ export default function UsersClient() {
     if (data.length === 0) return;
     const jsonString = JSON.stringify(data.map(({ password, ...rest }) => rest), null, 2);
     downloadFile(jsonString, 'users_export.json', 'application/json');
-    toast({ title: "Export Successful", description: `${data.length} users exported as JSON.` });
+    toast({ title: "Exportação Concluída", description: `${data.length} utilizadores exportados em formato JSON.` });
   }
 
   const exportCSV = (data: User[]) => {
@@ -217,7 +217,7 @@ export default function UsersClient() {
         )
     ].join('\n');
     downloadFile(csvContent, 'users_export.csv', 'text/csv;charset=utf-8;');
-    toast({ title: "Export Successful", description: `${data.length} users exported as CSV.` });
+    toast({ title: "Exportação Concluída", description: `${data.length} utilizadores exportados em formato CSV.` });
   }
 
   const exportXLSX = (data: User[]) => {
@@ -226,7 +226,7 @@ export default function UsersClient() {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Users");
     XLSX.writeFile(workbook, "users_export.xlsx");
-    toast({ title: "Export Successful", description: `${data.length} users exported as XLSX.` });
+    toast({ title: "Exportação Concluída", description: `${data.length} utilizadores exportados em formato XLSX.` });
   }
 
 
@@ -292,32 +292,32 @@ export default function UsersClient() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-headline text-3xl font-bold tracking-tight">User Management</h1>
-          <p className="text-muted-foreground">Manage users and their permissions.</p>
+          <h1 className="font-headline text-3xl font-bold tracking-tight">Gestão de Utilizadores</h1>
+          <p className="text-muted-foreground">Gerir utilizadores e as suas permissões.</p>
         </div>
         <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="sm" variant="outline" className="h-9 gap-1">
                     <Download className="h-3.5 w-3.5" />
-                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Export</span>
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Exportar</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Export Selected ({selection.length})</DropdownMenuLabel>
-                  <DropdownMenuItem onSelect={() => exportXLSX(selectedUsers)} disabled={selection.length === 0}>Export as XLSX</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => exportJSON(selectedUsers)} disabled={selection.length === 0}>Export as JSON</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => exportCSV(selectedUsers)} disabled={selection.length === 0}>Export as CSV</DropdownMenuItem>
+                  <DropdownMenuLabel>Exportar Seleção ({selection.length})</DropdownMenuLabel>
+                  <DropdownMenuItem onSelect={() => exportXLSX(selectedUsers)} disabled={selection.length === 0}>Exportar como XLSX</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportJSON(selectedUsers)} disabled={selection.length === 0}>Exportar como JSON</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportCSV(selectedUsers)} disabled={selection.length === 0}>Exportar como CSV</DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuLabel>Export All ({sortedAndFilteredUsers.length})</DropdownMenuLabel>
-                  <DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredUsers)} disabled={sortedAndFilteredUsers.length === 0}>Export as XLSX</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredUsers)} disabled={sortedAndFilteredUsers.length === 0}>Export as JSON</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredUsers)} disabled={sortedAndFilteredUsers.length === 0}>Export as CSV</DropdownMenuItem>
+                  <DropdownMenuLabel>Exportar Todos ({sortedAndFilteredUsers.length})</DropdownMenuLabel>
+                  <DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredUsers)} disabled={sortedAndFilteredUsers.length === 0}>Exportar como XLSX</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredUsers)} disabled={sortedAndFilteredUsers.length === 0}>Exportar como JSON</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredUsers)} disabled={sortedAndFilteredUsers.length === 0}>Exportar como CSV</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <Button onClick={() => openDialog('new')}>
                 <PlusCircle className="mr-2 h-4 w-4" />
-                New User
+                Novo Utilizador
             </Button>
         </div>
       </div>
@@ -335,7 +335,7 @@ export default function UsersClient() {
                 </TableHead>
                 <TableHead>
                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>
-                        Name {getSortIndicator('name')}
+                        Nome {getSortIndicator('name')}
                     </div>
                 </TableHead>
                 <TableHead>
@@ -350,28 +350,28 @@ export default function UsersClient() {
                 </TableHead>
                 <TableHead>
                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('role', e.shiftKey)}>
-                        Role {getSortIndicator('role')}
+                        Perfil {getSortIndicator('role')}
                     </div>
                 </TableHead>
                 <TableHead>
                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('department', e.shiftKey)}>
-                        Department {getSortIndicator('department')}
+                        Departamento {getSortIndicator('department')}
                     </div>
                 </TableHead>
                 <TableHead>
                     <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>
-                        Status {getSortIndicator('status')}
+                        Estado {getSortIndicator('status')}
                     </div>
                 </TableHead>
                 <TableHead>
-                  <span className="sr-only">Actions</span>
+                  <span className="sr-only">Ações</span>
                 </TableHead>
               </TableRow>
               <TableRow>
                 <TableHead/>
                 <TableHead>
                     <Input
-                        placeholder="Filter by name..."
+                        placeholder="Filtrar nome..."
                         value={columnFilters['name'] || ''}
                         onChange={(e) => handleColumnFilterChange('name', e.target.value)}
                         className="h-8"
@@ -379,7 +379,7 @@ export default function UsersClient() {
                 </TableHead>
                 <TableHead>
                     <Input
-                        placeholder="Filter by username..."
+                        placeholder="Filtrar username..."
                         value={columnFilters['username'] || ''}
                         onChange={(e) => handleColumnFilterChange('username', e.target.value)}
                         className="h-8"
@@ -387,7 +387,7 @@ export default function UsersClient() {
                 </TableHead>
                 <TableHead>
                     <Input
-                        placeholder="Filter by email..."
+                        placeholder="Filtrar e-mail..."
                         value={columnFilters['email'] || ''}
                         onChange={(e) => handleColumnFilterChange('email', e.target.value)}
                         className="h-8"
@@ -395,7 +395,7 @@ export default function UsersClient() {
                 </TableHead>
                 <TableHead>
                     <Input
-                        placeholder="Filter by role..."
+                        placeholder="Filtrar perfil..."
                         value={columnFilters['role'] || ''}
                         onChange={(e) => handleColumnFilterChange('role', e.target.value)}
                         className="h-8"
@@ -403,7 +403,7 @@ export default function UsersClient() {
                 </TableHead>
                 <TableHead>
                     <Input
-                        placeholder="Filter by department..."
+                        placeholder="Filtrar departamento..."
                         value={columnFilters['department'] || ''}
                         onChange={(e) => handleColumnFilterChange('department', e.target.value)}
                         className="h-8"
@@ -411,7 +411,7 @@ export default function UsersClient() {
                 </TableHead>
                 <TableHead>
                     <Input
-                        placeholder="Filter by status..."
+                        placeholder="Filtrar estado..."
                         value={columnFilters['status'] || ''}
                         onChange={(e) => handleColumnFilterChange('status', e.target.value)}
                         className="h-8"
@@ -433,7 +433,7 @@ export default function UsersClient() {
                             : selection.filter((id) => id !== user.id)
                         )
                       }}
-                      aria-label={`Select user ${user.name}`}
+                      aria-label={`Selecionar utilizador ${user.name}`}
                     />
                   </TableCell>
                   <TableCell className="font-medium">
@@ -475,16 +475,16 @@ export default function UsersClient() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuLabel>Ações</DropdownMenuLabel>
                           <DropdownMenuItem onSelect={() => openDialog('details', user)}>
-                             <Info className="mr-2 h-4 w-4" /> Details
+                             <Info className="mr-2 h-4 w-4" /> Detalhes
                           </DropdownMenuItem>
                           <DropdownMenuItem onSelect={() => openDialog('edit', user)}>
-                             <Edit className="mr-2 h-4 w-4" /> Edit
+                             <Edit className="mr-2 h-4 w-4" /> Editar
                           </DropdownMenuItem>
                            <DropdownMenuSeparator />
                           <DropdownMenuItem onSelect={() => openDialog('delete', user)} className="text-destructive">
-                             <Trash2 className="mr-2 h-4 w-4" /> Delete
+                             <Trash2 className="mr-2 h-4 w-4" /> Eliminar
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -494,7 +494,7 @@ export default function UsersClient() {
               )) : (
                 <TableRow>
                   <TableCell colSpan={8} className="h-24 text-center">
-                    No users found matching your filters.
+                    Nenhum utilizador encontrado correspondente aos filtros.
                   </TableCell>
                 </TableRow>
               )}
@@ -503,7 +503,7 @@ export default function UsersClient() {
         </CardContent>
          <CardFooter className="flex items-center justify-between">
             <div className="text-xs text-muted-foreground">
-               {selection.length > 0 ? `${selection.length} of ${sortedAndFilteredUsers.length} user(s) selected.` : `Showing ${paginatedUsers.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedUsers.length} of ${sortedAndFilteredUsers.length} users`}
+               {selection.length > 0 ? `${selection.length} de ${sortedAndFilteredUsers.length} utilizador(es) selecionado(s).` : `A mostrar ${paginatedUsers.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedUsers.length} de ${sortedAndFilteredUsers.length} utilizador(es)`}
             </div>
             <PaginationNav />
         </CardFooter>
@@ -512,9 +512,9 @@ export default function UsersClient() {
       <Dialog open={dialogState.open && (dialogState.type === 'new' || dialogState.type === 'edit')} onOpenChange={closeDialog}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{dialogState.type === 'new' ? 'Create New User' : 'Edit User'}</DialogTitle>
+            <DialogTitle>{dialogState.type === 'new' ? 'Criar Novo Utilizador' : 'Editar Utilizador'}</DialogTitle>
             <DialogDescription>
-              {dialogState.type === 'new' ? 'Add a new user to the system.' : `Editing user: ${dialogState.data?.name}`}
+              {dialogState.type === 'new' ? 'Adicionar um novo utilizador ao sistema.' : `Editar utilizador: ${dialogState.data?.name}`}
             </DialogDescription>
           </DialogHeader>
           <UserForm 
@@ -530,14 +530,14 @@ export default function UsersClient() {
       <AlertDialog open={dialogState.open && dialogState.type === 'delete'} onOpenChange={closeDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Tem a certeza?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the user <span className="font-bold">{dialogState.data?.name}</span>.
+              Esta ação não pode ser desfeita. Isto irá eliminar permanentemente o utilizador <span className="font-bold">{dialogState.data?.name}</span>.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={closeDialog}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+            <AlertDialogCancel onClick={closeDialog}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Eliminar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -545,7 +545,7 @@ export default function UsersClient() {
       <Dialog open={dialogState.open && dialogState.type === 'details'} onOpenChange={closeDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>User Details</DialogTitle>
+            <DialogTitle>Detalhes do Utilizador</DialogTitle>
             <DialogDescription>{dialogState.data?.name}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4 text-sm">
@@ -554,34 +554,34 @@ export default function UsersClient() {
               <p className="col-span-2 font-medium">{dialogState.data?.email}</p>
             </div>
              <div className="grid grid-cols-3 items-center gap-x-4">
-              <p className="text-muted-foreground">Phone</p>
+              <p className="text-muted-foreground">Telefone</p>
               <p className="col-span-2 font-medium">{dialogState.data?.phone || '—'}</p>
             </div>
              <div className="grid grid-cols-3 items-center gap-x-4">
-              <p className="text-muted-foreground">Role</p>
+              <p className="text-muted-foreground">Perfil</p>
               <p className="col-span-2 font-medium">{dialogState.data?.role}</p>
             </div>
              {dialogState.data?.clientId && (
                 <div className="grid grid-cols-3 items-center gap-x-4">
-                    <p className="text-muted-foreground">Client</p>
+                    <p className="text-muted-foreground">Cliente</p>
                     <p className="col-span-2 font-medium">{clients.find(c => c.id === dialogState.data?.clientId)?.name || 'N/A'}</p>
                 </div>
              )}
             <div className="grid grid-cols-3 items-center gap-x-4">
-              <p className="text-muted-foreground">Job Title</p>
+              <p className="text-muted-foreground">Cargo</p>
               <p className="col-span-2 font-medium">{dialogState.data?.jobTitle || '—'}</p>
             </div>
             <div className="grid grid-cols-3 items-center gap-x-4">
-              <p className="text-muted-foreground">Department</p>
+              <p className="text-muted-foreground">Departamento</p>
               <p className="col-span-2 font-medium">{dialogState.data?.department || '—'}</p>
             </div>
              <div className="grid grid-cols-3 items-center gap-x-4">
-              <p className="text-muted-foreground">Last Login</p>
+              <p className="text-muted-foreground">Último Login</p>
               <p className="col-span-2 font-medium">{dialogState.data?.lastLogin ? new Date(dialogState.data.lastLogin).toLocaleString() : '—'}</p>
             </div>
              {dialogState.data?.projectIds && dialogState.data.projectIds.length > 0 && (
                 <div className="grid grid-cols-3 items-start gap-x-4">
-                    <p className="text-muted-foreground">Projects</p>
+                    <p className="text-muted-foreground">Projetos</p>
                      <div className="col-span-2 flex flex-wrap gap-1">
                         {dialogState.data.projectIds.map(id => {
                             const project = allProjects.find(p => p.id === id);
@@ -592,13 +592,13 @@ export default function UsersClient() {
              )}
             {dialogState.data?.info && (
               <div className="grid grid-cols-3 items-start gap-x-4">
-                <p className="text-muted-foreground">Additional Info</p>
+                <p className="text-muted-foreground">Informação Adicional</p>
                 <p className="col-span-2 font-medium whitespace-pre-wrap">{dialogState.data.info}</p>
               </div>
             )}
           </div>
            <DialogFooter>
-              <Button type="button" variant="secondary" onClick={closeDialog}>Close</Button>
+              <Button type="button" variant="secondary" onClick={closeDialog}>Fechar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

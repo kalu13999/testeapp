@@ -50,13 +50,6 @@ import { OperationalUserStatsTab } from "./user-stats"
 import { ClientUserStatsTab } from "./client-user-stats"
 import { HistoryStatsTab } from "./history-stats"
 
-const kpiIconMap: { [key: string]: React.ElementType } = {
-    "Books in Workflow": BookCopy,
-    "Pending Client Action": UserCheck,
-    "SLA Warnings": AlertTriangle,
-    "Pages Processed Today": CheckCircle2,
-};
-
 type KpiData = {
     title: string;
     value: string;
@@ -94,11 +87,11 @@ function SystemOverviewTab() {
         const actionsTodayLogs = auditLogs.filter(d => d.date.startsWith(today));
 
         const kpiData: KpiData[] = [
-            { title: "Books in Workflow", value: booksInWorkflowBooks.length.toLocaleString(), icon: BookCopy, description: "All active books being processed", items: booksInWorkflowBooks, type: 'books' },
-            { title: "Finalized Books", value: finalizedBooks.length.toLocaleString(), icon: CheckCircle2, description: "Books that are approved", items: finalizedBooks, type: 'books' },
-            { title: "Pending Client Action", value: pendingClientActionBooks.length.toLocaleString(), icon: UserCheck, description: "Batches awaiting client approval", items: pendingClientActionBooks, type: 'books' },
-            { title: "SLA Warnings", value: slaWarningProjects.length.toLocaleString(), icon: AlertTriangle, description: "Projects past their due date", items: slaWarningBooks, type: 'books' },
-            { title: "Actions Today", value: actionsTodayLogs.length.toLocaleString(), icon: Activity, description: "Any action performed today", items: actionsTodayLogs, type: 'activities' },
+            { title: "Livros no Fluxo de Trabalho", value: booksInWorkflowBooks.length.toLocaleString(), icon: BookCopy, description: "Todos os livros ativos em processamento", items: booksInWorkflowBooks, type: 'books' },
+            { title: "Livros Finalizados", value: finalizedBooks.length.toLocaleString(), icon: CheckCircle2, description: "Livros que foram aprovados", items: finalizedBooks, type: 'books' },
+            { title: "Ação do Cliente Pendente", value: pendingClientActionBooks.length.toLocaleString(), icon: UserCheck, description: "Lotes a aguardar aprovação do cliente", items: pendingClientActionBooks, type: 'books' },
+            { title: "Avisos de SLA", value: slaWarningProjects.length.toLocaleString(), icon: AlertTriangle, description: "Projetos além do prazo", items: slaWarningBooks, type: 'books' },
+            { title: "Ações Hoje", value: actionsTodayLogs.length.toLocaleString(), icon: Activity, description: "Qualquer ação realizada hoje", items: actionsTodayLogs, type: 'activities' },
         ];
 
         const orderedStageNames = [
@@ -178,7 +171,7 @@ function SystemOverviewTab() {
         setDetailFilter('');
         setDetailState({
             open: true,
-            title: `Details for: ${kpi.title}`,
+            title: `Detalhes de: ${kpi.title}`,
             items: kpi.items,
             type: kpi.type
         });
@@ -194,7 +187,7 @@ function SystemOverviewTab() {
         const stageName = data.activePayload[0].payload.name as string;
         const booksForStage = booksByStage[stageName] || [];
         setDetailFilter('');
-        setDetailState({ open: true, title: `Books in Stage: ${stageName}`, items: booksForStage, type: 'books' });
+        setDetailState({ open: true, title: `Livros no Estado: ${stageName}`, items: booksForStage, type: 'books' });
     };
 
     const handleDailyChartClick = (data: any) => {
@@ -236,11 +229,11 @@ function SystemOverviewTab() {
                 <Card>
                     <CardHeader className="flex flex-row items-start justify-between">
                         <div>
-                            <CardTitle className="font-headline flex items-center gap-2"><BarChart2 className="h-5 w-5"/> Workflow Overview</CardTitle>
-                            <CardDescription>Number of books currently in each workflow phase across all projects. Click a bar for details.</CardDescription>
+                            <CardTitle className="font-headline flex items-center gap-2"><BarChart2 className="h-5 w-5"/>Visão Geral do Fluxo de Trabalho</CardTitle>
+                            <CardDescription>Número de livros atualmente em cada fase do fluxo de trabalho em todos os projetos. Clique em uma barra para detalhes.</CardDescription>
                         </div>
                         <Tabs value={chartType} onValueChange={(value) => setChartType(value as any)} className="w-auto">
-                            <TabsList><TabsTrigger value="bar">Bar</TabsTrigger><TabsTrigger value="line">Line</TabsTrigger><TabsTrigger value="area">Area</TabsTrigger></TabsList>
+                            <TabsList><TabsTrigger value="bar">Barras</TabsTrigger><TabsTrigger value="line">Linhas</TabsTrigger><TabsTrigger value="area">Área</TabsTrigger></TabsList>
                         </Tabs>
                     </CardHeader>
                     <CardContent>
@@ -257,8 +250,8 @@ function SystemOverviewTab() {
                 </Card>
                 <Card>
                     <CardHeader>
-                        <CardTitle className="font-headline flex items-center gap-2"><TrendingUp className="h-5 w-5"/> Daily Throughput</CardTitle>
-                        <CardDescription>Count of books completing key stages over the last 7 days. Click the chart for details.</CardDescription>
+                        <CardTitle className="font-headline flex items-center gap-2"><TrendingUp className="h-5 w-5"/>Produção Diária</CardTitle>
+                        <CardDescription>Contagem de livros que completam etapas-chave nos últimos 7 dias. Clique no gráfico para detalhes.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <ChartContainer config={dailyChartConfig} className="h-[250px] w-full cursor-pointer">
@@ -280,16 +273,16 @@ function SystemOverviewTab() {
             <DialogContent className="max-w-3xl">
                 <DialogHeader>
                     <DialogTitle>{detailState.title}</DialogTitle>
-                    <DialogDescription>Showing {filteredDialogItems.length} of {detailState.items.length} total items.</DialogDescription>
+                    <DialogDescription>A mostrar {filteredDialogItems.length} de {detailState.items.length} itens totais.</DialogDescription>
                 </DialogHeader>
-                <div className="py-2"><Input placeholder={detailState.type === 'books' ? "Filter by book, project, or client..." : "Filter by action, details, or user..."} value={detailFilter} onChange={(e) => setDetailFilter(e.target.value)} /></div>
+                <div className="py-2"><Input placeholder={detailState.type === 'books' ? "Filtrar por livro, projeto ou cliente..." : "Filtrar por ação, detalhes ou utilizador..."} value={detailFilter} onChange={(e) => setDetailFilter(e.target.value)} /></div>
                 <div className="max-h-[60vh] overflow-y-auto pr-4">
                      {filteredDialogItems.length > 0 ? (
                         <>
-                            {detailState.type === 'books' && (<Table><TableHeader><TableRow><TableHead>Book Name</TableHead><TableHead>Project</TableHead><TableHead>Client</TableHead></TableRow></TableHeader><TableBody>{(filteredDialogItems as EnrichedBook[]).map(book => (<TableRow key={book.id}><TableCell className="font-medium"><Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link></TableCell><TableCell>{book.projectName}</TableCell><TableCell>{book.clientName}</TableCell></TableRow>))}</TableBody></Table>)}
-                            {detailState.type === 'activities' && (<Table><TableHeader><TableRow><TableHead>Action</TableHead><TableHead>Details</TableHead><TableHead>User</TableHead><TableHead>Time</TableHead></TableRow></TableHeader><TableBody>{(filteredDialogItems as EnrichedAuditLog[]).map(log => (<TableRow key={log.id}><TableCell className="font-medium">{log.action}</TableCell><TableCell>{log.details}</TableCell><TableCell>{log.user}</TableCell><TableCell>{new Date(log.date).toLocaleTimeString()}</TableCell></TableRow>))}</TableBody></Table>)}
+                            {detailState.type === 'books' && (<Table><TableHeader><TableRow><TableHead>Nome do Livro</TableHead><TableHead>Projeto</TableHead><TableHead>Cliente</TableHead></TableRow></TableHeader><TableBody>{(filteredDialogItems as EnrichedBook[]).map(book => (<TableRow key={book.id}><TableCell className="font-medium"><Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link></TableCell><TableCell>{book.projectName}</TableCell><TableCell>{book.clientName}</TableCell></TableRow>))}</TableBody></Table>)}
+                            {detailState.type === 'activities' && (<Table><TableHeader><TableRow><TableHead>Ação</TableHead><TableHead>Detalhes</TableHead><TableHead>Utilizador</TableHead><TableHead>Hora</TableHead></TableRow></TableHeader><TableBody>{(filteredDialogItems as EnrichedAuditLog[]).map(log => (<TableRow key={log.id}><TableCell className="font-medium">{log.action}</TableCell><TableCell>{log.details}</TableCell><TableCell>{log.user}</TableCell><TableCell>{new Date(log.date).toLocaleTimeString()}</TableCell></TableRow>))}</TableBody></Table>)}
                         </>
-                     ) : (<div className="text-center py-10 text-muted-foreground"><p>No items match your filter.</p></div>)}
+                     ) : (<div className="text-center py-10 text-muted-foreground"><p>Nenhum item corresponde ao seu filtro.</p></div>)}
                 </div>
             </DialogContent>
         </Dialog>
@@ -300,16 +293,16 @@ function SystemOverviewTab() {
 export default function GlobalOverviewClient() {
   return (
     <div className="flex flex-col gap-6">
-        <h1 className="font-headline text-3xl font-bold tracking-tight">Global Overview</h1>
+        <h1 className="font-headline text-3xl font-bold tracking-tight">Resumo Global</h1>
         <Tabs defaultValue="system">
             <TabsList className="grid w-full grid-cols-7">
-                <TabsTrigger value="system">System Health</TabsTrigger>
-                <TabsTrigger value="projects">By Project</TabsTrigger>
-                <TabsTrigger value="books">By Book</TabsTrigger>
-                <TabsTrigger value="clients">By Client</TabsTrigger>
-                <TabsTrigger value="operators">By Operator</TabsTrigger>
-                <TabsTrigger value="client-users">By Client User</TabsTrigger>
-                <TabsTrigger value="history">History</TabsTrigger>
+                <TabsTrigger value="system">Sistema</TabsTrigger>
+                <TabsTrigger value="projects">Por Projeto</TabsTrigger>
+                <TabsTrigger value="books">Por Livro</TabsTrigger>
+                <TabsTrigger value="clients">Por Cliente</TabsTrigger>
+                <TabsTrigger value="operators">Por Operador</TabsTrigger>
+                <TabsTrigger value="client-users">Por Utilizador do Cliente</TabsTrigger>
+                <TabsTrigger value="history">Histórico</TabsTrigger>
             </TabsList>
             <TabsContent value="system" className="pt-4">
                 <SystemOverviewTab />

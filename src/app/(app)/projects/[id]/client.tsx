@@ -183,7 +183,7 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
     setDetailFilter('');
     setDetailState({
         open: true,
-        title: `Details for: ${kpi.title}`,
+        title: `Detalhes de: ${kpi.title}`,
         items: kpi.items,
     });
   };
@@ -263,14 +263,14 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
     if (data.length === 0) return;
     const jsonString = JSON.stringify(data, null, 2);
     downloadFile(jsonString, 'project_books_export.json', 'application/json');
-    toast({ title: "Export Successful", description: `${data.length} books exported as JSON.` });
+    toast({ title: "Exportação Concluída", description: `${data.length} livros exportados em formato JSON.` });
   };
   const exportCSV = (data: EnrichedBook[]) => {
     if (data.length === 0) return;
     const headers = ['id', 'name', 'status', 'progress', 'documentCount', 'expectedDocuments'];
     const csvContent = [headers.join(','), ...data.map(d => headers.map(h => JSON.stringify(d[h as keyof typeof d])).join(','))].join('\n');
     downloadFile(csvContent, 'project_books_export.csv', 'text/csv;charset=utf-8;');
-    toast({ title: "Export Successful", description: `${data.length} books exported as CSV.` });
+    toast({ title: "Exportação Concluída", description: `${data.length} livros exportados em formato CSV.` });
   };
   const exportXLSX = (data: EnrichedBook[]) => {
     if (data.length === 0) return;
@@ -278,7 +278,7 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Books");
     XLSX.writeFile(workbook, "project_books_export.xlsx");
-    toast({ title: "Export Successful", description: `${data.length} books exported as XLSX.` });
+    toast({ title: "Exportação Concluída", description: `${data.length} livros exportados em formato XLSX.` });
   };
 
   const PaginationNav = () => {
@@ -299,8 +299,8 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
   if (!project) {
       return (
           <Card>
-              <CardHeader><CardTitle>Project Not Found</CardTitle></CardHeader>
-              <CardContent><p>This project could not be found.</p></CardContent>
+              <CardHeader><CardTitle>Projeto não Encontrado</CardTitle></CardHeader>
+              <CardContent><p>Este projeto não pôde ser encontrado.</p></CardContent>
           </Card>
       )
   }
@@ -317,14 +317,14 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                   </div>
                   <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm" onClick={() => setIsStorageDialogOpen(true)}>
-                        <Warehouse className="mr-2 h-4 w-4" /> Manage Storages
+                        <Warehouse className="mr-2 h-4 w-4" /> Gerir Armazenamentos
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => setIsWorkflowDialogOpen(true)}>
-                        <Settings2 className="mr-2 h-4 w-4"/> Edit Workflow
+                        <Settings2 className="mr-2 h-4 w-4"/> Editar Workflow
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => setIsEditDialogOpen(true)}>
                       <Edit className="mr-2 h-4 w-4"/>
-                      Edit Project
+                      Editar Projeto
                     </Button>
                   </div>
               </div>
@@ -333,7 +333,7 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
 
         <Card>
             <CardHeader>
-                <CardTitle>Project Summary</CardTitle>
+                <CardTitle>Resumo do Projeto</CardTitle>
             </CardHeader>
             <CardContent>
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-8">
@@ -341,7 +341,7 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                     <DetailItem label="Budget" value={`$${project.budget.toLocaleString()}`} />
                     <DetailItem label="Timeline" value={`${format(new Date(project.startDate), "LLL d, yyyy")} to ${format(new Date(project.endDate), "LLL d, yyyy")}`} />
                     <div className="col-span-full">
-                        <DetailItem label="Overall Progress" value={`${project.documentCount.toLocaleString()} / ${project.totalExpected.toLocaleString()} pages`} />
+                        <DetailItem label="Visão Geral do Progresso" value={`${project.documentCount.toLocaleString()} / ${project.totalExpected.toLocaleString()} páginas`} />
                         <Progress value={project.progress} className="mt-2 h-2" />
                     </div>
                 </div>
@@ -349,7 +349,7 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                   <>
                     <Separator className="my-4"/>
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm text-muted-foreground">Description</p>
+                      <p className="text-sm text-muted-foreground">Descrição</p>
                       <div className="font-medium text-sm">{project.description}</div>
                     </div>
                   </>
@@ -358,7 +358,7 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                   <>
                     <Separator className="my-4"/>
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm text-muted-foreground">Additional Info</p>
+                      <p className="text-sm text-muted-foreground">Informações Adicionais</p>
                       <div className="font-medium text-sm whitespace-pre-wrap">{project.info}</div>
                     </div>
                   </>
@@ -380,8 +380,8 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
         
         <Card>
             <CardHeader>
-                <CardTitle>Project Status</CardTitle>
-                <CardDescription>Distribution of books by workflow stage.</CardDescription>
+                <CardTitle>Estado do Projeto</CardTitle>
+                <CardDescription>Distribuição de livros por estado de workflow.</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <ChartContainer config={chartConfig} className="h-64 w-full">
@@ -410,11 +410,11 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
           <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="flex items-center gap-2"><Warehouse className="h-5 w-5" /> Associated Storages</CardTitle>
-                  <CardDescription>Storages assigned to this project and their specific configurations.</CardDescription>
+                  <CardTitle className="flex items-center gap-2"><Warehouse className="h-5 w-5" /> Armazenamentos Associados</CardTitle>
+                  <CardDescription>Armazenamentos atribuídos a este projeto e suas configurações específicas.</CardDescription>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => setIsStorageDialogOpen(true)}>
-                    <Edit className="mr-2 h-4 w-4" /> Manage Storages
+                    <Edit className="mr-2 h-4 w-4" /> Gerir Armazenamentos
                 </Button>
               </div>
           </CardHeader>
@@ -422,11 +422,11 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>Storage Name</TableHead>
-                        <TableHead className="text-center">Weight</TableHead>
-                        <TableHead className="text-center">Daily Fixed Min.</TableHead>
-                        <TableHead className="text-center">Daily Percent Min.</TableHead>
-                        <TableHead>Description</TableHead>
+                        <TableHead>Nome do Armazenamento</TableHead>
+                        <TableHead className="text-center">Peso</TableHead>
+                        <TableHead className="text-center">Mínimo Fixo Diário</TableHead>
+                        <TableHead className="text-center">Mínimo Percentual Diário</TableHead>
+                        <TableHead>Descrição</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -441,7 +441,7 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                     )) : (
                         <TableRow>
                             <TableCell colSpan={5} className="h-24 text-center">
-                                No storages associated with this project yet. Use the "Manage Storages" button to add one.
+                                Não há armazenamentos associados a este projeto ainda. Use o botão "Gerir Armazenamentos" para adicionar um.
                             </TableCell>
                         </TableRow>
                     )}
@@ -453,14 +453,14 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
         <Card>
             <CardHeader className="flex flex-row items-start justify-between">
                 <div>
-                    <CardTitle>Workflow Configuration</CardTitle>
+                    <CardTitle>Configuração do Workflow</CardTitle>
                     <CardDescription>
-                        The sequence of stages enabled for this project. Disabled phases are skipped.
+                        A sequência de etapas habilitadas para este projeto. Fases desativadas são ignoradas.
                     </CardDescription>
                 </div>
                  <Button variant="outline" size="sm" onClick={() => setIsWorkflowDialogOpen(true)}>
                     <Settings2 className="mr-2 h-4 w-4"/>
-                    Edit Workflow
+                    Editar Workflow
                 </Button>
             </CardHeader>
             <CardContent>
@@ -509,23 +509,23 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
             <CardHeader>
               <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="flex items-center gap-2"><Book className="h-5 w-5" /> Book Manifest</CardTitle>
-                    <CardDescription>Detailed breakdown of each book within the project.</CardDescription>
+                    <CardTitle className="flex items-center gap-2"><Book className="h-5 w-5" />Lista de Livros</CardTitle>
+                    <CardDescription>Detalhes de cada livro dentro do projeto.</CardDescription>
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button size="sm" variant="outline" className="h-9 gap-1"><Download className="h-3.5 w-3.5" /><span>Export</span></Button>
+                      <Button size="sm" variant="outline" className="h-9 gap-1"><Download className="h-3.5 w-3.5" /><span>Exportar</span></Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Export Selected ({selection.length})</DropdownMenuLabel>
-                      <DropdownMenuItem onSelect={() => exportXLSX(selectedBooks)} disabled={selection.length === 0}>Export as XLSX</DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => exportJSON(selectedBooks)} disabled={selection.length === 0}>Export as JSON</DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => exportCSV(selectedBooks)} disabled={selection.length === 0}>Export as CSV</DropdownMenuItem>
+                      <DropdownMenuLabel>Exportar Seleção ({selection.length})</DropdownMenuLabel>
+                      <DropdownMenuItem onSelect={() => exportXLSX(selectedBooks)} disabled={selection.length === 0}>Exportar como XLSX</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => exportJSON(selectedBooks)} disabled={selection.length === 0}>Exportar como JSON</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => exportCSV(selectedBooks)} disabled={selection.length === 0}>Exportar como CSV</DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuLabel>Export All ({sortedBooks.length})</DropdownMenuLabel>
-                      <DropdownMenuItem onSelect={() => exportXLSX(sortedBooks)} disabled={sortedBooks.length === 0}>Export as XLSX</DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => exportJSON(sortedBooks)} disabled={sortedBooks.length === 0}>Export as JSON</DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => exportCSV(sortedBooks)} disabled={sortedBooks.length === 0}>Export as CSV</DropdownMenuItem>
+                      <DropdownMenuLabel>Exportar Todos ({sortedBooks.length})</DropdownMenuLabel>
+                      <DropdownMenuItem onSelect={() => exportXLSX(sortedBooks)} disabled={sortedBooks.length === 0}>Exportar como XLSX</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => exportJSON(sortedBooks)} disabled={sortedBooks.length === 0}>Exportar como JSON</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => exportCSV(sortedBooks)} disabled={sortedBooks.length === 0}>Exportar como CSV</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
               </div>
@@ -535,17 +535,17 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                     <TableHeader>
                         <TableRow>
                             <TableHead className="w-[40px]"><Checkbox onCheckedChange={(checked) => setSelection(checked ? paginatedBooks.map(b => b.id) : [])} checked={paginatedBooks.length > 0 && selection.length === paginatedBooks.length} /></TableHead>
-                            <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>Book Name {getSortIndicator('name')}</div></TableHead>
-                            <TableHead className="w-[150px]"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Status {getSortIndicator('status')}</div></TableHead>
-                            <TableHead className="w-[150px] text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('documentCount', e.shiftKey)}>Documents {getSortIndicator('documentCount')}</div></TableHead>
-                            <TableHead className="w-[200px]"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('progress', e.shiftKey)}>Progress {getSortIndicator('progress')}</div></TableHead>
+                            <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>Nome do Livro {getSortIndicator('name')}</div></TableHead>
+                            <TableHead className="w-[150px]"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Estado {getSortIndicator('status')}</div></TableHead>
+                            <TableHead className="w-[150px] text-center"><div className="flex items-center justify-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('documentCount', e.shiftKey)}>Documentos {getSortIndicator('documentCount')}</div></TableHead>
+                            <TableHead className="w-[200px]"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('progress', e.shiftKey)}>Progresso {getSortIndicator('progress')}</div></TableHead>
                         </TableRow>
                           <TableRow>
                             <TableHead />
-                            <TableHead><Input placeholder="Filter by name..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8" /></TableHead>
-                            <TableHead><Input placeholder="Filter by status..." value={columnFilters['status'] || ''} onChange={(e) => handleColumnFilterChange('status', e.target.value)} className="h-8" /></TableHead>
+                            <TableHead><Input placeholder="Filtrar nome..." value={columnFilters['name'] || ''} onChange={(e) => handleColumnFilterChange('name', e.target.value)} className="h-8" /></TableHead>
+                            <TableHead><Input placeholder="Filtrar estado..." value={columnFilters['status'] || ''} onChange={(e) => handleColumnFilterChange('status', e.target.value)} className="h-8" /></TableHead>
                             <TableHead><Input placeholder="Filter by docs..." value={columnFilters['documentCount'] || ''} onChange={(e) => handleColumnFilterChange('documentCount', e.target.value)} className="h-8" /></TableHead>
-                            <TableHead><Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Clear</Button></TableHead>
+                            <TableHead><Button variant="ghost" size="sm" onClick={() => setColumnFilters({})}>Limpar Filtros</Button></TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -601,9 +601,9 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Book Name</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead className="text-right">Pages</TableHead>
+                                <TableHead>Nome do Livro</TableHead>
+                                <TableHead>Estado</TableHead>
+                                <TableHead className="text-right">Páginas</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>

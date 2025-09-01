@@ -76,9 +76,9 @@ export function ClientForm({ client, onSave, onCancel }: ClientFormProps) {
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Client Name</FormLabel>
+              <FormLabel>Nome Cliente</FormLabel>
               <FormControl>
-                <Input placeholder="e.g. Innovate Corp" {...field} />
+                <Input placeholder="ex.: Innovate Corp" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -90,9 +90,9 @@ export function ClientForm({ client, onSave, onCancel }: ClientFormProps) {
               name="contactEmail"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Contact Email</FormLabel>
+                  <FormLabel>Email de Contato</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. contact@innovate.com" {...field} />
+                    <Input placeholder="ex.: contact@innovate.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -103,9 +103,9 @@ export function ClientForm({ client, onSave, onCancel }: ClientFormProps) {
               name="contactPhone"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Contact Phone</FormLabel>
+                  <FormLabel>Telefone de Contato</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. 555-123-4567" {...field} />
+                    <Input placeholder="ex.: 912345678" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -117,9 +117,9 @@ export function ClientForm({ client, onSave, onCancel }: ClientFormProps) {
             name="address"
             render={({ field }) => (
             <FormItem>
-                <FormLabel>Address</FormLabel>
+                <FormLabel>Morada</FormLabel>
                 <FormControl>
-                <Input placeholder="e.g. 123 Main St, Anytown USA" {...field} />
+                <Input placeholder="ex.: Rua 22, Lisboa" {...field} />
                 </FormControl>
                 <FormMessage />
             </FormItem>
@@ -133,7 +133,7 @@ export function ClientForm({ client, onSave, onCancel }: ClientFormProps) {
                 <FormItem>
                     <FormLabel>Website</FormLabel>
                     <FormControl>
-                    <Input placeholder="e.g. https://innovate.com" {...field} />
+                    <Input placeholder="ex.: https://innovate.com" {...field} />
                     </FormControl>
                     <FormMessage />
                 </FormItem>
@@ -144,7 +144,7 @@ export function ClientForm({ client, onSave, onCancel }: ClientFormProps) {
                 name="since"
                 render={({ field }) => (
                 <FormItem>
-                    <FormLabel>Client Since</FormLabel>
+                    <FormLabel>Cliente Desde</FormLabel>
                     <FormControl>
                     <Input type="date" {...field} />
                     </FormControl>
@@ -158,9 +158,9 @@ export function ClientForm({ client, onSave, onCancel }: ClientFormProps) {
             name="info"
             render={({ field }) => (
             <FormItem>
-                <FormLabel>Additional Info</FormLabel>
+                <FormLabel>Informação Adicional</FormLabel>
                 <FormControl>
-                <Textarea placeholder="Any extra notes about this client..." {...field} />
+                <Textarea placeholder="Notas adicionais sobre este cliente..." {...field} />
                 </FormControl>
                 <FormMessage />
             </FormItem>
@@ -168,9 +168,9 @@ export function ClientForm({ client, onSave, onCancel }: ClientFormProps) {
         />
         <div className="flex justify-end gap-2 pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
+            Cancelar
           </Button>
-          <Button type="submit">Save Client</Button>
+          <Button type="submit">Guardar Cliente</Button>
         </div>
       </form>
     </Form>

@@ -144,7 +144,7 @@ export default function DistributionHubClient() {
     await Promise.all(updates.map(item => updateProjectStorage(item)));
 
     setDirtyRows(new Set());
-    toast({ title: "Changes Saved", description: "All distribution rules have been updated." });
+    toast({ title: "Alterações Guardadas", description: "Todas as regras de distribuição foram atualizadas." });
   };
   
   const handleSort = (columnId: string) => {
@@ -206,33 +206,33 @@ export default function DistributionHubClient() {
     <>
     <div className="space-y-6">
       <div>
-        <h1 className="font-headline text-3xl font-bold tracking-tight">Distribution Hub</h1>
-        <p className="text-muted-foreground">Monitor daily scanning productivity and adjust workload distribution rules.</p>
+        <h1 className="font-headline text-3xl font-bold tracking-tight">Centro de Distribuição</h1>
+        <p className="text-muted-foreground">Monitorizar a produtividade diária de digitalização e ajustar as regras de distribuição da carga de trabalho.</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Pages Scanned Today</CardTitle><BarChart2 className="h-4 w-4 text-muted-foreground" /></CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Páginas digitalizadas hoje</CardTitle><BarChart2 className="h-4 w-4 text-muted-foreground" /></CardHeader>
           <CardContent><div className="text-2xl font-bold">{productivityStats.pagesToday.toLocaleString()}</div></CardContent>
         </Card>
-        <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Books Scanned Today', productivityStats.scansToday)}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Books Scanned Today</CardTitle><BookCheck className="h-4 w-4 text-muted-foreground" /></CardHeader>
+        <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Livros Digitalizados Hoje', productivityStats.scansToday)}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Livros digitalizados hoje</CardTitle><BookCheck className="h-4 w-4 text-muted-foreground" /></CardHeader>
           <CardContent><div className="text-2xl font-bold">{productivityStats.booksToday.toLocaleString()}</div></CardContent>
         </Card>
-        <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Books Ready to Distribute', productivityStats.booksReadyToDistribute)}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Books Ready to Distribute</CardTitle><BookUp className="h-4 w-4 text-muted-foreground" /></CardHeader>
+        <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Livros Prontos para Distribuição', productivityStats.booksReadyToDistribute)}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Livros Prontos para Distribuição</CardTitle><BookUp className="h-4 w-4 text-muted-foreground" /></CardHeader>
           <CardContent><div className="text-2xl font-bold">{productivityStats.booksReadyToDistribute.length}</div></CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Pages Ready to Distribute</CardTitle><FileStack className="h-4 w-4 text-muted-foreground" /></CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Páginas Prontas para Distribuição</CardTitle><FileStack className="h-4 w-4 text-muted-foreground" /></CardHeader>
           <CardContent><div className="text-2xl font-bold">{productivityStats.pagesReadyToDistribute.toLocaleString()}</div></CardContent>
         </Card>
       </div>
 
        <Card>
           <CardHeader>
-              <CardTitle>Daily Scanning Productivity (Last 7 Days)</CardTitle>
-              <CardDescription>Total pages from books that completed the scanning phase per day.</CardDescription>
+              <CardTitle>Produtividade Diária de Digitalização (Últimos 7 Dias)</CardTitle>
+              <CardDescription>Total de páginas de livros que completaram a fase de digitalização por dia.</CardDescription>
           </CardHeader>
           <CardContent>
               <ChartContainer config={chartConfig} className="h-[250px] w-full">
@@ -252,14 +252,14 @@ export default function DistributionHubClient() {
             <CardHeader>
                 <div className="flex items-center justify-between">
                     <div>
-                        <CardTitle>Distribution Rules</CardTitle>
+                        <CardTitle>Regras de Distribuição</CardTitle>
                         <CardDescription>
-                            Adjusting rules for <strong className="text-foreground">{productivityStats.pagesReadyToDistribute.toLocaleString()}</strong> pages currently ready for distribution.
+                            Ajustar as regras para <strong className="text-foreground">{productivityStats.pagesReadyToDistribute.toLocaleString()}</strong> páginas atualmente prontas para distribuição.
                         </CardDescription>
                     </div>
                     <Button onClick={handleSaveChanges} disabled={dirtyRows.size === 0}>
                         <Save className="mr-2 h-4 w-4"/>
-                        Save Changes {dirtyRows.size > 0 && `(${dirtyRows.size})`}
+                        Guardar Alterações {dirtyRows.size > 0 && `(${dirtyRows.size})`}
                     </Button>
                 </div>
             </CardHeader>
@@ -267,15 +267,15 @@ export default function DistributionHubClient() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('projectName')}>Project {getSortIndicator('projectName')}</div></TableHead>
-                            <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('storageName')}>Storage {getSortIndicator('storageName')}</div></TableHead>
-                            <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('peso')}>Weight {getSortIndicator('peso')}</div></TableHead>
-                            <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('minimo_diario_fixo')}>Fixed Min {getSortIndicator('minimo_diario_fixo')}</div></TableHead>
+                            <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('projectName')}>Projeto {getSortIndicator('projectName')}</div></TableHead>
+                            <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('storageName')}>Armazenamento {getSortIndicator('storageName')}</div></TableHead>
+                            <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('peso')}>Peso {getSortIndicator('peso')}</div></TableHead>
+                            <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('minimo_diario_fixo')}>Min Fixo {getSortIndicator('minimo_diario_fixo')}</div></TableHead>
                             <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('percentual_minimo_diario')}>% Min {getSortIndicator('percentual_minimo_diario')}</div></TableHead>
                         </TableRow>
                          <TableRow>
-                          <TableHead><Input placeholder="Filter project..." value={columnFilters['projectName'] || ''} onChange={e => setColumnFilters(p => ({...p, projectName: e.target.value}))} className="h-8"/></TableHead>
-                          <TableHead><Input placeholder="Filter storage..." value={columnFilters['storageName'] || ''} onChange={e => setColumnFilters(p => ({...p, storageName: e.target.value}))} className="h-8"/></TableHead>
+                          <TableHead><Input placeholder="Filtrar projeto..." value={columnFilters['projectName'] || ''} onChange={e => setColumnFilters(p => ({...p, projectName: e.target.value}))} className="h-8"/></TableHead>
+                          <TableHead><Input placeholder="Filtrar armazenamento..." value={columnFilters['storageName'] || ''} onChange={e => setColumnFilters(p => ({...p, storageName: e.target.value}))} className="h-8"/></TableHead>
                           <TableHead colSpan={3} />
                         </TableRow>
                     </TableHeader>
@@ -291,7 +291,7 @@ export default function DistributionHubClient() {
                         )) : (
                            <TableRow>
                             <TableCell colSpan={5} className="h-24 text-center">
-                                No distribution rules found for the selected project.
+                                Não foram encontradas regras de distribuição para o projeto selecionado.
                             </TableCell>
                            </TableRow>
                         )}
@@ -302,29 +302,29 @@ export default function DistributionHubClient() {
 
         <Card className="lg:col-span-1 sticky top-20">
             <CardHeader>
-                <CardTitle className="flex items-center gap-2"><HelpCircle className="h-5 w-5"/>How Distribution Works</CardTitle>
+                <CardTitle className="flex items-center gap-2"><HelpCircle className="h-5 w-5"/>Como Funciona a Distribuição</CardTitle>
             </CardHeader>
             <CardContent>
                 <Accordion type="single" collapsible defaultValue="item-1">
                     <AccordionItem value="item-1">
-                        <AccordionTrigger className="text-base">Distribution Priority</AccordionTrigger>
+                        <AccordionTrigger className="text-base">Prioridade de Distribuição</AccordionTrigger>
                         <AccordionContent className="text-sm space-y-2">
-                           <p>The system prioritizes filling fixed minimums first. If a storage location is below its <strong className="text-foreground">Daily Fixed Minimum</strong> of pages, it will receive books until that number is met.</p>
-                           <p>After all fixed minimums are met, the system then considers the <strong className="text-foreground">Daily Percent Minimum</strong> to balance distribution across storages.</p>
+                           <p>O sistema prioriza o preenchimento dos mínimos fixos primeiro. Se uma localização de armazenamento estiver abaixo do seu <strong className="text-foreground">Mínimo Fixo Diário</strong> de páginas, ela receberá livros até que esse número seja atingido.</p>
+                           <p>Depois que todos os mínimos fixos forem atendidos, o sistema considera o <strong className="text-foreground">Mínimo Percentual Diário</strong> para equilibrar a distribuição entre os armazenamentos.</p>
                         </AccordionContent>
                     </AccordionItem>
                      <AccordionItem value="item-2">
-                        <AccordionTrigger className="text-base">Distribution Weight</AccordionTrigger>
+                        <AccordionTrigger className="text-base">Peso de Distribuição</AccordionTrigger>
                         <AccordionContent className="text-sm">
-                           Once all minimums are satisfied, the <strong className="text-foreground">Weight</strong> value is used. Storages with a higher weight will receive proportionally more books. For example, a storage with a weight of 2 will receive twice as many books as one with a weight of 1.
+                           Uma vez que todos os mínimos sejam atendidos, o valor de <strong className="text-foreground">Peso</strong> é utilizado. Armazenamentos com um peso mais alto receberão proporcionalmente mais livros. Por exemplo, um armazenamento com um peso de 2 receberá o dobro de livros do que um com um peso de 1.
                         </AccordionContent>
                     </AccordionItem>
                      <AccordionItem value="item-3">
-                        <AccordionTrigger className="text-base">Example Scenario</AccordionTrigger>
+                        <AccordionTrigger className="text-base">Exemplo</AccordionTrigger>
                         <AccordionContent className="text-sm space-y-2">
-                            <p><strong>Storage A:</strong> Fixed Min: 1000, Weight: 1</p>
-                            <p><strong>Storage B:</strong> Fixed Min: 500, Weight: 2</p>
-                            <p>The system will first send 1000 pages to Storage A and 500 to Storage B. After that, for every 3 books distributed, Storage A will get 1 and Storage B will get 2.</p>
+                            <p><strong>Armazenamento A:</strong> Mínimo Fixo: 1000, Peso: 1</p>
+                            <p><strong>Armazenamento B:</strong> Mínimo Fixo: 500, Peso: 2</p>
+                            <p>O sistema enviará primeiro 1000 páginas para o Armazenamento A e 500 para o Armazenamento B. Depois disso, para cada 3 livros distribuídos, o Armazenamento A receberá 1 e o Armazenamento B receberá 2.</p>
                         </AccordionContent>
                     </AccordionItem>
                 </Accordion>
@@ -336,11 +336,11 @@ export default function DistributionHubClient() {
         <DialogContent className="max-w-4xl">
             <DialogHeader>
                 <DialogTitle>{dialogState.title}</DialogTitle>
-                <DialogDescription>Showing {filteredDialogItems.length} of {dialogState.items.length} books.</DialogDescription>
+                <DialogDescription>A mostrar {filteredDialogItems.length} de {dialogState.items.length} livros.</DialogDescription>
             </DialogHeader>
             <div className="py-2">
                 <Input 
-                    placeholder="Filter books..."
+                    placeholder="Filtrar livros..."
                     value={dialogFilter}
                     onChange={(e) => setDialogFilter(e.target.value)}
                 />
@@ -349,10 +349,10 @@ export default function DistributionHubClient() {
                  <Table>
                     <TableHeader>
                       <TableRow>
-                          <TableHead>Book</TableHead>
-                          <TableHead>Project</TableHead>
-                          <TableHead>Client</TableHead>
-                          <TableHead>Status</TableHead>
+                          <TableHead>Livro</TableHead>
+                          <TableHead>Projeto</TableHead>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead>Estado</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -366,7 +366,7 @@ export default function DistributionHubClient() {
                         )) : (
                            <TableRow>
                               <TableCell colSpan={4} className="h-24 text-center">
-                                  No items match the filter.
+                                  Não foram encontrados itens que correspondam ao filtro.
                               </TableCell>
                            </TableRow>
                         )}

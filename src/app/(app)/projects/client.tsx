@@ -203,7 +203,7 @@ export default function ProjectsClient() {
     if (data.length === 0) return;
     const jsonString = JSON.stringify(data, null, 2);
     downloadFile(jsonString, 'projects_export.json', 'application/json');
-    toast({ title: "Export Successful", description: `${data.length} projects exported as JSON.` });
+    toast({ title: "Exportação Concluída", description: `${data.length} projetos exportados em formato JSON.` });
   }
 
   const exportCSV = (data: EnrichedProject[]) => {
@@ -222,7 +222,7 @@ export default function ProjectsClient() {
         )
     ].join('\n');
     downloadFile(csvContent, 'projects_export.csv', 'text/csv;charset=utf-8;');
-    toast({ title: "Export Successful", description: `${data.length} projects exported as CSV.` });
+    toast({ title: "Exportação Concluída", description: `${data.length} projetos exportados em formato CSV.` });
   }
 
   const exportXLSX = (data: EnrichedProject[]) => {
@@ -231,7 +231,7 @@ export default function ProjectsClient() {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Projects");
     XLSX.writeFile(workbook, "projects_export.xlsx");
-    toast({ title: "Export Successful", description: `${data.length} projects exported as XLSX.` });
+    toast({ title: "Exportação Concluída", description: `${data.length} projetos exportados em formato XLSX.` });
   }
 
 
@@ -294,32 +294,32 @@ export default function ProjectsClient() {
       <div className="space-y-6">
           <div className="flex items-center justify-between">
               <div>
-                  <h1 className="font-headline text-3xl font-bold tracking-tight">Projects</h1>
-                  <p className="text-muted-foreground">Manage and track all ongoing projects.</p>
+                  <h1 className="font-headline text-3xl font-bold tracking-tight">Projetos</h1>
+                  <p className="text-muted-foreground">Gestão e acompanhamento de todos os projetos em execução.</p>
               </div>
               <div className="flex items-center gap-2">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button size="sm" variant="outline" className="h-9 gap-1">
                             <Download className="h-3.5 w-3.5" />
-                            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Export</span>
+                            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Exportar</span>
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Export Selected ({selection.length})</DropdownMenuLabel>
-                        <DropdownMenuItem onSelect={() => exportXLSX(selectedProjects)} disabled={selection.length === 0}>Export as XLSX</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => exportJSON(selectedProjects)} disabled={selection.length === 0}>Export as JSON</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => exportCSV(selectedProjects)} disabled={selection.length === 0}>Export as CSV</DropdownMenuItem>
+                        <DropdownMenuLabel>Exportar Seleção ({selection.length})</DropdownMenuLabel>
+                        <DropdownMenuItem onSelect={() => exportXLSX(selectedProjects)} disabled={selection.length === 0}>Exportar como XLSX</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportJSON(selectedProjects)} disabled={selection.length === 0}>Exportar como JSON</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportCSV(selectedProjects)} disabled={selection.length === 0}>Exportar como CSV</DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuLabel>Export All ({sortedAndFilteredProjects.length})</DropdownMenuLabel>
-                        <DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredProjects)} disabled={sortedAndFilteredProjects.length === 0}>Export as XLSX</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredProjects)} disabled={sortedAndFilteredProjects.length === 0}>Export as JSON</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredProjects)} disabled={sortedAndFilteredProjects.length === 0}>Export as CSV</DropdownMenuItem>
+                        <DropdownMenuLabel>Exportar Todos ({sortedAndFilteredProjects.length})</DropdownMenuLabel>
+                        <DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredProjects)} disabled={sortedAndFilteredProjects.length === 0}>Exportar como XLSX</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredProjects)} disabled={sortedAndFilteredProjects.length === 0}>Exportar como JSON</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredProjects)} disabled={sortedAndFilteredProjects.length === 0}>Exportar como CSV</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
                 <Button onClick={() => openDialog('new')}>
                     <PlusCircle className="mr-2 h-4 w-4" />
-                    New Project
+                    Novo Projeto
                 </Button>
               </div>
           </div>
@@ -332,37 +332,37 @@ export default function ProjectsClient() {
                         <Checkbox
                             onCheckedChange={(checked) => setSelection(checked ? paginatedProjects.map(p => p.id) : [])}
                             checked={paginatedProjects.length > 0 && paginatedProjects.every(p => selection.includes(p.id))}
-                            aria-label="Select all on this page"
+                            aria-label="Selecionar todos nesta página"
                         />
                       </TableHead>
                       <TableHead>
                         <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>
-                            Project Name {getSortIndicator('name')}
+                            Nome do Projeto {getSortIndicator('name')}
                         </div>
                       </TableHead>
                       <TableHead>
                          <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('clientName', e.shiftKey)}>
-                            Client {getSortIndicator('clientName')}
+                            Cliente {getSortIndicator('clientName')}
                         </div>
                       </TableHead>
                       <TableHead>
                          <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>
-                            Status {getSortIndicator('status')}
+                            Estado {getSortIndicator('status')}
                         </div>
                       </TableHead>
                       <TableHead>
                          <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('endDate', e.shiftKey)}>
-                            End Date {getSortIndicator('endDate')}
+                            Data de Conclusão {getSortIndicator('endDate')}
                         </div>
                       </TableHead>
-                      <TableHead className="w-[200px]">Progress</TableHead>
-                      <TableHead className="w-[50px]"><span className="sr-only">Actions</span></TableHead>
+                      <TableHead className="w-[200px]">Progresso</TableHead>
+                      <TableHead className="w-[50px]"><span className="sr-only">Ações</span></TableHead>
                   </TableRow>
                    <TableRow>
                         <TableHead/>
                         <TableHead>
                             <Input
-                                placeholder="Filter name..."
+                                placeholder="Filtrar nome..."
                                 value={columnFilters['name'] || ''}
                                 onChange={(e) => handleColumnFilterChange('name', e.target.value)}
                                 className="h-8"
@@ -370,7 +370,7 @@ export default function ProjectsClient() {
                         </TableHead>
                         <TableHead>
                             <Input
-                                placeholder="Filter client..."
+                                placeholder="Filtrar cliente..."
                                 value={columnFilters['clientName'] || ''}
                                 onChange={(e) => handleColumnFilterChange('clientName', e.target.value)}
                                 className="h-8"
@@ -378,7 +378,7 @@ export default function ProjectsClient() {
                         </TableHead>
                         <TableHead>
                             <Input
-                                placeholder="Filter status..."
+                                placeholder="Filtrar estado..."
                                 value={columnFilters['status'] || ''}
                                 onChange={(e) => handleColumnFilterChange('status', e.target.value)}
                                 className="h-8"
@@ -386,7 +386,7 @@ export default function ProjectsClient() {
                         </TableHead>
                         <TableHead>
                             <Input
-                                placeholder="Filter date..."
+                                placeholder="Filtrar data..."
                                 value={columnFilters['endDate'] || ''}
                                 onChange={(e) => handleColumnFilterChange('endDate', e.target.value)}
                                 className="h-8"
@@ -436,16 +436,16 @@ export default function ProjectsClient() {
                                       </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
-                                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                      <DropdownMenuLabel>Ações</DropdownMenuLabel>
                                       <DropdownMenuItem onSelect={() => openDialog('details', project)}>
-                                        <Info className="mr-2 h-4 w-4" /> Details
+                                        <Info className="mr-2 h-4 w-4" /> Detalhes
                                       </DropdownMenuItem>
                                       <DropdownMenuItem onSelect={() => openDialog('edit', project)}>
-                                        <Edit className="mr-2 h-4 w-4" /> Edit
+                                        <Edit className="mr-2 h-4 w-4" /> Editar
                                       </DropdownMenuItem>
                                       <DropdownMenuSeparator />
                                       <DropdownMenuItem onSelect={() => openDialog('delete', project)} className="text-destructive">
-                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                        <Trash2 className="mr-2 h-4 w-4" /> Eliminar
                                       </DropdownMenuItem>
                                   </DropdownMenuContent>
                               </DropdownMenu>
@@ -454,7 +454,7 @@ export default function ProjectsClient() {
                   )) : (
                     <TableRow>
                       <TableCell colSpan={7} className="h-24 text-center">
-                        No projects found matching your filters.
+                        Nenhum projeto encontrado que corresponda aos seus filtros.
                       </TableCell>
                     </TableRow>
                   )}
@@ -463,7 +463,7 @@ export default function ProjectsClient() {
               </CardContent>
               <CardFooter className="flex items-center justify-between">
                 <div className="text-xs text-muted-foreground">
-                  {selection.length > 0 ? `${selection.length} of ${sortedAndFilteredProjects.length} project(s) selected.` : `Showing ${paginatedProjects.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedProjects.length} of ${sortedAndFilteredProjects.length} projects`}
+                  {selection.length > 0 ? `${selection.length} de ${sortedAndFilteredProjects.length} projeto(s) selecionado(s).` : `A mostrar ${paginatedProjects.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedProjects.length} de ${sortedAndFilteredProjects.length} projetos`}
                 </div>
                 <PaginationNav />
               </CardFooter>
@@ -473,9 +473,9 @@ export default function ProjectsClient() {
       <Dialog open={dialogState.open && (dialogState.type === 'new' || dialogState.type === 'edit')} onOpenChange={closeDialog}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{dialogState.type === 'new' ? 'Create New Project' : 'Edit Project'}</DialogTitle>
+            <DialogTitle>{dialogState.type === 'new' ? 'Criar Novo Projeto' : 'Editar Projeto'}</DialogTitle>
             <DialogDescription>
-              {dialogState.type === 'new' ? 'Add a new project to the system.' : `Editing project: ${dialogState.data?.name}`}
+              {dialogState.type === 'new' ? 'Adicione um novo projeto ao sistema.' : `Editar projeto: ${dialogState.data?.name}`}
             </DialogDescription>
           </DialogHeader>
           <ProjectForm 
@@ -490,14 +490,14 @@ export default function ProjectsClient() {
       <AlertDialog open={dialogState.open && dialogState.type === 'delete'} onOpenChange={closeDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Tem a certeza?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the project <span className="font-bold">{dialogState.data?.name}</span> and all its associated data.
+              Esta ação não pode ser desfeita. Isso irá eliminar permanentemente o projeto <span className="font-bold">{dialogState.data?.name}</span> e todos os seus dados associados.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={closeDialog}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete Project</AlertDialogAction>
+            <AlertDialogCancel onClick={closeDialog}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Eliminar Projeto</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -505,33 +505,33 @@ export default function ProjectsClient() {
       <Dialog open={dialogState.open && dialogState.type === 'details'} onOpenChange={closeDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Project Details</DialogTitle>
+            <DialogTitle>Detalhes do Projeto</DialogTitle>
             <DialogDescription>{dialogState.data?.name}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4 text-sm">
             <div className="grid grid-cols-3 items-center gap-x-4">
-              <p className="text-muted-foreground">Client</p>
+              <p className="text-muted-foreground">Cliente</p>
               <p className="col-span-2 font-medium">{dialogState.data?.clientName}</p>
             </div>
              <div className="grid grid-cols-3 items-start gap-x-4">
-              <p className="text-muted-foreground">Description</p>
+              <p className="text-muted-foreground">Descrição</p>
               <p className="col-span-2 font-medium">{dialogState.data?.description}</p>
             </div>
              <div className="grid grid-cols-3 items-center gap-x-4">
-              <p className="text-muted-foreground">Start Date</p>
+              <p className="text-muted-foreground">Data de Início</p>
               <p className="col-span-2 font-medium">{dialogState.data?.startDate ? format(new Date(dialogState.data.startDate), "LLL d, yyyy") : '—'}</p>
             </div>
              <div className="grid grid-cols-3 items-center gap-x-4">
-              <p className="text-muted-foreground">End Date</p>
+              <p className="text-muted-foreground">Data de Conclusão</p>
               <p className="col-span-2 font-medium">{dialogState.data?.endDate ? format(new Date(dialogState.data.endDate), "LLL d, yyyy") : '—'}</p>
             </div>
              <div className="grid grid-cols-3 items-center gap-x-4">
-              <p className="text-muted-foreground">Budget</p>
+              <p className="text-muted-foreground">Orçamento</p>
               <p className="col-span-2 font-medium">${dialogState.data?.budget.toLocaleString()}</p>
             </div>
             {dialogState.data?.info && (
               <div className="grid grid-cols-3 items-start gap-x-4">
-                <p className="text-muted-foreground">Additional Info</p>
+                <p className="text-muted-foreground">Informações Adicionais</p>
                 <p className="col-span-2 font-medium whitespace-pre-wrap">{dialogState.data.info}</p>
               </div>
             )}

@@ -36,11 +36,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
     }
 
     if (accessibleProjectsForUser.length === 0 && !['Admin', 'Client'].includes(currentUser.role)) {
-       toast({
-        title: 'No Projects Assigned',
-        description: 'You are not assigned to any projects. Please contact an administrator.',
-        variant: 'destructive',
-      });
+       toast({ title: "Nenhum Projeto Selecionado", description: "Por favor, selecione um projeto antes de continuar.", variant: "destructive" });
       // Allow access only to profile page if no projects assigned
       if (pathname !== '/profile') {
         router.push('/profile');
@@ -66,11 +62,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
     });
 
     if (!isPathAllowed) {
-        toast({
-            title: 'Access Denied',
-            description: "You don't have permission to view that page.",
-            variant: 'destructive',
-        });
+        toast({ title: "Acesso Negado", description: "Não tem permissão para ver essa página.", variant: "destructive" });
         // Redirect to the first allowed page or dashboard
         const firstAllowedPage = userPermissions.find(p => !p.includes('[')) || '/dashboard';
         router.push(firstAllowedPage);
@@ -105,7 +97,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
         if (localStorage.getItem('flowvault_projectid')){
           idealProjectId = localStorage.getItem('flowvault_projectid');
         }
-        
+
         if(selectedProjectId !== idealProjectId) {
           setSelectedProjectId(idealProjectId);
         }

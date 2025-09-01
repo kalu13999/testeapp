@@ -77,7 +77,7 @@ export const allMenuItems: MenuSection[] = [
       { href: "/projects", label: "Projetos", icon: Briefcase },
       { href: "/clients", label: "Clientes", icon: Users },
       { href: "/users", label: "Utilizadores", icon: User },
-      { href: "/role-management", label: "Gestão de Funções", icon: GanttChartSquare },
+      { href: "/role-management", label: "Gestão de Perfis", icon: GanttChartSquare },
     ],
   },
   {
@@ -95,7 +95,7 @@ export const allMenuItems: MenuSection[] = [
     items: [
       { href: "/documents", label: "Todos os Livros", icon: Files },
       { href: "/admin/reassign-user", label: "Reatribuir Utilizador", icon: UserCog },
-      { href: "/admin/default-projects", label: "Projetos por Defeito", icon: Star },
+      { href: "/admin/default-projects", label: "Projeto Padrão do Utilizador", icon: Star },
       { href: "/admin/distribution-hub", label: "Centro de Distribuição", icon: SlidersHorizontal },
     ]
   },
@@ -135,8 +135,8 @@ export const allMenuItems: MenuSection[] = [
     id: "workflow-qc",
     title: "Controlo de Qualidade",
     items: [
-      { href: "/workflow/to-checking", label: "Verificação Pendente", icon: FileSearch2 },
-      { href: "/workflow/checking-started", label: "Verificação Iniciada", icon: ClipboardCheck },
+      { href: "/workflow/to-checking", label: "PageChecker Pendente", icon: FileSearch2 },
+      { href: "/workflow/checking-started", label: "PageChecker Iniciada", icon: ClipboardCheck },
     ]
   },
   {
@@ -163,7 +163,7 @@ export const allMenuItems: MenuSection[] = [
     title: "Finalização",
     items: [
       { href: "/finalized", label: "Finalizados", icon: CheckCheck },
-      { href: "/archive", label: "Arquivar", icon: Archive },
+      { href: "/archive", label: "Arquivados", icon: Archive },
     ],
   },
   {
@@ -175,7 +175,7 @@ export const allMenuItems: MenuSection[] = [
       { href: "/my-validations", label: "As Minhas Validações", icon: ClipboardList },
       { href: "/manage-deliveries", label: "Gerir Entregas", icon: Split },
       { href: "/my-tasks", label: "As Minhas Tarefas", icon: ClipboardList },
-      { href: "/validation-monitoring", label: "Monitorização de Validações", icon: MonitorCheck },
+      { href: "/validation-monitoring", label: "Acompanhar Validações", icon: MonitorCheck },
       { href: "/validated-history", label: "Histórico de Validações", icon: History },
       { href: "/reasons", label: "Motivos de Rejeição", icon: Tags },
     ],

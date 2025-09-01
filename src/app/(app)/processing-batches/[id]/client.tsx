@@ -134,14 +134,14 @@ export default function BatchDetailClient({ batchId }: BatchDetailClientProps) {
       <div>
         <h1 className="font-headline text-3xl font-bold tracking-tight flex items-center gap-3">
             <StatusIcon className={`h-8 w-8 ${statusColor} ${statusAnimation}`} />
-            <span>Processing Batch Details</span>
+            <span>Detalhes do Lote em Processamento</span>
         </h1>
-        <p className="text-muted-foreground">Detailed information for batch: {batch.id}</p>
+        <p className="text-muted-foreground">Informações detalhadas para o lote: {batch.id}</p>
       </div>
 
        <Card>
             <CardHeader>
-                <CardTitle>Batch Summary</CardTitle>
+                <CardTitle>Resumo do Lote</CardTitle>
             </CardHeader>
             <CardContent>
                  <div className="space-y-8">
@@ -179,18 +179,18 @@ export default function BatchDetailClient({ batchId }: BatchDetailClientProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Books in Batch</CardTitle>
+          <CardTitle>Livros no Lote</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Book</TableHead>
-                <TableHead>Project</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Start</TableHead>
-                <TableHead>End</TableHead>
-                <TableHead className="text-right">Pages</TableHead>
+                <TableHead>Livro</TableHead>
+                <TableHead>Projeto</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Início</TableHead>
+                <TableHead>Fim</TableHead>
+                <TableHead className="text-right">Páginas</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -216,8 +216,8 @@ export default function BatchDetailClient({ batchId }: BatchDetailClientProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Processing Logs</CardTitle>
-          <CardDescription>Real-time log stream for this batch.</CardDescription>
+          <CardTitle>Logs de Processamento</CardTitle>
+          <CardDescription>Fluxo de logs em tempo real para este lote.</CardDescription>
         </CardHeader>
         <CardContent>
           <ScrollArea className="h-72 w-full rounded-md border">
@@ -228,7 +228,7 @@ export default function BatchDetailClient({ batchId }: BatchDetailClientProps) {
                   <span className={`ml-2 font-semibold ${log.level === 'ERROR' ? 'text-destructive' : (log.level === 'WARN' ? 'text-orange-500' : 'text-primary')}`}>{log.level}</span>
                   <span className="ml-2">{log.message}</span>
                 </p>
-              )) : <p className="text-center">No log entries for this batch yet.</p>}
+              )) : <p className="text-center">Nenhum registo encontrado para este lote ainda.</p>}
             </div>
           </ScrollArea>
         </CardContent>

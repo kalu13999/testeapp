@@ -102,11 +102,7 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
   const handleAddPageSubmit = () => {
     const position = Number(newPagePosition);
     if (!addPageState.bookId || !position || position < 1 || position > addPageState.maxPages + 1) {
-      toast({
-        title: "Invalid Position",
-        description: `Please enter a number between 1 and ${addPageState.maxPages + 1}.`,
-        variant: "destructive",
-      });
+      toast({title: "Posição Inválida", description: `Por favor, insira um número entre 1 e ${addPageState.maxPages + 1}.`, variant: "destructive"});
       return;
     }
     addPageToBook(addPageState.bookId, position);
@@ -118,11 +114,7 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
     const page = documents.find(p => p.id === pageId);
     if (!page || !page.bookId) return;
     deletePageFromBook(pageId, page.bookId);
-     toast({
-      title: "Page Deleted",
-      description: `Page "${pageName}" has been deleted.`,
-      variant: "destructive"
-    });
+    toast({title: "Página Excluída", description: `A página "${pageName}" foi excluída.`, variant: "destructive"});
   }
 
   const openConfirmationDialog = ({ title, description, onConfirm}: Omit<typeof confirmationState, 'open'>) => {
@@ -162,8 +154,8 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
 
   const handleBulkCorrect = () => {
     openConfirmationDialog({
-      title: `Mark ${selection.length} books as corrected?`,
-      description: "This will move all selected books to the next stage.",
+      title: `Marcar ${selection.length} livros como corrigidos?`,
+      description: "Isso moverá todos os livros selecionados para a próxima etapa.",
       onConfirm: () => {
         selection.forEach(bookId => handleMarkAsCorrected(bookId));
         setSelection([]);
