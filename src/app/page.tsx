@@ -48,7 +48,7 @@ export default function LoginPage() {
             </div>
           </div>
           <CardTitle className="font-headline text-3xl">FlowVault</CardTitle>
-          <CardDescription>Enter your credentials to access your account</CardDescription>
+          <CardDescription>Introduza as suas credenciais para aceder à sua conta</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
@@ -65,9 +65,9 @@ export default function LoginPage() {
             </div>
             <div className="space-y-2">
               <div className="flex items-center">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">Palavra-passe</Label>
                 <Link href="#" className="ml-auto inline-block text-sm underline">
-                  Forgot your password?
+                  Esqueceu a sua palavra-passe?
                 </Link>
               </div>
               <Input 
@@ -79,7 +79,7 @@ export default function LoginPage() {
               />
             </div>
             <Button type="submit" className="w-full">
-              Login
+              Iniciar Sessão
             </Button>
           </form>
         </CardContent>
