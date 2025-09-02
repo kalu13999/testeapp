@@ -1,5 +1,6 @@
 
 
+
 // Define types for our data structures
 export interface Client {
     id: string;
@@ -56,6 +57,16 @@ export interface AuditLog {
     documentId?: string;
     bookId?: string | null;
 }
+
+export interface BookObservation {
+    id: string;
+    book_id: string;
+    user_id: string;
+    observation: string;
+    created_at: string;
+    info?: string;
+}
+
 
 export interface User {
     id: string;
@@ -299,6 +310,7 @@ export const getStorages = () => fetchData<Storage[]>('/storages');
 export const getScanners = () => fetchData<Scanner[]>('/scanners');
 export const getTransferLogs = () => fetchData<LogTransferencia[]>('/log-transferencias');
 export const getProjectStorages = () => fetchData<ProjectStorage[]>('/project-storages');
+export const getBookObservations = () => fetchData<BookObservation[]>('/book-observations');
 
 
 // New functions for processing batches

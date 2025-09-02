@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import * as React from "react"
@@ -13,14 +14,17 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import type { EnrichedBook } from "@/lib/data";
-import type { AppDocument, EnrichedAuditLog } from "@/context/workflow-context";
+import type { AppDocument, EnrichedAuditLog, BookObservation } from "@/context/workflow-context";
 import { useAppContext } from "@/context/workflow-context";
-import { Info, BookOpen, History, InfoIcon, ArrowUp, ArrowDown, ChevronsUpDown, ShieldAlert, AlertTriangle } from "lucide-react";
+import { Info, BookOpen, History, InfoIcon, ArrowUp, ArrowDown, ChevronsUpDown, ShieldAlert, AlertTriangle, MessageSquarePlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 
 interface BookDetailClientProps {
@@ -46,11 +50,13 @@ const StageDetailItem = ({ stage, user, startTime, endTime }: { stage: string, u
 );
 
 export default function BookDetailClient({ bookId }: BookDetailClientProps) {
-  const { books, documents, users, auditLogs } = useAppContext();
+  const { books, documents, users, auditLogs, bookObservations, addBookObservation } = useAppContext();
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
     { id: 'date', desc: true }
   ]);
   const [columns, setColumns] = React.useState(8);
+  const [isObservationModalOpen, setIsObservationModalOpen] = React.useState(false);
+  const [newObservation, setNewObservation] = React.useState('');
 
   const book = books.find(b => b.id === bookId);
   
@@ -87,6 +93,13 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
     return logs;
   }, [auditLogs, bookId, sorting]);
   
+  const relevantObservations = React.useMemo(() => {
+    return bookObservations
+        .filter(obs => obs.book_id === bookId)
+        .map(obs => ({...obs, userName: users.find(u => u.id === obs.user_id)?.name || 'Unknown'}))
+        .sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [bookObservations, bookId, users]);
+
   const handleSort = (columnId: string, isShift: boolean) => {
     setSorting( currentSorting => {
         const existingSortIndex = currentSorting.findIndex(s => s.id === columnId);
@@ -118,6 +131,14 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
     return <div className="flex items-center gap-1">{icon}{sorting.length > 1 && (<span className="text-xs font-bold text-muted-foreground">{sortIndex + 1}</span>)}</div>;
   }
 
+  const handleSaveObservation = () => {
+    if (book && newObservation.trim()) {
+        addBookObservation(book.id, newObservation.trim());
+        setNewObservation('');
+        setIsObservationModalOpen(false);
+    }
+  }
+
   if (!book) {
     return (
         <Card>
@@ -140,14 +161,20 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
   };
 
   return (
+    <>
     <div className="grid lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 space-y-6">
-        <div>
-            <p className="text-sm text-muted-foreground">{book.projectName} / {book.clientName}</p>
-            <h1 className="font-headline text-3xl font-bold tracking-tight">{book.name}</h1>
-            <p className="text-muted-foreground max-w-2xl mt-1">
-                Showing {pages.length} of {book.expectedDocuments} expected pages. Once scanned, pages will appear here.
-            </p>
+        <div className="flex justify-between items-start">
+            <div>
+                <p className="text-sm text-muted-foreground">{book.projectName} / {book.clientName}</p>
+                <h1 className="font-headline text-3xl font-bold tracking-tight">{book.name}</h1>
+                <p className="text-muted-foreground max-w-2xl mt-1">
+                    Showing {pages.length} of {book.expectedDocuments} expected pages. Once scanned, pages will appear here.
+                </p>
+            </div>
+            <Button onClick={() => setIsObservationModalOpen(true)}>
+                <MessageSquarePlus className="mr-2 h-4 w-4" /> Adicionar Observação
+            </Button>
         </div>
 
         <div className="flex items-center gap-4 py-2">
@@ -258,18 +285,40 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
         {book.info && (
           <Card>
             <CardHeader className="pb-2">
-                <CardTitle className="text-base">Additional Info</CardTitle>
+                <CardTitle className="text-base">Informações Adicionais</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">{book.info}</p>
             </CardContent>
           </Card>
         )}
+        
+         <Card>
+            <CardHeader>
+                <CardTitle className="font-headline flex items-center gap-2"><History className="h-5 w-5"/> Histórico de Observações</CardTitle>
+                <CardDescription>Notas e observações sobre este livro.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="space-y-4">
+                {relevantObservations.length > 0 ? relevantObservations.map((obs, index) => (
+                    <div key={obs.id} className="flex items-start gap-3 relative">
+                        <div className="flex-1 -mt-1.5">
+                            <p className="text-sm text-foreground">{obs.observation}</p>
+                            <time className="text-xs text-muted-foreground/80">{new Date(obs.created_at).toLocaleString()} por {obs.userName}</time>
+                        </div>
+                    </div>
+                )) : (
+                    <p className="text-sm text-muted-foreground">Nenhuma observação registada para este livro.</p>
+                )}
+                </div>
+            </CardContent>
+        </Card>
+
 
         <Card>
             <CardHeader>
-                <CardTitle className="font-headline flex items-center gap-2"><History className="h-5 w-5"/> Book History</CardTitle>
-                <CardDescription>Key events in this book's lifecycle.</CardDescription>
+                <CardTitle className="font-headline flex items-center gap-2"><History className="h-5 w-5"/> Histórico do Livro</CardTitle>
+                <CardDescription>Eventos chave no ciclo de vida deste livro.</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="space-y-4">
@@ -284,16 +333,40 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
                         <div className="flex-1 -mt-1.5">
                             <p className="font-medium text-xs">{log.action}</p>
                             <p className="text-xs text-muted-foreground">{log.details}</p>
-                            <time className="text-xs text-muted-foreground/80">{new Date(log.date).toLocaleString()} by {log.user}</time>
+                            <time className="text-xs text-muted-foreground/80">{new Date(log.date).toLocaleString()} por {log.user}</time>
                         </div>
                     </div>
                 )) : (
-                        <p className="text-sm text-muted-foreground">No history available for this book.</p>
+                        <p className="text-sm text-muted-foreground">Nenhum histórico disponível para este livro.</p>
                 )}
                 </div>
             </CardContent>
         </Card>
       </div>
     </div>
+    
+     <Dialog open={isObservationModalOpen} onOpenChange={setIsObservationModalOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Adicionar Observação para: {book.name}</DialogTitle>
+                <DialogDescription>
+                    A sua nota será adicionada ao histórico do livro com o seu nome e data.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+                <Textarea
+                    placeholder="Escreva a sua observação aqui..."
+                    value={newObservation}
+                    onChange={(e) => setNewObservation(e.target.value)}
+                    rows={5}
+                />
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setIsObservationModalOpen(false)}>Cancelar</Button>
+                <Button onClick={handleSaveObservation} disabled={!newObservation.trim()}>Guardar Observação</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
