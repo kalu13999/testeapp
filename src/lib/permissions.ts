@@ -1,5 +1,3 @@
-
-
 export interface Permission {
   id: string;
   label: string;
