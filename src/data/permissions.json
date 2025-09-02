@@ -168,7 +168,8 @@
     "/finalized",
     "/archive",
     "/admin/reassign-user",
-    "/processing-batches/[id]"
+    "/processing-batches/[id]",
+    "/admin/observation-history"
   ],
   "System": []
 }
