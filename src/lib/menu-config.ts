@@ -38,6 +38,7 @@ import {
   ServerCog,
   Split,
   MonitorCheck,
+  MessageSquare,
 } from "lucide-react";
 
 interface MenuItem {
@@ -97,6 +98,7 @@ export const allMenuItems: MenuSection[] = [
       { href: "/admin/reassign-user", label: "Reatribuir Utilizador", icon: UserCog },
       { href: "/admin/default-projects", label: "Projeto Padrão do Utilizador", icon: Star },
       { href: "/admin/distribution-hub", label: "Centro de Distribuição", icon: SlidersHorizontal },
+      { href: "/admin/observation-history", label: "Histórico de Observações", icon: History },
     ]
   },
   {
