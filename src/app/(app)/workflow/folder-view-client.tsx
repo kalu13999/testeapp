@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, Check, ScanLine, FileText, FileJson, PlayCircle, Send, UserPlus, CheckCheck, Archive, ThumbsUp, ThumbsDown, Undo2, MoreHorizontal, Loader2, Upload, FileWarning, Download, ArrowUp, ArrowDown, ChevronsUpDown, XCircle } from "lucide-react";
+import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, Check, ScanLine, FileText, FileJson, PlayCircle, Send, UserPlus, CheckCheck, Archive, ThumbsUp, ThumbsDown, Undo2, MoreHorizontal, Loader2, MessageSquarePlus } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -86,6 +86,7 @@ const iconMap: { [key: string]: LucideIcon } = {
     ThumbsDown,
     Undo2,
     MoreHorizontal,
+    MessageSquarePlus,
 };
 
 interface FolderViewClientProps {
@@ -163,6 +164,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     processingBatches, 
     processingBatchItems,
     storages,
+    addBookObservation,
   } = useAppContext();
   const { toast } = useToast();
   const ActionIcon = config.actionButtonIcon ? iconMap[config.actionButtonIcon] : FolderSync;
@@ -203,6 +205,9 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   const [columnStates, setColumnStates] = React.useState<{ [key: string]: { cols: number } }>({});
   const [selectedBatchId, setSelectedBatchId] = React.useState<string>('all');
   const [selectedStorageId, setSelectedStorageId] = React.useState<string>('all');
+
+  const [newObservation, setNewObservation] = React.useState('');
+  const [observationTarget, setObservationTarget] = React.useState<EnrichedBook | null>(null);
 
   const setBookColumns = (bookId: string, cols: number) => {
     setColumnStates(prev => ({ ...prev, [bookId]: { cols } }));
@@ -936,8 +941,18 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                       <div className="p-4 space-y-4">
                           <Card>
                             <CardHeader className="flex flex-row items-center gap-2 pb-2">
-                                <Info className="h-4 w-4" />
-                                <CardTitle className="text-base">Detalhes do Livro</CardTitle>
+                              <div className="flex flex-col md:flex-row md:items-center md:justify-between w-full gap-2">
+                                <div className="flex items-center gap-2">
+                                  <Info className="h-4 w-4" />
+                                  <CardTitle className="text-base">Detalhes do Livro</CardTitle>
+                                </div>
+                                <Button 
+                                  onClick={() => setObservationTarget(book)} 
+                                  className="w-full md:w-auto"
+                                >
+                                  <MessageSquarePlus className="mr-2 h-4 w-4" /> Adicionar Observação
+                                </Button>
+                              </div>
                             </CardHeader>
                             <CardContent className="text-sm space-y-4">
                                 <DetailItem label="Livro" value={<Link href={`/books/${book.id}`} className="text-primary hover:underline">{book.name}</Link>} />
@@ -1272,6 +1287,32 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
             <DialogFooter>
                 <Button variant="outline" onClick={closeTaggingDialog}>Cancel</Button>
                 <Button onClick={handleTaggingSubmit}>Save Tags</Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+    <Dialog open={!!observationTarget} onOpenChange={() => setObservationTarget(null)}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Adicionar Observação para: {observationTarget?.name}</DialogTitle>
+                <DialogDescription>
+                    A sua nota será adicionada ao histórico do livro com o seu nome e data.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+                <Textarea
+                    placeholder="Escreva a sua observação aqui..."
+                    value={newObservation}
+                    onChange={(e) => setNewObservation(e.target.value)}
+                    rows={5}
+                />
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setObservationTarget(null)}>Cancelar</Button>
+                <Button onClick={() => {
+                    if (observationTarget) addBookObservation(observationTarget.id, newObservation);
+                    setNewObservation('');
+                    setObservationTarget(null);
+                }} disabled={!newObservation.trim()}>Guardar Observação</Button>
             </DialogFooter>
         </DialogContent>
     </Dialog>

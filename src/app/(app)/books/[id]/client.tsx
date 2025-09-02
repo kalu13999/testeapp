@@ -14,7 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import type { EnrichedBook } from "@/lib/data";
-import type { AppDocument, EnrichedAuditLog, BookObservation } from "@/context/workflow-context";
+import type { AppDocument, EnrichedAuditLog} from "@/context/workflow-context";
 import { useAppContext } from "@/context/workflow-context";
 import { Info, BookOpen, History, InfoIcon, ArrowUp, ArrowDown, ChevronsUpDown, ShieldAlert, AlertTriangle, MessageSquarePlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -38,7 +38,7 @@ const DetailItem = ({ label, value }: { label: string; value: React.ReactNode })
   </div>
 );
 
-const StageDetailItem = ({ stage, user, startTime, endTime }: { stage: string, user?: string, startTime?: string, endTime?: string }) => (
+const StageDetailItem = ({ stage, user, startTime, endTime }: { stage: string, user?: string, startTime?: string, endTime?: string | null}) => (
   <div>
     <p className="text-sm font-medium">{stage}</p>
     <div className="text-sm text-muted-foreground pl-4 border-l-2 ml-2 py-1 space-y-1">
@@ -94,6 +94,7 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
   }, [auditLogs, bookId, sorting]);
   
   const relevantObservations = React.useMemo(() => {
+    if (!bookObservations) return [];
     return bookObservations
         .filter(obs => obs.book_id === bookId)
         .map(obs => ({...obs, userName: users.find(u => u.id === obs.user_id)?.name || 'Unknown'}))

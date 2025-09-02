@@ -3,7 +3,7 @@
 "use client"
 
 import * as React from 'react';
-import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions, ProjectWorkflows, RejectionTag, DocumentStatus, ProcessingBatch, ProcessingBatchItem, Storage, LogTransferencia, ProjectStorage, Scanner, DeliveryBatch, DeliveryBatchItem } from '@/lib/data';
+import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions, ProjectWorkflows, RejectionTag, DocumentStatus, ProcessingBatch, ProcessingBatchItem, Storage, LogTransferencia, ProjectStorage, Scanner, DeliveryBatch, DeliveryBatchItem, BookObservation } from '@/lib/data';
 import { useToast } from "@/hooks/use-toast";
 import { WORKFLOW_SEQUENCE, STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage } from '@/lib/workflow-config';
 import * as dataApi from '@/lib/data';
@@ -58,6 +58,7 @@ type AppContextType = {
   books: EnrichedBook[];
   documents: AppDocument[];
   auditLogs: EnrichedAuditLog[];
+  bookObservations: BookObservation[];
   processingBatches: ProcessingBatch[];
   processingBatchItems: ProcessingBatchItem[];
   processingLogs: ProcessingLog[];
@@ -107,6 +108,7 @@ type AppContextType = {
   updateBook: (bookId: string, bookData: Partial<Omit<RawBook, 'id' | 'projectId' | 'statusId'>>) => Promise<void>;
   deleteBook: (bookId: string) => Promise<void>;
   importBooks: (projectId: string, newBooks: BookImport[]) => Promise<void>;
+  addBookObservation: (bookId: string, observation: string) => Promise<void>;
   
   // Rejection Tag Actions
   addRejectionTag: (tagData: Omit<RejectionTag, 'id' | 'clientId'>, clientId: string) => Promise<void>;
@@ -194,6 +196,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const [rawBooks, setRawBooks] = React.useState<RawBook[]>([]);
   const [rawDocuments, setRawDocuments] = React.useState<RawDocument[]>([]);
   const [auditLogs, setAuditLogs] = React.useState<EnrichedAuditLog[]>([]);
+ const [bookObservations, setBookObservations] = React.useState<BookObservation[]>([]);
   const [processingBatches, setProcessingBatches] = React.useState<ProcessingBatch[]>([]);
   const [processingBatchItems, setProcessingBatchItems] = React.useState<ProcessingBatchItem[]>([]);
   const [processingLogs, setProcessingLogs] = React.useState<ProcessingLog[]>([]);
@@ -234,7 +237,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
                 docsData, auditData, batchesData, batchItemsData, logsData,
                 permissionsData, rolesData, workflowsData, rejectionData, statusesData,
                 storagesData, scannersData, transferLogsData, projectStoragesData,
-                deliveryBatchesData, deliveryBatchItemsData,
+                deliveryBatchesData, deliveryBatchItemsData, bookObservationsData,
             ] = await Promise.all([
                 dataApi.getClients(), dataApi.getUsers(), dataApi.getRawProjects(),
                 dataApi.getRawBooks(), dataApi.getRawDocuments(), dataApi.getAuditLogs(),
@@ -242,7 +245,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
                 dataApi.getPermissions(), dataApi.getRoles(),
                 dataApi.getProjectWorkflows(), dataApi.getRejectionTags(), dataApi.getDocumentStatuses(),
                 dataApi.getStorages(), dataApi.getScanners(), dataApi.getTransferLogs(), dataApi.getProjectStorages(),
-                dataApi.getDeliveryBatches(), dataApi.getDeliveryBatchItems(),
+                dataApi.getDeliveryBatches(), dataApi.getDeliveryBatchItems(), dataApi.getBookObservations(),
             ]);
 
             setClients(clientsData);
@@ -255,6 +258,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             setScanners(scannersData);
             setTransferLogs(transferLogsData);
             setProjectStorages(projectStoragesData);
+            setBookObservations(bookObservationsData);
 
             const enrichedAuditLogs = auditData
                 .map(log => ({ ...log, user: usersData.find(u => u.id === log.userId)?.name || 'Unknown' }))
@@ -328,16 +332,19 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     localStorage.removeItem('flowvault_userid');
   };
   
-  const regLastLogin = (
+  const regLastLogin = async (
     user: User
   ) => {
     try {
       const now = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
-      fetch(`/api/users/${user.id}`, {
+      const response = await fetch(`/api/users/${user.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lastLogin: now }),
       });
+      if(response.ok) {
+        setUsers(prev => prev.map(u => u.id === user.id ? {...u, lastLogin: now} : u));
+      }
     } catch (error) {
       console.error("Falha ao registar o lastLogin", error);
     }
@@ -851,6 +858,27 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             toast({ title: "Erro", description: "Não foi possível importar livros.", variant: "destructive" });
         }
       });
+  };
+
+const addBookObservation = async (bookId: string, observation: string) => {
+    if (!currentUser) return;
+    await withMutation(async () => {
+        try {
+            const response = await fetch('/api/book-observations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ book_id: bookId, user_id: currentUser.id, observation }),
+            });
+            if (!response.ok) throw new Error('Falha ao adicionar observação');
+            const newObservation = await response.json();
+            setBookObservations(prev => [newObservation, ...prev]);
+            logAction('Observation Added', `Observation added to book.`, { bookId });
+            toast({ title: "Observação Adicionada" });
+        } catch (error) {
+            console.error(error);
+            toast({ title: "Erro", description: "Não foi possível adicionar a observação.", variant: "destructive" });
+        }
+    });
   };
 
   const addRole = (roleName: string, rolePermissions: string[]) => {
@@ -2312,6 +2340,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
     books: booksForContext, 
     documents: documentsForContext, 
     auditLogs,
+    bookObservations,
     processingBatches, processingBatchItems, processingLogs,
     deliveryBatches, deliveryBatchItems,
     roles,
@@ -2332,7 +2361,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
     addRole, updateRole, deleteRole,
     addProject, updateProject, deleteProject,
     updateProjectWorkflow,
-    addBook, updateBook, deleteBook, importBooks,
+    addBook, updateBook, deleteBook, importBooks, addBookObservation,
     addRejectionTag, updateRejectionTag, deleteRejectionTag,
     tagPageForRejection,
     addStorage, updateStorage, deleteStorage,

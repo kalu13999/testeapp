@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, Check, ScanLine, FileText, FileJson, PlayCircle, Send, UserPlus, CheckCheck, Archive, ThumbsUp, ThumbsDown, Undo2, MoreHorizontal, Loader2, Upload, FileWarning, Download, ArrowUp, ArrowDown, ChevronsUpDown, XCircle, UserPlus2, RotateCcw } from "lucide-react";
+import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, Check, ScanLine, FileText, FileJson, PlayCircle, Send, UserPlus, CheckCheck, Archive, ThumbsUp, ThumbsDown, Undo2, MoreHorizontal, Loader2, Upload, FileWarning, Download, ArrowUp, ArrowDown, ChevronsUpDown, XCircle, UserPlus2, RotateCcw, MessageSquarePlus } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -87,6 +87,7 @@ const iconMap: { [key: string]: LucideIcon } = {
     Undo2,
     MoreHorizontal,
     RotateCcw,
+    MessageSquarePlus,
 };
 
 interface WorkflowClientProps {
@@ -149,7 +150,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     handleSendToStorage, processingBookIds,
     handleFinalize, handleMarkAsCorrected, handleResubmit,
     addPageToBook, deletePageFromBook, updateDocumentFlag, rejectionTags, tagPageForRejection,
-    handleCompleteTask,handleCancelCompleteTask, handlePullNextTask
+    handleCompleteTask,handleCancelCompleteTask, handlePullNextTask, addBookObservation,
   } = useAppContext();
 
   const { toast } = useToast();
@@ -192,6 +193,11 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   }>({ open: false, docId: null, docName: null, selectedTags: [], availableTags: [] });
   
   const [columnStates, setColumnStates] = React.useState<{ [key: string]: { cols: number } }>({});
+
+
+  const [newObservation, setNewObservation] = React.useState('');
+  const [observationTarget, setObservationTarget] = React.useState<EnrichedBook | null>(null);
+
 
   const userPermissions = currentUser ? permissions[currentUser.role] || [] : [];
   const canViewAll = userPermissions.includes('/workflow/view-all') || userPermissions.includes('*');
@@ -876,6 +882,10 @@ const handleMainAction = (book: EnrichedBook) => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                    <DropdownMenuItem onSelect={() => setObservationTarget(book)}>
+                        <MessageSquarePlus className="mr-2 h-4 w-4" />
+                        Observação
+                    </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => setDetailsState({ open: true, book: item })}>
                         <Info className="mr-2 h-4 w-4" />
                         Detalhes
@@ -1636,6 +1646,33 @@ const handleMainAction = (book: EnrichedBook) => {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <Dialog open={!!observationTarget} onOpenChange={() => setObservationTarget(null)}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Adicionar Observação para: {observationTarget?.name}</DialogTitle>
+                    <DialogDescription>
+                        A sua nota será adicionada ao histórico do livro com o seu nome e data.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                    <Textarea
+                        placeholder="Escreva a sua observação aqui..."
+                        value={newObservation}
+                        onChange={(e) => setNewObservation(e.target.value)}
+                        rows={5}
+                    />
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setObservationTarget(null)}>Cancelar</Button>
+                    <Button onClick={() => {
+                        if (observationTarget) addBookObservation(observationTarget.id, newObservation);
+                        setNewObservation('');
+                        setObservationTarget(null);
+                    }} disabled={!newObservation.trim()}>Guardar Observação</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </>
   )
 }
