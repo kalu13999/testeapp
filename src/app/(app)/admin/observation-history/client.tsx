@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import * as React from "react"
@@ -186,6 +187,7 @@ export default function ObservationHistoryClient() {
                 <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('projectName')}>Projeto {getSortIndicator('projectName')}</div></TableHead>
                 <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('bookName')}>Livro {getSortIndicator('bookName')}</div></TableHead>
                 <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('userName')}>Utilizador {getSortIndicator('userName')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('info')}>Estado (Registo) {getSortIndicator('info')}</div></TableHead>
                 <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('observation')}>Observação {getSortIndicator('observation')}</div></TableHead>
             </TableRow>
             <TableRow>
@@ -193,6 +195,7 @@ export default function ObservationHistoryClient() {
                 <TableHead><Input placeholder="Filtrar projeto..." value={columnFilters['projectName'] || ''} onChange={e => setColumnFilters(p => ({...p, projectName: e.target.value}))} className="h-8"/></TableHead>
                 <TableHead><Input placeholder="Filtrar livro..." value={columnFilters['bookName'] || ''} onChange={e => setColumnFilters(p => ({...p, bookName: e.target.value}))} className="h-8"/></TableHead>
                 <TableHead><Input placeholder="Filtrar utilizador..." value={columnFilters['userName'] || ''} onChange={e => setColumnFilters(p => ({...p, userName: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filtrar estado..." value={columnFilters['info'] || ''} onChange={e => setColumnFilters(p => ({...p, info: e.target.value}))} className="h-8"/></TableHead>
                 <TableHead>
                     <div className="flex items-center justify-between">
                         <Input placeholder="Filtrar observação..." value={columnFilters['observation'] || ''} onChange={e => setColumnFilters(p => ({...p, observation: e.target.value}))} className="h-8"/>
@@ -210,6 +213,7 @@ export default function ObservationHistoryClient() {
                     <Link href={`/books/${log.book_id}`} className="hover:underline">{log.bookName}</Link>
                 </TableCell>
                 <TableCell>{log.userName}</TableCell>
+                <TableCell>{log.info}</TableCell>
                 <TableCell>
                     {log.observation}
                 </TableCell>

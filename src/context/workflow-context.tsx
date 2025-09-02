@@ -864,10 +864,18 @@ const addBookObservation = async (bookId: string, observation: string) => {
     if (!currentUser) return;
     await withMutation(async () => {
         try {
+            const book = rawBooks.find(b => b.id === bookId);
+            const bookStatus = statuses.find(s => s.id === book?.statusId)?.name;
+
             const response = await fetch('/api/book-observations', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ book_id: bookId, user_id: currentUser.id, observation }),
+                body: JSON.stringify({
+                    book_id: bookId,
+                    user_id: currentUser.id,
+                    observation,
+                    info: bookStatus ? `Status: ${bookStatus}` : 'Status: Unknown'
+                }),
             });
             if (!response.ok) throw new Error('Falha ao adicionar observação');
             const newObservation = await response.json();
@@ -2409,6 +2417,7 @@ export function useAppContext() {
 }
 
     
+
 
 
 
