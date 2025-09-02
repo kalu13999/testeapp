@@ -1,4 +1,5 @@
 
+
 export interface Permission {
   id: string;
   label: string;
@@ -21,6 +22,7 @@ export const ALL_PERMISSIONS: PermissionGroup[] = [
   {
     group: 'Gestão',
     permissions: [
+      { id: '/admin/overview', label: 'Visão Global do Admin' },
       { id: '/projects', label: 'Projetos' },
       { id: '/projects/[id]', label: 'Detalhes do Projeto' },
       { id: '/clients', label: 'Clientes' },
@@ -30,7 +32,9 @@ export const ALL_PERMISSIONS: PermissionGroup[] = [
       { id: '/admin/status-override', label: 'Substituição de Estado' },
       { id: '/admin/default-projects', label: 'Projeto Padrão do Utilizador' },
       { id: '/admin/reassign-user', label: 'Reatribuir Utilizador' },
+      { id: '/admin/distribution-hub', label: 'Centro de Distribuição' },
       { id: '/admin/observation-history', label: 'Histórico de Observações' },
+      { id: '/admin/general-configs', label: 'Configurações Gerais' },
     ],
   },
   {
@@ -99,6 +103,9 @@ export const permissionDescriptions: { [key: string]: string } = {
   '/admin/status-override': 'Permite substituir manualmente o estado de qualquer livro. (Permissão de alto nível)',
   '/admin/default-projects': 'Permite definir um projeto de login predefinido para outros utilizadores.',
   '/admin/reassign-user': 'Concede acesso para reatribuir uma tarefa de um utilizador para outro.',
+  '/admin/overview': 'Concede acesso a uma visão geral de alto nível de toda a atividade do sistema.',
+  '/admin/distribution-hub': 'Permite monitorizar e ajustar regras de distribuição de trabalho.',
+  '/admin/general-configs': 'Permite gerir configurações core como armazenamentos e scanners.',
   '/admin/observation-history': 'Permite visualizar o histórico completo de observações de todos os livros.',
   '/documents': 'Permite ver a lista completa de todos os livros em todos os projetos acessíveis.',
   '/books/[id]': 'Permite ver a página detalhada de um livro, incluindo as suas páginas.',

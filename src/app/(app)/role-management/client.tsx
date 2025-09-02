@@ -46,7 +46,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { RoleForm } from './role-form';
 import type { RoleData } from './role-form';
-import { ALL_PERMISSIONS, permissionDescriptions } from './permissions';
+import { ALL_PERMISSIONS, permissionDescriptions } from '@/lib/permissions';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function RoleManagementClient() {

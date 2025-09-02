@@ -18,7 +18,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { type PermissionGroup, permissionDescriptions } from "./permissions"
+import { type PermissionGroup, permissionDescriptions } from "@/lib/permissions"
 import { Info } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
