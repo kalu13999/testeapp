@@ -29,7 +29,7 @@ import { BookObservation } from "@/lib/data"
 const ITEMS_PER_PAGE = 20;
 
 export default function ObservationHistoryClient() {
-  const { bookObservations, users, books } = useAppContext();
+  const { bookObservations, users, books, selectedProjectId } = useAppContext();
   const [columnFilters, setColumnFilters] = React.useState<{ [key: string]: string }>({});
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([{ id: 'created_at', desc: true }]);
   const [currentPage, setCurrentPage] = React.useState(1);
@@ -42,7 +42,9 @@ export default function ObservationHistoryClient() {
         return {
             ...obs,
             userName: user?.name || 'Unknown User',
-            bookName: book?.name || 'Unknown Book'
+            bookName: book?.name || 'Unknown Book',
+            projectName: book?.projectName || 'Unknown Project',
+            projectId: book?.projectId,
         }
     })
   }, [bookObservations, users, books]);
@@ -64,6 +66,11 @@ export default function ObservationHistoryClient() {
 
   const sortedAndFilteredLogs = React.useMemo(() => {
     let filtered = enrichedObservations;
+    
+    if (selectedProjectId) {
+      filtered = filtered.filter(log => log.projectId === selectedProjectId);
+    }
+    
     Object.entries(columnFilters).forEach(([columnId, value]) => {
       if (value) {
         filtered = filtered.filter(log => {
@@ -84,7 +91,7 @@ export default function ObservationHistoryClient() {
       })
     }
     return filtered
-  }, [enrichedObservations, columnFilters, sorting])
+  }, [enrichedObservations, columnFilters, sorting, selectedProjectId])
   
   const downloadFile = (content: string, fileName: string, mimeType: string) => {
       const blob = new Blob([content], { type: mimeType });
@@ -176,12 +183,14 @@ export default function ObservationHistoryClient() {
             <TableHeader>
             <TableRow>
                 <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('created_at')}>Data {getSortIndicator('created_at')}</div></TableHead>
+                <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('projectName')}>Projeto {getSortIndicator('projectName')}</div></TableHead>
                 <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('bookName')}>Livro {getSortIndicator('bookName')}</div></TableHead>
                 <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('userName')}>Utilizador {getSortIndicator('userName')}</div></TableHead>
                 <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('observation')}>Observação {getSortIndicator('observation')}</div></TableHead>
             </TableRow>
             <TableRow>
                 <TableHead><Input placeholder="Filtrar data..." value={columnFilters['created_at'] || ''} onChange={e => setColumnFilters(p => ({...p, created_at: e.target.value}))} className="h-8"/></TableHead>
+                <TableHead><Input placeholder="Filtrar projeto..." value={columnFilters['projectName'] || ''} onChange={e => setColumnFilters(p => ({...p, projectName: e.target.value}))} className="h-8"/></TableHead>
                 <TableHead><Input placeholder="Filtrar livro..." value={columnFilters['bookName'] || ''} onChange={e => setColumnFilters(p => ({...p, bookName: e.target.value}))} className="h-8"/></TableHead>
                 <TableHead><Input placeholder="Filtrar utilizador..." value={columnFilters['userName'] || ''} onChange={e => setColumnFilters(p => ({...p, userName: e.target.value}))} className="h-8"/></TableHead>
                 <TableHead>
@@ -196,6 +205,7 @@ export default function ObservationHistoryClient() {
             {paginatedLogs.map(log => (
                 <TableRow key={log.id}>
                 <TableCell className="text-muted-foreground whitespace-nowrap">{new Date(log.created_at).toLocaleString()}</TableCell>
+                <TableCell>{log.projectName}</TableCell>
                 <TableCell className="font-medium">
                     <Link href={`/books/${log.book_id}`} className="hover:underline">{log.bookName}</Link>
                 </TableCell>
