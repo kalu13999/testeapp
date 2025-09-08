@@ -113,7 +113,7 @@ export function ProjectStorageAssociationForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Armazenamento</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value.toString()} disabled={isEditing}>
+                <Select onValueChange={(val) => field.onChange(Number(val))} value={field.value.toString()} disabled={isEditing}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecionar um armazenamento" />
