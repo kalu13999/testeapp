@@ -120,6 +120,6 @@ export async function POST(request: Request, { params }: { params: { id: string 
         console.error(`Error completing scan for book ${bookId}:`, error);
         return NextResponse.json({ error: 'Failed to complete scan' }, { status: 500 });
     } finally {
-        if (connection && connection.connection) releaseConnection(connection);
+        if (connection) releaseConnection(connection);
     }
 }

@@ -39,6 +39,6 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         console.error(`Error updating batch item ${id}:`, error);
         return NextResponse.json({ error: 'Failed to update batch item' }, { status: 500 });
     } finally {
-        if (connection && connection.connection) releaseConnection(connection);
+        if (connection) releaseConnection(connection);
     }
 }

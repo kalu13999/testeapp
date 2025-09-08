@@ -49,7 +49,7 @@ export async function POST(request: Request) {
         console.error("Error creating project_storage association:", error);
         return NextResponse.json({ error: 'Failed to create association' }, { status: 500 });
     } finally {
-        if (connection && connection.connection) releaseConnection(connection);
+        if (connection) releaseConnection(connection);
     }
 }
 
@@ -75,7 +75,7 @@ export async function PUT(request: Request) {
         console.error("Error updating project_storage association:", error);
         return NextResponse.json({ error: 'Failed to update association' }, { status: 500 });
     } finally {
-        if (connection && connection.connection) releaseConnection(connection);
+        if (connection) releaseConnection(connection);
     }
 }
 
@@ -97,6 +97,6 @@ export async function DELETE(request: Request) {
         console.error("Error deleting project_storage association:", error);
         return NextResponse.json({ error: 'Failed to delete association' }, { status: 500 });
     } finally {
-        if (connection && connection.connection) releaseConnection(connection);
+        if (connection) releaseConnection(connection);
     }
 }

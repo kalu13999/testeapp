@@ -34,6 +34,6 @@ export async function PUT(request: Request, { params }: { params: { projectId: s
         console.error(`Error updating workflow for project ${projectId}:`, error);
         return NextResponse.json({ error: 'Failed to update project workflow' }, { status: 500 });
     } finally {
-        if (connection && connection.connection) releaseConnection(connection);
+        if (connection) releaseConnection(connection);
     }
 }

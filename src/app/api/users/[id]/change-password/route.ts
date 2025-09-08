@@ -37,6 +37,6 @@ export async function POST(request: Request, { params }: { params: { id: string 
     console.error(`Error changing password for user ${id}:`, error);
     return NextResponse.json({ error: 'Failed to change password' }, { status: 500 });
   } finally {
-    if (connection && connection.connection) releaseConnection(connection);
+    if (connection) releaseConnection(connection);
   }
 }

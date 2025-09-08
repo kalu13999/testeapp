@@ -91,7 +91,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         console.error(`Error updating document ${id}:`, error);
         return NextResponse.json({ error: 'Failed to update document' }, { status: 500 });
     } finally {
-        if (connection && connection.connection) releaseConnection(connection);
+        if (connection) releaseConnection(connection);
     }
 }
 
@@ -108,6 +108,6 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
         console.error(`Error deleting document ${id}:`, error);
         return NextResponse.json({ error: 'Failed to delete document' }, { status: 500 });
     } finally {
-        if (connection && connection.connection) releaseConnection(connection);
+        if (connection) releaseConnection(connection);
     }
 }

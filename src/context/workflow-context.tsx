@@ -11,6 +11,7 @@ import { UserFormValues } from '@/app/(app)/users/user-form';
 import { StorageFormValues } from '@/app/(app)/admin/general-configs/storage-form';
 import { ScannerFormValues } from '@/app/(app)/admin/general-configs/scanner-form';
 import { format } from 'date-fns';
+import { log } from 'console';
 
 export type { EnrichedBook, RejectionTag };
 
@@ -136,6 +137,7 @@ type AppContextType = {
   handleAssignUser: (bookId: string, userId: string, role: 'scanner' | 'indexer' | 'qc') => void;
   reassignUser: (bookId: string, newUserId: string, role: 'scanner' | 'indexer' | 'qc') => void;
   handleStartTask: (bookId: string, role: 'scanner' | 'indexer' | 'qc') => void;
+  openAppValidateScan: (bookId: string) => void;
   handleCompleteTask: (bookId: string, stage: string) => void;
   handleCancelCompleteTask: (bookId: string, stage: string) => void;
   handleCancelTask: (bookId: string, currentStatus: string) => void;
@@ -1287,7 +1289,9 @@ const addBookObservation = async (bookId: string, observation: string) => {
     const statusId = statuses.find(s => s.name === newStatusName)?.id;
     if (!statusId) throw new Error(`Status ${newStatusName} not found.`);
     const response = await fetch(`/api/books/${bookId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ statusId, ...additionalUpdates }) });
-    if (!response.ok) throw new Error('Falha ao atualizar o estado do livro');
+    if (!response.ok) {
+      throw new Error(`Falha ao atualizar o estado do livro: ${response.status} ${response.statusText}`);
+    }
     return await response.json();
   }, [statuses]);
 
@@ -1339,8 +1343,14 @@ const addBookObservation = async (bookId: string, observation: string) => {
         return true;
     } catch (error: any) {
         console.error("[moveBookFolder] Network or fetch error:", error);
-        toast({ title: "Erro ao mover pasta", description: `Não foi possível mover a pasta de "${bookName}". Verifique os logs da API.`, variant: "destructive" });
-        logAction('System Alert', `Error moving folder for book "${bookName}". Reason: ${error.message}`, { userId: 'u_system' });
+        if (error.code === "ECONNREFUSED" || (error.message?.toLowerCase().includes("fetch") && error.message?.toLowerCase().includes("failed"))) {
+          const msgerr = "API externa não está acessível (contacte um administrador)."
+          toast({ title: "Erro ao mover pasta", description: `Não foi possível mover a pasta de "${bookName}". Verifique os logs.\n${msgerr}`, variant: "destructive" });
+          logAction('System Alert', `Error moving folder for book "${bookName}". Reason: ${error.message}. ${msgerr}`, { userId: 'u_system' });
+        } else {
+          toast({ title: "Erro ao mover pasta", description: `Não foi possível mover a pasta de "${bookName}". Verifique os logs.`, variant: "destructive" });
+          logAction('System Alert', `Error moving folder for book "${bookName}". Reason: ${error.message}`, { userId: 'u_system' }); 
+        }       
         return false;
     }
   }, [statuses, toast, logAction]);
@@ -1393,9 +1403,15 @@ const addBookObservation = async (bookId: string, observation: string) => {
       //tkoast({ title: "TIFFs Moved", description: `TIFF files for "${bookName}" successfully moved from ${fromStatusName} to ${toStatusName}.` });
       return true;
   } catch (error: any) {
+      if (error.code === "ECONNREFUSED" || (error.message?.toLowerCase().includes("fetch") && error.message?.toLowerCase().includes("failed"))) {
+        const msgerr = "API externa não está acessível (contacte um administrador)."
+        toast({ title: "Erro ao Mover TIFFs", description: `Não foi possível mover os TIFFs para "${bookName}". Verifique os logs.\n${msgerr}`, variant: "destructive" });
+        logAction('System Alert', `Error moving TIFFs for book "${bookName}". Reason: ${error.message}. ${msgerr}`, { userId: 'u_system' });
+      } else {
+        toast({ title: "Erro ao Mover TIFFs", description: `Não foi possível mover os TIFFs para "${bookName}". Verifique os logs.`, variant: "destructive" });
+        logAction('System Alert', `Error moving TIFFs for book "${bookName}". Reason: ${error.message}`, { userId: 'u_system' });
+      }
       console.error("[moveTifsBookFolder] Network or fetch error:", error);
-      toast({ title: "Erro ao Mover TIFFs", description: `Não foi possível mover os TIFFs para "${bookName}". Verifique os logs da API.`, variant: "destructive" });
-      logAction('System Alert', `Error moving TIFFs for book "${bookName}". Reason: ${error.message}`, { userId: 'u_system' });
       return false;
   }
 }, [statuses, toast, logAction]);
@@ -1431,7 +1447,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
   
   try {
       console.log(`[copyTifsBookFolder] Calling API to copy only TIFFs for "${bookName}".`);
-      const response = await fetch(`${apiUrl}/api/workflow/cpy-tifs`, {
+      const response = await fetch(`${apiUrl}/api/workflow/copy-tifs`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ bookName, fromStatus: fromStatusName, toStatus: toStatusName }),
@@ -1448,10 +1464,16 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
       console.log(`[copyTifsBookFolder] Successfully copied only TIFFs for ${bookName}.`);
       return true;
   } catch (error: any) {
-      console.error("[copyTifsBookFolder] Network or fetch error:", error);
-      toast({ title: "Erro ao Copiar TIFFs", description: `Não foi possível copiar os TIFFs para "${bookName}". Verifique os logs da API.`, variant: "destructive" });
-      logAction('System Alert', `Error copying TIFFs for book "${bookName}". Reason: ${error.message}`, { userId: 'u_system' });
-      return false;
+    if (error.code === "ECONNREFUSED" || (error.message?.toLowerCase().includes("fetch") && error.message?.toLowerCase().includes("failed"))) {
+        const msgerr = "API externa não está acessível (contacte um administrador)."
+        toast({ title: "Erro ao Copiar TIFFs", description: `Não foi possível copiar os TIFFs para "${bookName}". Verifique os logs.\n${msgerr}`, variant: "destructive" });
+        logAction('System Alert', `Error copying TIFFs for book "${bookName}". Reason: ${error.message}. ${msgerr}`, { userId: 'u_system' });
+    }else{
+        toast({ title: "Erro ao Copiar TIFFs", description: `Não foi possível copiar os TIFFs para "${bookName}". Verifique os logs.`, variant: "destructive" });
+        logAction('System Alert', `Error copying TIFFs for book "${bookName}". Reason: ${error.message}`, { userId: 'u_system' });
+    }      
+    console.error("[copyTifsBookFolder] Network or fetch error:", error);
+    return false;
   }
 }, [statuses, toast, logAction]);
 
@@ -1623,6 +1645,114 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
     });
   };
 
+const getLocalIP = async (): Promise<string> => {
+  let localIP = "IP não identificado";
+  try {
+    const res = await fetch("/api/getip");
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    const data = await res.json();
+    localIP = data.ip;
+    console.log("IP detectado via API:", localIP);
+  } catch (err) {
+    console.error("Erro ao buscar IP:", err);
+  }
+  return localIP;
+};
+
+
+const openAppValidateScan = (bookId: string) => {
+  
+  withMutation(async () => {
+    const book = rawBooks.find(b => b.id === bookId);
+    if (!book || !book.projectId || !currentUser) return;
+
+    // Faz o pedido à API getip
+    const localIP = await getLocalIP();
+/*apenas encontra o primeiro mesmo com varios
+    const scanner = scanners.find(s => s.ip === localIP);
+    if (!scanner) {
+      toast({
+        title: "Scanner Não Encontrado",
+        description: `Não foi possível encontrar o scanner para o seu IP atual ${localIP}.`,
+        variant: "destructive"
+      });
+      return;
+    }else{
+      toast({ title: `Scanner encontrado para o IP: ${localIP}, ${scanner.nome}, ${scanner.scanner_root_folder}` });
+    }*/
+    const matchingScanners = scanners.filter(s => s.ip === localIP);
+
+    if (matchingScanners.length === 0) {
+      toast({
+        title: "Scanner Não Encontrado",
+        description: `Não foi possível encontrar nenhum scanner para o seu IP atual ${localIP}.`,
+        variant: "destructive"
+      });
+      return;
+    } else {
+      const nomes = matchingScanners.map(s => s.nome).join(", ");
+      const paths = matchingScanners.map(s => s.scanner_root_folder).join(" | ");
+
+      toast({
+        title: `-- return;// -- retirar Scanners encontrados para o IP: ${localIP}`,
+        description: (
+              <div>
+                <p><strong>Nomes:</strong> {nomes}</p>
+                <p><strong>Diretórios:</strong> {paths}</p>
+              </div>
+            ),
+      });
+    }
+
+
+    return;// retirar
+    const scanner = matchingScanners[0]; // Pega o primeiro scanner correspondente
+    const baseArgs = { userId: currentUser!.id, bookId: book!.id };
+    const logMsg = "Scanning Validation";
+    const appProtocol = "rfs-check-app";
+    const bookDirectory = `${scanner!.scanner_root_folder}/${book!.name}`;
+
+    logAction(logMsg, `${logMsg} processo iniciado para o livro.`, { bookId });
+    toast({ title: logMsg });
+
+    if (appProtocol) {
+      openLocalApp(appProtocol, { ...baseArgs, bookDirectory });
+    }
+  });
+};
+  /*const openAppValidateScan = (bookId: string) => {
+    withMutation(async () => {
+        const book = rawBooks.find(b => b.id === bookId);
+        if (!book || !book.projectId || !currentUser) return;
+
+        const localIP = useLocalIP();
+        const scanner = scanners.find(s => s.ip === localIP);
+        if (!scanner) {
+            toast({ title: "Scanner Não Encontrado", description: `Não foi possível encontrar o scanner para o seu Ip atual ${localIP}.`, variant: "destructive" });
+            return;
+        }
+
+        let logMsg = '', updates: Partial<RawBook> = {}, appProtocol = '', bookDirectory = '';
+
+        const baseArgs = {
+            userId: currentUser.id,
+            bookId: book.id,
+        };
+
+        logMsg = 'Scanning Validation';
+        appProtocol = 'rfs-check-app';
+        bookDirectory = `${scanner.scanner_root_folder}/${book.name}`;
+
+
+        logAction(logMsg, `${logMsg} processo iniciado para o livro.`, { bookId });
+        toast({ title: logMsg });
+
+        if (appProtocol) {
+            openLocalApp(appProtocol, { ...baseArgs, bookDirectory });
+        }
+    });
+  };*/
+
   const handleStartTask = (bookId: string, role: 'scanner' | 'indexer' | 'qc') => {
     withMutation(async () => {
         const book = rawBooks.find(b => b.id === bookId);
@@ -1718,13 +1848,64 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
         'Indexing Started': { indexingEndTime: getDbSafeDate() },
         'Checking Started': { qcEndTime: getDbSafeDate() },
       };
-      
+
+      const book = rawBooks.find(b => b.id === bookId);
+      let msgfinal = ""
+      if(stage === 'Scanning Started'){
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_WORKFLOW_API_URL;
+            const localIP = await getLocalIP();
+
+            const response = await fetch(`${apiUrl}/api/scan/count-tifs`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bookName: book?.name, scanIp: localIP }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                const errorMessage = errorData.error || `Falha ao contar TIFs. API respondeu com estado ${response.status}`;
+                logAction('Count TIFs', `Failed to count tifs for book "${book?.name}". Reason: ${errorMessage}`, { userId: currentUser?.id });
+                toast({ title: "Erro ao Contar TIFs", description: errorMessage, variant: "destructive", duration: 5000 });
+                return;
+            }
+
+            const data = await response.json();
+
+            if (book?.id && data.tifCount !== undefined) {
+              await updateBook(book.id, { expectedDocuments: data.tifCount });
+            }
+
+            logAction('Count TIFs', `Successfully counted ${data.tifCount} TIFs for book "${data.bookName}".`, { bookId, userId: currentUser?.id });
+            msgfinal = `Todos os TIFs para "${data.bookName}" foram contados com sucesso. Total: ${data.tifCount}.`
+
+
+        } catch (error: any) {
+          if (error.code === "ECONNREFUSED" || (error.message?.toLowerCase().includes("fetch") && error.message?.toLowerCase().includes("failed"))) {
+            const msgerr = "API externa não está acessível (contacte um administrador)."
+            logAction('Count TIFs', `Error counting TIFs for book "${book?.name}". Reason: ${error.message}. ${msgerr}`, { bookId, userId: currentUser?.id });
+            toast({ title: "Erro ao contar TIFs", description: `Não foi possível contar TIFs de "${book?.name}". Verifique os logs.\n${msgerr}`, variant: "destructive" });
+          } else {
+            logAction('Count TIFs', `Error counting TIFs for book "${book?.name}". Reason: ${error.message}.`, { bookId, userId: currentUser?.id });
+            toast({ title: "Erro ao contar TIFs", description: `Não foi possível contar TIFs de "${book?.name}". Verifique os logs.`, variant: "destructive" });
+          }
+            return;
+        }
+
+      }
+
       const update = updateFields[stage];
       if (update) {
         await updateBook(bookId, update);
         const book = rawBooks.find(b => b.id === bookId);
         logAction('Task Completed', `Task "${stage}" completed for book "${book?.name}".`, { bookId });
-        toast({ title: 'Tarefa Marcada como Completa' });
+        if(msgfinal === ""){
+          toast({ title: 'Tarefa Completa' });
+        }
+      }
+
+      if(msgfinal !== ""){
+        toast({ title: "Tarefa Completa", description: msgfinal });
       }
     });
   };
@@ -2302,12 +2483,44 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
             return;
         }
 
+        
+
+        // ip da máquina apenas
+        const localIP = await getLocalIP();        
+        const accessibleStorageIds = storages
+        .filter(s => s.ip === localIP)
+        .map(s => s.id.toString());
+
+        if (accessibleStorageIds.length === 0) {
+            toast({ title: "Erro de Armazenamento", description: "Nenhum armazenamento acessível encontrado para o IP atual.", variant: "destructive" });
+            return;
+        }
+
         let bookToAssign = enrichedBooks.find(b => 
+            b.status === previousStageStatus &&
+            !b[workflowConfig.assigneeRole! + 'UserId' as keyof EnrichedBook] &&
+            (!selectedProjectId || b.projectId === selectedProjectId) &&
+            b.storageId && accessibleStorageIds.includes(b.storageId.toString()) // <-- NOVO FILTRO
+        );
+
+        /*
+        let bookToAssign1 = enrichedBooks.find(b => 
             b.status === previousStageStatus &&
             !b[workflowConfig.assigneeRole! + 'UserId' as keyof EnrichedBook] && // Check if not already assigned for the target role
             (!selectedProjectId || b.projectId === selectedProjectId)
         );
 
+        toast({
+        title: "Books encontrados",
+        description: (
+          <pre>
+             {`storages:\n${JSON.stringify(accessibleStorageIds, null, 2)}}`}
+            {`booksToAssign:\n${JSON.stringify(bookToAssign, null, 2)}\n\nbooksToAssign1:\n${JSON.stringify(bookToAssign1, null, 2)}`}
+          </pre>
+        ),
+        variant: "default",
+      });
+ */
         if (!bookToAssign) {
             toast({ title: "Sem Tarefas Disponíveis", description: "Não há livros não atribuídos na fase anterior.", variant: "default" });
             return;
@@ -2386,6 +2599,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
     addPageToBook, deletePageFromBook,
     updateDocumentFlag, startProcessingBatch, failureProcessingBatch, completeProcessingBatch, handleSendBatchToNextStage,
     handleAssignUser, reassignUser, handleStartTask, handleCancelTask,
+    openAppValidateScan,
     handleAdminStatusOverride, handleCreateDeliveryBatch, finalizeDeliveryBatch,
     distributeValidationSample,
     handleCompleteTask,handleCancelCompleteTask, handlePullNextTask,

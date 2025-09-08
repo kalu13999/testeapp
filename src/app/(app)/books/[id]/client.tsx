@@ -203,9 +203,12 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
                                         src={page.imageUrl || "https://placehold.co/400x550.png"}
                                         alt={`Preview of ${page.name}`}
                                         data-ai-hint="document page"
-                                        width={400}
-                                        height={550}
-                                        className="aspect-[4/5.5] object-cover w-full h-full"
+                                        //width={400}
+                                        //height={550}
+                                        //className="aspect-[4/5.5] object-cover w-full h-full"
+                                        className="object-contain w-full h-full"
+                                        unoptimized
+                                        fill
                                     />
                                     <TooltipProvider>
                                         <Tooltip>

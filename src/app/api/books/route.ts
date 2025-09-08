@@ -104,6 +104,6 @@ export async function POST(request: Request) {
         console.error("Error creating book(s):", error);
         return NextResponse.json({ error: 'Failed to create book(s)' }, { status: 500 });
     } finally {
-        if (connection && connection.connection) releaseConnection(connection);
+        if (connection) releaseConnection(connection);
     }
 }

@@ -33,7 +33,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
 }
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
-  const { id } = params;
+  const { id } = await params;
   let connection: PoolConnection | null = null;
   try {
     const userData = await request.json();
@@ -92,12 +92,12 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     console.error(`Error updating user ${id}:`, error);
     return NextResponse.json({ error: 'Failed to update user' }, { status: 500 });
   } finally {
-    if (connection && connection.connection) releaseConnection(connection);
+    if (connection) releaseConnection(connection);
   }
 }
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
-    const { id } = params;
+    const { id } = await params;
     let connection: PoolConnection | null = null;
     try {
         const { status } = await request.json();
@@ -123,7 +123,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
 
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
-  const { id } = params;
+  const { id } = await params;
   let connection: PoolConnection | null = null;
   try {
     connection = await getConnection();

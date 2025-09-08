@@ -33,7 +33,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         console.error(`Error updating scanner ${id}:`, error);
         return NextResponse.json({ error: 'Failed to update scanner' }, { status: 500 });
     } finally {
-        if (connection && connection.connection) releaseConnection(connection);
+        if (connection) releaseConnection(connection);
     }
 }
 
@@ -50,6 +50,6 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
         console.error(`Error deleting scanner ${id}:`, error);
         return NextResponse.json({ error: 'Failed to delete scanner' }, { status: 500 });
     } finally {
-        if (connection && connection.connection) releaseConnection(connection);
+        if (connection) releaseConnection(connection);
     }
 }

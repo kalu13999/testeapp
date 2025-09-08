@@ -48,6 +48,6 @@ export async function POST(request: Request) {
         console.error("Error distributing delivery batch:", error);
         return NextResponse.json({ error: 'Failed to distribute delivery batch' }, { status: 500 });
     } finally {
-        if (connection && connection.connection) releaseConnection(connection);
+        if (connection) releaseConnection(connection);
     }
 }

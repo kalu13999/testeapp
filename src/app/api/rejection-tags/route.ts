@@ -43,6 +43,6 @@ export async function POST(request: Request) {
         console.error("Error creating rejection_tag:", error);
         return NextResponse.json({ error: 'Failed to create rejection_tag' }, { status: 500 });
     } finally {
-        if (connection && connection.connection) releaseConnection(connection);
+        if (connection) releaseConnection(connection);
     }
 }

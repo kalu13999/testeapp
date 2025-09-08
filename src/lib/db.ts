@@ -13,8 +13,13 @@ const dbConfig = {
     // with cloud databases that have self-signed certificates.
     // For production, you should use a proper CA certificate.
     rejectUnauthorized: false,
-  }
-};
+  },
+    waitForConnections: true,
+    connectionLimit: 100,
+    queueLimit: 0,
+    enableKeepAlive: true,   // mantém a conexão ativa
+    keepAliveInitialDelay: 0 // manda o primeiro ping imediatamente
+  };
 
 const pool = mysql.createPool(dbConfig);
 
@@ -32,6 +37,10 @@ export function releaseConnection(connection: PoolConnection) {
   connection.release();
 }
 
+(pool as any).on('enqueue', () => {
+  console.warn('A query is waiting for an available connection slot');
+});
+/*
 pool.on('error', err => {
   console.error('Database pool error:', err);
-});
+});*/

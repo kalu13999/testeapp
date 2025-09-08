@@ -146,6 +146,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     books, documents, handleMoveBookToNextStage, 
     currentUser, users, permissions,
     handleStartTask, handleAssignUser,handleCancelTask,
+    openAppValidateScan,
     selectedProjectId, projectWorkflows, handleConfirmReception, getNextEnabledStage,
     handleSendToStorage, processingBookIds,
     handleFinalize, handleMarkAsCorrected, handleResubmit,
@@ -846,11 +847,18 @@ const handleMainAction = (book: EnrichedBook) => {
         <TableCell>
           <div className="flex items-center justify-end gap-2">
             {isCancelable && hasEndTime ? (
-              <Badge variant="default" className="bg-green-600 hover:bg-green-600/90">
-                <Check className="mr-2 h-4 w-4" />
-                Tarefa Completa
-              </Badge>
+                <Badge variant="default" className="bg-green-600 hover:bg-green-600/90">
+                  <Check className="mr-2 h-4 w-4" />
+                  Tarefa Completa
+                </Badge>
             ) : isCancelable ? (
+              <>
+              {stage === 'scanning-started' && (
+                    <Button size="sm" variant="secondary" onClick={() => openAppValidateScan(item.id)}>
+                      <Check className="mr-2 h-4 w-4" />
+                        Validar
+                    </Button>
+                  )}
               <Button
                 size="sm"
                 variant="secondary"
@@ -863,10 +871,10 @@ const handleMainAction = (book: EnrichedBook) => {
                 }
               >
                 <Check className="mr-2 h-4 w-4" />
-                Completar Tarefa
+                Concluir
               </Button>
-            ) : null}
-
+              </>
+            )  : null}
             {(canViewAll || !['scanning-started', 'indexing-started', 'checking-started'].includes(stage)) && actionDetails && (
               <Button size="sm" onClick={() => handleActionClick(item)} disabled={actionDetails.disabled}>
                   <actionDetails.icon className={isProcessing ? "mr-2 h-4 w-4 animate-spin" : "mr-2 h-4 w-4"} />
@@ -896,13 +904,13 @@ const handleMainAction = (book: EnrichedBook) => {
                         { hasEndTime && (
                            <>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onSelect={() => openConfirmationDialog({
+                          <DropdownMenuItem className="text-yellow-600 hover:bg-yellow-100" onSelect={() => openConfirmationDialog({
                                   title: `Marcar "${item.name}" como Não Completo?`,
                                   description: "Isto irá desfazer a conclusão desta tarefa, marcando-a como não completa.",
                                   onConfirm: () => handleCancelCompleteTask(item.id, item.status)
                               })}>
                               <RotateCcw className="mr-2 h-4 w-4" />
-                              Marcar como Não Completo
+                              Marcar Não Completo
                           </DropdownMenuItem>
                           </>
                         )}
@@ -913,9 +921,9 @@ const handleMainAction = (book: EnrichedBook) => {
                                 title: `Cancelar tarefa para "${item.name}"?`,
                                 description: "Isto irá devolver o livro à etapa anterior.",
                                 onConfirm: () => handleCancelTask(item.id, item.status)
-                            })} className="text-destructive">
+                            })} className="text-destructive hover:bg-red-100">
                             <Undo2 className="mr-2 h-4 w-4" />
-                            Cancelar Tarefa
+                            Reverter para Pendente
                         </DropdownMenuItem>
                        
                       </>

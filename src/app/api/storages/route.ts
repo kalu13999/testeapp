@@ -45,6 +45,6 @@ export async function POST(request: Request) {
         console.error("Error creating storage:", error);
         return NextResponse.json({ error: 'Failed to create storage' }, { status: 500 });
     } finally {
-        if (connection && connection.connection) releaseConnection(connection);
+        if (connection) releaseConnection(connection);
     }
 }

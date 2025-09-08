@@ -64,7 +64,7 @@ export async function POST(request: Request) {
         console.error("Error updating permissions:", error);
         return NextResponse.json({ error: 'Failed to update permissions' }, { status: 500 });
     } finally {
-        if (connection && connection.connection) releaseConnection(connection);
+        if (connection) releaseConnection(connection);
     }
 }
 
@@ -93,6 +93,6 @@ export async function DELETE(request: Request) {
         console.error("Error deleting role:", error);
         return NextResponse.json({ error: 'Failed to delete role' }, { status: 500 });
     } finally {
-        if (connection && connection.connection) releaseConnection(connection);
+        if (connection) releaseConnection(connection);
     }
 }

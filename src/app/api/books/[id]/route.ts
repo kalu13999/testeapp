@@ -55,7 +55,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         console.error(`Error updating book ${id}:`, error);
         return NextResponse.json({ error: 'Failed to update book' }, { status: 500 });
     } finally {
-        if (connection && connection.connection) releaseConnection(connection);
+        if (connection) releaseConnection(connection);
     }
 }
 
@@ -84,6 +84,6 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
         console.error(`Error deleting book ${id}:`, error);
         return NextResponse.json({ error: 'Failed to delete book' }, { status: 500 });
     } finally {
-        if (connection && connection.connection) releaseConnection(connection);
+        if (connection) releaseConnection(connection);
     }
 }

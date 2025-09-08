@@ -67,6 +67,6 @@ export async function POST(request: Request) {
         console.error("Error creating project:", error);
         return NextResponse.json({ error: 'Failed to create project' }, { status: 500 });
     } finally {
-        if (connection && connection.connection) releaseConnection(connection);
+        if (connection) releaseConnection(connection);
     }
 }
