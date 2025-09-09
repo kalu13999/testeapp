@@ -171,7 +171,7 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
                         <CardContent>
                             <div className="flex items-center justify-center gap-4">
                                 <Button asChild variant="outline" size="icon" className="h-10 w-10 rounded-full" disabled={!prevPage}>
-                                    <Link href={prevPage ? `/documents/${prevPage.id}` : '#'}>
+                                    <Link href={prevPage ? `/documents/${prevPage.id}` : '#'} scroll={false}>
                                         <ArrowLeft className="h-5 w-5" />
                                         <span className="sr-only">Previous Page</span>
                                     </Link>
@@ -190,7 +190,7 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
                                     </div>
                                 </div>
                                 <Button asChild variant="outline" size="icon" className="h-10 w-10 rounded-full" disabled={!nextPage}>
-                                    <Link href={nextPage ? `/documents/${nextPage.id}` : '#'}>
+                                    <Link href={nextPage ? `/documents/${nextPage.id}` : '#'} scroll={false}>
                                         <ArrowRight className="h-5 w-5" />
                                         <span className="sr-only">Next Page</span>
                                     </Link>
