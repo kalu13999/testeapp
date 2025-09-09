@@ -3,6 +3,7 @@
 "use client";
 
 import React from 'react';
+import Link from "next/link";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,6 @@ import type { AppDocument, EnrichedAuditLog } from '@/context/workflow-context';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
-import Link from "next/link";
 
 
 interface DocumentDetailClientProps {
@@ -160,40 +160,38 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
             <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-6">
                 <div className="md:col-span-2 lg:col-span-3 space-y-6">
                     <Card>
-                        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                            <div className="flex-1">
-                                <CardTitle className="font-headline flex items-center gap-2">
-                                    {CurrentFlagIcon && <CurrentFlagIcon className={`h-6 w-6 ${flagConfig[document.flag!].color}`} />}
-                                    {document.name}
-                                </CardTitle>
-                                <CardDescription>Document ID: {document.id}</CardDescription>
-                            </div>
-                             <div className="flex items-center gap-2 w-full sm:w-auto">
-                                <Button asChild variant="outline" size="sm" className="flex-1" disabled={!prevPage}>
-                                    <Link href={prevPage ? `/documents/${prevPage.id}` : '#'}>
-                                        <ArrowLeft className="mr-2 h-4 w-4" />
-                                        Anterior
-                                    </Link>
-                                </Button>
-                                <Button asChild variant="outline" size="sm" className="flex-1" disabled={!nextPage}>
-                                    <Link href={nextPage ? `/documents/${nextPage.id}` : '#'}>
-                                        Seguinte
-                                        <ArrowRight className="ml-2 h-4 w-4" />
-                                    </Link>
-                                </Button>
-                            </div>
+                        <CardHeader>
+                            <CardTitle className="font-headline flex items-center gap-2">
+                                {CurrentFlagIcon && <CurrentFlagIcon className={`h-6 w-6 ${flagConfig[document.flag!].color}`} />}
+                                {document.name}
+                            </CardTitle>
+                            <CardDescription>Document ID: {document.id}</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="bg-muted rounded-lg aspect-[3/4] overflow-hidden flex items-center justify-center">
-                                <Image
-                                    src={document.imageUrl || 'https://placehold.co/1200x1600.png'}
-                                    alt="Document placeholder"
-                                    data-ai-hint="document scan"
-                                    width={1200}
-                                    height={1600}
-                                    className="object-contain w-full h-full p-4"
-                                    unoptimized
-                                />
+                            <div className="relative group">
+                                <div className="bg-muted rounded-lg aspect-[3/4] overflow-hidden flex items-center justify-center">
+                                    <Image
+                                        src={document.imageUrl || 'https://placehold.co/1200x1600.png'}
+                                        alt="Document placeholder"
+                                        data-ai-hint="document scan"
+                                        width={1200}
+                                        height={1600}
+                                        className="object-contain w-full h-full p-4"
+                                        unoptimized
+                                    />
+                                </div>
+                                <Button asChild variant="outline" size="icon" className="absolute left-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full opacity-50 group-hover:opacity-100 transition-opacity" disabled={!prevPage}>
+                                    <Link href={prevPage ? `/documents/${prevPage.id}` : '#'}>
+                                        <ArrowLeft className="h-5 w-5" />
+                                        <span className="sr-only">Previous Page</span>
+                                    </Link>
+                                </Button>
+                                <Button asChild variant="outline" size="icon" className="absolute right-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full opacity-50 group-hover:opacity-100 transition-opacity" disabled={!nextPage}>
+                                    <Link href={nextPage ? `/documents/${nextPage.id}` : '#'}>
+                                        <ArrowRight className="h-5 w-5" />
+                                        <span className="sr-only">Next Page</span>
+                                    </Link>
+                                </Button>
                             </div>
                         </CardContent>
                     </Card>
