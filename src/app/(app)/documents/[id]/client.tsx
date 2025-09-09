@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React from 'react';
@@ -9,11 +10,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { useAppContext } from '@/context/workflow-context';
-import { ShieldAlert, AlertTriangle, InfoIcon, CircleX, History, MessageSquareQuote, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
+import { ShieldAlert, AlertTriangle, InfoIcon, CircleX, History, MessageSquareQuote, ArrowUp, ArrowDown, ChevronsUpDown, ArrowLeft, ArrowRight } from "lucide-react";
 import type { AppDocument, EnrichedAuditLog } from '@/context/workflow-context';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
+import Link from "next/link";
+
+
+interface DocumentDetailClientProps {
+  docId: string;
+}
 
 const flagConfig = {
     error: { icon: ShieldAlert, color: "text-destructive", label: "Error" },
@@ -21,7 +28,7 @@ const flagConfig = {
     info: { icon: InfoIcon, color: "text-primary", label: "Info" },
 };
 
-export default function DocumentDetailClient({ docId }: { docId: string }) {
+export default function DocumentDetailClient({ docId }: DocumentDetailClientProps) {
     const { documents, auditLogs, updateDocumentFlag } = useAppContext();
     const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
         { id: 'date', desc: true }
@@ -36,6 +43,29 @@ export default function DocumentDetailClient({ docId }: { docId: string }) {
         flag: AppDocument['flag'];
         comment: string;
     }>({ open: false, docId: null, docName: null, flag: null, comment: '' });
+
+    // Navigation Logic
+    const { prevPage, nextPage } = React.useMemo(() => {
+        if (!document || !document.bookId) return { prevPage: null, nextPage: null };
+
+        const getPageNum = (name: string): number => {
+            const match = name.match(/ - Page (\d+)/);
+            return match ? parseInt(match[1], 10) : 9999;
+        };
+
+        const bookPages = documents
+            .filter(d => d.bookId === document.bookId)
+            .sort((a, b) => getPageNum(a.name) - getPageNum(b.name));
+
+        const currentIndex = bookPages.findIndex(p => p.id === docId);
+
+        if (currentIndex === -1) return { prevPage: null, nextPage: null };
+
+        const prevPage = currentIndex > 0 ? bookPages[currentIndex - 1] : null;
+        const nextPage = currentIndex < bookPages.length - 1 ? bookPages[currentIndex + 1] : null;
+
+        return { prevPage, nextPage };
+    }, [docId, document, documents]);
     
     const documentAuditLogs = React.useMemo(() => {
         let logs = auditLogs.filter(log => log.documentId === docId);
@@ -130,14 +160,28 @@ export default function DocumentDetailClient({ docId }: { docId: string }) {
             <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-6">
                 <div className="md:col-span-2 lg:col-span-3 space-y-6">
                     <Card>
-                        <CardHeader className="flex flex-row items-center justify-between">
-                        <div>
-                            <CardTitle className="font-headline flex items-center gap-2">
-                                {CurrentFlagIcon && <CurrentFlagIcon className={`h-6 w-6 ${flagConfig[document.flag!].color}`} />}
-                                {document.name}
-                            </CardTitle>
-                            <CardDescription>Document ID: {document.id}</CardDescription>
-                        </div>
+                        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div className="flex-1">
+                                <CardTitle className="font-headline flex items-center gap-2">
+                                    {CurrentFlagIcon && <CurrentFlagIcon className={`h-6 w-6 ${flagConfig[document.flag!].color}`} />}
+                                    {document.name}
+                                </CardTitle>
+                                <CardDescription>Document ID: {document.id}</CardDescription>
+                            </div>
+                             <div className="flex items-center gap-2 w-full sm:w-auto">
+                                <Button asChild variant="outline" size="sm" className="flex-1" disabled={!prevPage}>
+                                    <Link href={prevPage ? `/documents/${prevPage.id}` : '#'}>
+                                        <ArrowLeft className="mr-2 h-4 w-4" />
+                                        Anterior
+                                    </Link>
+                                </Button>
+                                <Button asChild variant="outline" size="sm" className="flex-1" disabled={!nextPage}>
+                                    <Link href={nextPage ? `/documents/${nextPage.id}` : '#'}>
+                                        Seguinte
+                                        <ArrowRight className="ml-2 h-4 w-4" />
+                                    </Link>
+                                </Button>
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <div className="bg-muted rounded-lg aspect-[3/4] overflow-hidden flex items-center justify-center">
@@ -148,9 +192,7 @@ export default function DocumentDetailClient({ docId }: { docId: string }) {
                                     width={1200}
                                     height={1600}
                                     className="object-contain w-full h-full p-4"
-                                    //className="object-contain w-full h-full"
                                     unoptimized
-                                    //fill
                                 />
                             </div>
                         </CardContent>
