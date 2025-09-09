@@ -218,7 +218,14 @@ export default function DeliveryValidationClient({ config }: DeliveryValidationC
                                                     <Link href={`/documents/${page.id}`} className="block">
                                                         <Card className="overflow-hidden hover:shadow-lg transition-shadow">
                                                             <CardContent className="p-0">
-                                                                <Image src={page.imageUrl || "https://placehold.co/400x550.png"} alt={`Preview of ${page.name}`} data-ai-hint="document page" width={400} height={550} className="aspect-[4/5.5] object-cover w-full h-full" />
+                                                                <Image src={page.imageUrl || "https://placehold.co/400x550.png"} alt={`Preview of ${page.name}`} data-ai-hint="document page" 
+                                                                  width={400} 
+                                                                  height={550} 
+                                                                  className="aspect-[4/5.5] object-cover w-full h-full" 
+                                                                  //className="object-contain w-full h-full"
+                                                                  unoptimized
+                                                                  //fill
+                                                                />
                                                             </CardContent>
                                                             <CardFooter className="p-2 flex-col items-start gap-1">
                                                                 <p className="text-xs font-medium break-words">{page.name}</p>

@@ -284,6 +284,7 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
                                                 width={400}
                                                 height={550}
                                                 className="aspect-[4/5.5] object-cover w-full h-full"
+                                                unoptimized
                                             />
                                              <TooltipProvider>
                                                 <Tooltip>

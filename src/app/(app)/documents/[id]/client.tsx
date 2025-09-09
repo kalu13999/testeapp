@@ -142,12 +142,15 @@ export default function DocumentDetailClient({ docId }: { docId: string }) {
                         <CardContent>
                             <div className="bg-muted rounded-lg aspect-[3/4] overflow-hidden flex items-center justify-center">
                                 <Image
-                                    src={document.imageUrl ? document.imageUrl.replace('/400x550/', '/1200x1600/') : 'https://placehold.co/1200x1600.png'}
+                                    src={document.imageUrl || 'https://placehold.co/1200x1600.png'}
                                     alt="Document placeholder"
                                     data-ai-hint="document scan"
                                     width={1200}
                                     height={1600}
                                     className="object-contain w-full h-full p-4"
+                                    //className="object-contain w-full h-full"
+                                    unoptimized
+                                    //fill
                                 />
                             </div>
                         </CardContent>

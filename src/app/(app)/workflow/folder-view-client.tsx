@@ -1021,6 +1021,9 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                                                   width={400}
                                                   height={550}
                                                   className="aspect-[4/5.5] object-cover w-full h-full"
+                                                  //className="object-contain w-full h-full"
+                                                  unoptimized
+                                                  //fill
                                               />
                                               <TooltipProvider>
                                                 <Tooltip>
