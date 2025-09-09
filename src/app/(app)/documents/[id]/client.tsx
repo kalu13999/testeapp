@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { useAppContext } from '@/context/workflow-context';
-import { ShieldAlert, AlertTriangle, InfoIcon, CircleX, History, MessageSquareQuote, ArrowUp, ArrowDown, ChevronsUpDown, ArrowLeft, ArrowRight, ZoomIn } from "lucide-react";
+import { ShieldAlert, AlertTriangle, InfoIcon, CircleX, History, MessageSquarePlus, ArrowLeft, ArrowRight, ZoomIn } from "lucide-react";
 import type { AppDocument, EnrichedAuditLog } from '@/context/workflow-context';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -37,22 +37,8 @@ const DetailItem = ({ label, value }: { label: string; value: React.ReactNode })
   </div>
 );
 
-const StageDetailItem = ({ stage, user, startTime, endTime }: { stage: string, user?: string, startTime?: string, endTime?: string | null}) => (
-  <div>
-    <p className="text-sm font-medium">{stage}</p>
-    <div className="text-sm text-muted-foreground pl-4 border-l-2 ml-2 py-1 space-y-1">
-      <p>User: <span className="font-semibold">{user || '—'}</span></p>
-      <p>Start: <span className="font-semibold">{startTime ? new Date(startTime).toLocaleString() : '—'}</span></p>
-      <p>End: <span className="font-semibold">{endTime ? new Date(endTime).toLocaleString() : '—'}</span></p>
-    </div>
-  </div>
-);
-
 export default function DocumentDetailClient({ docId }: DocumentDetailClientProps) {
   const { documents, auditLogs, updateDocumentFlag, addBookObservation } = useAppContext();
-  const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
-    { id: 'date', desc: true }
-  ]);
   const [zoom, setZoom] = React.useState(1);
   const [loupeActive, setLoupeActive] = React.useState(false);
   const [mousePosition, setMousePosition] = React.useState({ x: 0, y: 0 });
@@ -113,52 +99,8 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
   };
     
   const documentAuditLogs = React.useMemo(() => {
-    let logs = auditLogs.filter(log => log.documentId === docId);
-    if (sorting.length > 0) {
-      logs.sort((a, b) => {
-        for (const s of sorting) {
-          const key = s.id as keyof EnrichedAuditLog;
-          const valA = a[key];
-          const valB = b[key];
-          let result = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' });
-          if (result !== 0) return s.desc ? -result : result;
-        }
-        return 0;
-      });
-    }
-    return logs;
-  }, [auditLogs, docId, sorting]);
-
-  const handleSort = (columnId: string, isShift: boolean) => {
-    setSorting( currentSorting => {
-        const existingSortIndex = currentSorting.findIndex(s => s.id === columnId);
-
-        if (isShift) {
-            let newSorting = [...currentSorting];
-            if (existingSortIndex > -1) {
-                if (newSorting[existingSortIndex].desc) { newSorting.splice(existingSortIndex, 1); } 
-                else { newSorting[existingSortIndex].desc = true; }
-            } else {
-                newSorting.push({ id: columnId, desc: false });
-            }
-            return newSorting;
-        } else {
-            if (currentSorting.length === 1 && currentSorting[0].id === columnId) {
-                if (currentSorting[0].desc) { return []; }
-                return [{ id: columnId, desc: true }];
-            }
-            return [{ id: columnId, desc: false }];
-        }
-    });
-  };
-
-  const getSortIndicator = (columnId: string) => {
-    const sortIndex = sorting.findIndex(s => s.id === columnId);
-    if (sortIndex === -1) return <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-0 group-hover:opacity-50" />;
-    const sort = sorting[sortIndex];
-    const icon = sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />;
-    return <div className="flex items-center gap-1">{icon}{sorting.length > 1 && (<span className="text-xs font-bold text-muted-foreground">{sortIndex + 1}</span>)}</div>;
-  }
+    return auditLogs.filter(log => log.documentId === docId);
+  }, [auditLogs, docId]);
   
   const [isObservationModalOpen, setIsObservationModalOpen] = React.useState(false);
   const [newObservation, setNewObservation] = React.useState('');
@@ -295,7 +237,16 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
               </div>
               <Separator orientation="vertical" className="h-6 mx-2" />
               <div className="flex items-center space-x-2">
-                <Switch id="loupe-mode" checked={loupeActive} onCheckedChange={setLoupeActive}/>
+                <Switch 
+                    id="loupe-mode" 
+                    checked={loupeActive} 
+                    onCheckedChange={(checked) => {
+                        setLoupeActive(checked);
+                        if (checked) {
+                            setZoom(1);
+                        }
+                    }}
+                />
                 <Label htmlFor="loupe-mode">Magnifier</Label>
               </div>
               {loupeActive && (
@@ -324,10 +275,10 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('action', e.shiftKey)}>Action {getSortIndicator('action')}</div></TableHead>
+                      <TableHead>Action</TableHead>
                       <TableHead>Details</TableHead>
-                      <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('user', e.shiftKey)}>User {getSortIndicator('user')}</div></TableHead>
-                      <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('date', e.shiftKey)}>Date {getSortIndicator('date')}</div></TableHead>
+                      <TableHead>User</TableHead>
+                      <TableHead>Date</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -375,7 +326,7 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
           {document.flag && document.flagComment && (
             <Card>
               <CardHeader className="flex-row items-center gap-2 pb-2">
-                <MessageSquareQuote className="h-5 w-5"/>
+                <MessageSquarePlus className="h-5 w-5"/>
                 <CardTitle className="font-headline text-base">Flag Comment</CardTitle>
               </CardHeader>
               <CardContent>
@@ -445,3 +396,4 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
     </>
   );
 }
+
