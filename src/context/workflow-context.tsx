@@ -2449,8 +2449,80 @@ const openAppValidateScan = (bookId: string) => {
       }
     });
   };
-  
-  const handlePullNextTask = React.useCallback(async (currentStageKey: string, userIdToAssign?: string) => {
+    const handlePullNextTask = React.useCallback(async (currentStageKey: string, userIdToAssign?: string) => {
+    await withMutation(async () => {
+        const assigneeId = userIdToAssign || currentUser?.id;
+        if (!assigneeId) {
+            toast({ title: "Erro", description: "Nenhum utilizador especificado para atribuição.", variant: "destructive" });
+            return;
+        }
+
+        const user = users.find(u => u.id === assigneeId);
+        if (!user) {
+            toast({ title: "Erro", description: "Utilizador atribuído não encontrado.", variant: "destructive" });
+            return;
+        }
+        
+        const workflowConfig = STAGE_CONFIG[currentStageKey];
+        if (!workflowConfig || !workflowConfig.assigneeRole) {
+            toast({ title: "Erro de Workflow", description: "Fase inválida para puxar tarefas.", variant: "destructive" });
+            return;
+        }
+        
+        const localIP = await getLocalIP();        
+        const accessibleStorageIds = storages
+            .filter(s => s.ip === localIP)
+            .map(s => String(s.id));
+
+        if (accessibleStorageIds.length === 0 && (currentStageKey === 'to-indexing' || currentStageKey === 'to-checking')) {
+            toast({ title: "Erro de Armazenamento", description: "Nenhum armazenamento acessível encontrado para o IP atual. Não é possível puxar tarefas de Indexação ou QC.", variant: "destructive" });
+            return;
+        }
+        
+        // --- INÍCIO DA LÓGICA MODIFICADA ---
+
+        // 1. Determinar a lista de projetos a verificar
+        const projectsToScan = selectedProjectId ? rawProjects.filter(p => p.id === selectedProjectId) : accessibleProjectsForUser;
+
+        for (const project of projectsToScan) {
+            const projectWorkflow = projectWorkflows[project.id] || [];
+            const currentStageIndexInProjectWorkflow = projectWorkflow.indexOf(currentStageKey);
+
+            if (currentStageIndexInProjectWorkflow > 0) {
+                // 2. Encontrar o estágio anterior VÁLIDO dentro do workflow deste projeto
+                const previousStageKey = projectWorkflow[currentStageIndexInProjectWorkflow - 1];
+                const previousStageStatus = STAGE_CONFIG[previousStageKey]?.dataStatus;
+                
+                if (!previousStageStatus) continue; // Pula para o próximo projeto se o estágio anterior não for válido
+
+                // 3. Procurar por um livro elegível DENTRO deste projeto
+                const bookToAssign = enrichedBooks.find(b => 
+                    b.projectId === project.id &&
+                    b.status === previousStageStatus &&
+                    !b[workflowConfig.assigneeRole! + 'UserId' as keyof EnrichedBook] &&
+                    (
+                      // A verificação de armazenamento só se aplica a certas fases
+                      (currentStageKey !== 'to-indexing' && currentStageKey !== 'to-checking') ||
+                      (b.storageId && accessibleStorageIds.includes(String(b.storageId)))
+                    )
+                );
+
+                if (bookToAssign) {
+                    // 4. Encontramos um! Atribuir e sair.
+                    handleAssignUser(bookToAssign.id, assigneeId, workflowConfig.assigneeRole);
+                    toast({ title: "Tarefa Obtida com Sucesso", description: `"${bookToAssign.name}" foi atribuído a si.` });
+                    return; // Sair da função
+                }
+            }
+        }
+        
+        // --- FIM DA LÓGICA MODIFICADA ---
+
+        // Se o loop terminar sem encontrar nada
+        toast({ title: "Sem Tarefas Disponíveis", description: "Não há livros não atribuídos disponíveis na etapa anterior para os seus projetos.", variant: "default" });
+    });
+  }, [currentUser, users, enrichedBooks, selectedProjectId, accessibleProjectsForUser, projectWorkflows, storages, handleAssignUser, toast]);
+  const handlePullNextTask1 = React.useCallback(async (currentStageKey: string, userIdToAssign?: string) => {
     await withMutation(async () => {
         const assigneeId = userIdToAssign || currentUser?.id;
         if (!assigneeId) {
