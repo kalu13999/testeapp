@@ -11,14 +11,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { useAppContext } from '@/context/workflow-context';
-import { ShieldAlert, AlertTriangle, InfoIcon, CircleX, History, MessageSquarePlus, ArrowLeft, ArrowRight, ZoomIn } from "lucide-react";
+import { ShieldAlert, AlertTriangle, InfoIcon, CircleX, History, MessageSquarePlus, ArrowLeft, ArrowRight, ZoomIn, MessageSquareWarning, ChevronsUpDown, ArrowDown, ArrowUp } from "lucide-react";
 import type { AppDocument, EnrichedAuditLog } from '@/context/workflow-context';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface DocumentDetailClientProps {
   docId: string;
@@ -38,7 +38,7 @@ const DetailItem = ({ label, value }: { label: string; value: React.ReactNode })
 );
 
 export default function DocumentDetailClient({ docId }: DocumentDetailClientProps) {
-  const { documents, auditLogs, updateDocumentFlag, addBookObservation } = useAppContext();
+  const { documents, books, auditLogs, updateDocumentFlag, addBookObservation } = useAppContext();
   const [zoom, setZoom] = React.useState(1);
   const [loupeActive, setLoupeActive] = React.useState(false);
   const [mousePosition, setMousePosition] = React.useState({ x: 0, y: 0 });
@@ -48,6 +48,7 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
   const LOUPE_SIZE = 200;
     
   const document = documents.find(doc => doc.id === docId);
+  const book = document ? books.find(b => b.id === document.bookId) : null;
 
   const [flagDialogState, setFlagDialogState] = React.useState<{
     open: boolean;
@@ -101,14 +102,52 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
     return auditLogs.filter(log => log.documentId === docId);
   }, [auditLogs, docId]);
   
+  const [auditLogSorting, setAuditLogSorting] = React.useState<{ id: string; desc: boolean }[]>([
+    { id: 'date', desc: true }
+  ]);
+
+  const sortedAuditLogs = React.useMemo(() => {
+    let logs = [...documentAuditLogs];
+    if (auditLogSorting.length > 0) {
+      logs.sort((a, b) => {
+        for (const s of auditLogSorting) {
+          const key = s.id as keyof EnrichedAuditLog;
+          const valA = a[key];
+          const valB = b[key];
+          let result = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' });
+          if (result !== 0) return s.desc ? -result : result;
+        }
+        return 0;
+      });
+    }
+    return logs;
+  }, [documentAuditLogs, auditLogSorting]);
+
+  const handleAuditSort = (columnId: string) => {
+    setAuditLogSorting(currentSorting => {
+        if (currentSorting.length === 1 && currentSorting[0].id === columnId) {
+            if (currentSorting[0].desc) { return []; }
+            return [{ id: columnId, desc: true }];
+        }
+        return [{ id: columnId, desc: false }];
+    });
+  };
+
+  const getSortIndicator = (columnId: string, sorting: {id: string, desc: boolean}[]) => {
+    const sort = sorting.find(s => s.id === columnId);
+    if (!sort) return <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-0 group-hover:opacity-50" />;
+    return sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />;
+  }
+  
   const [isObservationModalOpen, setIsObservationModalOpen] = React.useState(false);
   const [newObservation, setNewObservation] = React.useState('');
+  const [observationTarget, setObservationTarget] = React.useState<EnrichedBook | null>(null);
 
   const handleSaveObservation = () => {
-    if (document && newObservation.trim()) {
-        addBookObservation(document.bookId!, newObservation.trim());
+    if (observationTarget && newObservation.trim()) {
+        addBookObservation(observationTarget.id, newObservation.trim());
         setNewObservation('');
-        setIsObservationModalOpen(false);
+        setObservationTarget(null);
     }
   }
 
@@ -176,8 +215,7 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
                 </Button>
                 <div className="relative group w-full max-w-3xl bg-muted rounded-lg flex items-center justify-center h-[80vh]">
                   <div
-                    className="relative flex items-center justify-center w-full h-full"
-                    style={{ overflow: 'auto' }} 
+                    className="relative flex items-center justify-center w-full h-full overflow-auto"
                     onMouseMove={handleMouseMove}
                     onMouseEnter={() => setIsLoupeVisible(true)}
                     onMouseLeave={() => setIsLoupeVisible(false)}
@@ -268,33 +306,33 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
           <Card>
             <CardHeader>
               <CardTitle className="font-headline flex items-center gap-2"><History className="h-5 w-5"/> Audit Trail</CardTitle>
-              <CardDescription>Complete history of document lifecycle events.</CardDescription>
+              <CardDescription>Complete history of events for this specific document.</CardDescription>
             </CardHeader>
             <CardContent>
-              {documentAuditLogs.length > 0 ? (
+              <ScrollArea className="h-64">
                 <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Action</TableHead>
-                      <TableHead>Details</TableHead>
-                      <TableHead>User</TableHead>
-                      <TableHead>Date</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {documentAuditLogs.map(log => (
-                      <TableRow key={log.id}>
-                        <TableCell className="font-medium">{log.action}</TableCell>
-                        <TableCell className="text-muted-foreground">{log.details}</TableCell>
-                        <TableCell>{log.user}</TableCell>
-                        <TableCell>{new Date(log.date).toLocaleString()}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleAuditSort('action')}>Action {getSortIndicator('action', auditLogSorting)}</div></TableHead>
+                            <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleAuditSort('details')}>Details {getSortIndicator('details', auditLogSorting)}</div></TableHead>
+                            <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleAuditSort('user')}>User {getSortIndicator('user', auditLogSorting)}</div></TableHead>
+                            <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleAuditSort('date')}>Date {getSortIndicator('date', auditLogSorting)}</div></TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {sortedAuditLogs.length > 0 ? sortedAuditLogs.map(log => (
+                        <TableRow key={log.id}>
+                            <TableCell className="font-medium">{log.action}</TableCell>
+                            <TableCell className="text-muted-foreground">{log.details}</TableCell>
+                            <TableCell>{log.user}</TableCell>
+                            <TableCell>{new Date(log.date).toLocaleString()}</TableCell>
+                        </TableRow>
+                        )) : (
+                        <TableRow><TableCell colSpan={4} className="h-24 text-center">No history available for this document.</TableCell></TableRow>
+                        )}
+                    </TableBody>
                 </Table>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">No audit trail available for this document.</p>
-              )}
+              </ScrollArea>
             </CardContent>
           </Card>
         </div>
@@ -326,7 +364,7 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
           {document.flag && document.flagComment && (
             <Card>
               <CardHeader className="flex-row items-center gap-2 pb-2">
-                <MessageSquarePlus className="h-5 w-5"/>
+                <MessageSquareWarning className="h-5 w-5"/>
                 <CardTitle className="font-headline text-base">Flag Comment</CardTitle>
               </CardHeader>
               <CardContent>
@@ -340,6 +378,8 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
               <CardTitle className="font-headline">Metadata</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
+              <div className="flex justify-between items-center"><span>Book:</span><strong><Link href={`/books/${document.bookId}`} className="hover:underline">{book?.name}</Link></strong></div>
+              <Separator/>
               <div className="flex justify-between items-center"><span>Status:</span><Badge variant="secondary">{document.status}</Badge></div>
               <Separator />
               <div className="flex justify-between items-center"><span>Flag:</span><Badge variant={document.flag === 'error' ? "destructive" : "outline"}>{currentFlagLabel}</Badge></div>
@@ -362,8 +402,9 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
               <CardTitle className="font-headline">Comments</CardTitle>
             </CardHeader>
             <CardContent>
-              <Textarea placeholder="Add an optional comment..." />
-              <Button className="w-full mt-2">Submit Comment</Button>
+                <Button onClick={() => setObservationTarget(book)} className="w-full">
+                    <MessageSquarePlus className="mr-2 h-4 w-4" /> Adicionar Observação
+                </Button>
             </CardContent>
           </Card>
         </div>
@@ -391,6 +432,28 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
             <Button variant="outline" onClick={closeFlagDialog}>Cancel</Button>
             <Button onClick={handleFlagSubmit} disabled={!flagDialogState.comment.trim()}>Save Comment</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!observationTarget} onOpenChange={() => setObservationTarget(null)}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Adicionar Observação para: {observationTarget?.name}</DialogTitle>
+                <DialogDescription>
+                    A sua nota será adicionada ao histórico do livro com o seu nome e data.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+                <Textarea
+                    placeholder="Escreva a sua observação aqui..."
+                    value={newObservation}
+                    onChange={(e) => setNewObservation(e.target.value)}
+                    rows={5}
+                />
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setObservationTarget(null)}>Cancelar</Button>
+                <Button onClick={handleSaveObservation} disabled={!newObservation.trim()}>Guardar Observação</Button>
+            </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
