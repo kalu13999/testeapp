@@ -7,13 +7,13 @@ import Link from "next/link";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { useAppContext } from '@/context/workflow-context';
 import { ShieldAlert, AlertTriangle, InfoIcon, CircleX, History, MessageSquareQuote, ArrowUp, ArrowDown, ChevronsUpDown, ArrowLeft, ArrowRight } from "lucide-react";
 import type { AppDocument, EnrichedAuditLog } from '@/context/workflow-context';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 
@@ -85,8 +85,9 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
     }, [auditLogs, docId, sorting]);
 
     const handleSort = (columnId: string, isShift: boolean) => {
-        setSorting(currentSorting => {
+        setSorting( currentSorting => {
             const existingSortIndex = currentSorting.findIndex(s => s.id === columnId);
+
             if (isShift) {
                 let newSorting = [...currentSorting];
                 if (existingSortIndex > -1) {
@@ -168,25 +169,27 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
                             <CardDescription>Document ID: {document.id}</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="relative group">
-                                <div className="bg-muted rounded-lg aspect-[3/4] overflow-hidden flex items-center justify-center">
-                                    <Image
-                                        src={document.imageUrl || 'https://placehold.co/1200x1600.png'}
-                                        alt="Document placeholder"
-                                        data-ai-hint="document scan"
-                                        width={1200}
-                                        height={1600}
-                                        className="object-contain w-full h-full p-4"
-                                        unoptimized
-                                    />
-                                </div>
-                                <Button asChild variant="outline" size="icon" className="absolute left-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full opacity-50 group-hover:opacity-100 transition-opacity" disabled={!prevPage}>
+                            <div className="flex items-center justify-center gap-4">
+                                <Button asChild variant="outline" size="icon" className="h-10 w-10 rounded-full" disabled={!prevPage}>
                                     <Link href={prevPage ? `/documents/${prevPage.id}` : '#'}>
                                         <ArrowLeft className="h-5 w-5" />
                                         <span className="sr-only">Previous Page</span>
                                     </Link>
                                 </Button>
-                                <Button asChild variant="outline" size="icon" className="absolute right-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full opacity-50 group-hover:opacity-100 transition-opacity" disabled={!nextPage}>
+                                <div className="relative group w-full max-w-2xl">
+                                    <div className="bg-muted rounded-lg aspect-[3/4] overflow-hidden flex items-center justify-center">
+                                        <Image
+                                            src={document.imageUrl || 'https://placehold.co/1200x1600.png'}
+                                            alt="Document placeholder"
+                                            data-ai-hint="document scan"
+                                            width={1200}
+                                            height={1600}
+                                            className="object-contain w-full h-full p-4"
+                                            unoptimized
+                                        />
+                                    </div>
+                                </div>
+                                <Button asChild variant="outline" size="icon" className="h-10 w-10 rounded-full" disabled={!nextPage}>
                                     <Link href={nextPage ? `/documents/${nextPage.id}` : '#'}>
                                         <ArrowRight className="h-5 w-5" />
                                         <span className="sr-only">Next Page</span>
