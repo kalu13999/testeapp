@@ -11,11 +11,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { useAppContext } from '@/context/workflow-context';
-import { ShieldAlert, AlertTriangle, InfoIcon, CircleX, History, MessageSquareQuote, ArrowUp, ArrowDown, ChevronsUpDown, ArrowLeft, ArrowRight } from "lucide-react";
+import { ShieldAlert, AlertTriangle, InfoIcon, CircleX, History, MessageSquareQuote, ArrowUp, ArrowDown, ChevronsUpDown, ArrowLeft, ArrowRight, ZoomIn } from "lucide-react";
 import type { AppDocument, EnrichedAuditLog } from '@/context/workflow-context';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
+import { Slider } from '@/components/ui/slider';
 
 
 interface DocumentDetailClientProps {
@@ -33,6 +34,7 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
     const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
         { id: 'date', desc: true }
     ]);
+    const [zoom, setZoom] = React.useState(1);
     
     const document = documents.find(doc => doc.id === docId);
 
@@ -66,6 +68,10 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
 
         return { prevPage, nextPage };
     }, [docId, document, documents]);
+
+     React.useEffect(() => {
+        setZoom(1);
+    }, [docId]);
     
     const documentAuditLogs = React.useMemo(() => {
         let logs = auditLogs.filter(log => log.documentId === docId);
@@ -176,15 +182,19 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
                                         <span className="sr-only">Previous Page</span>
                                     </Link>
                                 </Button>
-                                <div className="relative group w-full max-w-2xl">
-                                    <div className="bg-muted rounded-lg aspect-[3/4] overflow-hidden flex items-center justify-center">
+                                <div className="relative group w-full max-w-2xl bg-muted rounded-lg overflow-auto">
+                                    <div 
+                                        className="relative w-full h-[80vh] flex items-center justify-center"
+                                        style={{ overflow: 'auto' }}
+                                    >
                                         <Image
                                             src={document.imageUrl || 'https://placehold.co/1200x1600.png'}
                                             alt="Document placeholder"
                                             data-ai-hint="document scan"
                                             width={1200}
                                             height={1600}
-                                            className="object-contain w-full h-full p-4"
+                                            className="object-contain transition-transform duration-200"
+                                            style={{ transform: `scale(${zoom})` }}
                                             unoptimized
                                         />
                                     </div>
@@ -197,6 +207,18 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
                                 </Button>
                             </div>
                         </CardContent>
+                         <CardFooter className="flex items-center justify-center gap-4 pt-4">
+                            <ZoomIn className="h-5 w-5 text-muted-foreground" />
+                            <Slider
+                                min={0.25}
+                                max={5}
+                                step={0.25}
+                                value={[zoom]}
+                                onValueChange={(value) => setZoom(value[0])}
+                                className="w-full max-w-xs"
+                            />
+                            <Badge variant="outline" className="w-20 justify-center">{(zoom * 100).toFixed(0)}%</Badge>
+                        </CardFooter>
                     </Card>
 
                     <Card>
