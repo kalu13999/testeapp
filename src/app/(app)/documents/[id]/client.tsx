@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React from 'react';
@@ -17,6 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
 
 
 interface DocumentDetailClientProps {
@@ -35,6 +35,12 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
         { id: 'date', desc: true }
     ]);
     const [zoom, setZoom] = React.useState(1);
+    const [loupeActive, setLoupeActive] = React.useState(false);
+    const [mousePosition, setMousePosition] = React.useState({ x: 0, y: 0 });
+    const [isLoupeVisible, setIsLoupeVisible] = React.useState(false);
+
+    const LOUPE_SIZE = 200;
+    const LOUPE_ZOOM = 3;
     
     const document = documents.find(doc => doc.id === docId);
 
@@ -72,6 +78,13 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
      React.useEffect(() => {
         setZoom(1);
     }, [docId]);
+
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+        const x = (e.clientX - left) / width;
+        const y = (e.clientY - top) / height;
+        setMousePosition({ x, y });
+    };
     
     const documentAuditLogs = React.useMemo(() => {
         let logs = auditLogs.filter(log => log.documentId === docId);
@@ -186,6 +199,9 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
                                     <div 
                                         className="relative w-full h-[80vh] flex items-center justify-center"
                                         style={{ overflow: 'auto' }}
+                                        onMouseMove={handleMouseMove}
+                                        onMouseEnter={() => setIsLoupeVisible(true)}
+                                        onMouseLeave={() => setIsLoupeVisible(false)}
                                     >
                                         <Image
                                             src={document.imageUrl || 'https://placehold.co/1200x1600.png'}
@@ -197,6 +213,22 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
                                             style={{ transform: `scale(${zoom})` }}
                                             unoptimized
                                         />
+                                        {loupeActive && isLoupeVisible && (
+                                            <div
+                                                className="absolute border-2 border-primary rounded-full shadow-lg pointer-events-none"
+                                                style={{
+                                                    width: LOUPE_SIZE,
+                                                    height: LOUPE_SIZE,
+                                                    left: `${mousePosition.x * 100}%`,
+                                                    top: `${mousePosition.y * 100}%`,
+                                                    transform: 'translate(-50%, -50%)',
+                                                    backgroundImage: `url(${document.imageUrl})`,
+                                                    backgroundSize: `${100 * LOUPE_ZOOM}%`,
+                                                    backgroundPosition: `${-mousePosition.x * 1200 * LOUPE_ZOOM + (LOUPE_SIZE / 2)}px ${-mousePosition.y * 1600 * LOUPE_ZOOM + (LOUPE_SIZE / 2)}px`,
+                                                    backgroundRepeat: 'no-repeat'
+                                                }}
+                                            />
+                                        )}
                                     </div>
                                 </div>
                                 <Button asChild variant="outline" size="icon" className="h-10 w-10 rounded-full" disabled={!nextPage}>
@@ -218,6 +250,11 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
                                 className="w-full max-w-xs"
                             />
                             <Badge variant="outline" className="w-20 justify-center">{(zoom * 100).toFixed(0)}%</Badge>
+                             <Separator orientation="vertical" className="h-6 mx-2" />
+                            <div className="flex items-center space-x-2">
+                                <Switch id="loupe-mode" checked={loupeActive} onCheckedChange={setLoupeActive}/>
+                                <Label htmlFor="loupe-mode">Magnifier</Label>
+                            </div>
                         </CardFooter>
                     </Card>
 
