@@ -86,7 +86,6 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
   }, [docId]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-      const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
       const imageElement = e.currentTarget.querySelector('img');
       if (!imageElement) return;
 
@@ -232,6 +231,7 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
                   value={[zoom]}
                   onValueChange={(value) => setZoom(value[0])}
                   className="w-40"
+                  disabled={loupeActive}
                 />
                 <Badge variant="outline" className="w-16 justify-center">{(zoom * 100).toFixed(0)}%</Badge>
               </div>
@@ -396,4 +396,3 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
     </>
   );
 }
-
