@@ -24,6 +24,12 @@ interface DocumentDetailClientProps {
   docId: string;
 }
 
+const flagConfig = {
+    error: { icon: ShieldAlert, color: "text-destructive", label: "Error" },
+    warning: { icon: AlertTriangle, color: "text-orange-500", label: "Warning" },
+    info: { icon: InfoIcon, color: "text-primary", label: "Info" },
+};
+
 const DetailItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
   <div className="flex flex-col space-y-1">
     <p className="text-sm text-muted-foreground">{label}</p>
@@ -43,7 +49,7 @@ const StageDetailItem = ({ stage, user, startTime, endTime }: { stage: string, u
 );
 
 export default function DocumentDetailClient({ docId }: DocumentDetailClientProps) {
-  const { documents, auditLogs, updateDocumentFlag } = useAppContext();
+  const { documents, auditLogs, updateDocumentFlag, addBookObservation } = useAppContext();
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
     { id: 'date', desc: true }
   ]);
@@ -94,19 +100,16 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
   }, [docId]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-      const { left, top } = e.currentTarget.getBoundingClientRect();
-      const x = e.clientX - left;
-      const y = e.clientY - top;
-      
+      const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
       const imageElement = e.currentTarget.querySelector('img');
-      if (imageElement) {
-          const imgRect = imageElement.getBoundingClientRect();
-          const adjustedX = e.clientX - imgRect.left;
-          const adjustedY = e.clientY - imgRect.top;
-          setMousePosition({ x: adjustedX, y: adjustedY });
-      } else {
-          setMousePosition({ x, y });
-      }
+      if (!imageElement) return;
+
+      const imgRect = imageElement.getBoundingClientRect();
+      
+      const x = e.clientX - imgRect.left + e.currentTarget.scrollLeft;
+      const y = e.clientY - imgRect.top + e.currentTarget.scrollTop;
+      
+      setMousePosition({ x, y });
   };
     
   const documentAuditLogs = React.useMemo(() => {
@@ -155,6 +158,17 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
     const sort = sorting[sortIndex];
     const icon = sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />;
     return <div className="flex items-center gap-1">{icon}{sorting.length > 1 && (<span className="text-xs font-bold text-muted-foreground">{sortIndex + 1}</span>)}</div>;
+  }
+  
+  const [isObservationModalOpen, setIsObservationModalOpen] = React.useState(false);
+  const [newObservation, setNewObservation] = React.useState('');
+
+  const handleSaveObservation = () => {
+    if (document && newObservation.trim()) {
+        addBookObservation(document.bookId!, newObservation.trim());
+        setNewObservation('');
+        setIsObservationModalOpen(false);
+    }
   }
 
 
@@ -221,7 +235,7 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
                 </Button>
                 <div className="relative group w-full max-w-3xl bg-muted rounded-lg flex items-center justify-center h-[80vh]">
                   <div
-                    className="relative w-full h-full flex items-center justify-center"
+                    className="relative flex items-center justify-center w-full h-full"
                     style={{ overflow: 'auto' }} 
                     onMouseMove={handleMouseMove}
                     onMouseEnter={() => setIsLoupeVisible(true)}
@@ -252,7 +266,7 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
                                 transform: 'translate(-50%, -50%)',
                                 backgroundImage: `url(${document.imageUrl})`,
                                 backgroundSize: `${100 * zoom * loupeZoom}%`,
-                                backgroundPosition: `${(-mousePosition.x * zoom * loupeZoom) + (LOUPE_SIZE / 2)}px ${(-mousePosition.y * zoom * loupeZoom) + (LOUPE_SIZE / 2)}px`,
+                                backgroundPosition: `${(-mousePosition.x * loupeZoom) + (LOUPE_SIZE / 2)}px ${(-mousePosition.y * loupeZoom) + (LOUPE_SIZE / 2)}px`,
                             }}
                         />
                     )}
