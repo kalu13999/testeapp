@@ -145,7 +145,7 @@ export const allMenuItems: MenuSection[] = [
   },
   {
     id: "workflow-processing",
-    title: "Processamento",
+    title: "Processamento Automático",
     items: [
       { href: "/workflow/ready-for-processing", label: "Processamento Pendente", icon: FileCog },
       { href: "/workflow/in-processing", label: "Em Processamento", icon: Loader2 },
