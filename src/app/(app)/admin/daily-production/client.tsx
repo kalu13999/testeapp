@@ -26,7 +26,7 @@ import { DatePickerWithRange } from "@/components/ui/date-range-picker"
 import { useAppContext } from "@/context/workflow-context"
 import { format, startOfDay, endOfDay, isWithinInterval } from "date-fns"
 import type { DateRange } from "react-day-picker"
-import { TrendingUp, Award, Calendar, UserCheck, ChevronsUpDown, ArrowUp, ArrowDown, Download, Group, Book, FileText } from "lucide-react"
+import { TrendingUp, Award, Calendar, UserCheck, ChevronsUpDown, ArrowUp, ArrowDown, Download, Group, Book, FileText, Filter } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast";
@@ -34,6 +34,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from "@/components/ui/pagination"
 import { Label } from "@/components/ui/label";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+
 
 type CompletedTask = {
   id: string;
@@ -59,7 +61,8 @@ type SummaryData = {
 const ITEMS_PER_PAGE = 20;
 
 export default function DailyProductionClient() {
-  const { users, allProjects } = useAppContext();
+  const { allProjects } = useAppContext();
+  const { users } = useAppContext();
   const { toast } = useToast();
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
     from: new Date(),
@@ -389,37 +392,44 @@ export default function DailyProductionClient() {
         </div>
       </div>
       
-      <Card>
-        <CardHeader>
-          <CardTitle>Filtros</CardTitle>
-           <div className="flex flex-wrap items-center gap-4 pt-2">
-            <DatePickerWithRange date={dateRange} onDateChange={setDateRange} />
-            <Select value={projectFilter} onValueChange={setProjectFilter}>
-              <SelectTrigger className="w-[180px]"><SelectValue placeholder="Filter by project..." /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Projetos</SelectItem>
-                {allProjects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={taskTypeFilter} onValueChange={setTaskTypeFilter}>
-              <SelectTrigger className="w-[180px]"><SelectValue placeholder="Filter by task..." /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as Tarefas</SelectItem>
-                <SelectItem value="Digitalização">Digitalização</SelectItem>
-                <SelectItem value="Indexação">Indexação</SelectItem>
-                <SelectItem value="Controlo de Qualidade">Controlo de Qualidade</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={userFilter} onValueChange={setUserFilter}>
-              <SelectTrigger className="w-[180px]"><SelectValue placeholder="Filter by user..." /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Utilizadores</SelectItem>
-                {users.filter(u => u.role !== 'System' && u.role !== 'Client').map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardHeader>
-      </Card>
+       <Accordion type="single" collapsible defaultValue="item-1">
+        <AccordionItem value="item-1">
+          <AccordionTrigger className="text-base px-6 font-semibold rounded-lg border bg-card text-card-foreground shadow-sm">
+            <div className="flex items-center gap-2">
+              <Filter className="h-5 w-5" />
+              Filtros
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="pt-4 px-6 border-x border-b rounded-b-lg bg-card">
+            <div className="flex flex-wrap items-center gap-4 pt-2">
+              <DatePickerWithRange date={dateRange} onDateChange={setDateRange} />
+              <Select value={projectFilter} onValueChange={setProjectFilter}>
+                <SelectTrigger className="w-full sm:w-[200px]"><SelectValue placeholder="Filtrar por projeto..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os Projetos</SelectItem>
+                  {allProjects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={taskTypeFilter} onValueChange={setTaskTypeFilter}>
+                <SelectTrigger className="w-full sm:w-[200px]"><SelectValue placeholder="Filtrar por tarefa..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as Tarefas</SelectItem>
+                  <SelectItem value="Digitalização">Digitalização</SelectItem>
+                  <SelectItem value="Indexação">Indexação</SelectItem>
+                  <SelectItem value="Controlo de Qualidade">Controlo de Qualidade</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={userFilter} onValueChange={setUserFilter}>
+                <SelectTrigger className="w-full sm:w-[200px]"><SelectValue placeholder="Filtrar por utilizador..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os Utilizadores</SelectItem>
+                  {users.filter(u => u.role !== 'System' && u.role !== 'Client').map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
       
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Totais</CardTitle><TrendingUp className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="flex items-baseline gap-2"><Book className="h-4 w-4 text-muted-foreground"/><span className="text-2xl font-bold">{stats.totalTasks}</span><span className="text-sm text-muted-foreground">tarefas</span></div><div className="flex items-baseline gap-2"><FileText className="h-4 w-4 text-muted-foreground"/><span className="text-2xl font-bold">{stats.totalPages.toLocaleString()}</span><span className="text-sm text-muted-foreground">páginas</span></div></CardContent></Card>
