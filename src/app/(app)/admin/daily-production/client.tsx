@@ -25,13 +25,14 @@ import { DatePickerWithRange } from "@/components/ui/date-range-picker"
 import { useAppContext } from "@/context/workflow-context"
 import { format, startOfDay, endOfDay, isWithinInterval } from "date-fns"
 import type { DateRange } from "react-day-picker"
-import { TrendingUp, Award, Calendar, UserCheck, ChevronsUpDown, ArrowUp, ArrowDown, Download } from "lucide-react"
+import { TrendingUp, Award, Calendar, UserCheck, ChevronsUpDown, ArrowUp, ArrowDown, Download, Group } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from "@/components/ui/pagination"
+import { Label } from "@/components/ui/label";
 
 type CompletedTask = {
   id: string;
@@ -46,6 +47,14 @@ type CompletedTask = {
   userName: string;
 };
 
+type GroupingOption = 'user' | 'project' | 'date' | 'task';
+
+type SummaryData = {
+    name: string;
+    taskCount: number;
+    pageCount: number;
+}
+
 const ITEMS_PER_PAGE = 20;
 
 export default function DailyProductionClient() {
@@ -58,10 +67,16 @@ export default function DailyProductionClient() {
   const [taskTypeFilter, setTaskTypeFilter] = React.useState<string>("all");
   const [userFilter, setUserFilter] = React.useState<string>("all");
   const [projectFilter, setProjectFilter] = React.useState<string>("all");
-  const [sorting, setSorting] = React.useState<{ id: string, desc: boolean }[]>([{ id: 'completedAt', desc: true }]);
-  const [columnFilters, setColumnFilters] = React.useState<{ [key: string]: string }>({});
-  const [currentPage, setCurrentPage] = React.useState(1);
-  const [selection, setSelection] = React.useState<string[]>([]);
+  
+  // States for Detailed Table
+  const [detailedSorting, setDetailedSorting] = React.useState<{ id: string, desc: boolean }[]>([{ id: 'completedAt', desc: true }]);
+  const [detailedColumnFilters, setDetailedColumnFilters] = React.useState<{ [key: string]: string }>({});
+  const [detailedCurrentPage, setDetailedCurrentPage] = React.useState(1);
+  const [detailedSelection, setDetailedSelection] = React.useState<string[]>([]);
+  
+  // States for Summary Table
+  const [groupBy, setGroupBy] = React.useState<GroupingOption>('user');
+  const [summaryColumnFilters, setSummaryColumnFilters] = React.useState<{ [key: string]: string }>({});
 
   const allCompletedTasks = React.useMemo((): CompletedTask[] => {
     const tasks: CompletedTask[] = [];
@@ -97,7 +112,7 @@ export default function DailyProductionClient() {
     return tasks;
   }, [books, users]);
 
-  const filteredTasks = React.useMemo(() => {
+  const globallyFilteredTasks = React.useMemo(() => {
     let tasks = allCompletedTasks;
     if (dateRange?.from && dateRange?.to) {
       const from = startOfDay(dateRange.from);
@@ -113,8 +128,63 @@ export default function DailyProductionClient() {
     if (projectFilter !== 'all') {
         tasks = tasks.filter(task => task.projectId === projectFilter);
     }
+    return tasks;
+  }, [allCompletedTasks, dateRange, taskTypeFilter, userFilter, projectFilter]);
 
-    Object.entries(columnFilters).forEach(([columnId, value]) => {
+  const summaryData = React.useMemo((): SummaryData[] => {
+    const keyMap = {
+        user: 'userName',
+        project: 'projectName',
+        date: 'completedAt',
+        task: 'taskType'
+    };
+    const groupKey = keyMap[groupBy];
+
+    const grouped = globallyFilteredTasks.reduce((acc, task) => {
+        let key = task[groupKey as keyof CompletedTask];
+        if(groupKey === 'completedAt') {
+            key = format(new Date(key as Date), 'yyyy-MM-dd');
+        }
+        const groupName = String(key);
+        if (!acc[groupName]) {
+            acc[groupName] = { name: groupName, taskCount: 0, pageCount: 0 };
+        }
+        acc[groupName].taskCount += 1;
+        acc[groupName].pageCount += task.pageCount || 0;
+        return acc;
+    }, {} as Record<string, SummaryData>);
+    
+    let result = Object.values(grouped);
+    
+    if (summaryColumnFilters.name) {
+        result = result.filter(item => item.name.toLowerCase().includes(summaryColumnFilters.name.toLowerCase()));
+    }
+
+    return result.sort((a,b) => b.taskCount - a.taskCount);
+  }, [globallyFilteredTasks, groupBy, summaryColumnFilters]);
+
+  const tasksForDetailedView = React.useMemo(() => {
+    let tasks = globallyFilteredTasks;
+    
+    const summaryFilterNames = new Set(summaryData.map(d => d.name));
+    
+    const keyMap = {
+        user: 'userName',
+        project: 'projectName',
+        date: 'completedAt',
+        task: 'taskType'
+    };
+    const groupKey = keyMap[groupBy];
+
+    tasks = tasks.filter(task => {
+        let key = task[groupKey as keyof CompletedTask];
+        if (groupKey === 'completedAt') {
+            key = format(new Date(key as Date), 'yyyy-MM-dd');
+        }
+        return summaryFilterNames.has(String(key));
+    });
+
+    Object.entries(detailedColumnFilters).forEach(([columnId, value]) => {
       if (value) {
         tasks = tasks.filter(task =>
           String(task[columnId as keyof CompletedTask]).toLowerCase().includes(value.toLowerCase())
@@ -122,9 +192,9 @@ export default function DailyProductionClient() {
       }
     });
 
-    if (sorting.length > 0) {
+    if (detailedSorting.length > 0) {
       tasks.sort((a, b) => {
-        const s = sorting[0];
+        const s = detailedSorting[0];
         const valA = a[s.id as keyof CompletedTask];
         const valB = b[s.id as keyof CompletedTask];
         let result: number;
@@ -136,24 +206,23 @@ export default function DailyProductionClient() {
         return s.desc ? -result : result;
       });
     }
-
     return tasks;
-  }, [allCompletedTasks, dateRange, taskTypeFilter, userFilter, projectFilter, columnFilters, sorting]);
-
+  }, [globallyFilteredTasks, detailedColumnFilters, detailedSorting, summaryData, groupBy]);
+  
   const selectedTasks = React.useMemo(() => {
-    return filteredTasks.filter(task => selection.includes(task.id));
-  }, [filteredTasks, selection]);
+    return tasksForDetailedView.filter(task => detailedSelection.includes(task.id));
+  }, [tasksForDetailedView, detailedSelection]);
   
   React.useEffect(() => {
-    setSelection([]);
-  }, [dateRange, taskTypeFilter, userFilter, projectFilter, columnFilters, sorting]);
+    setDetailedSelection([]);
+  }, [dateRange, taskTypeFilter, userFilter, projectFilter, detailedColumnFilters, detailedSorting, summaryColumnFilters]);
 
 
   const stats = React.useMemo(() => {
-    if (filteredTasks.length === 0) return { totalTasks: 0, dailyAvg: 0, bestDay: { date: 'N/A', count: 0 }, topOperator: { name: 'N/A', count: 0 } };
+    if (globallyFilteredTasks.length === 0) return { totalTasks: 0, dailyAvg: 0, bestDay: { date: 'N/A', count: 0 }, topOperator: { name: 'N/A', count: 0 } };
 
     const tasksByDay: Record<string, number> = {};
-    filteredTasks.forEach(task => {
+    globallyFilteredTasks.forEach(task => {
       const day = format(task.completedAt, 'yyyy-MM-dd');
       tasksByDay[day] = (tasksByDay[day] || 0) + 1;
     });
@@ -163,67 +232,47 @@ export default function DailyProductionClient() {
         : 1;
     const bestDayEntry = Object.entries(tasksByDay).sort((a, b) => b[1] - a[1])[0] || ['N/A', 0];
 
-    const tasksByUser = filteredTasks.reduce((acc, task) => {
+    const tasksByUser = globallyFilteredTasks.reduce((acc, task) => {
       acc[task.userName] = (acc[task.userName] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
     const topOperatorEntry = Object.entries(tasksByUser).sort((a, b) => b[1] - a[1])[0] || ['N/A', 0];
     
     return {
-      totalTasks: filteredTasks.length,
-      dailyAvg: (filteredTasks.length / numDays).toFixed(1),
+      totalTasks: globallyFilteredTasks.length,
+      dailyAvg: (globallyFilteredTasks.length / numDays).toFixed(1),
       bestDay: { date: bestDayEntry[0], count: bestDayEntry[1] },
       topOperator: { name: topOperatorEntry[0], count: topOperatorEntry[1] }
     };
-  }, [filteredTasks, dateRange]);
+  }, [globallyFilteredTasks, dateRange]);
 
   const chartData = React.useMemo(() => {
-    if (!dateRange?.from || !dateRange?.to) return { byDay: [], byUser: [], byType: [] };
-
-    const tasksByDay = Array.from({ length: Math.abs(new Date(dateRange.to).getTime() - new Date(dateRange.from).getTime()) / (1000 * 3600 * 24) + 1 }, (_, i) => {
-        const day = new Date(dateRange.from!);
-        day.setDate(day.getDate() + i);
-        return day;
-    }).map(day => {
-        const dayStr = format(day, 'yyyy-MM-dd');
-        const count = filteredTasks.filter(t => format(t.completedAt, 'yyyy-MM-dd') === dayStr).length;
-        return { date: format(day, 'MMM d'), count };
-    });
-
-    const byUser = Object.entries(
-      filteredTasks.reduce((acc, task) => {
-        acc[task.userName] = (acc[task.userName] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>)
-    ).map(([name, count]) => ({ name, count })).sort((a,b) => b.count - a.count).slice(0, 10);
-    
-    const byType = Object.entries(
-      filteredTasks.reduce((acc, task) => {
-        acc[task.taskType] = (acc[task.taskType] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>)
-    ).map(([name, value]) => ({ name, value, fill: `hsl(${Math.random() * 360}, 70%, 50%)` }));
-
-    return { byDay: tasksByDay, byUser, byType };
-  }, [filteredTasks, dateRange]);
+    if (!summaryData) return { byDay: [], byUser: [], byType: [] };
+    const chartSource = summaryData.slice(0,10);
+    return { 
+        byDay: chartSource.map(d => ({ date: d.name, count: d.taskCount })), 
+        byUser: chartSource, 
+        byType: chartSource.map(d => ({ name: d.name, value: d.taskCount, fill: `hsl(${Math.random() * 360}, 70%, 50%)` }))
+    };
+  }, [summaryData]);
   
   const chartConfig = { count: { label: "Tasks" } } satisfies ChartConfig;
 
-  const handleSort = (columnId: string) => {
-    setSorting(current => {
+  const handleDetailedSort = (columnId: string) => {
+    setDetailedSorting(current => {
       if (current[0]?.id === columnId) return [{ id: columnId, desc: !current[0].desc }];
       return [{ id: columnId, desc: false }];
     });
   };
 
   const getSortIndicator = (columnId: string) => {
-    const sort = sorting.find(s => s.id === columnId);
+    const sort = detailedSorting.find(s => s.id === columnId);
     if (!sort) return <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-0 group-hover:opacity-50" />;
     return sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />;
   };
 
-  const paginatedTasks = filteredTasks.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
-  const totalPages = Math.ceil(filteredTasks.length / ITEMS_PER_PAGE);
+  const paginatedTasks = tasksForDetailedView.slice((detailedCurrentPage - 1) * ITEMS_PER_PAGE, detailedCurrentPage * ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(tasksForDetailedView.length / ITEMS_PER_PAGE);
 
   const downloadFile = (content: string, fileName: string, mimeType: string) => {
     const blob = new Blob([content], { type: mimeType });
@@ -243,13 +292,15 @@ export default function DailyProductionClient() {
         return;
     }
     if (format === 'json') {
-        downloadFile(JSON.stringify(dataToExport, null, 2), 'daily_production.json', 'application/json');
+        const jsonString = JSON.stringify(dataToExport.map(({ id, ...rest }) => rest), null, 2);
+        downloadFile(jsonString, 'daily_production.json', 'application/json');
     } else if (format === 'csv') {
-        const headers = Object.keys(dataToExport[0] || {});
+        const headers = Object.keys(dataToExport[0] || {}).filter(h => h !== 'id');
         const csvContent = [headers.join(','), ...dataToExport.map(d => headers.map(h => JSON.stringify(d[h as keyof typeof d])).join(','))].join('\n');
         downloadFile(csvContent, 'daily_production.csv', 'text/csv');
     } else if (format === 'xlsx') {
-        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+        const data = dataToExport.map(({ id, ...rest }) => rest);
+        const worksheet = XLSX.utils.json_to_sheet(data);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Daily Production');
         XLSX.writeFile(workbook, 'daily_production.xlsx');
@@ -261,9 +312,9 @@ export default function DailyProductionClient() {
       if (dataToExport.length === 0) return;
       let content = '';
       if (format === 'json') {
-          content = JSON.stringify(dataToExport, null, 2);
+          content = JSON.stringify(dataToExport.map(({ id, ...rest }) => rest), null, 2);
       } else {
-          const headers = Object.keys(dataToExport[0] || {});
+          const headers = Object.keys(dataToExport[0] || {}).filter(h => h !== 'id');
           content = [headers.join(','), ...dataToExport.map(d => headers.map(h => JSON.stringify(d[h as keyof typeof d])).join(','))].join('\n');
       }
       navigator.clipboard.writeText(content).then(() => {
@@ -278,12 +329,21 @@ export default function DailyProductionClient() {
     return (
       <Pagination>
         <PaginationContent>
-          <PaginationItem><PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }} className={currentPage === 1 ? "pointer-events-none opacity-50" : undefined}/></PaginationItem>
-          <PaginationItem><PaginationLink href="#">Page {currentPage} of {totalPages}</PaginationLink></PaginationItem>
-          <PaginationItem><PaginationNext href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }} className={currentPage === totalPages ? "pointer-events-none opacity-50" : undefined}/></PaginationItem>
+          <PaginationItem><PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setDetailedCurrentPage(p => Math.max(1, p - 1)); }} className={detailedCurrentPage === 1 ? "pointer-events-none opacity-50" : undefined}/></PaginationItem>
+          <PaginationItem><PaginationLink href="#">Page {detailedCurrentPage} of {totalPages}</PaginationLink></PaginationItem>
+          <PaginationItem><PaginationNext href="#" onClick={(e) => { e.preventDefault(); setDetailedCurrentPage(p => Math.min(totalPages, p + 1)); }} className={detailedCurrentPage === totalPages ? "pointer-events-none opacity-50" : undefined}/></PaginationItem>
         </PaginationContent>
       </Pagination>
     );
+  }
+
+  const getSummaryHeader = () => {
+    switch (groupBy) {
+        case 'user': return 'Utilizador';
+        case 'project': return 'Projeto';
+        case 'date': return 'Data';
+        case 'task': return 'Tipo de Tarefa';
+    }
   }
 
   return (
@@ -337,23 +397,86 @@ export default function DailyProductionClient() {
        <Card>
             <CardHeader>
                 <div className="flex items-center justify-between">
+                    <CardTitle>Resumo da Produção</CardTitle>
+                    <div className="flex items-center gap-2">
+                        <Label htmlFor="group-by" className="flex items-center gap-2 text-sm font-medium">
+                            <Group className="h-4 w-4" />
+                            Agrupar por
+                        </Label>
+                        <Select value={groupBy} onValueChange={value => setGroupBy(value as GroupingOption)}>
+                            <SelectTrigger id="group-by" className="w-[180px]">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="user">Utilizador</SelectItem>
+                                <SelectItem value="project">Projeto</SelectItem>
+                                <SelectItem value="date">Data</SelectItem>
+                                <SelectItem value="task">Tipo de Tarefa</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>{getSummaryHeader()}</TableHead>
+                            <TableHead className="text-right">Tarefas Concluídas</TableHead>
+                            <TableHead className="text-right">Total de Páginas</TableHead>
+                        </TableRow>
+                         <TableRow>
+                            <TableHead><Input placeholder={`Filtrar por ${getSummaryHeader().toLowerCase()}...`} value={summaryColumnFilters.name || ''} onChange={(e) => setSummaryColumnFilters({ name: e.target.value })} className="h-8"/></TableHead>
+                            <TableHead/>
+                            <TableHead/>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {summaryData.length > 0 ? summaryData.map(row => (
+                            <TableRow key={row.name}>
+                                <TableCell className="font-medium">{row.name}</TableCell>
+                                <TableCell className="text-right">{row.taskCount}</TableCell>
+                                <TableCell className="text-right">{row.pageCount.toLocaleString()}</TableCell>
+                            </TableRow>
+                        )) : (
+                            <TableRow><TableCell colSpan={3} className="text-center h-24">Sem dados de produção para o período selecionado.</TableCell></TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </CardContent>
+       </Card>
+
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+            <CardHeader><CardTitle>Produção Diária (Nº de Tarefas)</CardTitle></CardHeader>
+            <CardContent><ChartContainer config={chartConfig} className="h-[250px] w-full"><BarChart data={chartData.byDay}><CartesianGrid vertical={false} /><XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} /><YAxis allowDecimals={false} /><Tooltip cursor={{ fill: "hsl(var(--muted))" }} content={<ChartTooltipContent />} /><Bar dataKey="count" fill="var(--color-count)" radius={4} /></BarChart></ChartContainer></CardContent>
+        </Card>
+        <Card>
+            <CardHeader><CardTitle>Produção por Tipo</CardTitle></CardHeader>
+            <CardContent><ChartContainer config={chartConfig} className="h-[250px] w-full"><PieChart><Tooltip content={<ChartTooltipContent hideLabel />} /><Pie data={chartData.byType} dataKey="value" nameKey="name" innerRadius={50} label>{chartData.byType.map(e => <Cell key={e.name} fill={e.fill} />)}</Pie><Legend /></PieChart></ChartContainer></CardContent>
+        </Card>
+      </div>
+
+      <Card>
+            <CardHeader>
+                <div className="flex items-center justify-between">
                     <CardTitle>Tabela de Produção Detalhada</CardTitle>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild><Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" /> Exportar</Button></DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        <DropdownMenuLabel>Exportar Selecionados ({selection.length})</DropdownMenuLabel>
-                        <DropdownMenuItem onSelect={() => exportData('xlsx', selectedTasks)} disabled={selection.length === 0}>Exportar como XLSX</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => exportData('json', selectedTasks)} disabled={selection.length === 0}>Exportar como JSON</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => exportData('csv', selectedTasks)} disabled={selection.length === 0}>Exportar como CSV</DropdownMenuItem>
+                        <DropdownMenuLabel>Exportar Selecionados ({detailedSelection.length})</DropdownMenuLabel>
+                        <DropdownMenuItem onSelect={() => exportData('xlsx', selectedTasks)} disabled={detailedSelection.length === 0}>Exportar como XLSX</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportData('json', selectedTasks)} disabled={detailedSelection.length === 0}>Exportar como JSON</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportData('csv', selectedTasks)} disabled={detailedSelection.length === 0}>Exportar como CSV</DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuLabel>Copiar Selecionados ({selection.length})</DropdownMenuLabel>
-                        <DropdownMenuItem onSelect={() => copyToClipboard('json', selectedTasks)} disabled={selection.length === 0}>Copiar como JSON</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => copyToClipboard('csv', selectedTasks)} disabled={selection.length === 0}>Copiar como CSV</DropdownMenuItem>
+                        <DropdownMenuLabel>Copiar Selecionados ({detailedSelection.length})</DropdownMenuLabel>
+                        <DropdownMenuItem onSelect={() => copyToClipboard('json', selectedTasks)} disabled={detailedSelection.length === 0}>Copiar como JSON</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => copyToClipboard('csv', selectedTasks)} disabled={detailedSelection.length === 0}>Copiar como CSV</DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuLabel>Exportar Todos ({filteredTasks.length})</DropdownMenuLabel>
-                        <DropdownMenuItem onSelect={() => exportData('xlsx', filteredTasks)} disabled={filteredTasks.length === 0}>Exportar como XLSX</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => exportData('json', filteredTasks)} disabled={filteredTasks.length === 0}>Exportar como JSON</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => exportData('csv', filteredTasks)} disabled={filteredTasks.length === 0}>Exportar como CSV</DropdownMenuItem>
+                        <DropdownMenuLabel>Exportar Todos ({tasksForDetailedView.length})</DropdownMenuLabel>
+                        <DropdownMenuItem onSelect={() => exportData('xlsx', tasksForDetailedView)} disabled={tasksForDetailedView.length === 0}>Exportar como XLSX</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportData('json', tasksForDetailedView)} disabled={tasksForDetailedView.length === 0}>Exportar como JSON</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => exportData('csv', tasksForDetailedView)} disabled={tasksForDetailedView.length === 0}>Exportar como CSV</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
@@ -364,34 +487,34 @@ export default function DailyProductionClient() {
                         <TableRow>
                             <TableHead className="w-[40px]">
                                 <Checkbox
-                                    checked={paginatedTasks.length > 0 && selection.length === paginatedTasks.length}
-                                    onCheckedChange={(checked) => setSelection(checked ? paginatedTasks.map(t => t.id) : [])}
+                                    checked={paginatedTasks.length > 0 && detailedSelection.length === paginatedTasks.length}
+                                    onCheckedChange={(checked) => setDetailedSelection(checked ? paginatedTasks.map(t => t.id) : [])}
                                 />
                             </TableHead>
-                            <TableHead><div className="flex items-center gap-2 cursor-pointer" onClick={() => handleSort('completedAt')}>Data {getSortIndicator('completedAt')}</div></TableHead>
-                            <TableHead><div className="flex items-center gap-2 cursor-pointer" onClick={() => handleSort('userName')}>Utilizador {getSortIndicator('userName')}</div></TableHead>
-                            <TableHead><div className="flex items-center gap-2 cursor-pointer" onClick={() => handleSort('taskType')}>Tarefa {getSortIndicator('taskType')}</div></TableHead>
-                            <TableHead><div className="flex items-center gap-2 cursor-pointer" onClick={() => handleSort('bookName')}>Livro {getSortIndicator('bookName')}</div></TableHead>
-                            <TableHead><div className="flex items-center gap-2 cursor-pointer" onClick={() => handleSort('projectName')}>Projeto {getSortIndicator('projectName')}</div></TableHead>
-                            <TableHead className="text-right"><div className="flex items-center justify-end gap-2 cursor-pointer" onClick={() => handleSort('pageCount')}>Páginas {getSortIndicator('pageCount')}</div></TableHead>
+                            <TableHead><div className="flex items-center gap-2 cursor-pointer" onClick={() => handleDetailedSort('completedAt')}>Data {getSortIndicator('completedAt')}</div></TableHead>
+                            <TableHead><div className="flex items-center gap-2 cursor-pointer" onClick={() => handleDetailedSort('userName')}>Utilizador {getSortIndicator('userName')}</div></TableHead>
+                            <TableHead><div className="flex items-center gap-2 cursor-pointer" onClick={() => handleDetailedSort('taskType')}>Tarefa {getSortIndicator('taskType')}</div></TableHead>
+                            <TableHead><div className="flex items-center gap-2 cursor-pointer" onClick={() => handleDetailedSort('bookName')}>Livro {getSortIndicator('bookName')}</div></TableHead>
+                            <TableHead><div className="flex items-center gap-2 cursor-pointer" onClick={() => handleDetailedSort('projectName')}>Projeto {getSortIndicator('projectName')}</div></TableHead>
+                            <TableHead className="text-right"><div className="flex items-center justify-end gap-2 cursor-pointer" onClick={() => handleDetailedSort('pageCount')}>Páginas {getSortIndicator('pageCount')}</div></TableHead>
                         </TableRow>
                          <TableRow>
                             <TableHead/>
-                            <TableHead><Input placeholder="Filtrar data..." value={columnFilters['completedAt'] || ''} onChange={(e) => setColumnFilters(p => ({...p, completedAt: e.target.value}))} className="h-8"/></TableHead>
-                            <TableHead><Input placeholder="Filtrar utilizador..." value={columnFilters['userName'] || ''} onChange={(e) => setColumnFilters(p => ({...p, userName: e.target.value}))} className="h-8"/></TableHead>
-                            <TableHead><Input placeholder="Filtrar tarefa..." value={columnFilters['taskType'] || ''} onChange={(e) => setColumnFilters(p => ({...p, taskType: e.target.value}))} className="h-8"/></TableHead>
-                            <TableHead><Input placeholder="Filtrar livro..." value={columnFilters['bookName'] || ''} onChange={(e) => setColumnFilters(p => ({...p, bookName: e.target.value}))} className="h-8"/></TableHead>
-                            <TableHead><Input placeholder="Filtrar projeto..." value={columnFilters['projectName'] || ''} onChange={(e) => setColumnFilters(p => ({...p, projectName: e.target.value}))} className="h-8"/></TableHead>
+                            <TableHead><Input placeholder="Filtrar data..." value={detailedColumnFilters['completedAt'] || ''} onChange={(e) => setDetailedColumnFilters(p => ({...p, completedAt: e.target.value}))} className="h-8"/></TableHead>
+                            <TableHead><Input placeholder="Filtrar utilizador..." value={detailedColumnFilters['userName'] || ''} onChange={(e) => setDetailedColumnFilters(p => ({...p, userName: e.target.value}))} className="h-8"/></TableHead>
+                            <TableHead><Input placeholder="Filtrar tarefa..." value={detailedColumnFilters['taskType'] || ''} onChange={(e) => setDetailedColumnFilters(p => ({...p, taskType: e.target.value}))} className="h-8"/></TableHead>
+                            <TableHead><Input placeholder="Filtrar livro..." value={detailedColumnFilters['bookName'] || ''} onChange={(e) => setDetailedColumnFilters(p => ({...p, bookName: e.target.value}))} className="h-8"/></TableHead>
+                            <TableHead><Input placeholder="Filtrar projeto..." value={detailedColumnFilters['projectName'] || ''} onChange={(e) => setDetailedColumnFilters(p => ({...p, projectName: e.target.value}))} className="h-8"/></TableHead>
                             <TableHead/>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {paginatedTasks.map(task => (
-                            <TableRow key={task.id} data-state={selection.includes(task.id) && "selected"}>
+                            <TableRow key={task.id} data-state={detailedSelection.includes(task.id) && "selected"}>
                                 <TableCell>
                                     <Checkbox
-                                      checked={selection.includes(task.id)}
-                                      onCheckedChange={(checked) => setSelection(prev => checked ? [...prev, task.id] : prev.filter(id => id !== task.id))}
+                                      checked={detailedSelection.includes(task.id)}
+                                      onCheckedChange={(checked) => setDetailedSelection(prev => checked ? [...prev, task.id] : prev.filter(id => id !== task.id))}
                                     />
                                 </TableCell>
                                 <TableCell>{format(task.completedAt, 'yyyy-MM-dd HH:mm')}</TableCell>
@@ -407,22 +530,11 @@ export default function DailyProductionClient() {
             </CardContent>
             <CardFooter className="flex items-center justify-between">
                 <div className="text-xs text-muted-foreground">
-                    {selection.length > 0 ? `${selection.length} de ${filteredTasks.length} tarefa(s) selecionada(s).` : `A mostrar ${paginatedTasks.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedTasks.length} de ${filteredTasks.length} tarefas`}
+                    {detailedSelection.length > 0 ? `${detailedSelection.length} de ${tasksForDetailedView.length} tarefa(s) selecionada(s).` : `A mostrar ${paginatedTasks.length > 0 ? (detailedCurrentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(detailedCurrentPage - 1) * ITEMS_PER_PAGE + paginatedTasks.length} de ${tasksForDetailedView.length} tarefas`}
                 </div>
                 <PaginationNav />
             </CardFooter>
        </Card>
-
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-            <CardHeader><CardTitle>Produção Diária (Nº de Tarefas)</CardTitle></CardHeader>
-            <CardContent><ChartContainer config={chartConfig} className="h-[250px] w-full"><BarChart data={chartData.byDay}><CartesianGrid vertical={false} /><XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} /><YAxis /><Tooltip cursor={{ fill: "hsl(var(--muted))" }} content={<ChartTooltipContent />} /><Bar dataKey="count" fill="var(--color-count)" radius={4} /></BarChart></ChartContainer></CardContent>
-        </Card>
-        <Card>
-            <CardHeader><CardTitle>Produção por Tipo</CardTitle></CardHeader>
-            <CardContent><ChartContainer config={chartConfig} className="h-[250px] w-full"><PieChart><Tooltip content={<ChartTooltipContent hideLabel />} /><Pie data={chartData.byType} dataKey="value" nameKey="name" innerRadius={50} label>{chartData.byType.map(e => <Cell key={e.name} fill={e.fill} />)}</Pie><Legend /></PieChart></ChartContainer></CardContent>
-        </Card>
-      </div>
     </div>
   )
 }
