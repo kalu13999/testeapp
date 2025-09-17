@@ -39,6 +39,7 @@ import {
   Split,
   MonitorCheck,
   MessageSquare,
+  TrendingUp,
 } from "lucide-react";
 
 interface MenuItem {
@@ -79,6 +80,7 @@ export const allMenuItems: MenuSection[] = [
       { href: "/clients", label: "Clientes", icon: Users },
       { href: "/users", label: "Utilizadores", icon: User },
       { href: "/role-management", label: "Gestão de Perfis", icon: GanttChartSquare },
+      { href: "/admin/daily-production", label: "Produção Diária", icon: TrendingUp },
     ],
   },
   {
@@ -143,7 +145,7 @@ export const allMenuItems: MenuSection[] = [
   },
   {
     id: "workflow-processing",
-    title: "Processamento",
+    title: "Processamento Automático",
     items: [
       { href: "/workflow/ready-for-processing", label: "Processamento Pendente", icon: FileCog },
       { href: "/workflow/in-processing", label: "Em Processamento", icon: Loader2 },
