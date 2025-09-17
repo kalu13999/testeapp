@@ -2160,7 +2160,7 @@ const openAppValidateScan = (bookId: string) => {
         const response = await fetch(`/api/processing-batches/${batchId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'Failed', endTime: getDbSafeDate(), progress: 100 }),
+          body: JSON.stringify({ status: 'Failed', endTime: getDbSafeDate()}),
         });
         if (!response.ok) throw new Error('Falha ao atualizar lote');
         const updatedBatch = await response.json();
