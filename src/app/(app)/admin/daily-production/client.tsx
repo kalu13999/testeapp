@@ -31,7 +31,7 @@ import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu"
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from "@/components/ui/pagination"
 import { Label } from "@/components/ui/label";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -78,14 +78,13 @@ export default function DailyProductionClient() {
   const [detailedSelection, setDetailedSelection] = React.useState<string[]>([]);
   
   // States for Summary Table
-  const [groupBy, setGroupBy] = React.useState<GroupingOption>('user');
+  const [groupBy, setGroupBy] = React.useState<GroupingOption[]>(['user']);
   const [summaryColumnFilters, setSummaryColumnFilters] = React.useState<{ [key: string]: string }>({});
 
   const allCompletedTasks = React.useMemo((): CompletedTask[] => {
     const tasks: CompletedTask[] = [];
-    const allBooks = allProjects.flatMap(p => p.books);
     
-    allBooks.forEach(book => {
+    allProjects.flatMap(p => p.books).forEach(book => {
       if (book.scanEndTime && book.scannerUserId) {
         tasks.push({
           id: `${book.id}-scan`,
@@ -137,25 +136,29 @@ export default function DailyProductionClient() {
   }, [allCompletedTasks, dateRange, taskTypeFilter, userFilter, projectFilter]);
 
   const summaryData = React.useMemo((): SummaryData[] => {
+    if (groupBy.length === 0) return [];
     const keyMap = {
         user: 'userName',
         project: 'projectName',
         date: 'completedAt',
         task: 'taskType'
     };
-    const groupKey = keyMap[groupBy];
 
     const grouped = globallyFilteredTasks.reduce((acc, task) => {
-        let key = task[groupKey as keyof CompletedTask];
-        if(groupKey === 'completedAt' && key instanceof Date) {
-            key = format(new Date(key as Date), 'yyyy-MM-dd');
+        const compositeKey = groupBy.map(groupKey => {
+            const taskKey = keyMap[groupKey];
+            let value = task[taskKey as keyof CompletedTask];
+            if(taskKey === 'completedAt' && value instanceof Date) {
+                return format(new Date(value as Date), 'yyyy-MM-dd');
+            }
+            return String(value);
+        }).join(' - ');
+
+        if (!acc[compositeKey]) {
+            acc[compositeKey] = { name: compositeKey, taskCount: 0, pageCount: 0 };
         }
-        const groupName = String(key);
-        if (!acc[groupName]) {
-            acc[groupName] = { name: groupName, taskCount: 0, pageCount: 0 };
-        }
-        acc[groupName].taskCount += 1;
-        acc[groupName].pageCount += task.pageCount || 0;
+        acc[compositeKey].taskCount += 1;
+        acc[compositeKey].pageCount += task.pageCount || 0;
         return acc;
     }, {} as Record<string, SummaryData>);
     
@@ -179,15 +182,20 @@ export default function DailyProductionClient() {
         date: 'completedAt',
         task: 'taskType'
     };
-    const groupKey = keyMap[groupBy];
-
-    tasks = tasks.filter(task => {
-        let key = task[groupKey as keyof CompletedTask];
-        if (groupKey === 'completedAt' && key instanceof Date) {
-            key = format(new Date(key as Date), 'yyyy-MM-dd');
-        }
-        return summaryFilterNames.has(String(key));
-    });
+    
+    if(groupBy.length > 0) {
+      tasks = tasks.filter(task => {
+          const compositeKey = groupBy.map(groupKey => {
+              const taskKey = keyMap[groupKey];
+              let value = task[taskKey as keyof CompletedTask];
+              if (taskKey === 'completedAt' && value instanceof Date) {
+                  return format(new Date(value as Date), 'yyyy-MM-dd');
+              }
+              return String(value);
+          }).join(' - ');
+          return summaryFilterNames.has(compositeKey);
+      });
+    }
 
     Object.entries(detailedColumnFilters).forEach(([columnId, value]) => {
       if (value) {
@@ -365,22 +373,21 @@ export default function DailyProductionClient() {
   }
 
   const getSummaryHeader = () => {
-    switch (groupBy) {
-        case 'user': return 'Utilizador';
-        case 'project': return 'Projeto';
-        case 'date': return 'Data';
-        case 'task': return 'Tipo de Tarefa';
-    }
+    if(groupBy.length === 0) return 'Agrupamento';
+    return groupBy.map(g => g.charAt(0).toUpperCase() + g.slice(1)).join(' / ');
   }
 
   const getChartTitle = () => {
-    switch (groupBy) {
-        case 'user': return 'Produção por Utilizador';
-        case 'project': return 'Produção por Projeto';
-        case 'date': return 'Produção por Data';
-        case 'task': return 'Produção por Tipo de Tarefa';
-    }
+    if (groupBy.length === 0) return 'Produção';
+    return `Produção por ${groupBy.map(g => g.charAt(0).toUpperCase() + g.slice(1)).join(' e ')}`;
   }
+  
+  const groupingOptions: { id: GroupingOption; label: string }[] = [
+    { id: 'user', label: 'Utilizador' },
+    { id: 'project', label: 'Projeto' },
+    { id: 'date', label: 'Data' },
+    { id: 'task', label: 'Tipo de Tarefa' },
+  ];
 
   return (
     <div className="space-y-6">
@@ -446,17 +453,31 @@ export default function DailyProductionClient() {
                             <Group className="h-4 w-4" />
                             Agrupar por
                         </Label>
-                        <Select value={groupBy} onValueChange={value => setGroupBy(value as GroupingOption)}>
-                            <SelectTrigger id="group-by" className="w-[180px]">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="user">Utilizador</SelectItem>
-                                <SelectItem value="project">Projeto</SelectItem>
-                                <SelectItem value="date">Data</SelectItem>
-                                <SelectItem value="task">Tipo de Tarefa</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" className="w-[180px] justify-between">
+                                    <span>{getSummaryHeader()}</span>
+                                    <ChevronsUpDown className="h-4 w-4 opacity-50" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                {groupingOptions.map(opt => (
+                                    <DropdownMenuCheckboxItem
+                                        key={opt.id}
+                                        checked={groupBy.includes(opt.id)}
+                                        onCheckedChange={(checked) => {
+                                            setGroupBy(current => 
+                                                checked 
+                                                    ? [...current, opt.id] 
+                                                    : current.filter(g => g !== opt.id)
+                                            );
+                                        }}
+                                    >
+                                        {opt.label}
+                                    </DropdownMenuCheckboxItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                 </div>
             </CardHeader>
