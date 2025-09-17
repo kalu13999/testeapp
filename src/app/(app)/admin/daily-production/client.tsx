@@ -26,7 +26,7 @@ import { DatePickerWithRange } from "@/components/ui/date-range-picker"
 import { useAppContext } from "@/context/workflow-context"
 import { format, startOfDay, endOfDay, isWithinInterval } from "date-fns"
 import type { DateRange } from "react-day-picker"
-import { TrendingUp, Award, Calendar, UserCheck, ChevronsUpDown, ArrowUp, ArrowDown, Download, Group } from "lucide-react"
+import { TrendingUp, Award, Calendar, UserCheck, ChevronsUpDown, ArrowUp, ArrowDown, Download, Group, Book, FileText } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast";
@@ -222,18 +222,32 @@ export default function DailyProductionClient() {
 
 
   const stats = React.useMemo(() => {
-    if (globallyFilteredTasks.length === 0) return { totalTasks: 0, dailyAvg: 0, bestDay: { date: 'N/A', count: 0 }, topOperator: { name: 'N/A', count: 0 } };
+    if (globallyFilteredTasks.length === 0) return { 
+        totalTasks: 0, totalPages: 0,
+        dailyAvgTasks: 0, dailyAvgPages: 0,
+        bestDayTasks: { date: 'N/A', count: 0 },
+        bestDayPages: { date: 'N/A', count: 0 },
+        topOperator: { name: 'N/A', count: 0 }
+    };
 
-    const tasksByDay: Record<string, number> = {};
+    const tasksByDay: Record<string, {taskCount: number, pageCount: number}> = {};
     globallyFilteredTasks.forEach(task => {
       const day = format(task.completedAt, 'yyyy-MM-dd');
-      tasksByDay[day] = (tasksByDay[day] || 0) + 1;
+      if (!tasksByDay[day]) {
+        tasksByDay[day] = { taskCount: 0, pageCount: 0 };
+      }
+      tasksByDay[day].taskCount += 1;
+      tasksByDay[day].pageCount += task.pageCount || 0;
     });
-
+    
     const numDays = dateRange?.from && dateRange.to 
         ? Math.abs(new Date(dateRange.to).getTime() - new Date(dateRange.from).getTime()) / (1000 * 3600 * 24) + 1 
         : 1;
-    const bestDayEntry = Object.entries(tasksByDay).sort((a, b) => b[1] - a[1])[0] || ['N/A', 0];
+        
+    const totalPages = globallyFilteredTasks.reduce((sum, task) => sum + (task.pageCount || 0), 0);
+
+    const bestDayTasksEntry = Object.entries(tasksByDay).sort((a, b) => b[1].taskCount - a[1].taskCount)[0] || ['N/A', {taskCount: 0}];
+    const bestDayPagesEntry = Object.entries(tasksByDay).sort((a, b) => b[1].pageCount - a[1].pageCount)[0] || ['N/A', {pageCount: 0}];
 
     const tasksByUser = globallyFilteredTasks.reduce((acc, task) => {
       acc[task.userName] = (acc[task.userName] || 0) + 1;
@@ -243,8 +257,11 @@ export default function DailyProductionClient() {
     
     return {
       totalTasks: globallyFilteredTasks.length,
-      dailyAvg: (globallyFilteredTasks.length / numDays).toFixed(1),
-      bestDay: { date: bestDayEntry[0], count: bestDayEntry[1] },
+      totalPages: totalPages,
+      dailyAvgTasks: (globallyFilteredTasks.length / numDays).toFixed(1),
+      dailyAvgPages: (totalPages / numDays).toFixed(1),
+      bestDayTasks: { date: bestDayTasksEntry[0], count: bestDayTasksEntry[1].taskCount },
+      bestDayPages: { date: bestDayPagesEntry[0], count: bestDayPagesEntry[1].pageCount },
       topOperator: { name: topOperatorEntry[0], count: topOperatorEntry[1] }
     };
   }, [globallyFilteredTasks, dateRange]);
@@ -400,9 +417,9 @@ export default function DailyProductionClient() {
       </Card>
       
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Total de Tarefas</CardTitle><TrendingUp className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{stats.totalTasks}</div></CardContent></Card>
-        <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Média Diária</CardTitle><Calendar className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{stats.dailyAvg}</div></CardContent></Card>
-        <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Melhor Dia</CardTitle><Award className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{stats.bestDay.count}</div><p className="text-xs text-muted-foreground">on {stats.bestDay.date}</p></CardContent></Card>
+        <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Totais</CardTitle><TrendingUp className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="flex items-baseline gap-2"><Book className="h-4 w-4 text-muted-foreground"/><span className="text-2xl font-bold">{stats.totalTasks}</span><span className="text-sm text-muted-foreground">tarefas</span></div><div className="flex items-baseline gap-2"><FileText className="h-4 w-4 text-muted-foreground"/><span className="text-2xl font-bold">{stats.totalPages.toLocaleString()}</span><span className="text-sm text-muted-foreground">páginas</span></div></CardContent></Card>
+        <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Média Diária</CardTitle><Calendar className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="flex items-baseline gap-2"><Book className="h-4 w-4 text-muted-foreground"/><span className="text-2xl font-bold">{stats.dailyAvgTasks}</span><span className="text-sm text-muted-foreground">tarefas/dia</span></div><div className="flex items-baseline gap-2"><FileText className="h-4 w-4 text-muted-foreground"/><span className="text-2xl font-bold">{stats.dailyAvgPages}</span><span className="text-sm text-muted-foreground">páginas/dia</span></div></CardContent></Card>
+        <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Melhor Dia</CardTitle><Award className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="flex items-baseline gap-2"><Book className="h-4 w-4 text-muted-foreground"/><span className="text-2xl font-bold">{stats.bestDayTasks.count}</span><span className="text-sm text-muted-foreground">tarefas</span></div><p className="text-xs text-muted-foreground ml-6">em {stats.bestDayTasks.date}</p></CardContent></Card>
         <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Top Operador</CardTitle><UserCheck className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{stats.topOperator.name}</div><p className="text-xs text-muted-foreground">{stats.topOperator.count} tarefas</p></CardContent></Card>
       </div>
 
