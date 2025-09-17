@@ -59,7 +59,7 @@ type SummaryData = {
 const ITEMS_PER_PAGE = 20;
 
 export default function DailyProductionClient() {
-  const { books, users, allProjects } = useAppContext();
+  const { users, allProjects } = useAppContext();
   const { toast } = useToast();
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
     from: new Date(),
@@ -81,7 +81,9 @@ export default function DailyProductionClient() {
 
   const allCompletedTasks = React.useMemo((): CompletedTask[] => {
     const tasks: CompletedTask[] = [];
-    books.forEach(book => {
+    const allBooks = allProjects.flatMap(p => p.books);
+    
+    allBooks.forEach(book => {
       if (book.scanEndTime && book.scannerUserId) {
         tasks.push({
           id: `${book.id}-scan`,
@@ -111,7 +113,7 @@ export default function DailyProductionClient() {
       }
     });
     return tasks;
-  }, [books, users]);
+  }, [allProjects, users]);
 
   const globallyFilteredTasks = React.useMemo(() => {
     let tasks = allCompletedTasks;
