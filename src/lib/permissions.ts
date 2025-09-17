@@ -103,6 +103,7 @@ export const permissionDescriptions: { [key: string]: string } = {
   '/admin/status-override': 'Permite substituir manualmente o estado de qualquer livro. (Permissão de alto nível)',
   '/admin/default-projects': 'Permite definir um projeto de login predefinido para outros utilizadores.',
   '/admin/reassign-user': 'Concede acesso para reatribuir uma tarefa de um utilizador para outro.',
+  '/admin/overview': 'Concede acesso a uma visão geral de alto nível de toda a atividade do sistema.',
   '/admin/distribution-hub': 'Permite monitorizar e ajustar regras de distribuição de trabalho.',
   '/admin/general-configs': 'Permite gerir configurações core como armazenamentos e scanners.',
   '/admin/observation-history': 'Permite visualizar o histórico completo de observações de todos os livros.',
