@@ -61,8 +61,7 @@ type SummaryData = {
 const ITEMS_PER_PAGE = 20;
 
 export default function DailyProductionClient() {
-  const { allProjects } = useAppContext();
-  const { users } = useAppContext();
+  const { allProjects, users } = useAppContext();
   const { toast } = useToast();
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
     from: new Date(),
@@ -120,9 +119,9 @@ export default function DailyProductionClient() {
 
   const globallyFilteredTasks = React.useMemo(() => {
     let tasks = allCompletedTasks;
-    if (dateRange?.from && dateRange?.to) {
+    if (dateRange?.from) {
       const from = startOfDay(dateRange.from);
-      const to = endOfDay(dateRange.to);
+      const to = endOfDay(dateRange.to || dateRange.from);
       tasks = tasks.filter(task => isWithinInterval(task.completedAt, { start: from, end: to }));
     }
     if (taskTypeFilter !== 'all') {
@@ -148,7 +147,7 @@ export default function DailyProductionClient() {
 
     const grouped = globallyFilteredTasks.reduce((acc, task) => {
         let key = task[groupKey as keyof CompletedTask];
-        if(groupKey === 'completedAt') {
+        if(groupKey === 'completedAt' && key instanceof Date) {
             key = format(new Date(key as Date), 'yyyy-MM-dd');
         }
         const groupName = String(key);
@@ -184,7 +183,7 @@ export default function DailyProductionClient() {
 
     tasks = tasks.filter(task => {
         let key = task[groupKey as keyof CompletedTask];
-        if (groupKey === 'completedAt') {
+        if (groupKey === 'completedAt' && key instanceof Date) {
             key = format(new Date(key as Date), 'yyyy-MM-dd');
         }
         return summaryFilterNames.has(String(key));
