@@ -8,6 +8,7 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
+  type ChartConfig,
 } from "@/components/ui/chart"
 import {
   Table,
@@ -346,6 +347,15 @@ export default function DailyProductionClient() {
     }
   }
 
+  const getChartTitle = () => {
+    switch (groupBy) {
+        case 'user': return 'Produção por Utilizador';
+        case 'project': return 'Produção por Projeto';
+        case 'date': return 'Produção por Data';
+        case 'task': return 'Produção por Tipo de Tarefa';
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -452,7 +462,7 @@ export default function DailyProductionClient() {
             <CardContent><ChartContainer config={chartConfig} className="h-[250px] w-full"><BarChart data={chartData.byDay}><CartesianGrid vertical={false} /><XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} /><YAxis allowDecimals={false} /><Tooltip cursor={{ fill: "hsl(var(--muted))" }} content={<ChartTooltipContent />} /><Bar dataKey="count" fill="var(--color-count)" radius={4} /></BarChart></ChartContainer></CardContent>
         </Card>
         <Card>
-            <CardHeader><CardTitle>Produção por Tipo</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{getChartTitle()}</CardTitle></CardHeader>
             <CardContent><ChartContainer config={chartConfig} className="h-[250px] w-full"><PieChart><Tooltip content={<ChartTooltipContent hideLabel />} /><Pie data={chartData.byType} dataKey="value" nameKey="name" innerRadius={50} label>{chartData.byType.map(e => <Cell key={e.name} fill={e.fill} />)}</Pie><Legend /></PieChart></ChartContainer></CardContent>
         </Card>
       </div>
