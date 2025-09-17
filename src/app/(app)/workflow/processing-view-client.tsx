@@ -67,9 +67,11 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
     processingBatchItems,
     processingLogs,
     completeProcessingBatch,
+    failProcessingBatch,
     failureProcessingBatch,
     selectedProjectId,
     storages,
+    currentUser,
   } = useAppContext();
 
   const [confirmationState, setConfirmationState] = React.useState<{ open: boolean; batch: (ProcessingBatch & { storageId?: string }) | null, status: string }>({ open: false, batch: null, status: '' });
@@ -117,7 +119,11 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
 
     if (confirmationState.status === "Complete") {
       completeProcessingBatch(confirmationState.batch.id);
-    } else if (confirmationState.status === "Open Protocol") {
+    } 
+    else if (confirmationState.status === "Failed") {
+      failProcessingBatch(confirmationState.batch.id);
+    }
+    else if (confirmationState.status === "Open Protocol") {
         if(!confirmationState.batch.storageId) {
             console.error("Storage ID is missing for the failed batch.");
             return;
@@ -188,6 +194,11 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
                       </div>
                       <div className="px-4">
                         {batch.status === 'In Progress' && (
+                           <Button size="sm" variant="destructive" onClick={() => openConfirmationDialog(batch, "Failed")}>
+                             Marcar Falha
+                           </Button>
+                        )}
+                        {batch.status === 'In Progress' &&  currentUser?.role === 'Admin' && (
                            <Button size="sm" onClick={() => openConfirmationDialog(batch, "Complete")}>
                              Marcar Completo
                            </Button>
@@ -275,11 +286,14 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {confirmationState.status === 'Complete'
-                ? 'Complete Processing Batch?'
-                : 'Open Protocol?'}
+              {confirmationState.status === 'Failed' && 'Marcar lote como falha?'}
+              {confirmationState.status === 'Complete' && 'Forçar concluir processamento do lote?'}
+              {confirmationState.status === 'Open Protocol' && 'Abrir protocolo?'}
             </DialogTitle>
             <DialogDescription>
+              {confirmationState.status === 'Failed' &&
+                `Isto marcará o lote inteiro de "${confirmationState.batch?.timestampStr}" como falhado. 
+                Atenção: verifique se não está em processamento antes de confirmar.`}
               {confirmationState.status === 'Complete' &&
                 `Isto marcará o lote inteiro de "${confirmationState.batch?.timestampStr}" como completo e moverá todos os livros associados para a próxima etapa. Esta ação não pode ser desfeita.`}
 

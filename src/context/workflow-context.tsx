@@ -145,6 +145,7 @@ type AppContextType = {
   startProcessingBatch: (bookIds: string[], storageId: string) => void;
   failureProcessingBatch: (batchId: string, storageId: string) => void;
   completeProcessingBatch: (batchId: string) => void;
+  failProcessingBatch: (batchId: string) => void;
   handleSendBatchToNextStage: (batchIds: string[]) => Promise<void>;
   setProvisionalDeliveryStatus: (deliveryItemId: string, bookId: string, status: 'approved' | 'rejected', reason?: string) => Promise<void>;
   approveBatch: (deliveryId: string) => void;
@@ -300,7 +301,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
 
   const login = async (username: string, password: string): Promise<User | null> => {
-    const user = users.find(u => u.username === username && u.password === password);
+
+    const user = users.find(u => (u.username || '').toLowerCase() === (username || '').toLowerCase() && u.password === password);
     if (user) {
       if (user.status === 'disabled') {
         toast({title: "Login Falhou", description: "A sua conta está desativada. Por favor, contacte um administrador.", variant: "destructive"});
@@ -2011,7 +2013,6 @@ const openAppValidateScan = (bookId: string) => {
       try {
         const fromStatusName = 'Ready for Processing';
         const toStatusName = 'In Processing';
-
         for (const bookId of bookIds) {
           const book = rawBooks.find(b => b.id === bookId);
           if (book) {
@@ -2046,10 +2047,18 @@ const openAppValidateScan = (bookId: string) => {
           return;
         }
 
+        const firstBook = rawBooks.find(b => b.id === bookIds[0]);
+        if (!firstBook) {
+            toast({ title: "Erro", description: "Não foi possível encontrar o livro para determinar o ID do projeto.", variant: "destructive" });
+            return;
+        }
+        const projectId = firstBook.projectId;
+
         openLocalApp('rfs-processa-app', {
           userId: currentUser.id,
           batchId: newBatch.id,
           batchName: newBatch.timestampStr,
+          projectId: projectId,
           storageId: storageId,
           rootPath: storage.root_path,
         });
@@ -2077,10 +2086,25 @@ const openAppValidateScan = (bookId: string) => {
           return;
         }
 
+        // --- INÍCIO DA LÓGICA PROPOSTA ---
+        const firstItemInBatch = processingBatchItems.find(item => item.batchId === batchId);
+        if (!firstItemInBatch) {
+            toast({ title: "Erro", description: "Não foi possível encontrar itens para este lote.", variant: "destructive" });
+            return;
+        }
+        const book = rawBooks.find(b => b.id === firstItemInBatch.bookId);
+        if (!book) {
+            toast({ title: "Erro", description: `Não foi possível encontrar o livro com ID ${firstItemInBatch.bookId}.`, variant: "destructive" });
+            return;
+        }
+        const projectId = book.projectId;
+        // --- FIM DA LÓGICA PROPOSTA ---
+
         openLocalApp('rfs-processa-app', {
           userId: currentUser.id,
           batchId: batch.id,
           batchName: batch.timestampStr,
+          projectId: projectId,
           storageId: storageId,
           rootPath: storage.root_path,
         });
@@ -2124,7 +2148,34 @@ const openAppValidateScan = (bookId: string) => {
       }
     });
   };
+  const failProcessingBatch = async (batchId: string) => {
+    await withMutation(async () => {
+      const batch = processingBatches.find(b => b.id === batchId);
+      if (!batch) return;
+      
+      const itemsInBatch = processingBatchItems.filter(i => i.batchId === batchId);
+      const bookIdsInBatch = itemsInBatch.map(i => i.bookId);
 
+      try {
+        const response = await fetch(`/api/processing-batches/${batchId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'Failed', endTime: getDbSafeDate(), progress: 100 }),
+        });
+        if (!response.ok) throw new Error('Falha ao atualizar lote');
+        const updatedBatch = await response.json();
+        setProcessingBatches(prev => prev.map(b => b.id === batchId ? updatedBatch : b));
+
+
+        logAction('Processing Batch mark as Failed', `Batch ${batchId} was completed.`, {});
+        await logProcessingEvent(batchId, `Batch ${batchId} marked as Failed by user.`);
+        toast({ title: "Lote de Processamento Completo" });
+      } catch(error) {
+        console.error(error);
+        toast({ title: "Erro", description: `Não foi possível completar o lote ${batchId}.`, variant: "destructive" });
+      }
+    });
+  };
   const handleSendBatchToNextStage = async (batchIds: string[]) => {
     await withMutation(async () => {
         let allSucceeded = true;
@@ -2669,7 +2720,7 @@ const openAppValidateScan = (bookId: string) => {
     approveBatch,
     handleFinalize, handleMarkAsCorrected, handleResubmit, handleResubmitCopyTifs, handleResubmitMoveTifs,
     addPageToBook, deletePageFromBook,
-    updateDocumentFlag, startProcessingBatch, failureProcessingBatch, completeProcessingBatch, handleSendBatchToNextStage,
+    updateDocumentFlag, startProcessingBatch, failureProcessingBatch, completeProcessingBatch, failProcessingBatch, handleSendBatchToNextStage,
     handleAssignUser, reassignUser, handleStartTask, handleCancelTask,
     openAppValidateScan,
     handleAdminStatusOverride, handleCreateDeliveryBatch, finalizeDeliveryBatch,

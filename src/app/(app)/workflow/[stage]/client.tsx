@@ -1258,7 +1258,7 @@ const handleMainAction = (book: EnrichedBook) => {
                  <div className="flex items-center gap-2">
                     {['to-indexing', 'to-checking'].includes(stage) && (
                       <Button variant="outline" size="sm" onClick={() => canViewAll ? setPullTaskState({open: true, stage, role: config.assigneeRole ?? null}) : handlePullNextTask(stage)}>
-                        <UserPlus2 className="mr-2 h-4 w-4" /> Get Next Task
+                        <UserPlus2 className="mr-2 h-4 w-4" /> Receber próximo
                       </Button>
                     )}
                     {renderBulkActions()}

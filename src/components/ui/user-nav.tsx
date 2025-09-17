@@ -59,14 +59,14 @@ export function UserNav({ user }: UserNavProps) {
           <DropdownMenuItem asChild>
             <Link href="/profile">
                 <User className="mr-2 h-4 w-4" />
-                <span>Profile</span>
+                <span>Perfil</span>
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem>
+          {/*<DropdownMenuItem>
             <CreditCard className="mr-2 h-4 w-4" />
             <span>Billing</span>
             <DropdownMenuShortcut>⌘B</DropdownMenuShortcut>
-          </DropdownMenuItem>
+          </DropdownMenuItem>*/}
           {user.role === 'Admin' && (
              <DropdownMenuItem asChild>
                 <Link href="/settings">
@@ -80,7 +80,7 @@ export function UserNav({ user }: UserNavProps) {
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout}>
           <LogOut className="mr-2 h-4 w-4" />
-          <span>Log out</span>
+          <span>Terminar Sessão</span>
           <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
         </DropdownMenuItem>
       </DropdownMenuContent>

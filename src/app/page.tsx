@@ -47,17 +47,17 @@ export default function LoginPage() {
               <FileLock2 className="h-8 w-8 text-primary-foreground" />
             </div>
           </div>
-          <CardTitle className="font-headline text-3xl">FlowVault</CardTitle>
+          <CardTitle className="font-headline text-3xl">RFS<br />WorkFlow Doc</CardTitle>
           <CardDescription>Introduza as suas credenciais para aceder à sua conta</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username">Nome de Utilizador</Label>
               <Input 
                 id="username" 
                 type="text" 
-                placeholder="ex.: admin" 
+                placeholder="Nome de Utilizador" 
                 required 
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -66,9 +66,9 @@ export default function LoginPage() {
             <div className="space-y-2">
               <div className="flex items-center">
                 <Label htmlFor="password">Palavra-passe</Label>
-                <Link href="#" className="ml-auto inline-block text-sm underline">
+                {/*<Link href="#" className="ml-auto inline-block text-sm underline">
                   Esqueceu a sua palavra-passe?
-                </Link>
+                </Link>*/}
               </div>
               <Input 
                 id="password" 

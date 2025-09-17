@@ -334,7 +334,7 @@ export default function ProfileClient() {
                                         {canViewAllData ? <TableCell>{(book as any).assigneeName || 'Unassigned'}</TableCell> : <TableCell>{getAssignedDateString(book)}</TableCell>}
                                     </TableRow>
                                 )) : (
-                                    <TableRow><TableCell colSpan={canViewAllData ? 4 : 4} className="h-24 text-center">{canViewAllData ? 'There are no tasks in any queue.' : 'You have no tasks in your queue.'}</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={canViewAllData ? 4 : 4} className="h-24 text-center">{canViewAllData ? 'Não há tarefas disponíveis em nenhuma das listas de trabalho.' : 'Não há tarefas pendentes na sua lista pessoal.'}</TableCell></TableRow>
                                 )}
                             </TableBody>
                         </Table>
@@ -383,7 +383,7 @@ export default function ProfileClient() {
                                         <TableCell>{new Date(log.date).toLocaleString()}</TableCell>
                                     </TableRow>
                                 )) : (
-                                    <TableRow><TableCell colSpan={canViewAllData ? 4 : 3} className="h-24 text-center">No recent activity found.</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={canViewAllData ? 4 : 3} className="h-24 text-center">Nenhuma atividade recente disponível.</TableCell></TableRow>
                                 )}
                             </TableBody>
                         </Table>

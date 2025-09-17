@@ -156,7 +156,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
                <div className="bg-primary rounded-lg p-2 flex items-center justify-center">
                  <FileLock2 className="h-6 w-6 text-primary-foreground" />
                </div>
-               <h1 className="font-headline text-2xl font-bold text-foreground">FlowVault</h1>
+               <h1 className="font-headline text-2xl font-bold text-foreground">RFS<br />WorkFlow Doc</h1>
              </div>
              <GlobalProjectFilter />
           </div>
