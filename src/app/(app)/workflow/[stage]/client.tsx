@@ -63,7 +63,8 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 
-const ITEMS_PER_PAGE = 100;
+//const ITEMS_PER_PAGE = 100;
+
 const SIMPLE_BULK_ACTION_STAGES = [
   'confirm-reception', 'to-scan', 'to-indexing', 'to-checking',
   'indexing-started', 'checking-started', 'ready-for-processing',
@@ -195,6 +196,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   
   const [columnStates, setColumnStates] = React.useState<{ [key: string]: { cols: number } }>({});
 
+  const [itemsPerPage, setItemsPerPage] = React.useState(100);
 
   const [newObservation, setNewObservation] = React.useState('');
   const [observationTarget, setObservationTarget] = React.useState<EnrichedBook | null>(null);
@@ -385,11 +387,16 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     return filtered;
   }, [allDisplayItems, columnFilters, sorting]);
 
-  const totalPages = Math.ceil(sortedAndFilteredItems.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(sortedAndFilteredItems.length / itemsPerPage);
+  const displayItems = sortedAndFilteredItems.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+  /*const totalPages = Math.ceil(sortedAndFilteredItems.length / ITEMS_PER_PAGE);
   const displayItems = sortedAndFilteredItems.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
-  );
+  );*/
   const selectedItems = React.useMemo(() => {
     return sortedAndFilteredItems.filter(item => selection.includes(item.id));
   }, [sortedAndFilteredItems, selection]);
@@ -837,7 +844,9 @@ const handleMainAction = (book: EnrichedBook) => {
             <Link href={`/books/${item.id}`} className="hover:underline">{item.name}</Link>
         </TableCell>
         <TableCell>{item.projectName}</TableCell>
-        <TableCell className="hidden md:table-cell">{item.clientName}</TableCell>
+        {/*<TableCell className="hidden md:table-cell">{item.clientName}</TableCell>*/}
+        <TableCell className="hidden md:table-cell">{item.isbn}</TableCell>
+        <TableCell className="hidden md:table-cell">{item.expectedDocuments}</TableCell>
         {canViewAll && config.assigneeRole && (
           <TableCell>{item.assigneeName}</TableCell>
         )}
@@ -1285,6 +1294,43 @@ const handleMainAction = (book: EnrichedBook) => {
             </div>
           </CardHeader>
           <CardContent>
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-xs text-muted-foreground">
+                  {selection.length > 0
+                    ? `${selection.length} de ${sortedAndFilteredItems.length} item(s) selecionados.`
+                    : `A mostrar ${
+                        displayItems.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0
+                      }-${(currentPage - 1) * itemsPerPage + displayItems.length} de ${
+                        sortedAndFilteredItems.length
+                      } itens`}
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <PaginationNav />
+                  <div className="flex items-center space-x-2 text-xs">
+                    <p className="text-muted-foreground">Linhas por página</p>
+                    <Select
+                      value={`${itemsPerPage}`}
+                      onValueChange={(value) => {
+                        setItemsPerPage(Number(value));
+                        setCurrentPage(1); // Reset para a primeira página
+                      }}
+                    >
+                      <SelectTrigger className="h-7 w-[70px]">
+                        <SelectValue placeholder={itemsPerPage} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[10, 20, 50, 100, 200, 500].map((pageSize) => (
+                          <SelectItem key={pageSize} value={`${pageSize}`}>
+                            {pageSize}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                </div>
+              </div>
             <Table>
               <TableHeader>
                 {dataType === 'book' ? (
@@ -1299,7 +1345,9 @@ const handleMainAction = (book: EnrichedBook) => {
                       </TableHead>
                       <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>Nome do Livro {getSortIndicator('name')}</div></TableHead>
                       <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('projectName', e.shiftKey)}>Projeto {getSortIndicator('projectName')}</div></TableHead>
-                      <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('clientName', e.shiftKey)}>Cliente {getSortIndicator('clientName')}</div></TableHead>
+                      {/*<TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('clientName', e.shiftKey)}>Cliente {getSortIndicator('clientName')}</div></TableHead>*/}
+                      <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('isbn', e.shiftKey)}>Cota {getSortIndicator('isbn')}</div></TableHead>
+                      <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('expectedDocuments', e.shiftKey)}>Documentos {getSortIndicator('expectedDocuments')}</div></TableHead>
                       {canViewAll && config.assigneeRole && (
                          <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('assigneeName', e.shiftKey)}>Atribuído a {getSortIndicator('assigneeName')}</div></TableHead>
                       )}
@@ -1324,11 +1372,29 @@ const handleMainAction = (book: EnrichedBook) => {
                             className="h-8"
                         />
                     </TableHead>
+                    {/*
                     <TableHead className="hidden md:table-cell">
                         <Input
                             placeholder="Filtrar cliente..."
                             value={columnFilters['clientName'] || ''}
                             onChange={(e) => handleColumnFilterChange('clientName', e.target.value)}
+                            className="h-8"
+                        />
+                    </TableHead>
+                    */}
+                    <TableHead className="hidden md:table-cell">
+                        <Input
+                            placeholder="Filtrar cota..."
+                            value={columnFilters['isbn'] || ''}
+                            onChange={(e) => handleColumnFilterChange('isbn', e.target.value)}
+                            className="h-8"
+                        />
+                    </TableHead>
+                    <TableHead className="hidden md:table-cell">
+                        <Input
+                            placeholder="Filtrar Documentos..."
+                            value={columnFilters['expectedDocuments'] || ''}
+                            onChange={(e) => handleColumnFilterChange('expectedDocuments', e.target.value)}
                             className="h-8"
                         />
                     </TableHead>
@@ -1403,11 +1469,39 @@ const handleMainAction = (book: EnrichedBook) => {
               </TableBody>
             </Table>
           </CardContent>
-          <CardFooter className="flex items-center justify-between">
+      <CardFooter className="flex items-center justify-between">
             <div className="text-xs text-muted-foreground">
-                {selection.length > 0 ? `${selection.length} de ${sortedAndFilteredItems.length} item(s) selecionados.` : `A mostrar ${displayItems.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + displayItems.length} de ${sortedAndFilteredItems.length} itens`}
+              {selection.length > 0 
+                ? `${selection.length} de ${sortedAndFilteredItems.length} item(s) selecionados.` 
+                : `A mostrar ${displayItems.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}-${(currentPage - 1) * itemsPerPage + displayItems.length} de ${sortedAndFilteredItems.length} itens`}
             </div>
-            <PaginationNav />
+            
+            <div className="flex items-center gap-4">
+              <PaginationNav />
+              <div className="flex items-center space-x-2 text-xs">
+                <p className="text-muted-foreground">Linhas por página</p>
+                <Select
+                  value={`${itemsPerPage}`}
+                  onValueChange={(value) => {
+                    setItemsPerPage(Number(value));
+                    setCurrentPage(1); // Reset para a primeira página
+                  }}
+                >
+                  <SelectTrigger className="h-7 w-[70px]">
+                    <SelectValue placeholder={itemsPerPage} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[10, 20, 50, 100, 200, 500].map((pageSize) => (
+                      <SelectItem key={pageSize} value={`${pageSize}`}>
+                        {pageSize}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+ 
+            </div>
+
           </CardFooter>
         </Card>
 
