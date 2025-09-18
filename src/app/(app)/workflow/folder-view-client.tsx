@@ -63,7 +63,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 100;
 const SIMPLE_BULK_ACTION_STAGES = [
   'confirm-reception', 'to-scan', 'to-indexing', 'to-checking',
   'indexing-started', 'checking-started', 'ready-for-processing',

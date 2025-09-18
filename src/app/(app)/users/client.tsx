@@ -62,7 +62,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 100;
 
 export default function UsersClient() {
   const { users, roles, clients, addUser, updateUser, deleteUser, allProjects, toggleUserStatus } = useAppContext();

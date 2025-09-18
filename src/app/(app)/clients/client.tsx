@@ -57,7 +57,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 100;
 
 export default function ClientsClient() {
   const { clients, addClient, updateClient, deleteClient } = useAppContext();

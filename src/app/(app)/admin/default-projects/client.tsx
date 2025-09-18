@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/button"
 import { ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react"
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 100;
 
 export default function DefaultProjectsClient() {
   const { users, allProjects, updateUserDefaultProject } = useAppContext()

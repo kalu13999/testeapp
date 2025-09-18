@@ -37,7 +37,7 @@ import Link from "next/link"
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge"
 
-const ITEMS_PER_PAGE = 15;
+const ITEMS_PER_PAGE = 100;
 const ASSIGNABLE_STATUSES = ['To Scan', 'Scanning Started', 'To Indexing', 'Indexing Started', 'To Checking', 'Checking Started'];
 type AssignmentRole = 'scanner' | 'indexer' | 'qc';
 

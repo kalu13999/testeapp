@@ -48,7 +48,7 @@ import { useAppContext } from "@/context/workflow-context";
 import type { EnrichedBook } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 100;
 
 export default function DocumentsClient() {
   const { books } = useAppContext();

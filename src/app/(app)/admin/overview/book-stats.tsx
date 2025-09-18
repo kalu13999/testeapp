@@ -29,7 +29,7 @@ import { STAGE_CONFIG, WORKFLOW_SEQUENCE } from "@/lib/workflow-config";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
-const ITEMS_PER_PAGE = 15;
+const ITEMS_PER_PAGE = 100;
 
 const getStatusBadgeVariant = (status: string) => {
     switch (status) {

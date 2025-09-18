@@ -41,7 +41,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 
-const ITEMS_PER_PAGE = 15;
+const ITEMS_PER_PAGE = 100;
 
 interface StatusOverrideClientProps {
     allStatuses: DocumentStatus[];

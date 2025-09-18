@@ -60,7 +60,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
 import { Checkbox } from "@/components/ui/checkbox";
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 100;
 
 export default function BookManagementClient() {
   const { books, addBook, updateBook, deleteBook, importBooks, selectedProjectId } = useAppContext();

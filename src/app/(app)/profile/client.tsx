@@ -32,7 +32,7 @@ import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, Pagi
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 
-const ITEMS_PER_PAGE = 15;
+const ITEMS_PER_PAGE = 100;
 
 const getInitials = (name: string) => {
     if (!name) return "";

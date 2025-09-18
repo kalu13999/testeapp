@@ -37,7 +37,7 @@ import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 
 
-const ITEMS_PER_PAGE = 15;
+const ITEMS_PER_PAGE = 100;
 
 type ValidatedBook = EnrichedBook & { 
   validationDate: string; 

@@ -69,7 +69,7 @@ interface ProjectDetailClientProps {
   projectId: string;
 }
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 100;
 
 const getStatusBadgeVariant = (status: string) => {
     switch (status) {

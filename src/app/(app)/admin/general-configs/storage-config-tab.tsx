@@ -51,7 +51,7 @@ import { StorageForm, type StorageFormValues } from "./storage-form"
 import { Input } from "@/components/ui/input"
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 100;
 
 export function StorageConfigTab() {
   const { storages, addStorage, updateStorage, deleteStorage } = useAppContext();
