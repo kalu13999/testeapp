@@ -81,6 +81,9 @@ type AppContextType = {
   selectedProjectId: string | null;
   setSelectedProjectId: (projectId: string | null) => void;
 
+
+  loadInitialData: () => Promise<void>;
+  
   // Client Actions
   addClient: (clientData: Omit<Client, 'id'>) => Promise<void>;
   updateClient: (clientId: string, clientData: Partial<Omit<Client, 'id'>>) => Promise<void>;
@@ -230,74 +233,144 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         setIsMutating(false);
     }
   };
-  
-  React.useEffect(() => {
-    const loadData = async () => {
-        try {
-            setLoading(true);
-            const [
-                clientsData, usersData, projectsData, booksData, 
-                docsData, auditData, batchesData, batchItemsData, logsData,
-                permissionsData, rolesData, workflowsData, rejectionData, statusesData,
-                storagesData, scannersData, transferLogsData, projectStoragesData,
-                deliveryBatchesData, deliveryBatchItemsData, bookObservationsData,
-            ] = await Promise.all([
-                dataApi.getClients(), dataApi.getUsers(), dataApi.getRawProjects(),
-                dataApi.getRawBooks(), dataApi.getRawDocuments(), dataApi.getAuditLogs(),
-                dataApi.getProcessingBatches(), dataApi.getProcessingBatchItems(), dataApi.getProcessingLogs(),
-                dataApi.getPermissions(), dataApi.getRoles(),
-                dataApi.getProjectWorkflows(), dataApi.getRejectionTags(), dataApi.getDocumentStatuses(),
-                dataApi.getStorages(), dataApi.getScanners(), dataApi.getTransferLogs(), dataApi.getProjectStorages(),
-                dataApi.getDeliveryBatches(), dataApi.getDeliveryBatchItems(), dataApi.getBookObservations(),
-            ]);
+  const loadInitialData = React.useCallback(async () => {
+    try {
+        setLoading(true);
+        const [
+            clientsData, usersData, projectsData, booksData, 
+            docsData, auditData, batchesData, batchItemsData, logsData,
+            permissionsData, rolesData, workflowsData, rejectionData, statusesData,
+            storagesData, scannersData, transferLogsData, projectStoragesData,
+            deliveryBatchesData, deliveryBatchItemsData, bookObservationsData,
+        ] = await Promise.all([
+            dataApi.getClients(), dataApi.getUsers(), dataApi.getRawProjects(),
+            dataApi.getRawBooks(), dataApi.getRawDocuments(), dataApi.getAuditLogs(),
+            dataApi.getProcessingBatches(), dataApi.getProcessingBatchItems(), dataApi.getProcessingLogs(),
+            dataApi.getPermissions(), dataApi.getRoles(),
+            dataApi.getProjectWorkflows(), dataApi.getRejectionTags(), dataApi.getDocumentStatuses(),
+            dataApi.getStorages(), dataApi.getScanners(), dataApi.getTransferLogs(), dataApi.getProjectStorages(),
+            dataApi.getDeliveryBatches(), dataApi.getDeliveryBatchItems(), dataApi.getBookObservations(),
+        ]);
 
-            setClients(clientsData);
-            setUsers(usersData);
-            setRawProjects(projectsData);
-            setRawBooks(booksData);
-            setStatuses(statusesData);
-            setRawDocuments(docsData);
-            setStorages(storagesData);
-            setScanners(scannersData);
-            setTransferLogs(transferLogsData);
-            setProjectStorages(projectStoragesData);
-            setBookObservations(bookObservationsData);
+        setClients(clientsData);
+        setUsers(usersData);
+        setRawProjects(projectsData);
+        setRawBooks(booksData);
+        setStatuses(statusesData);
+        setRawDocuments(docsData);
+        setStorages(storagesData);
+        setScanners(scannersData);
+        setTransferLogs(transferLogsData);
+        setProjectStorages(projectStoragesData);
+        setBookObservations(bookObservationsData);
 
-            const enrichedAuditLogs = auditData
-                .map(log => ({ ...log, user: usersData.find(u => u.id === log.userId)?.name || 'Unknown' }))
-                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            setAuditLogs(enrichedAuditLogs);
+        const enrichedAuditLogs = auditData
+            .map(log => ({ ...log, user: usersData.find(u => u.id === log.userId)?.name || 'Unknown' }))
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setAuditLogs(enrichedAuditLogs);
 
-            setProcessingBatches(batchesData);
-            setProcessingBatchItems(batchItemsData);
-            setProcessingLogs(logsData);
-            setDeliveryBatches(deliveryBatchesData);
-            setDeliveryBatchItems(deliveryBatchItemsData);
-            setPermissions(permissionsData);
-            setRoles(rolesData);
-            setProjectWorkflows(workflowsData);
-            setRejectionTags(rejectionData);
+        setProcessingBatches(batchesData);
+        setProcessingBatchItems(batchItemsData);
+        setProcessingLogs(logsData);
+        setDeliveryBatches(deliveryBatchesData);
+        setDeliveryBatchItems(deliveryBatchItemsData);
+        setPermissions(permissionsData);
+        setRoles(rolesData);
+        setProjectWorkflows(workflowsData);
+        setRejectionTags(rejectionData);
 
-            const storedUserId = localStorage.getItem('flowvault_userid');
-            if (storedUserId) {
-                const user = usersData.find(u => u.id === storedUserId);
-                if (user) {
-                  setCurrentUser(user);
-                  const storedHistory = localStorage.getItem(`nav_history_${user.id}`);
-                  if(storedHistory) {
-                    setNavigationHistory(JSON.parse(storedHistory));
-                  }
-                }
+        const storedUserId = localStorage.getItem('flowvault_userid');
+        if (storedUserId) {
+            const user = usersData.find(u => u.id === storedUserId);
+            if (user) {
+              setCurrentUser(user);
+              const storedHistory = localStorage.getItem(`nav_history_${user.id}`);
+              if(storedHistory) {
+                setNavigationHistory(JSON.parse(storedHistory));
+              }
             }
-        } catch (error) {
-            console.error("Failed to load initial data", error);
-            toast({title: "Erro ao Carregar Dados", description: "Não foi possível conectar ao servidor. Por favor, verifique a sua conexão e atualize.", variant: "destructive"});
-        } finally {
-            setLoading(false);
         }
-    };
-    loadData();
+    } catch (error) {
+        console.error("Failed to load initial data", error);
+        toast({title: "Erro ao Carregar Dados", description: "Não foi possível conectar ao servidor. Por favor, verifique a sua conexão e atualize.", variant: "destructive"});
+    } finally {
+        setLoading(false);
+    }
   }, [toast]);
+
+
+  React.useEffect(() => {
+    loadInitialData();
+  }, [loadInitialData]);
+
+  /*
+  React.useEffect(() => {
+const loadData = async () => {
+    try {
+        setLoading(true);
+        const [
+            clientsData, usersData, projectsData, booksData, 
+            docsData, auditData, batchesData, batchItemsData, logsData,
+            permissionsData, rolesData, workflowsData, rejectionData, statusesData,
+            storagesData, scannersData, transferLogsData, projectStoragesData,
+            deliveryBatchesData, deliveryBatchItemsData, bookObservationsData,
+        ] = await Promise.all([
+            dataApi.getClients(), dataApi.getUsers(), dataApi.getRawProjects(),
+            dataApi.getRawBooks(), dataApi.getRawDocuments(), dataApi.getAuditLogs(),
+            dataApi.getProcessingBatches(), dataApi.getProcessingBatchItems(), dataApi.getProcessingLogs(),
+            dataApi.getPermissions(), dataApi.getRoles(),
+            dataApi.getProjectWorkflows(), dataApi.getRejectionTags(), dataApi.getDocumentStatuses(),
+            dataApi.getStorages(), dataApi.getScanners(), dataApi.getTransferLogs(), dataApi.getProjectStorages(),
+            dataApi.getDeliveryBatches(), dataApi.getDeliveryBatchItems(), dataApi.getBookObservations(),
+        ]);
+
+        setClients(clientsData);
+        setUsers(usersData);
+        setRawProjects(projectsData);
+        setRawBooks(booksData);
+        setStatuses(statusesData);
+        setRawDocuments(docsData);
+        setStorages(storagesData);
+        setScanners(scannersData);
+        setTransferLogs(transferLogsData);
+        setProjectStorages(projectStoragesData);
+        setBookObservations(bookObservationsData);
+
+        const enrichedAuditLogs = auditData
+            .map(log => ({ ...log, user: usersData.find(u => u.id === log.userId)?.name || 'Unknown' }))
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setAuditLogs(enrichedAuditLogs);
+
+        setProcessingBatches(batchesData);
+        setProcessingBatchItems(batchItemsData);
+        setProcessingLogs(logsData);
+        setDeliveryBatches(deliveryBatchesData);
+        setDeliveryBatchItems(deliveryBatchItemsData);
+        setPermissions(permissionsData);
+        setRoles(rolesData);
+        setProjectWorkflows(workflowsData);
+        setRejectionTags(rejectionData);
+
+        const storedUserId = localStorage.getItem('flowvault_userid');
+        if (storedUserId) {
+            const user = usersData.find(u => u.id === storedUserId);
+            if (user) {
+              setCurrentUser(user);
+              const storedHistory = localStorage.getItem(`nav_history_${user.id}`);
+              if(storedHistory) {
+                setNavigationHistory(JSON.parse(storedHistory));
+              }
+            }
+        }
+    } catch (error) {
+        console.error("Failed to load initial data", error);
+        toast({title: "Erro ao Carregar Dados", description: "Não foi possível conectar ao servidor. Por favor, verifique a sua conexão e atualize.", variant: "destructive"});
+    } finally {
+        setLoading(false);
+    }
+  }, [toast];
+    loadData();
+  }, [toast]);*/
 
 
   const login = async (username: string, password: string): Promise<User | null> => {
@@ -2736,6 +2809,7 @@ const openAppValidateScan = (bookId: string) => {
     setDeliveryBatchItems,
     setAuditLogs,
     setProcessingBatchItems,
+    loadInitialData,
   };
 
   return (

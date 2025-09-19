@@ -17,13 +17,25 @@ import { GlobalLoader } from '@/components/layout/global-loader';
 export const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
   const { currentUser, permissions, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loading, addNavigationHistoryItem } = useAppContext();
   const router = useRouter();
+  const { loadInitialData } = useAppContext();
   const pathname = usePathname();
+  const isInitialLoad = useRef(true);
   const { toast } = useToast();
   const [isChecking, setIsChecking] = React.useState(true);
   const [isAllowed, setIsAllowed] = React.useState(false);
   const previousUserIdRef = useRef<string | null | undefined>(null);
 
-  
+  useEffect(() => {
+    if (isInitialLoad.current) {
+      isInitialLoad.current = false; // Ignorar a primeira execução
+      return;
+    }
+    
+    loadInitialData();
+
+  }, [pathname, loadInitialData]);
+
+
   useEffect(() => {
     if (loading) {
       setIsChecking(true);
