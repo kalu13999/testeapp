@@ -35,11 +35,11 @@ import {
   Star,
   Globe,
   LucideIcon,
-  ServerCog,
-  Split,
+  ChevronRight,
   MonitorCheck,
-  MessageSquare,
-  TrendingUp,
+  Split,
+  ServerCog,
+  TrendingUp
 } from "lucide-react";
 
 interface MenuItem {
@@ -119,6 +119,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "workflow-intake",
     title: "Receção",
+    collapsible: true,
     items: [
       { href: "/workflow/pending-shipment", label: "Envio Pendente", icon: FileClock },
       { href: "/workflow/confirm-reception", label: "Confirmar Receção", icon: ArrowDownToLine },
@@ -128,6 +129,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "workflow-scanning",
     title: "Digitalização",
+    collapsible: true,
     items: [
       { href: "/workflow/to-scan", label: "Digitalização Pendente", icon: ScanLine },
       { href: "/workflow/scanning-started", label: "Digitalização Iniciada", icon: PlayCircle },
@@ -136,6 +138,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "workflow-digitization",
     title: "Digitalização",
+    collapsible: true,
     items: [
       { href: "/workflow/storage", label: "Armazenamento", icon: Warehouse },
     ]
@@ -143,6 +146,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "workflow-indexing",
     title: "Indexação",
+    collapsible: true,
     items: [
       { href: "/workflow/to-indexing", label: "Indexação Pendente", icon: FileText },
       { href: "/workflow/indexing-started", label: "Indexação Iniciada", icon: PencilRuler },
@@ -151,6 +155,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "workflow-qc",
     title: "Controlo de Qualidade",
+    collapsible: true,
     items: [
       { href: "/workflow/to-checking", label: "PageChecker Pendente", icon: FileSearch2 },
       { href: "/workflow/checking-started", label: "PageChecker Iniciada", icon: ClipboardCheck },
@@ -159,6 +164,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "workflow-processing",
     title: "Processamento",
+    collapsible: true,
     items: [
       { href: "/workflow/ready-for-processing", label: "Processamento Pendente", icon: FileCog },
       { href: "/workflow/in-processing", label: "Em Processamento", icon: Loader2 },
@@ -168,6 +174,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "workflow-delivery",
     title: "Entrega e Correção",
+    collapsible: true,
     items: [
       { href: "/workflow/final-quality-control", label: "QC Final", icon: FileCheck2 },
       { href: "/workflow/delivery", label: "Entrega", icon: Send },
@@ -178,6 +185,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "finalization",
     title: "Finalização",
+    collapsible: true,
     items: [
       { href: "/finalized", label: "Finalizados", icon: CheckCheck },
       { href: "/archive", label: "Arquivados", icon: Archive },
@@ -186,6 +194,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "client",
     title: "Portal do Cliente",
+    collapsible: true,
     items: [
       { href: "/dashboard", label: "Painel do Projeto", icon: Home, roles: ['Client', 'Client Manager', 'Client Operator'] },
       { href: "/shipments", label: "Preparar Envio", icon: Send },
