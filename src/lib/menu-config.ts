@@ -246,7 +246,7 @@ export const allMenuItems: MenuSection[] = [
     title: "Cliente",
     icon: Building,
     collapsible: true,
-    colorVariant: 'client',
+    colorVariant: 'neutral',
     items: [
       { href: "/shipments", label: "Preparar Envio", icon: Truck },
       { href: "/manage-deliveries", label: "Gerir Entregas", icon: Split },
@@ -258,7 +258,7 @@ export const allMenuItems: MenuSection[] = [
     title: "Cliente Workflow",
     icon: Workflow,
     collapsible: true,
-    colorVariant: 'client',
+    colorVariant: 'neutral',
     items: [
       { href: "/my-tasks", label: "As Minhas Tarefas", icon: ClipboardList },
       { href: "/my-validations", label: "As Minhas Validações", icon: ClipboardSignature },
@@ -269,7 +269,7 @@ export const allMenuItems: MenuSection[] = [
     title: "Ferramentas Cliente",
     icon: Wrench,
     collapsible: true,
-    colorVariant: 'client',
+    colorVariant: 'neutral',
     items: [
       { href: "/validated-history", label: "Histórico de Validações", icon: History },
       { href: "/reasons", label: "Motivos de Rejeição", icon: Tags },
