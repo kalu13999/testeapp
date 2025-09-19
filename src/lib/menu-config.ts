@@ -44,7 +44,13 @@ import {
   Wrench,
   Building,
   Truck,
-  ClipboardSignature
+  ClipboardSignature,
+  AppWindow,
+  LayoutDashboard,
+  CircleUser,
+  Cpu,
+  Mail,
+  FileTerminal,
 } from "lucide-react";
 
 interface MenuItem {
@@ -67,7 +73,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "account",
     title: "Conta",
-    icon: User,
+    icon: CircleUser,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -88,7 +94,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "global-dashboards",
     title: "Painéis Globais",
-    icon: Globe,
+    icon: LayoutDashboard,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -99,7 +105,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "management",
     title: "Gestão",
-    icon: Briefcase,
+    icon: AppWindow,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -171,7 +177,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "workflow-indexing",
     title: "Indexação",
-    icon: FileText,
+    icon: FileSignature,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -182,7 +188,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "workflow-qc",
     title: "Controlo de Qualidade",
-    icon: FileSearch2,
+    icon: ClipboardCheck,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -193,7 +199,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "workflow-processing",
     title: "Processamento Automático",
-    icon: FileCog,
+    icon: Cpu,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -203,14 +209,23 @@ export const allMenuItems: MenuSection[] = [
     ]
   },
   {
-    id: "workflow-delivery",
-    title: "Entrega & Correção",
-    icon: Send,
+    id: "delivery",
+    title: "Entrega",
+    icon: Truck,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
       { href: "/workflow/final-quality-control", label: "QC Final", icon: FileCheck2 },
       { href: "/workflow/delivery", label: "Entrega", icon: Send },
+    ]
+  },
+  {
+    id: "correction",
+    title: "Correção Rejeitados",
+    icon: Wrench,
+    collapsible: true,
+    colorVariant: 'neutral',
+    items: [
       { href: "/workflow/client-rejections", label: "Rejeições do Cliente", icon: ThumbsDown },
       { href: "/workflow/corrected", label: "Corrigidos", icon: Undo2 },
     ]
@@ -231,7 +246,7 @@ export const allMenuItems: MenuSection[] = [
     title: "Cliente",
     icon: Building,
     collapsible: true,
-    colorVariant: 'neutral',
+    colorVariant: 'client',
     items: [
       { href: "/shipments", label: "Preparar Envio", icon: Truck },
       { href: "/manage-deliveries", label: "Gerir Entregas", icon: Split },
@@ -243,7 +258,7 @@ export const allMenuItems: MenuSection[] = [
     title: "Cliente Workflow",
     icon: Workflow,
     collapsible: true,
-    colorVariant: 'neutral',
+    colorVariant: 'client',
     items: [
       { href: "/my-tasks", label: "As Minhas Tarefas", icon: ClipboardList },
       { href: "/my-validations", label: "As Minhas Validações", icon: ClipboardSignature },
@@ -254,7 +269,7 @@ export const allMenuItems: MenuSection[] = [
     title: "Ferramentas Cliente",
     icon: Wrench,
     collapsible: true,
-    colorVariant: 'neutral',
+    colorVariant: 'client',
     items: [
       { href: "/validated-history", label: "Histórico de Validações", icon: History },
       { href: "/reasons", label: "Motivos de Rejeição", icon: Tags },

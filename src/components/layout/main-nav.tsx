@@ -46,7 +46,13 @@ import {
   Wrench,
   Building,
   Truck,
-  ClipboardSignature
+  ClipboardSignature,
+  AppWindow,
+  LayoutDashboard,
+  CircleUser,
+  Cpu,
+  Mail,
+  FileTerminal,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -217,7 +223,7 @@ export function MainNav() {
                   onOpenChange={(isOpen) => handleOpenChange(menu.id, isOpen)}
                   className="group"
                 >
-                   <CollapsibleTrigger className="flex w-full items-center justify-between px-2 mb-1 cursor-pointer">
+                   <CollapsibleTrigger className="flex w-full items-center justify-start px-2 mb-1 cursor-pointer">
                       <h3 className={cn("flex items-center gap-2 text-xs font-semibold uppercase tracking-wider font-headline",
                         menu.colorVariant === 'neutral' && 'text-muted-foreground',
                         menu.colorVariant === 'client' && 'text-green-600 dark:text-green-500',
