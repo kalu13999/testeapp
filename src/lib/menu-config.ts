@@ -65,13 +65,19 @@ export const allMenuItems: MenuSection[] = [
     ],
   },
   {
-    id: "dashboards",
-    title: "Painéis",
+    id: "dashboard",
+    title: "Dashboard",
     items: [
         { href: "/dashboard", label: "Painel do Projeto", icon: SlidersHorizontal },
-        { href: "/admin/overview", label: "Visão Global", icon: Globe, roles: ['Admin'] },
-        { href: "/admin/daily-production", label: "Produção Diária", icon: TrendingUp },
     ],
+  },
+  {
+    id: "global-dashboards",
+    title: "Painéis Globais",
+    items: [
+      { href: "/admin/overview", label: "Visão Global", icon: Globe, roles: ['Admin'] },
+      { href: "/admin/daily-production", label: "Produção Diária", icon: TrendingUp },
+    ]
   },
   {
     id: "management",
@@ -174,7 +180,6 @@ export const allMenuItems: MenuSection[] = [
     id: "client",
     title: "Portal do Cliente",
     items: [
-      { href: "/dashboard", label: "Painel do Projeto", icon: Home, roles: ['Client', 'Client Manager', 'Client Operator'] },
       { href: "/shipments", label: "Preparar Envio", icon: Send },
       { href: "/my-validations", label: "As Minhas Validações", icon: ClipboardList },
       { href: "/manage-deliveries", label: "Gerir Entregas", icon: Split },
