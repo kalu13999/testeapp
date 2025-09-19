@@ -1696,19 +1696,26 @@ const handleMainAction = (book: EnrichedBook) => {
             <DialogTitle>Detalhes do Livro</DialogTitle>
             <DialogDescription>{detailsState.book?.name}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4 text-sm">
-            <DetailItem label="Project" value={<Link href={`/projects/${detailsState.book?.projectId}`} className="text-primary hover:underline">{detailsState.book?.projectName}</Link>} />
-            <DetailItem label="Client" value={detailsState.book?.clientName} />
-            <DetailItem label="Status" value={<Badge variant="outline">{detailsState.book?.status}</Badge>} />
-            <Separator />
-            <DetailItem label="Author" value={detailsState.book?.author || '—'} />
-            <DetailItem label="ISBN" value={detailsState.book?.isbn || '—'} />
-            <DetailItem label="Publication Year" value={detailsState.book?.publicationYear || '—'} />
-            <Separator />
-            <DetailItem label="Priority" value={detailsState.book?.priority || '—'} />
-            <DetailItem label="Expected Pages" value={detailsState.book?.expectedDocuments} />
-            <DetailItem label="Scanned Pages" value={detailsState.book?.documentCount} />
-          </div>
+            <div className="space-y-4 py-4 text-sm">
+              <DetailItem 
+                label="Projeto" 
+                value={
+                  <Link href={`/projects/${detailsState.book?.projectId}`} className="text-primary hover:underline">
+                    {detailsState.book?.projectName}
+                  </Link>
+                } 
+              />
+              <DetailItem label="Cliente" value={detailsState.book?.clientName} />
+              <DetailItem label="Estado" value={<Badge variant="outline">{detailsState.book?.status}</Badge>} />
+              <Separator />
+              <DetailItem label="Autor" value={detailsState.book?.author || '—'} />
+              <DetailItem label="ISBN" value={detailsState.book?.isbn || '—'} />
+              <DetailItem label="Ano de Publicação" value={detailsState.book?.publicationYear || '—'} />
+              <Separator />
+              <DetailItem label="Prioridade" value={detailsState.book?.priority || '—'} />
+              <DetailItem label="Páginas Esperadas" value={detailsState.book?.expectedDocuments} />
+              <DetailItem label="Páginas Digitalizadas" value={detailsState.book?.documentCount} />
+            </div>
            <DialogFooter>
               <Button type="button" variant="secondary" onClick={() => setDetailsState({ open: false, book: undefined })}>Close</Button>
           </DialogFooter>

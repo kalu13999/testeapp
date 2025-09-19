@@ -230,26 +230,33 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
                         <Card>
                             <CardHeader className="flex flex-row items-center gap-2 pb-2">
                                 <Info className="h-4 w-4" />
-                                <CardTitle className="text-base">Book Details</CardTitle>
+                                <CardTitle className="text-base">Informações do Livro</CardTitle>
                             </CardHeader>
                             <CardContent className="text-sm space-y-4">
-                                <DetailItem label="Book" value={<Link href={`/books/${book.id}`} className="text-primary hover:underline">{book.name}</Link>} />
-                                <DetailItem label="Project" value={book.projectName} />
-                                <DetailItem label="Client" value={book.clientName} />
+                                <DetailItem 
+                                  label="Livro" 
+                                  value={
+                                    <Link href={`/books/${book.id}`} className="text-primary hover:underline">
+                                      {book.name}
+                                    </Link>
+                                  } 
+                                />
+                                <DetailItem label="Projeto" value={book.projectName} />
+                                <DetailItem label="Cliente" value={book.clientName} />
                                 <Separator />
-                                <DetailItem label="Author" value={book.author || '—'} />
+                                <DetailItem label="Autor" value={book.author || '—'} />
                                 <DetailItem label="ISBN" value={book.isbn || '—'} />
-                                <DetailItem label="Publication Year" value={book.publicationYear || '—'} />
+                                <DetailItem label="Ano de Publicação" value={book.publicationYear || '—'} />
                                 <Separator />
-                                <DetailItem label="Priority" value={book.priority || '—'} />
+                                <DetailItem label="Prioridade" value={book.priority || '—'} />
                                 {book.info && (
-                                <>
-                                <Separator />
-                                <div className="pt-2 grid grid-cols-1 gap-2">
-                                    <p className="text-muted-foreground">Additional Info</p>
-                                    <p className="font-medium whitespace-pre-wrap">{book.info}</p>
-                                </div>
-                                </>
+                                  <>
+                                    <Separator />
+                                    <div className="pt-2 grid grid-cols-1 gap-2">
+                                      <p className="text-muted-foreground">Informação Adicional</p>
+                                      <p className="font-medium whitespace-pre-wrap">{book.info}</p>
+                                    </div>
+                                  </>
                                 )}
                             </CardContent>
                         </Card>

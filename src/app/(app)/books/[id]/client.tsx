@@ -248,8 +248,10 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
         ) : (
             <div className="flex flex-col items-center justify-center text-center py-20 rounded-lg bg-muted">
                 <BookOpen className="h-12 w-12 text-muted-foreground" />
-                <h3 className="text-xl font-semibold mt-4">Awaiting Scans</h3>
-                <p className="text-muted-foreground">No pages have been scanned for this book yet.</p>
+                <h3 className="text-xl font-semibold mt-4">Aguardando Armazenamento</h3>
+                <p className="text-muted-foreground">
+                As imagens digitalizadas estarão disponíveis assim que forem transferidas para o armazenamento.
+                </p>
             </div>
         )}
       </div>
@@ -257,24 +259,31 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
       <div className="lg:col-span-1 space-y-6">
         <Card>
             <CardHeader>
-                <CardTitle>Book Details</CardTitle>
+                <CardTitle>Informações do Livro</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-                  <DetailItem label="Project" value={<Link href={`/projects/${book.projectId}`} className="text-primary hover:underline">{book.projectName}</Link>} />
-                  <DetailItem label="Client" value={book.clientName} />
-                  <DetailItem label="Status" value={<Badge variant="outline">{book.status}</Badge>} />
-                  <Separator />
-                  <DetailItem label="Author" value={book.author || '—'} />
-                  <DetailItem label="ISBN" value={book.isbn || '—'} />
-                  <DetailItem label="Publication Year" value={book.publicationYear || '—'} />
-                  <DetailItem label="Priority" value={book.priority || '—'} />
-                  <Separator />
-                  <DetailItem label="Expected Pages" value={book.expectedDocuments} />
-                  <DetailItem label="Scanned Pages" value={book.documentCount} />
-                  <Separator />
-                  <DetailItem label="Storage" value={book.storageName || '—'} />
-                  <DetailItem label="Scanner (Device)" value={book.scannerDeviceName || '—'} />
-            </CardContent>
+                <CardContent className="space-y-4 text-sm">
+                    <DetailItem 
+                        label="Projeto" 
+                        value={
+                        <Link href={`/projects/${book.projectId}`} className="text-primary hover:underline">
+                            {book.projectName}
+                        </Link>
+                        } 
+                    />
+                    <DetailItem label="Cliente" value={book.clientName} />
+                    <DetailItem label="Estado" value={<Badge variant="outline">{book.status}</Badge>} />
+                    <Separator />
+                    <DetailItem label="Autor" value={book.author || '—'} />
+                    <DetailItem label="ISBN" value={book.isbn || '—'} />
+                    <DetailItem label="Ano de Publicação" value={book.publicationYear || '—'} />
+                    <DetailItem label="Prioridade" value={book.priority || '—'} />
+                    <Separator />
+                    <DetailItem label="Páginas Esperadas" value={book.expectedDocuments} />
+                    <DetailItem label="Páginas Digitalizadas" value={book.documentCount} />
+                    <Separator />
+                    <DetailItem label="Armazenamento" value={book.storageName || '—'} />
+                    <DetailItem label="Scanner (Dispositivo)" value={book.scannerDeviceName || '—'} />
+                </CardContent>
         </Card>
         
         <Card>
