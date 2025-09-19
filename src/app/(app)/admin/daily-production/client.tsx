@@ -300,18 +300,53 @@ export default function DailyProductionClient() {
     }
   }
 
-  const exportData = (dataToExport: any[], fileName: string) => {
+  const downloadFile = (content: string, fileName: string, mimeType: string) => {
+    const blob = new Blob([content], { type: mimeType });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportData = (format: 'xlsx' | 'json' | 'csv', dataToExport: any[], headers?: string[]) => {
     if (dataToExport.length === 0) {
-        toast({ title: "Sem Dados para Exportar", description: "Não há itens para exportar." }); 
-        return;
+      toast({ title: "Sem Dados para Exportar", description: "Não há itens para exportar." });
+      return;
     }
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Production Data');
-    XLSX.writeFile(workbook, fileName);
+    if (format === 'json') {
+      downloadFile(JSON.stringify(dataToExport, null, 2), 'production_data.json', 'application/json');
+    } else if (format === 'csv') {
+      const finalHeaders = headers || Object.keys(dataToExport[0] || {});
+      const csvContent = [finalHeaders.join(','), ...dataToExport.map(d => finalHeaders.map(h => JSON.stringify(d[h as keyof typeof d])).join(','))].join('\n');
+      downloadFile(csvContent, 'production_data.csv', 'text/csv');
+    } else if (format === 'xlsx') {
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Production Data');
+      XLSX.writeFile(workbook, 'production_data.xlsx');
+    }
     toast({ title: "Exportação Concluída", description: `${dataToExport.length} registos exportados.` });
   };
   
+  const copyToClipboard = (format: 'json' | 'csv', dataToCopy: any[], headers?: string[]) => {
+    if (dataToCopy.length === 0) return;
+    let contentToCopy = '';
+    if(format === 'json') {
+      contentToCopy = JSON.stringify(dataToCopy, null, 2);
+    } else {
+      const finalHeaders = headers || Object.keys(dataToCopy[0] || {});
+      contentToCopy = [finalHeaders.join(','), ...dataToCopy.map(d => finalHeaders.map(h => JSON.stringify(d[h as keyof typeof d])).join(','))].join('\n');
+    }
+    navigator.clipboard.writeText(contentToCopy).then(() => {
+        toast({ title: "Copiado para a Área de Transferência", description: `${dataToCopy.length} registo(s) copiado(s).` });
+    }, () => {
+        toast({ title: "Falha ao Copiar", variant: "destructive" });
+    });
+  }
+
   const PaginationNav = ({ totalPages, currentPage, onPageChange }: { totalPages: number, currentPage: number, onPageChange: (page: number) => void}) => {
     if (totalPages <= 1) return null;
     return (
@@ -377,7 +412,7 @@ export default function DailyProductionClient() {
                 <div className="flex items-center justify-between">
                     <CardTitle>Resumo da Produção</CardTitle>
                     <div className="flex items-center gap-4">
-                        <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" /> Exportar</Button></DropdownMenuTrigger><DropdownMenuContent><DropdownMenuItem onSelect={() => exportData(summaryData.map(d=>({name: d.name, taskCount: d.taskCount, pageCount: d.pageCount})), 'summary_production.xlsx')}>Exportar como XLSX</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
+                        <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" /> Exportar</Button></DropdownMenuTrigger><DropdownMenuContent><DropdownMenuItem onSelect={() => exportData('xlsx', summaryData.map(d=>({name: d.name, taskCount: d.taskCount, pageCount: d.pageCount})))}>Exportar como XLSX</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
                         <div className="flex items-center gap-2">
                           <Label htmlFor="group-by" className="flex items-center gap-2 text-sm font-medium"><Group className="h-4 w-4" />Agrupar por</Label>
                           <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="w-[180px] justify-between"><span>{getSummaryHeader()}</span><ChevronsUpDown className="h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger><DropdownMenuContent>{groupingOptions.map(opt => (<DropdownMenuCheckboxItem key={opt.id} checked={groupBy.includes(opt.id)} onCheckedChange={(checked) => setGroupBy(current => checked ? [...current, opt.id] : current.filter(g => g !== opt.id))}>{opt.label}</DropdownMenuCheckboxItem>))}</DropdownMenuContent></DropdownMenu>
@@ -441,7 +476,28 @@ export default function DailyProductionClient() {
             <CardHeader>
                 <div className="flex items-center justify-between">
                     <CardTitle>Tabela de Produção Detalhada</CardTitle>
-                    <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" /> Exportar</Button></DropdownMenuTrigger><DropdownMenuContent><DropdownMenuItem onSelect={() => exportData(selectedTasks, 'selected_tasks.xlsx')} disabled={selectedTasks.length === 0}>Exportar Selecionados ({selectedTasks.length})</DropdownMenuItem><DropdownMenuItem onSelect={() => exportData(tasksForDetailedView, 'all_tasks.xlsx')}>Exportar Todos ({tasksForDetailedView.length})</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild><Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" />Exportar</Button></DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                          <DropdownMenuLabel>Exportar Selecionados ({selectedTasks.length})</DropdownMenuLabel>
+                          <DropdownMenuItem onSelect={() => exportData('xlsx', selectedTasks)} disabled={selectedTasks.length === 0}>Exportar como XLSX</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => exportData('json', selectedTasks)} disabled={selectedTasks.length === 0}>Exportar como JSON</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => exportData('csv', selectedTasks)} disabled={selectedTasks.length === 0}>Exportar como CSV</DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                           <DropdownMenuLabel>Copiar Selecionados ({selectedTasks.length})</DropdownMenuLabel>
+                          <DropdownMenuItem onSelect={() => copyToClipboard('json', selectedTasks)} disabled={selectedTasks.length === 0}>Copiar como JSON</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => copyToClipboard('csv', selectedTasks)} disabled={selectedTasks.length === 0}>Copiar como CSV</DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuLabel>Exportar Todos ({tasksForDetailedView.length})</DropdownMenuLabel>
+                          <DropdownMenuItem onSelect={() => exportData('xlsx', tasksForDetailedView)} disabled={tasksForDetailedView.length === 0}>Exportar como XLSX</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => exportData('json', tasksForDetailedView)} disabled={tasksForDetailedView.length === 0}>Exportar como JSON</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => exportData('csv', tasksForDetailedView)} disabled={tasksForDetailedView.length === 0}>Exportar como CSV</DropdownMenuItem>
+                           <DropdownMenuSeparator />
+                           <DropdownMenuLabel>Copiar Todos ({tasksForDetailedView.length})</DropdownMenuLabel>
+                          <DropdownMenuItem onSelect={() => copyToClipboard('json', tasksForDetailedView)} disabled={tasksForDetailedView.length === 0}>Copiar como JSON</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => copyToClipboard('csv', tasksForDetailedView)} disabled={tasksForDetailedView.length === 0}>Copiar como CSV</DropdownMenuItem>
+                      </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
             </CardHeader>
             <CardContent>
