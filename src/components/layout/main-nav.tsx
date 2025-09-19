@@ -213,6 +213,7 @@ export function MainNav() {
                       <h3 className={cn("text-xs font-semibold uppercase tracking-wider font-headline",
                         menu.colorVariant === 'neutral' && 'text-muted-foreground',
                         menu.colorVariant === 'accent' && 'text-amber-600 dark:text-amber-500',
+                        menu.colorVariant === 'client' && 'text-green-600 dark:text-green-500',
                         !menu.colorVariant && 'text-primary'
                       )}>
                         {menu.title}
@@ -220,6 +221,7 @@ export function MainNav() {
                       <ChevronRight className={cn("h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90",
                         menu.colorVariant === 'neutral' && 'text-muted-foreground',
                         menu.colorVariant === 'accent' && 'text-amber-600 dark:text-amber-500',
+                        menu.colorVariant === 'client' && 'text-green-600 dark:text-green-500',
                         !menu.colorVariant && 'text-primary'
                       )} />
                   </CollapsibleTrigger>
