@@ -37,6 +37,11 @@ import {
   Star,
   Globe,
   LucideIcon,
+  ChevronRight,
+  MonitorCheck,
+  Split,
+  ServerCog,
+  TrendingUp
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -158,11 +163,12 @@ export function MainNav() {
           menu && (
             <li key={menu.id}>
               {menu.collapsible ? (
-                <Collapsible defaultOpen={true}>
-                  <CollapsibleTrigger asChild>
-                    <h3 className="px-2 mb-1 text-xs font-semibold text-muted-foreground/80 uppercase tracking-wider font-headline cursor-pointer w-full text-left">
-                      {menu.title}
-                    </h3>
+                <Collapsible defaultOpen={true} className="group">
+                   <CollapsibleTrigger className="flex w-full items-center justify-between px-2 mb-1 cursor-pointer">
+                      <h3 className="text-xs font-semibold text-primary uppercase tracking-wider font-headline">
+                        {menu.title}
+                      </h3>
+                      <ChevronRight className="h-4 w-4 text-primary transition-transform duration-200 group-data-[state=open]:rotate-90" />
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <ul className="space-y-1">
