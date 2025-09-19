@@ -412,7 +412,20 @@ export default function DailyProductionClient() {
                 <div className="flex items-center justify-between">
                     <CardTitle>Resumo da Produção</CardTitle>
                     <div className="flex items-center gap-4">
-                        <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" /> Exportar</Button></DropdownMenuTrigger><DropdownMenuContent><DropdownMenuItem onSelect={() => exportData('xlsx', summaryData.map(d=>({name: d.name, taskCount: d.taskCount, pageCount: d.pageCount})))}>Exportar como XLSX</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild><Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" /> Exportar ({summaryData.length})</Button></DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                <DropdownMenuLabel>Exportar ({summaryData.length})</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onSelect={() => exportData('xlsx', summaryData.map(d=>({name: d.name, taskCount: d.taskCount, pageCount: d.pageCount})))}>Exportar como XLSX</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => exportData('json', summaryData.map(d=>({name: d.name, taskCount: d.taskCount, pageCount: d.pageCount})))}>Exportar como JSON</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => exportData('csv', summaryData.map(d=>({name: d.name, taskCount: d.taskCount, pageCount: d.pageCount})))}>Exportar como CSV</DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuLabel>Copiar ({summaryData.length})</DropdownMenuLabel>
+                                <DropdownMenuItem onSelect={() => copyToClipboard('json', summaryData.map(d=>({name: d.name, taskCount: d.taskCount, pageCount: d.pageCount})))}>Copiar como JSON</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => copyToClipboard('csv', summaryData.map(d=>({name: d.name, taskCount: d.taskCount, pageCount: d.pageCount})))}>Copiar como CSV</DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                         <div className="flex items-center gap-2">
                           <Label htmlFor="group-by" className="flex items-center gap-2 text-sm font-medium"><Group className="h-4 w-4" />Agrupar por</Label>
                           <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="w-[180px] justify-between"><span>{getSummaryHeader()}</span><ChevronsUpDown className="h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger><DropdownMenuContent>{groupingOptions.map(opt => (<DropdownMenuCheckboxItem key={opt.id} checked={groupBy.includes(opt.id)} onCheckedChange={(checked) => setGroupBy(current => checked ? [...current, opt.id] : current.filter(g => g !== opt.id))}>{opt.label}</DropdownMenuCheckboxItem>))}</DropdownMenuContent></DropdownMenu>
