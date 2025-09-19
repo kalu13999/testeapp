@@ -54,6 +54,7 @@ interface MenuSection {
     title: string;
     items: MenuItem[];
     collapsible?: boolean;
+    colorVariant?: 'neutral' | 'accent';
 }
 
 export const allMenuItems: MenuSection[] = [
@@ -61,6 +62,7 @@ export const allMenuItems: MenuSection[] = [
     id: "account",
     title: "Conta",
     collapsible: true,
+    colorVariant: 'neutral',
     items: [
       { href: "/profile", label: "O Meu Perfil", icon: User },
       { href: "/settings", label: "Configurações", icon: Settings },
@@ -70,6 +72,7 @@ export const allMenuItems: MenuSection[] = [
     id: "dashboard",
     title: "Dashboard",
     collapsible: true,
+    colorVariant: 'neutral',
     items: [
         { href: "/dashboard", label: "Painel do Projeto", icon: SlidersHorizontal },
     ],
@@ -78,6 +81,7 @@ export const allMenuItems: MenuSection[] = [
     id: "global-dashboards",
     title: "Painéis Globais",
     collapsible: true,
+    colorVariant: 'neutral',
     items: [
       { href: "/admin/overview", label: "Visão Global", icon: Globe, roles: ['Admin'] },
       { href: "/admin/daily-production", label: "Produção Diária", icon: TrendingUp },
@@ -87,6 +91,7 @@ export const allMenuItems: MenuSection[] = [
     id: "management",
     title: "Gestão",
     collapsible: true,
+    colorVariant: 'neutral',
     items: [
       { href: "/projects", label: "Projetos", icon: Briefcase },
       { href: "/clients", label: "Clientes", icon: Users },
@@ -98,6 +103,7 @@ export const allMenuItems: MenuSection[] = [
     id: "admin",
     title: "Ferramentas de Admin",
     collapsible: true,
+    colorVariant: 'neutral',
     items: [
       { href: "/admin/status-override", label: "Substituição de Estado", icon: Sliders },
       { href: "/book-management", label: "Gestão de Livros", icon: BookUp },
@@ -108,6 +114,7 @@ export const allMenuItems: MenuSection[] = [
     id: "workflow-tools",
     title: "Ferramentas de Workflow",
     collapsible: true,
+    colorVariant: 'neutral',
     items: [
       { href: "/documents", label: "Todos os Livros", icon: Files },
       { href: "/admin/reassign-user", label: "Reatribuir Utilizador", icon: UserCog },
@@ -136,7 +143,7 @@ export const allMenuItems: MenuSection[] = [
     ]
   },
   {
-    id: "workflow-digitization",
+    id: "storage",
     title: "Armazenamento",
     collapsible: true,
     items: [
@@ -195,6 +202,7 @@ export const allMenuItems: MenuSection[] = [
     id: "client",
     title: "Cliente",
     collapsible: true,
+    colorVariant: 'accent',
     items: [
       { href: "/shipments", label: "Preparar Envio", icon: Send },
       { href: "/manage-deliveries", label: "Gerir Entregas", icon: Split },
@@ -205,6 +213,7 @@ export const allMenuItems: MenuSection[] = [
     id: "client-workflow",
     title: "Cliente Workflow",
     collapsible: true,
+    colorVariant: 'accent',
     items: [
       { href: "/my-tasks", label: "As Minhas Tarefas", icon: ClipboardList },
       { href: "/my-validations", label: "As Minhas Validações", icon: ClipboardList },
@@ -214,6 +223,7 @@ export const allMenuItems: MenuSection[] = [
     id: "client-tools",
     title: "Ferramentas Cliente",
     collapsible: true,
+    colorVariant: 'accent',
     items: [
       { href: "/validated-history", label: "Histórico de Validações", icon: History },
       { href: "/reasons", label: "Motivos de Rejeição", icon: Tags },

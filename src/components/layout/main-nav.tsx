@@ -52,6 +52,7 @@ import { allMenuItems } from "@/lib/menu-config";
 import { MANDATORY_STAGES } from "@/lib/workflow-config";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import React from "react";
+import { cn } from "@/lib/utils";
 
 
 export function MainNav() {
@@ -209,10 +210,18 @@ export function MainNav() {
                   className="group"
                 >
                    <CollapsibleTrigger className="flex w-full items-center justify-between px-2 mb-1 cursor-pointer">
-                      <h3 className="text-xs font-semibold text-primary uppercase tracking-wider font-headline">
+                      <h3 className={cn("text-xs font-semibold uppercase tracking-wider font-headline",
+                        menu.colorVariant === 'neutral' && 'text-muted-foreground',
+                        menu.colorVariant === 'accent' && 'text-amber-600 dark:text-amber-500',
+                        !menu.colorVariant && 'text-primary'
+                      )}>
                         {menu.title}
                       </h3>
-                      <ChevronRight className="h-4 w-4 text-primary transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                      <ChevronRight className={cn("h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90",
+                        menu.colorVariant === 'neutral' && 'text-muted-foreground',
+                        menu.colorVariant === 'accent' && 'text-amber-600 dark:text-amber-500',
+                        !menu.colorVariant && 'text-primary'
+                      )} />
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <ul className="space-y-1">
