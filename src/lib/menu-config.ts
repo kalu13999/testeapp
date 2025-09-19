@@ -138,7 +138,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "workflow-intake",
     title: "Receção",
-    icon: ArrowDownToLine,
+    icon: Truck,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -229,7 +229,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "client",
     title: "Cliente",
-    icon: Briefcase,
+    icon: Building,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
