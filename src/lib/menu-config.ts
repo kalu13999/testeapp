@@ -84,7 +84,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "dashboard",
     title: "Dashboard",
-    icon: Home,
+    icon: LayoutDashboard,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -94,7 +94,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "global-dashboards",
     title: "Painéis Globais",
-    icon: LayoutDashboard,
+    icon: Globe,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -177,7 +177,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "workflow-indexing",
     title: "Indexação",
-    icon: FileSignature,
+    icon: ClipboardSignature,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -211,7 +211,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "delivery",
     title: "Entrega",
-    icon: Truck,
+    icon: Mail,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -222,13 +222,13 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "correction",
     title: "Correção Rejeitados",
-    icon: Wrench,
+    icon: FileTerminal,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
       { href: "/workflow/client-rejections", label: "Rejeições do Cliente", icon: ThumbsDown },
       { href: "/workflow/corrected", label: "Corrigidos", icon: Undo2 },
-    ]
+    ],
   },
   {
     id: "finalization",
