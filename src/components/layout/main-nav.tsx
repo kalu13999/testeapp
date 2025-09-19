@@ -51,11 +51,51 @@ import { useAppContext } from "@/context/workflow-context";
 import { allMenuItems } from "@/lib/menu-config";
 import { MANDATORY_STAGES } from "@/lib/workflow-config";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import React from "react";
 
 
 export function MainNav() {
   const pathname = usePathname();
   const { currentUser, permissions, selectedProjectId, projectWorkflows } = useAppContext();
+  const [openSections, setOpenSections] = React.useState<{ [key: string]: boolean }>({});
+
+  React.useEffect(() => {
+    try {
+      const savedState = localStorage.getItem('sidebar_collapsible_state');
+      if (savedState) {
+        setOpenSections(JSON.parse(savedState));
+      } else {
+        // Default to all collapsible sections being open on first visit
+        const defaultState: { [key: string]: boolean } = {};
+        allMenuItems.forEach(section => {
+          if (section.collapsible) {
+            defaultState[section.id] = true;
+          }
+        });
+        setOpenSections(defaultState);
+      }
+    } catch (error) {
+      console.error("Failed to parse sidebar state from localStorage", error);
+      // Fallback to default if parsing fails
+      const defaultState: { [key: string]: boolean } = {};
+      allMenuItems.forEach(section => {
+        if (section.collapsible) {
+          defaultState[section.id] = true;
+        }
+      });
+      setOpenSections(defaultState);
+    }
+  }, []);
+
+  const handleOpenChange = (sectionId: string, isOpen: boolean) => {
+    const newState = { ...openSections, [sectionId]: isOpen };
+    setOpenSections(newState);
+    try {
+      localStorage.setItem('sidebar_collapsible_state', JSON.stringify(newState));
+    } catch (error) {
+      console.error("Failed to save sidebar state to localStorage", error);
+    }
+  };
 
   const isActive = (href: string) => {
     // Special case for dashboard to avoid it being active for all sub-pages
@@ -109,7 +149,7 @@ export function MainNav() {
 
   const menuItems = allMenuItems.map(menuSection => {
     // For clients, only show the Client Portal and Account sections
-    if (currentUser.role === 'Client' && !['client', 'account'].includes(menuSection.id)) {
+    if (currentUser.role === 'Client' && !['client', 'account', 'dashboard', 'client-workflow', 'client-tools'].includes(menuSection.id)) {
         return null;
     }
     
@@ -137,7 +177,7 @@ export function MainNav() {
       }
       
       // Special case for client dashboard link
-      if (item.href === '/dashboard' && currentUser.role !== 'Client' && menuSection.id === 'client') {
+      if (item.href === '/dashboard' && currentUser.role === 'Client' && menuSection.id !== 'dashboard') {
           return false;
       }
        if (item.href === '/admin/overview' && currentUser.role !== 'Admin') {
@@ -163,7 +203,11 @@ export function MainNav() {
           menu && (
             <li key={menu.id}>
               {menu.collapsible ? (
-                <Collapsible defaultOpen={true} className="group">
+                <Collapsible 
+                  open={openSections[menu.id] ?? true} 
+                  onOpenChange={(isOpen) => handleOpenChange(menu.id, isOpen)}
+                  className="group"
+                >
                    <CollapsibleTrigger className="flex w-full items-center justify-between px-2 mb-1 cursor-pointer">
                       <h3 className="text-xs font-semibold text-primary uppercase tracking-wider font-headline">
                         {menu.title}
