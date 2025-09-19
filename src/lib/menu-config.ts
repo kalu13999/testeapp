@@ -69,18 +69,18 @@ export const allMenuItems: MenuSection[] = [
     title: "Painéis",
     items: [
         { href: "/dashboard", label: "Painel do Projeto", icon: SlidersHorizontal },
+        { href: "/admin/overview", label: "Visão Global", icon: Globe, roles: ['Admin'] },
+        { href: "/admin/daily-production", label: "Produção Diária", icon: TrendingUp },
     ],
   },
   {
     id: "management",
     title: "Gestão",
     items: [
-      { href: "/admin/overview", label: "Visão Global", icon: Globe, roles: ['Admin'] },
       { href: "/projects", label: "Projetos", icon: Briefcase },
       { href: "/clients", label: "Clientes", icon: Users },
       { href: "/users", label: "Utilizadores", icon: User },
       { href: "/role-management", label: "Gestão de Perfis", icon: GanttChartSquare },
-      { href: "/admin/daily-production", label: "Produção Diária", icon: TrendingUp },
     ],
   },
   {
