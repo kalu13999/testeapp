@@ -137,7 +137,7 @@ export const allMenuItems: MenuSection[] = [
   },
   {
     id: "workflow-digitization",
-    title: "Digitalização",
+    title: "Armazenamento",
     collapsible: true,
     items: [
       { href: "/workflow/storage", label: "Armazenamento", icon: Warehouse },
