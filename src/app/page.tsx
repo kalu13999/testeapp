@@ -47,7 +47,7 @@ export default function LoginPage() {
               <FileLock2 className="h-8 w-8 text-primary-foreground" />
             </div>
           </div>
-          <CardTitle className="font-headline text-3xl">RFS<br />WorkFlow Doc</CardTitle>
+          <CardTitle className="font-headline text-3xl">RFS<br />WkF Doc</CardTitle>
           <CardDescription>Introduza as suas credenciais para aceder à sua conta</CardDescription>
         </CardHeader>
         <CardContent>

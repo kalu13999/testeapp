@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, Check, ScanLine, FileText, FileJson, PlayCircle, Send, UserPlus, CheckCheck, Archive, ThumbsUp, ThumbsDown, Undo2, MoreHorizontal, Loader2, Upload, FileWarning, Download, ArrowUp, ArrowDown, ChevronsUpDown, XCircle, UserPlus2, RotateCcw, MessageSquarePlus } from "lucide-react";
+import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, Check, ScanLine, FileText, FileJson, PlayCircle, Send, UserPlus, CheckCheck, Archive, ThumbsUp, ThumbsDown, Undo2, MoreHorizontal, Loader2, Upload, FileWarning, Download, ArrowUp, ArrowDown, ChevronsUpDown, XCircle, UserPlus2, RotateCcw, MessageSquarePlus, Book, Files, BarChart } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -89,6 +89,9 @@ const iconMap: { [key: string]: LucideIcon } = {
     MoreHorizontal,
     RotateCcw,
     MessageSquarePlus,
+    Book,
+    Files,
+    BarChart,
 };
 
 interface WorkflowClientProps {
@@ -141,7 +144,18 @@ type GroupedDocuments = {
     batchInfo?: { id: string, timestampStr: string };
   };
 };
-
+const KpiCard = ({ title, value, icon: Icon, description }: { title: string; value: string | number; icon: React.ElementType; description: string; }) => (
+  <Card>
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardTitle className="text-sm font-medium">{title}</CardTitle>
+      <Icon className="h-4 w-4 text-muted-foreground" />
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold">{value}</div>
+      <p className="text-xs text-muted-foreground">{description}</p>
+    </CardContent>
+  </Card>
+);
 export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const { 
     books, documents, handleMoveBookToNextStage, 
@@ -300,7 +314,27 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
     return items;
   }, [books, documents, dataType, dataStatus, currentUser, permissions, config.assigneeRole, users, canViewAll, selectedProjectId]);
+  const stageStats = React.useMemo(() => {
+    const totalBooks = allDisplayItems.length;
 
+    if (['scanning-started', 'indexing-started', 'checking-started'].includes(stage)) {
+      const endTimeField: 'scanEndTime' | 'indexingEndTime' | 'qcEndTime' = {
+        'scanning-started': 'scanEndTime',
+        'indexing-started': 'indexingEndTime',
+        'checking-started': 'qcEndTime',
+      }[stage] as 'scanEndTime' | 'indexingEndTime' | 'qcEndTime';
+
+      const completedCount = allDisplayItems.filter(book => !!(book as any)[endTimeField]).length;
+      const notCompletedCount = totalBooks - completedCount;
+      const totalPages = allDisplayItems.reduce((sum, book) => sum + (book as EnrichedBook).expectedDocuments, 0);
+
+      return { total: totalBooks, completed: completedCount, notCompleted: notCompletedCount, totalPages };
+    }
+    
+    return { total: totalBooks, completed: 0, notCompleted: 0, totalPages: 0 };
+  }, [allDisplayItems, stage]);
+
+  
   const handleColumnFilterChange = (columnId: string, value: string) => {
     setColumnFilters(prev => ({ ...prev, [columnId]: value }));
     setCurrentPage(1);
@@ -1291,7 +1325,48 @@ const handleMainAction = (book: EnrichedBook) => {
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
+                
             </div>
+              {['scanning-started', 'indexing-started', 'checking-started'].includes(stage) && (
+                <Accordion type="single" collapsible defaultValue="item-1">
+                  <AccordionItem value="item-1">
+                    <AccordionTrigger className="text-base px-6 font-semibold rounded-lg border bg-card text-card-foreground shadow-sm">
+                      <div className="flex items-center gap-2">
+                        <BarChart className="h-5 w-5" />
+                        Totais
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-4 px-6 border-x border-b rounded-b-lg bg-card">
+                      <div className="grid gap-4 md:grid-cols-4">
+                        <KpiCard
+                          title="Total de Tarefas"
+                          value={stageStats.total}
+                          icon={Book}
+                          description="Livros nesta fase."
+                        />
+                        <KpiCard
+                          title="Total de Páginas"
+                          value={stageStats.totalPages.toLocaleString()}
+                          icon={Files}
+                          description="Total de páginas nos livros."
+                        />
+                        <KpiCard
+                          title="Tarefas Concluídas"
+                          value={stageStats.completed}
+                          icon={CheckCheck}
+                          description="Tarefas marcadas como concluídas."
+                        />
+                        <KpiCard
+                          title="Tarefas Por Concluir"
+                          value={stageStats.notCompleted}
+                          icon={Loader2}
+                          description="Tarefas ainda ativas."
+                        />
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              )}
           </CardHeader>
           <CardContent>
               <div className="flex items-center justify-between mb-2">
