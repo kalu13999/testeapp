@@ -368,7 +368,7 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
       </CardContent>
        <CardFooter>
         <div className="text-xs text-muted-foreground">
-          Showing <strong>{rejectedBooks.length}</strong> rejected books.
+          A mostrar <strong>{rejectedBooks.length}</strong> livro(s) rejeitado(s).
         </div>
       </CardFooter>
     </Card>

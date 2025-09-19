@@ -227,7 +227,7 @@ export default function DefaultProjectsClient() {
         </CardContent>
         <CardFooter className="flex items-center justify-between">
             <div className="text-xs text-muted-foreground">
-              {`Showing ${paginatedUsers.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedUsers.length} of ${sortedAndFilteredUsers.length} users`}
+              {`A mostrar ${paginatedUsers.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedUsers.length} de ${sortedAndFilteredUsers.length} utilizadores`}
             </div>
             <PaginationNav />
         </CardFooter>

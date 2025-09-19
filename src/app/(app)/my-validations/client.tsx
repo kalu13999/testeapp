@@ -229,7 +229,7 @@ export default function MyValidationsClient() {
                                     </div>
                                     <AccordionContent className="p-4 space-y-4">
                                         <div className="flex items-center justify-end gap-4">
-                                            <Label htmlFor={`columns-slider-${book.id}`} className="text-sm whitespace-nowrap">Thumbnail Size:</Label>
+                                            <Label htmlFor={`columns-slider-${book.id}`} className="text-sm whitespace-nowrap">Tamanho da miniatura:</Label>
                                             <Slider id={`columns-slider-${book.id}`} min={1} max={12} step={1} value={[bookCols]} onValueChange={(val) => setBookColumns(book.id, val[0])} className="w-full max-w-[200px]" />
                                             <Badge variant="outline" className="w-16 justify-center">{bookCols} {bookCols > 1 ? 'cols' : 'col'}</Badge>
                                         </div>

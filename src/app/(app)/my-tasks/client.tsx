@@ -208,7 +208,7 @@ export default function MyTasksClient() {
               <div className="flex-1 min-h-0">
                   <ScrollArea className="h-full pr-6">
                       <div className="flex items-center justify-end gap-4 py-4 sticky top-0 bg-background z-10">
-                          <Label htmlFor="columns-slider" className="text-sm whitespace-nowrap">Thumbnail Size:</Label>
+                          <Label htmlFor="columns-slider" className="text-sm whitespace-nowrap">Tamanho da miniatura:</Label>
                           <Slider id="columns-slider" min={1} max={12} step={1} value={[columnCols]} onValueChange={(val) => setColumnCols(val[0])} className="w-full max-w-[200px]" />
                       </div>
                       <div className={`grid gap-4 ${gridClasses[columnCols]}`}>

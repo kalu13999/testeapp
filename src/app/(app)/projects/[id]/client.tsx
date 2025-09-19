@@ -587,7 +587,9 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
         <DialogContent className="max-w-3xl">
             <DialogHeader>
                 <DialogTitle>{detailState.title}</DialogTitle>
-                <DialogDescription>Showing {filteredDialogItems.length} of {detailState.items.length} total books.</DialogDescription>
+                <DialogDescription>
+                  A mostrar {filteredDialogItems.length} de {detailState.items.length} livros no total.
+                </DialogDescription>
             </DialogHeader>
             <div className="py-2">
                 <Input 

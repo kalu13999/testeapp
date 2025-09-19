@@ -170,8 +170,8 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
                 <p className="text-sm text-muted-foreground">{book.projectName} / {book.clientName}</p>
                 <h1 className="font-headline text-3xl font-bold tracking-tight">{book.name}</h1>
                 <p className="text-muted-foreground max-w-2xl mt-1">
-                    Showing {pages.length} of {book.expectedDocuments} expected pages. Once scanned, pages will appear here.
-                </p>
+                    A mostrar {pages.length} de {book.expectedDocuments} páginas esperadas.  
+                            Depois de movidas para o armazenamento, as páginas aparecerão aqui.     </p>
             </div>
             <Button onClick={() => setIsObservationModalOpen(true)}>
                 <MessageSquarePlus className="mr-2 h-4 w-4" /> Adicionar Observação
@@ -179,7 +179,7 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
         </div>
 
         <div className="flex items-center gap-4 py-2">
-          <Label htmlFor="columns-slider" className="text-sm whitespace-nowrap">Thumbnail Size:</Label>
+          <Label htmlFor="columns-slider" className="text-sm whitespace-nowrap">Tamanho da miniatura:</Label>
           <Slider
             id="columns-slider"
             min={1}

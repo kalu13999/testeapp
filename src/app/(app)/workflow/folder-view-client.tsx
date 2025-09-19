@@ -1119,7 +1119,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
           </CardContent>
            <CardFooter>
             <div className="text-xs text-muted-foreground">
-              Showing <strong>{Object.keys(groupedByBook).length}</strong> books in this stage.
+              A mostrar <strong>{Object.keys(groupedByBook).length}</strong> livro(s) nesta fase.
             </div>
           </CardFooter>
         </Card>

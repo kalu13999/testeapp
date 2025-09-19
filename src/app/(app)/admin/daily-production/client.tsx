@@ -460,7 +460,7 @@ export default function DailyProductionClient() {
                 </Table>
             </CardContent>
             <CardFooter className="flex items-center justify-between">
-              <div className="text-xs text-muted-foreground">Showing {paginatedSummaryData.length} of {summaryData.length} groups.</div>
+              <div className="text-xs text-muted-foreground">A mostrar {paginatedSummaryData.length} de {summaryData.length}.</div>
               <div className="flex items-center gap-4">
                 <div className="flex items-center space-x-2 text-xs">
                   <p className="text-muted-foreground">Itens por página</p>

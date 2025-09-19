@@ -435,7 +435,9 @@ export default function StatusOverrideClient({ allStatuses }: StatusOverrideClie
         </CardContent>
         <CardFooter className="flex items-center justify-between">
             <div className="text-xs text-muted-foreground">
-               {selection.length > 0 ? `${selection.length} of ${sortedAndFilteredBooks.length} book(s) selected.` : `Showing ${paginatedBooks.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedBooks.length} of ${sortedAndFilteredBooks.length} books`}
+               {selection.length > 0 
+                ? `${selection.length} de ${sortedAndFilteredBooks.length} livro(s) selecionado(s).` 
+                : `A mostrar ${paginatedBooks.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-${(currentPage - 1) * ITEMS_PER_PAGE + paginatedBooks.length} de ${sortedAndFilteredBooks.length} livros`}
             </div>
             <PaginationNav />
         </CardFooter>
