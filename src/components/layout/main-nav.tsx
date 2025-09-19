@@ -7,6 +7,7 @@ import {
   BookUp,
   Briefcase,
   CheckCheck,
+  ClipboardList,
   FileCheck,
   FileCheck2,
   FileClock,
@@ -15,6 +16,7 @@ import {
   FileText,
   Files,
   Home,
+  History,
   Loader2,
   ScanLine,
   Send,
@@ -43,6 +45,8 @@ import { Button } from "@/components/ui/button";
 import { useAppContext } from "@/context/workflow-context";
 import { allMenuItems } from "@/lib/menu-config";
 import { MANDATORY_STAGES } from "@/lib/workflow-config";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+
 
 export function MainNav() {
   const pathname = usePathname();
@@ -62,7 +66,7 @@ export function MainNav() {
          <ul className="space-y-4">
             <li>
                 <h3 className="px-2 mb-1 text-xs font-semibold text-muted-foreground/80 uppercase tracking-wider font-headline">
-                Account
+                Conta
                 </h3>
                 <ul className="space-y-1">
                 <li>
@@ -72,7 +76,7 @@ export function MainNav() {
                         className="w-full justify-start font-normal gap-2"
                         >
                         <User className="h-4 w-4 text-muted-foreground" />
-                        My Profile
+                        O Meu Perfil
                         </Button>
                     </Link>
                 </li>
@@ -83,7 +87,7 @@ export function MainNav() {
                         className="w-full justify-start font-normal gap-2"
                         >
                         <Settings className="h-4 w-4 text-muted-foreground" />
-                        Settings
+                        Configurações
                         </Button>
                     </Link>
                 </li>
@@ -151,30 +155,57 @@ export function MainNav() {
     <nav className="flex flex-col p-2 gap-2">
       <ul className="space-y-4">
         {menuItems.map((menu) => (
-          menu && <li key={menu.id}>
-            <h3 className="px-2 mb-1 text-xs font-semibold text-muted-foreground/80 uppercase tracking-wider font-headline">
-              {menu.title}
-            </h3>
-            <ul className="space-y-1">
-              {menu.items.map((item) => (
-                <li key={item.label}>
-                  <Link href={item.href} passHref>
-                    <Button
-                      variant={
-                        isActive(item.href)
-                          ? "secondary"
-                          : "ghost"
-                      }
-                      className="w-full justify-start font-normal gap-2"
-                    >
-                      <item.icon className="h-4 w-4 text-muted-foreground" />
-                      {item.label}
-                    </Button>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </li>
+          menu && (
+            <li key={menu.id}>
+              {menu.collapsible ? (
+                <Collapsible defaultOpen={true}>
+                  <CollapsibleTrigger asChild>
+                    <h3 className="px-2 mb-1 text-xs font-semibold text-muted-foreground/80 uppercase tracking-wider font-headline cursor-pointer w-full text-left">
+                      {menu.title}
+                    </h3>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <ul className="space-y-1">
+                      {menu.items.map((item) => (
+                        <li key={item.label}>
+                          <Link href={item.href} passHref>
+                            <Button
+                              variant={isActive(item.href) ? "secondary" : "ghost"}
+                              className="w-full justify-start font-normal gap-2"
+                            >
+                              <item.icon className="h-4 w-4 text-muted-foreground" />
+                              {item.label}
+                            </Button>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </CollapsibleContent>
+                </Collapsible>
+              ) : (
+                <>
+                  <h3 className="px-2 mb-1 text-xs font-semibold text-muted-foreground/80 uppercase tracking-wider font-headline">
+                    {menu.title}
+                  </h3>
+                  <ul className="space-y-1">
+                    {menu.items.map((item) => (
+                      <li key={item.label}>
+                        <Link href={item.href} passHref>
+                          <Button
+                            variant={isActive(item.href) ? "secondary" : "ghost"}
+                            className="w-full justify-start font-normal gap-2"
+                          >
+                            <item.icon className="h-4 w-4 text-muted-foreground" />
+                            {item.label}
+                          </Button>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </li>
+          )
         ))}
       </ul>
     </nav>

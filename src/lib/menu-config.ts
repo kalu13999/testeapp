@@ -53,12 +53,14 @@ interface MenuSection {
     id: string;
     title: string;
     items: MenuItem[];
+    collapsible?: boolean;
 }
 
 export const allMenuItems: MenuSection[] = [
   {
     id: "account",
     title: "Conta",
+    collapsible: true,
     items: [
       { href: "/profile", label: "O Meu Perfil", icon: User },
       { href: "/settings", label: "Configurações", icon: Settings },
@@ -67,6 +69,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "dashboard",
     title: "Dashboard",
+    collapsible: true,
     items: [
         { href: "/dashboard", label: "Painel do Projeto", icon: SlidersHorizontal },
     ],
@@ -74,6 +77,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "global-dashboards",
     title: "Painéis Globais",
+    collapsible: true,
     items: [
       { href: "/admin/overview", label: "Visão Global", icon: Globe, roles: ['Admin'] },
       { href: "/admin/daily-production", label: "Produção Diária", icon: TrendingUp },
@@ -82,6 +86,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "management",
     title: "Gestão",
+    collapsible: true,
     items: [
       { href: "/projects", label: "Projetos", icon: Briefcase },
       { href: "/clients", label: "Clientes", icon: Users },
@@ -92,6 +97,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "admin",
     title: "Ferramentas de Admin",
+    collapsible: true,
     items: [
       { href: "/admin/status-override", label: "Substituição de Estado", icon: Sliders },
       { href: "/book-management", label: "Gestão de Livros", icon: BookUp },
@@ -101,6 +107,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "workflow-tools",
     title: "Ferramentas de Workflow",
+    collapsible: true,
     items: [
       { href: "/documents", label: "Todos os Livros", icon: Files },
       { href: "/admin/reassign-user", label: "Reatribuir Utilizador", icon: UserCog },
