@@ -64,7 +64,6 @@ interface MenuSection {
     id: string;
     title: string;
     items: MenuItem[];
-    icon: LucideIcon;
     collapsible?: boolean;
     colorVariant?: 'neutral' | 'client';
 }
@@ -73,7 +72,6 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "account",
     title: "Conta",
-    icon: CircleUser,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -84,17 +82,15 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "dashboard",
     title: "Dashboard",
-    icon: LayoutDashboard,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
-        { href: "/dashboard", label: "Painel do Projeto", icon: SlidersHorizontal },
+        { href: "/dashboard", label: "Painel do Projeto", icon: LayoutDashboard },
     ],
   },
   {
     id: "global-dashboards",
     title: "Painéis Globais",
-    icon: Globe,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -105,7 +101,6 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "management",
     title: "Gestão",
-    icon: AppWindow,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -116,9 +111,8 @@ export const allMenuItems: MenuSection[] = [
     ],
   },
   {
-    id: "admin",
+    id: "admin-tools",
     title: "Ferramentas de Admin",
-    icon: Wrench,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -130,7 +124,6 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "workflow-tools",
     title: "Ferramentas",
-    icon: Workflow,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -144,7 +137,6 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "workflow-intake",
     title: "Receção",
-    icon: Truck,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -156,7 +148,6 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "workflow-scanning",
     title: "Digitalização",
-    icon: ScanLine,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -167,7 +158,6 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "storage",
     title: "Armazenamento",
-    icon: Warehouse,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -177,7 +167,6 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "workflow-indexing",
     title: "Indexação",
-    icon: ClipboardSignature,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -188,7 +177,6 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "workflow-qc",
     title: "Controlo de Qualidade",
-    icon: ClipboardCheck,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -199,7 +187,6 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "workflow-processing",
     title: "Processamento",
-    icon: Cpu,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -208,10 +195,9 @@ export const allMenuItems: MenuSection[] = [
       { href: "/workflow/processed", label: "Lotes Processados", icon: FileCheck2 },
     ]
   },
-  {
+   {
     id: "delivery",
     title: "Entrega",
-    icon: Mail,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -222,7 +208,6 @@ export const allMenuItems: MenuSection[] = [
   {
       id: "correction",
       title: "Correção Rejeitados",
-      icon: Wrench,
       collapsible: true,
       colorVariant: 'neutral',
       items: [
@@ -233,7 +218,6 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "finalization",
     title: "Finalização",
-    icon: Archive,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -244,7 +228,6 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "client",
     title: "Cliente",
-    icon: Briefcase,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -256,7 +239,6 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "client-workflow",
     title: "Cliente Workflow",
-    icon: Workflow,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -267,7 +249,6 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "client-tools",
     title: "Ferramentas Cliente",
-    icon: Wrench,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
