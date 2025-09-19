@@ -129,7 +129,7 @@ export const allMenuItems: MenuSection[] = [
   },
   {
     id: "workflow-tools",
-    title: "Ferramentas de Workflow",
+    title: "Ferramentas",
     icon: Workflow,
     collapsible: true,
     colorVariant: 'neutral',
@@ -198,7 +198,7 @@ export const allMenuItems: MenuSection[] = [
   },
   {
     id: "workflow-processing",
-    title: "Processamento Automático",
+    title: "Processamento",
     icon: Cpu,
     collapsible: true,
     colorVariant: 'neutral',
@@ -215,25 +215,25 @@ export const allMenuItems: MenuSection[] = [
     collapsible: true,
     colorVariant: 'neutral',
     items: [
-      { href: "/workflow/final-quality-control", label: "QC Final", icon: FileCheck2 },
-      { href: "/workflow/delivery", label: "Entrega", icon: Send },
-    ]
+        { href: "/workflow/final-quality-control", label: "QC Final", icon: FileCheck2 },
+        { href: "/workflow/delivery", label: "Entrega", icon: Send },
+    ],
   },
   {
-    id: "correction",
-    title: "Correção Rejeitados",
-    icon: FileTerminal,
-    collapsible: true,
-    colorVariant: 'neutral',
-    items: [
-      { href: "/workflow/client-rejections", label: "Rejeições do Cliente", icon: ThumbsDown },
-      { href: "/workflow/corrected", label: "Corrigidos", icon: Undo2 },
-    ],
+      id: "correction",
+      title: "Correção Rejeitados",
+      icon: Wrench,
+      collapsible: true,
+      colorVariant: 'neutral',
+      items: [
+          { href: "/workflow/client-rejections", label: "Rejeições do Cliente", icon: ThumbsDown },
+          { href: "/workflow/corrected", label: "Corrigidos", icon: Undo2 },
+      ],
   },
   {
     id: "finalization",
     title: "Finalização",
-    icon: CheckCheck,
+    icon: Archive,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -244,7 +244,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "client",
     title: "Cliente",
-    icon: Building,
+    icon: Briefcase,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
