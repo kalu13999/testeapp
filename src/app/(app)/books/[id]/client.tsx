@@ -170,8 +170,7 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
                 <p className="text-sm text-muted-foreground">{book.projectName} / {book.clientName}</p>
                 <h1 className="font-headline text-3xl font-bold tracking-tight">{book.name}</h1>
                 <p className="text-muted-foreground max-w-2xl mt-1">
-                    A mostrar {pages.length} de {book.expectedDocuments} páginas esperadas.  
-                            Depois de movidas para o armazenamento, as páginas aparecerão aqui.     </p>
+                    A mostrar {pages.length} de {book.expectedDocuments} páginas esperadas.    </p>
             </div>
             <Button onClick={() => setIsObservationModalOpen(true)}>
                 <MessageSquarePlus className="mr-2 h-4 w-4" /> Adicionar Observação
