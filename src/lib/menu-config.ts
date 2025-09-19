@@ -163,7 +163,7 @@ export const allMenuItems: MenuSection[] = [
   },
   {
     id: "workflow-processing",
-    title: "Processamento",
+    title: "Processamento Automático",
     collapsible: true,
     items: [
       { href: "/workflow/ready-for-processing", label: "Processamento Pendente", icon: FileCog },
@@ -173,7 +173,7 @@ export const allMenuItems: MenuSection[] = [
   },
   {
     id: "workflow-delivery",
-    title: "Entrega e Correção",
+    title: "Entrega & Correção",
     collapsible: true,
     items: [
       { href: "/workflow/final-quality-control", label: "QC Final", icon: FileCheck2 },
@@ -193,17 +193,30 @@ export const allMenuItems: MenuSection[] = [
   },
   {
     id: "client",
-    title: "Portal do Cliente",
+    title: "Cliente",
     collapsible: true,
     items: [
-      { href: "/dashboard", label: "Painel do Projeto", icon: Home, roles: ['Client', 'Client Manager', 'Client Operator'] },
       { href: "/shipments", label: "Preparar Envio", icon: Send },
-      { href: "/my-validations", label: "As Minhas Validações", icon: ClipboardList },
       { href: "/manage-deliveries", label: "Gerir Entregas", icon: Split },
-      { href: "/my-tasks", label: "As Minhas Tarefas", icon: ClipboardList },
       { href: "/validation-monitoring", label: "Acompanhar Validações", icon: MonitorCheck },
+    ],
+  },
+  {
+    id: "client-workflow",
+    title: "Cliente Workflow",
+    collapsible: true,
+    items: [
+      { href: "/my-tasks", label: "As Minhas Tarefas", icon: ClipboardList },
+      { href: "/my-validations", label: "As Minhas Validações", icon: ClipboardList },
+    ],
+  },
+  {
+    id: "client-tools",
+    title: "Ferramentas Cliente",
+    collapsible: true,
+    items: [
       { href: "/validated-history", label: "Histórico de Validações", icon: History },
       { href: "/reasons", label: "Motivos de Rejeição", icon: Tags },
     ],
-  },
+  }
 ];
