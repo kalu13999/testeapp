@@ -39,7 +39,12 @@ import {
   MonitorCheck,
   Split,
   ServerCog,
-  TrendingUp
+  TrendingUp,
+  Workflow,
+  Wrench,
+  Building,
+  Truck,
+  ClipboardSignature
 } from "lucide-react";
 
 interface MenuItem {
@@ -53,14 +58,16 @@ interface MenuSection {
     id: string;
     title: string;
     items: MenuItem[];
+    icon: LucideIcon;
     collapsible?: boolean;
-    colorVariant?: 'neutral' | 'accent' | 'client';
+    colorVariant?: 'neutral' | 'client';
 }
 
 export const allMenuItems: MenuSection[] = [
   {
     id: "account",
     title: "Conta",
+    icon: User,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -71,6 +78,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "dashboard",
     title: "Dashboard",
+    icon: Home,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -80,6 +88,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "global-dashboards",
     title: "Painéis Globais",
+    icon: Globe,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -90,18 +99,20 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "management",
     title: "Gestão",
+    icon: Briefcase,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
       { href: "/projects", label: "Projetos", icon: Briefcase },
-      { href: "/clients", label: "Clientes", icon: Users },
-      { href: "/users", label: "Utilizadores", icon: User },
+      { href: "/clients", label: "Clientes", icon: Building },
+      { href: "/users", label: "Utilizadores", icon: Users },
       { href: "/role-management", label: "Gestão de Perfis", icon: GanttChartSquare },
     ],
   },
   {
     id: "admin",
     title: "Ferramentas de Admin",
+    icon: Wrench,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -113,6 +124,7 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "workflow-tools",
     title: "Ferramentas de Workflow",
+    icon: Workflow,
     collapsible: true,
     colorVariant: 'neutral',
     items: [
@@ -126,8 +138,8 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "workflow-intake",
     title: "Receção",
+    icon: ArrowDownToLine,
     collapsible: true,
-    colorVariant: 'neutral',
     items: [
       { href: "/workflow/pending-shipment", label: "Envio Pendente", icon: FileClock },
       { href: "/workflow/confirm-reception", label: "Confirmar Receção", icon: ArrowDownToLine },
@@ -137,8 +149,8 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "workflow-scanning",
     title: "Digitalização",
+    icon: ScanLine,
     collapsible: true,
-    colorVariant: 'neutral',
     items: [
       { href: "/workflow/to-scan", label: "Digitalização Pendente", icon: ScanLine },
       { href: "/workflow/scanning-started", label: "Digitalização Iniciada", icon: PlayCircle },
@@ -147,8 +159,8 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "storage",
     title: "Armazenamento",
+    icon: Warehouse,
     collapsible: true,
-    colorVariant: 'neutral',
     items: [
       { href: "/workflow/storage", label: "Armazenamento", icon: Warehouse },
     ]
@@ -156,8 +168,8 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "workflow-indexing",
     title: "Indexação",
+    icon: FileText,
     collapsible: true,
-    colorVariant: 'neutral',
     items: [
       { href: "/workflow/to-indexing", label: "Indexação Pendente", icon: FileText },
       { href: "/workflow/indexing-started", label: "Indexação Iniciada", icon: PencilRuler },
@@ -166,8 +178,8 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "workflow-qc",
     title: "Controlo de Qualidade",
+    icon: FileSearch2,
     collapsible: true,
-    colorVariant: 'neutral',
     items: [
       { href: "/workflow/to-checking", label: "PageChecker Pendente", icon: FileSearch2 },
       { href: "/workflow/checking-started", label: "PageChecker Iniciada", icon: ClipboardCheck },
@@ -176,8 +188,8 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "workflow-processing",
     title: "Processamento Automático",
+    icon: FileCog,
     collapsible: true,
-    colorVariant: 'neutral',
     items: [
       { href: "/workflow/ready-for-processing", label: "Processamento Pendente", icon: FileCog },
       { href: "/workflow/in-processing", label: "Em Processamento", icon: Loader2 },
@@ -187,8 +199,8 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "workflow-delivery",
     title: "Entrega & Correção",
+    icon: Send,
     collapsible: true,
-    colorVariant: 'neutral',
     items: [
       { href: "/workflow/final-quality-control", label: "QC Final", icon: FileCheck2 },
       { href: "/workflow/delivery", label: "Entrega", icon: Send },
@@ -199,8 +211,8 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "finalization",
     title: "Finalização",
+    icon: CheckCheck,
     collapsible: true,
-    colorVariant: 'neutral',
     items: [
       { href: "/finalized", label: "Finalizados", icon: CheckCheck },
       { href: "/archive", label: "Arquivados", icon: Archive },
@@ -209,10 +221,11 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "client",
     title: "Cliente",
+    icon: Briefcase,
     collapsible: true,
-    colorVariant: 'neutral',
+    colorVariant: 'client',
     items: [
-      { href: "/shipments", label: "Preparar Envio", icon: Send },
+      { href: "/shipments", label: "Preparar Envio", icon: Truck },
       { href: "/manage-deliveries", label: "Gerir Entregas", icon: Split },
       { href: "/validation-monitoring", label: "Acompanhar Validações", icon: MonitorCheck },
     ],
@@ -220,18 +233,20 @@ export const allMenuItems: MenuSection[] = [
   {
     id: "client-workflow",
     title: "Cliente Workflow",
+    icon: Workflow,
     collapsible: true,
-    colorVariant: 'neutral',
+    colorVariant: 'client',
     items: [
       { href: "/my-tasks", label: "As Minhas Tarefas", icon: ClipboardList },
-      { href: "/my-validations", label: "As Minhas Validações", icon: ClipboardList },
+      { href: "/my-validations", label: "As Minhas Validações", icon: ClipboardSignature },
     ],
   },
   {
     id: "client-tools",
     title: "Ferramentas Cliente",
+    icon: Wrench,
     collapsible: true,
-    colorVariant: 'neutral',
+    colorVariant: 'client',
     items: [
       { href: "/validated-history", label: "Histórico de Validações", icon: History },
       { href: "/reasons", label: "Motivos de Rejeição", icon: Tags },

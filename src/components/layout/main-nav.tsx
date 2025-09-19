@@ -200,8 +200,11 @@ export function MainNav() {
   return (
     <nav className="flex flex-col p-2 gap-2">
       <ul className="space-y-4">
-        {menuItems.map((menu) => (
-          menu && (
+        {menuItems.map((menu) => {
+          if (!menu) return null;
+          const SectionIcon = menu.icon;
+          
+          return (
             <li key={menu.id}>
               {menu.collapsible ? (
                 <Collapsible 
@@ -210,20 +213,14 @@ export function MainNav() {
                   className="group"
                 >
                    <CollapsibleTrigger className="flex w-full items-center justify-between px-2 mb-1 cursor-pointer">
-                      <h3 className={cn("text-xs font-semibold uppercase tracking-wider font-headline",
+                      <h3 className={cn("flex items-center gap-2 text-xs font-semibold uppercase tracking-wider font-headline",
                         menu.colorVariant === 'neutral' && 'text-muted-foreground',
-                        menu.colorVariant === 'accent' && 'text-amber-600 dark:text-amber-500',
                         menu.colorVariant === 'client' && 'text-green-600 dark:text-green-500',
                         !menu.colorVariant && 'text-primary'
                       )}>
+                        {SectionIcon && <SectionIcon className="h-4 w-4" />}
                         {menu.title}
                       </h3>
-                      <ChevronRight className={cn("h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90",
-                        menu.colorVariant === 'neutral' && 'text-muted-foreground',
-                        menu.colorVariant === 'accent' && 'text-amber-600 dark:text-amber-500',
-                        menu.colorVariant === 'client' && 'text-green-600 dark:text-green-500',
-                        !menu.colorVariant && 'text-primary'
-                      )} />
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <ul className="space-y-1">
@@ -267,8 +264,9 @@ export function MainNav() {
               )}
             </li>
           )
-        ))}
+        })}
       </ul>
     </nav>
   );
 }
+
