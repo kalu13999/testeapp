@@ -140,6 +140,7 @@ export const allMenuItems: MenuSection[] = [
     title: "Receção",
     icon: ArrowDownToLine,
     collapsible: true,
+    colorVariant: 'neutral',
     items: [
       { href: "/workflow/pending-shipment", label: "Envio Pendente", icon: FileClock },
       { href: "/workflow/confirm-reception", label: "Confirmar Receção", icon: ArrowDownToLine },
@@ -151,6 +152,7 @@ export const allMenuItems: MenuSection[] = [
     title: "Digitalização",
     icon: ScanLine,
     collapsible: true,
+    colorVariant: 'neutral',
     items: [
       { href: "/workflow/to-scan", label: "Digitalização Pendente", icon: ScanLine },
       { href: "/workflow/scanning-started", label: "Digitalização Iniciada", icon: PlayCircle },
@@ -161,6 +163,7 @@ export const allMenuItems: MenuSection[] = [
     title: "Armazenamento",
     icon: Warehouse,
     collapsible: true,
+    colorVariant: 'neutral',
     items: [
       { href: "/workflow/storage", label: "Armazenamento", icon: Warehouse },
     ]
@@ -170,6 +173,7 @@ export const allMenuItems: MenuSection[] = [
     title: "Indexação",
     icon: FileText,
     collapsible: true,
+    colorVariant: 'neutral',
     items: [
       { href: "/workflow/to-indexing", label: "Indexação Pendente", icon: FileText },
       { href: "/workflow/indexing-started", label: "Indexação Iniciada", icon: PencilRuler },
@@ -180,6 +184,7 @@ export const allMenuItems: MenuSection[] = [
     title: "Controlo de Qualidade",
     icon: FileSearch2,
     collapsible: true,
+    colorVariant: 'neutral',
     items: [
       { href: "/workflow/to-checking", label: "PageChecker Pendente", icon: FileSearch2 },
       { href: "/workflow/checking-started", label: "PageChecker Iniciada", icon: ClipboardCheck },
@@ -190,6 +195,7 @@ export const allMenuItems: MenuSection[] = [
     title: "Processamento Automático",
     icon: FileCog,
     collapsible: true,
+    colorVariant: 'neutral',
     items: [
       { href: "/workflow/ready-for-processing", label: "Processamento Pendente", icon: FileCog },
       { href: "/workflow/in-processing", label: "Em Processamento", icon: Loader2 },
@@ -201,6 +207,7 @@ export const allMenuItems: MenuSection[] = [
     title: "Entrega & Correção",
     icon: Send,
     collapsible: true,
+    colorVariant: 'neutral',
     items: [
       { href: "/workflow/final-quality-control", label: "QC Final", icon: FileCheck2 },
       { href: "/workflow/delivery", label: "Entrega", icon: Send },
@@ -213,6 +220,7 @@ export const allMenuItems: MenuSection[] = [
     title: "Finalização",
     icon: CheckCheck,
     collapsible: true,
+    colorVariant: 'neutral',
     items: [
       { href: "/finalized", label: "Finalizados", icon: CheckCheck },
       { href: "/archive", label: "Arquivados", icon: Archive },
@@ -223,7 +231,7 @@ export const allMenuItems: MenuSection[] = [
     title: "Cliente",
     icon: Briefcase,
     collapsible: true,
-    colorVariant: 'client',
+    colorVariant: 'neutral',
     items: [
       { href: "/shipments", label: "Preparar Envio", icon: Truck },
       { href: "/manage-deliveries", label: "Gerir Entregas", icon: Split },
@@ -235,7 +243,7 @@ export const allMenuItems: MenuSection[] = [
     title: "Cliente Workflow",
     icon: Workflow,
     collapsible: true,
-    colorVariant: 'client',
+    colorVariant: 'neutral',
     items: [
       { href: "/my-tasks", label: "As Minhas Tarefas", icon: ClipboardList },
       { href: "/my-validations", label: "As Minhas Validações", icon: ClipboardSignature },
@@ -246,7 +254,7 @@ export const allMenuItems: MenuSection[] = [
     title: "Ferramentas Cliente",
     icon: Wrench,
     collapsible: true,
-    colorVariant: 'client',
+    colorVariant: 'neutral',
     items: [
       { href: "/validated-history", label: "Histórico de Validações", icon: History },
       { href: "/reasons", label: "Motivos de Rejeição", icon: Tags },

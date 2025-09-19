@@ -41,7 +41,12 @@ import {
   MonitorCheck,
   Split,
   ServerCog,
-  TrendingUp
+  TrendingUp,
+  Workflow,
+  Wrench,
+  Building,
+  Truck,
+  ClipboardSignature
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -269,4 +274,3 @@ export function MainNav() {
     </nav>
   );
 }
-
