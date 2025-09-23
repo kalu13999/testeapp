@@ -231,6 +231,50 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const [observationTarget, setObservationTarget] = React.useState<EnrichedBook | null>(null);
 
   const [openAccordions, setOpenAccordions] = React.useState<string[]>([]);
+  
+  const { storages } = useAppContext();
+  const [localCounts, setLocalCounts] = React.useState({ books: 0, pages: 0 });
+  const [localIpMessage, setLocalIpMessage] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (stage === 'storage') {
+      const getLocalIP = async (): Promise<string> => {
+        try {
+          const res = await fetch("/api/getip");
+          if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+          const data = await res.json();
+          return data.ip;
+        } catch (err) {
+          console.error("Erro ao buscar IP:", err);
+          return "IP não identificado";
+        }
+      };
+
+      const calculateLocalCounts = async () => {
+        const ip = await getLocalIP();
+        const localStorages = storages.filter(s => s.ip === ip);
+        
+        if (localStorages.length === 0) {
+          setLocalIpMessage(`Nenhum armazenamento encontrado para o seu IP atual (${ip}). Não é possível mostrar os livros disponíveis localmente.`);
+          setLocalCounts({ books: 0, pages: 0 });
+          return;
+        }
+        
+        setLocalIpMessage(null);
+        const localBooks = Object.values(groupedByBook)
+          .map(g => g.book)
+          .filter(book => localStorages.some(s => s.nome === book.storageName));
+        
+        const bookCount = localBooks.length;
+        const pageCount = localBooks.reduce((sum, book) => sum + book.expectedDocuments, 0);
+        
+        setLocalCounts({ books: bookCount, pages: pageCount });
+      };
+
+      calculateLocalCounts();
+    }
+  }, [stage, storages, groupedByBook]);
+
 
   const storageKey = React.useMemo(() => `accordion_state_${stage}`, [stage]);
 
@@ -353,66 +397,86 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     return items;
   }, [books, documents, dataType, dataStatus, currentUser, permissions, config.assigneeRole, users, canViewAll, selectedProjectId]);
   
+  const sortedAndFilteredItems = React.useMemo(() => {
+    let filtered = allDisplayItems;
+
+    Object.entries(columnFilters).forEach(([columnId, value]) => {
+      if (value) {
+        filtered = filtered.filter(item => {
+          const itemValue = (item as any)[columnId];
+          return String(itemValue).toLowerCase().includes(value.toLowerCase());
+        });
+      }
+    });
+
+    if (sorting.length > 0) {
+        filtered.sort((a, b) => {
+            for (const s of sorting) {
+                const key = s.id;
+                const valA = (a as any)[key];
+                const valB = (b as any)[key];
+                let result = 0;
+                if (valA === null || valA === undefined) result = -1;
+                else if (valB === null || valB === undefined) result = 1;
+                else if (typeof valA === 'number' && typeof valB === 'number') { result = valA - valB; }
+                else { result = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' }); }
+                if (result !== 0) return s.desc ? -result : result;
+            }
+            return 0;
+        });
+    }
+
+    return filtered;
+  }, [allDisplayItems, columnFilters, sorting]);
   
   const stageStats = React.useMemo(() => {
-  const totalBooks = allDisplayItems.length;
-
-  if (['scanning-started', 'indexing-started', 'checking-started'].includes(stage)) {
-    const endTimeField: 'scanEndTime' | 'indexingEndTime' | 'qcEndTime' = {
-      'scanning-started': 'scanEndTime',
-      'indexing-started': 'indexingEndTime',
-      'checking-started': 'qcEndTime',
-    }[stage] as 'scanEndTime' | 'indexingEndTime' | 'qcEndTime';
-
-    // livros completados
-    const completedBooks = allDisplayItems.filter(book => !!(book as any)[endTimeField]);
-    const completedCount = completedBooks.length;
-    const totalPagesCompleted = completedBooks.reduce(
-      (sum, book) => sum + (book as EnrichedBook).expectedDocuments,
-      0
-    );
-
-    // livros não completados
-    const notCompletedBooks = allDisplayItems.filter(book => !(book as any)[endTimeField]);
-    const notCompletedCount = notCompletedBooks.length;
-    const totalPagesNotCompleted = notCompletedBooks.reduce(
-      (sum, book) => sum + (book as EnrichedBook).expectedDocuments,
-      0
-    );
-
-    return {
-      total: totalBooks,
-      completed: completedCount,
-      notCompleted: notCompletedCount,
-      totalPagesCompleted,
-      totalPagesNotCompleted,
-    };
-  }
-
-  return { total: totalBooks, completed: 0, notCompleted: 0, totalPagesCompleted: 0, totalPagesNotCompleted: 0 };
-}, [allDisplayItems, stage]);
+    const totalBooks = sortedAndFilteredItems.length;
+    const totalPages = sortedAndFilteredItems.reduce((sum, book) => sum + (book as EnrichedBook).expectedDocuments, 0);
   
-  /*const stageStats = React.useMemo(() => {
-    const totalBooks = allDisplayItems.length;
-
     if (['scanning-started', 'indexing-started', 'checking-started'].includes(stage)) {
       const endTimeField: 'scanEndTime' | 'indexingEndTime' | 'qcEndTime' = {
         'scanning-started': 'scanEndTime',
         'indexing-started': 'indexingEndTime',
         'checking-started': 'qcEndTime',
       }[stage] as 'scanEndTime' | 'indexingEndTime' | 'qcEndTime';
-
-      const completedCount = allDisplayItems.filter(book => !!(book as any)[endTimeField]).length;
+  
+      const today = new Date().toISOString().slice(0, 10);
+      const completedBooks = sortedAndFilteredItems.filter(book => !!(book as any)[endTimeField]);
+      const tasksToday = completedBooks.filter(book => ((book as any)[endTimeField] as string).startsWith(today)).length;
+      const completedCount = completedBooks.length;
       const notCompletedCount = totalBooks - completedCount;
-      const totalPages = allDisplayItems.reduce((sum, book) => sum + (book as EnrichedBook).expectedDocuments, 0);
-
-      return { total: totalBooks, completed: completedCount, notCompleted: notCompletedCount, totalPages };
+      const totalPagesCompleted = completedBooks.reduce(
+        (sum, book) => sum + (book as EnrichedBook).expectedDocuments,
+        0
+      );
+      const totalPagesNotCompleted = notCompletedCount > 0 
+        ? sortedAndFilteredItems
+            .filter(book => !(book as any)[endTimeField])
+            .reduce((sum, book) => sum + (book as EnrichedBook).expectedDocuments, 0)
+        : 0;
+  
+      return {
+        total: totalBooks,
+        completed: completedCount,
+        notCompleted: notCompletedCount,
+        totalPages: totalPages,
+        totalPagesCompleted,
+        totalPagesNotCompleted,
+        tasksToday,
+      };
     }
     
-    return { total: totalBooks, completed: 0, notCompleted: 0, totalPages: 0 };
-  }, [allDisplayItems, stage]);*/
+    return { 
+      total: totalBooks, 
+      completed: 0, 
+      notCompleted: 0, 
+      totalPages: 0,
+      totalPagesCompleted: 0,
+      totalPagesNotCompleted: 0,
+      tasksToday: 0 
+    };
+  }, [sortedAndFilteredItems, stage]);
 
-  
   const handleColumnFilterChange = (columnId: string, value: string) => {
     setColumnFilters(prev => ({ ...prev, [columnId]: value }));
     setCurrentPage(1);
@@ -467,48 +531,12 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     setColumnFilters({});
   };
 
-  const sortedAndFilteredItems = React.useMemo(() => {
-    let filtered = allDisplayItems;
-
-    Object.entries(columnFilters).forEach(([columnId, value]) => {
-      if (value) {
-        filtered = filtered.filter(item => {
-          const itemValue = (item as any)[columnId];
-          return String(itemValue).toLowerCase().includes(value.toLowerCase());
-        });
-      }
-    });
-
-    if (sorting.length > 0) {
-        filtered.sort((a, b) => {
-            for (const s of sorting) {
-                const key = s.id;
-                const valA = (a as any)[key];
-                const valB = (b as any)[key];
-                let result = 0;
-                if (valA === null || valA === undefined) result = -1;
-                else if (valB === null || valB === undefined) result = 1;
-                else if (typeof valA === 'number' && typeof valB === 'number') { result = valA - valB; }
-                else { result = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' }); }
-                if (result !== 0) return s.desc ? -result : result;
-            }
-            return 0;
-        });
-    }
-
-    return filtered;
-  }, [allDisplayItems, columnFilters, sorting]);
-
   const totalPages = Math.ceil(sortedAndFilteredItems.length / itemsPerPage);
   const displayItems = sortedAndFilteredItems.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
-  /*const totalPages = Math.ceil(sortedAndFilteredItems.length / ITEMS_PER_PAGE);
-  const displayItems = sortedAndFilteredItems.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );*/
+  
   const selectedItems = React.useMemo(() => {
     return sortedAndFilteredItems.filter(item => selection.includes(item.id));
   }, [sortedAndFilteredItems, selection]);
@@ -899,7 +927,7 @@ const handleMainAction = (book: EnrichedBook) => {
     });
   }
 
-  const handleBulkResubmitMoveTifs = (targetStage: string) => {
+    const handleBulkResubmitMoveTifs = (targetStage: string) => {
     const stageKey = findStageKeyFromStatus(targetStage);
     if (!stageKey) {
       toast({ title: "Erro de Workflow", description: `Não foi possível encontrar a configuração para a etapa: ${targetStage}`, variant: "destructive" });
@@ -993,10 +1021,10 @@ const handleMainAction = (book: EnrichedBook) => {
           <TableCell>{item.assigneeName}</TableCell>
         )}
         {startTimeKey && endTimeKey && (
-            <>
-                <TableCell className="hidden md:table-cell">{item[startTimeKey] ? format(new Date(item[startTimeKey]!), "yyyy-MM-dd HH:mm") : ""}</TableCell>
-                <TableCell className="hidden md:table-cell">{item[endTimeKey] ? format(new Date(item[endTimeKey]!), "yyyy-MM-dd HH:mm") : ""}</TableCell>
-            </>
+          <>
+          <TableCell className="hidden md:table-cell">{item[startTimeKey] ? format(new Date(item[startTimeKey]!), "yyyy-MM-dd HH:mm") : ""}</TableCell>
+          <TableCell className="hidden md:table-cell">{item[endTimeKey] ? format(new Date(item[endTimeKey]!), "yyyy-MM-dd HH:mm") : ""}</TableCell>
+          </>
         )}
         <TableCell>
           <div className="flex items-center justify-end gap-2">
@@ -1276,7 +1304,7 @@ const handleMainAction = (book: EnrichedBook) => {
           <span className="text-sm text-muted-foreground">{selection.length} selected</span>
            <Button size="sm" onClick={() => openConfirmationDialog({
              title: `Marcar ${selection.length} livros como corrigidos?`,
-             description: `Isto irá mover todos os livros selecionados para a fase seguinte.`,
+             description: `Isso moverá todos os livros selecionados para a próxima etapa.`,
              onConfirm: () => {
                selection.forEach(bookId => handleMarkAsCorrected(bookId));
                setSelection([]);
@@ -1348,26 +1376,14 @@ const handleMainAction = (book: EnrichedBook) => {
     7: 'grid-cols-7', 8: 'grid-cols-8', 9: 'grid-cols-9', 10: 'grid-cols-10', 11: 'grid-cols-11', 12: 'grid-cols-12'
   };
 
-  const openFlagDialog = (doc: AppDocument, flag: NonNullable<AppDocument['flag']>) => {
-    setFlagDialogState({
-      open: true,
-      docId: doc.id,
-      docName: doc.name,
-      flag: flag,
-      comment: doc.flagComment || '',
-    });
-  };
-
-  const closeFlagDialog = () => {
-    setFlagDialogState({ open: false, docId: null, docName: null, flag: null, comment: '' });
-  };
-
-  const handleFlagSubmit = () => {
-    if (flagDialogState.docId && flagDialogState.flag) {
-      updateDocumentFlag(flagDialogState.docId, flagDialogState.flag, flagDialogState.comment);
+  const handleSaveObservation = () => {
+    if (observationTarget && newObservation.trim()) {
+        addBookObservation(observationTarget.id, newObservation.trim());
+        setNewObservation('');
+        setObservationTarget(null);
     }
-    closeFlagDialog();
-  };
+  }
+
 
   return (
     <>
@@ -1476,67 +1492,23 @@ const handleMainAction = (book: EnrichedBook) => {
                 </div>
                 
             </div>
-              {['scanning-started', 'indexing-started', 'checking-started'].includes(stage) && (
-                <Accordion type="single" collapsible defaultValue="item-1">
-                  <AccordionItem value="item-1">
-                    <AccordionTrigger className="text-base px-6 font-semibold rounded-lg border bg-card text-card-foreground shadow-sm">
-                      <div className="flex items-center gap-2">
-                        <BarChart className="h-5 w-5" />
-                        Totais
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="pt-4 px-6 border-x border-b rounded-b-lg bg-card">
-                      <div className="grid gap-4 md:grid-cols-4">
-                         <KpiCard
-                              title="Total de Tarefas"
-                              value={stageStats.total} // número total de livros
-                              icon={Book}
-                              description={`Livros nesta fase. (${stageStats.totalPagesCompleted + stageStats.totalPagesNotCompleted} páginas)`}
-                            />
-                            <KpiCard
-                              title="Tarefas Concluídas"
-                              value={stageStats.completed}
-                              icon={CheckCheck}
-                              description={`Tarefas marcadas como concluídas. (${stageStats.totalPagesCompleted} páginas)`}
-                            />
-                            <KpiCard
-                              title="Tarefas Por Concluir"
-                              value={stageStats.notCompleted}
-                              icon={Loader2}
-                              description={`Tarefas ainda ativas. (${stageStats.totalPagesNotCompleted} páginas)`}
-                            />
-                        {
-                       
-                        
-                        /*<KpiCard
-                          title="Total de Tarefas"
-                          value={stageStats.total}
-                          icon={Book}
-                          description="Livros nesta fase."
-                        />
-                        <KpiCard
-                          title="Total de Páginas"
-                          value={stageStats.totalPages.toLocaleString()}
-                          icon={Files}
-                          description="Total de páginas nos livros."
-                        />
-                        <KpiCard
-                          title="Tarefas Concluídas"
-                          value={stageStats.completed}
-                          icon={CheckCheck}
-                          description="Tarefas marcadas como concluídas."
-                        />
-                        <KpiCard
-                          title="Tarefas Por Concluir"
-                          value={stageStats.notCompleted}
-                          icon={Loader2}
-                          description="Tarefas ainda ativas."
-                        />*/}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-              )}
+             <Accordion type="single" collapsible className="w-full pt-4">
+                <AccordionItem value="stats">
+                  <AccordionTrigger className="text-base px-6 font-semibold rounded-lg border bg-card text-card-foreground shadow-sm">
+                    <div className="flex items-center gap-2"><BarChart className="h-5 w-5"/>Estatísticas da Fase</div>
+                  </AccordionTrigger>
+                  <AccordionContent className="pt-4 px-6 border-x border-b rounded-b-lg bg-card">
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                       {stage === 'storage' && localIpMessage && <Alert variant="destructive" className="col-span-full"><AlertTriangle className="h-4 w-4"/><AlertTitle>Aviso de Rede</AlertTitle><AlertDescription>{localIpMessage}</AlertDescription></Alert>}
+                       {stage === 'storage' && !localIpMessage && <KpiCard title="Disponível no Armazenamento Local" value={localCounts.books} icon={Book} description={`${localCounts.pages.toLocaleString()} páginas prontas para serem puxadas.`} />}
+                       <KpiCard title="Total de Tarefas" value={stageStats.total} icon={Book} description={`Total de livros nesta fase (${stageStats.totalPages.toLocaleString()} páginas).`} />
+                       {['scanning-started', 'indexing-started', 'checking-started'].includes(stage) && <KpiCard title="Tarefas Concluídas Hoje" value={stageStats.tasksToday} icon={CheckCheck} description="Tarefas marcadas como concluídas hoje." />}
+                       {['scanning-started', 'indexing-started', 'checking-started'].includes(stage) && <KpiCard title="Total Concluído" value={stageStats.completed} icon={CheckCheck} description={`Total de ${stageStats.totalPagesCompleted.toLocaleString()} páginas concluídas.`} />}
+                       {['scanning-started', 'indexing-started', 'checking-started'].includes(stage) && <KpiCard title="Por Concluir" value={stageStats.notCompleted} icon={Loader2} description={`${stageStats.totalPagesNotCompleted.toLocaleString()} páginas por concluir.`} />}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+             </Accordion>
           </CardHeader>
           <CardContent>
               <div className="flex items-center justify-between mb-2">
@@ -1877,7 +1849,7 @@ const handleMainAction = (book: EnrichedBook) => {
     <Dialog open={assignState.open} onOpenChange={closeAssignmentDialog}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{assignState.role ? assignmentConfig[assignState.role].title : 'Assign User'} for "{assignState.book?.name}"</DialogTitle>
+          <DialogTitle>{assignState.role ? assignmentConfig[assignState.role].title : 'Assign User'} for "{assignState.bookName}"</DialogTitle>
           <DialogDescription>{assignState.role ? assignmentConfig[assignState.role].description : ''}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
@@ -1907,7 +1879,7 @@ const handleMainAction = (book: EnrichedBook) => {
           <DialogHeader>
             <DialogTitle>{bulkAssignState.role ? assignmentConfig[bulkAssignState.role].title : 'Assign User'} for {selection.length} Books</DialogTitle>
             <DialogDescription>
-                Selecione um utilizador para processar todos os livros selecionados. Eles serão adicionados à sua lista de pendentes.
+                Selecione um utilizador para executar a tarefa nos livros selecionados. As tarefas serão adicionadas à sua lista de pendentes.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -1923,7 +1895,7 @@ const handleMainAction = (book: EnrichedBook) => {
             </Select>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={closeBulkAssignmentDialog}>Cancelar</Button>
+            <Button variant="outline" onClick={closeBulkAssignmentDialog}>Cancel</Button>
             <Button onClick={handleBulkAssignmentSubmit} disabled={!bulkAssignState.selectedUserId}>
               Atribuir
             </Button>
@@ -1934,24 +1906,24 @@ const handleMainAction = (book: EnrichedBook) => {
     <Dialog open={flagDialogState.open} onOpenChange={closeFlagDialog}>
         <DialogContent>
             <DialogHeader>
-                <DialogTitle>Marcar Documento: "{flagDialogState.docName}"</DialogTitle>
+                <DialogTitle>Flag Document: "{flagDialogState.docName}"</DialogTitle>
                 <DialogDescription>
-                    Forneça um comentário para a marcação. Isso será visível para a equipe.
+                    Provide a comment for the flag. This will be visible to the team.
                 </DialogDescription>
             </DialogHeader>
             <div className="space-y-2 py-4">
-                <Label htmlFor="flag-comment">Comentário</Label>
+                <Label htmlFor="flag-comment">Comment</Label>
                 <Textarea
                     id="flag-comment"
-                    placeholder={`Motivo para a ${flagDialogState.flag}...`}
+                    placeholder={`Reason for the ${flagDialogState.flag}...`}
                     value={flagDialogState.comment}
                     onChange={(e) => setFlagDialogState(prev => ({...prev, comment: e.target.value}))}
                     className="min-h-[100px]"
                 />
             </div>
             <DialogFooter>
-                <Button variant="outline" onClick={closeFlagDialog}>Cancelar</Button>
-                <Button onClick={handleFlagSubmit} disabled={!flagDialogState.comment.trim()}>Guardar Comentário</Button>
+                <Button variant="outline" onClick={closeFlagDialog}>Cancel</Button>
+                <Button onClick={handleFlagSubmit} disabled={!flagDialogState.comment.trim()}>Save Comment</Button>
             </DialogFooter>
         </DialogContent>
     </Dialog>
@@ -2051,3 +2023,5 @@ const handleMainAction = (book: EnrichedBook) => {
     </>
   )
 }
+
+    
