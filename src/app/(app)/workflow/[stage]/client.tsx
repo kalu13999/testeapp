@@ -87,11 +87,7 @@ const iconMap: { [key: string]: LucideIcon } = {
     ThumbsDown,
     Undo2,
     MoreHorizontal,
-    RotateCcw,
     MessageSquarePlus,
-    Book,
-    Files,
-    BarChart,
 };
 
 interface WorkflowClientProps {
@@ -183,6 +179,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     selectedProjectId, projectWorkflows, handleConfirmReception, getNextEnabledStage,
     handleSendToStorage, processingBookIds,
     handleFinalize, handleMarkAsCorrected, handleResubmit,
+    handleResubmitCopyTifs, handleResubmitMoveTifs,
     addPageToBook, deletePageFromBook, updateDocumentFlag, rejectionTags, tagPageForRejection,
     handleCompleteTask,handleCancelCompleteTask, handlePullNextTask, addBookObservation,
   } = useAppContext();
@@ -233,6 +230,29 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const [newObservation, setNewObservation] = React.useState('');
   const [observationTarget, setObservationTarget] = React.useState<EnrichedBook | null>(null);
 
+  const [openAccordions, setOpenAccordions] = React.useState<string[]>([]);
+
+  const storageKey = React.useMemo(() => `accordion_state_${stage}`, [stage]);
+
+  React.useEffect(() => {
+    try {
+      const savedState = localStorage.getItem(storageKey);
+      if (savedState) {
+        setOpenAccordions(JSON.parse(savedState));
+      }
+    } catch (error) {
+      console.error(`Failed to parse accordion state for ${stage} from localStorage`, error);
+    }
+  }, [storageKey]);
+
+  const handleAccordionChange = (value: string[]) => {
+    setOpenAccordions(value);
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(value));
+    } catch (error) {
+      console.error(`Failed to save accordion state for ${stage} to localStorage`, error);
+    }
+  };
 
   const userPermissions = currentUser ? permissions[currentUser.role] || [] : [];
   const canViewAll = userPermissions.includes('/workflow/view-all') || userPermissions.includes('*');
@@ -865,15 +885,32 @@ const handleMainAction = (book: EnrichedBook) => {
   const handleBulkResubmit = (targetStage: string) => {
     const stageKey = findStageKeyFromStatus(targetStage);
     if (!stageKey) {
-      toast({ title: "Erro de Workflow", description: `Não foi possível encontrar uma configuração para a fase: ${targetStage}`, variant: "destructive" });
+      toast({ title: "Erro de Workflow", description: `Não foi possível encontrar a configuração para a etapa: ${targetStage}`, variant: "destructive" });
       return;
     }
     const stageConfig = STAGE_CONFIG[stageKey];
     openConfirmationDialog({
       title: `Reenviar ${selection.length} livros?`,
-      description: `Isto irá reenviar todos os livros selecionados para a fase "${stageConfig.title}".`,
+      description: `Isso reenviará todos os livros selecionados para a etapa "${stageConfig.title}".`,
       onConfirm: () => {
         selection.forEach(bookId => handleResubmit(bookId, targetStage));
+        setSelection([]);
+      }
+    });
+  }
+
+  const handleBulkResubmitMoveTifs = (targetStage: string) => {
+    const stageKey = findStageKeyFromStatus(targetStage);
+    if (!stageKey) {
+      toast({ title: "Erro de Workflow", description: `Não foi possível encontrar a configuração para a etapa: ${targetStage}`, variant: "destructive" });
+      return;
+    }
+    const stageConfig = STAGE_CONFIG[stageKey];
+    openConfirmationDialog({
+      title: `Reenviar ${selection.length} livros?`,
+      description: `Isso reenviará todos os livros selecionados para a etapa "${stageConfig.title}".`,
+      onConfirm: () => {
+        selection.forEach(bookId => handleResubmitMoveTifs(bookId, targetStage));
         setSelection([]);
       }
     });
@@ -921,6 +958,20 @@ const handleMainAction = (book: EnrichedBook) => {
       (stage === 'indexing-started' && !!book.indexingEndTime) ||
       (stage === 'checking-started' && !!book.qcEndTime);
 
+    // Refactored logic to get date keys
+    let startTimeKey: keyof EnrichedBook | null = null;
+    let endTimeKey: keyof EnrichedBook | null = null;
+    if (config.assigneeRole === 'scanner') {
+        startTimeKey = 'scanStartTime';
+        endTimeKey = 'scanEndTime';
+    } else if (config.assigneeRole === 'indexer') {
+        startTimeKey = 'indexingStartTime';
+        endTimeKey = 'indexingEndTime';
+    } else if (config.assigneeRole === 'qc') {
+        startTimeKey = 'qcStartTime';
+        endTimeKey = 'qcEndTime';
+    }
+
     return (
         <TableRow key={item.id} data-state={selection.includes(item.id) && "selected"}>
         <TableCell>
@@ -936,41 +987,17 @@ const handleMainAction = (book: EnrichedBook) => {
             <Link href={`/books/${item.id}`} className="hover:underline">{item.name}</Link>
         </TableCell>
         <TableCell>{item.projectName}</TableCell>
-        {/*<TableCell className="hidden md:table-cell">{item.clientName}</TableCell>*/}
         <TableCell className="hidden md:table-cell">{item.isbn}</TableCell>
         <TableCell className="hidden md:table-cell">{item.expectedDocuments}</TableCell>
         {canViewAll && config.assigneeRole && (
           <TableCell>{item.assigneeName}</TableCell>
         )}
-        {config.assigneeRole === 'scanner' && (
-          <>
-          <TableCell className="hidden md:table-cell">{item.scanStartTime ? format(new Date(item.scanStartTime), "yyyy-MM-dd HH:mm") : ""}</TableCell>
-          <TableCell className="hidden md:table-cell">{item.scanEndTime ? format(new Date(item.scanEndTime), "yyyy-MM-dd HH:mm") : ""}</TableCell>
-          </>
+        {startTimeKey && endTimeKey && (
+            <>
+                <TableCell className="hidden md:table-cell">{item[startTimeKey] ? format(new Date(item[startTimeKey]!), "yyyy-MM-dd HH:mm") : ""}</TableCell>
+                <TableCell className="hidden md:table-cell">{item[endTimeKey] ? format(new Date(item[endTimeKey]!), "yyyy-MM-dd HH:mm") : ""}</TableCell>
+            </>
         )}
-
-        {config.assigneeRole === 'indexer' && (
-          <>
-          <TableCell className="hidden md:table-cell">{item.indexingStartTime ? format(new Date(item.indexingStartTime), "yyyy-MM-dd HH:mm") : ""}</TableCell>
-          <TableCell className="hidden md:table-cell">{item.indexingEndTime ? format(new Date(item.indexingEndTime), "yyyy-MM-dd HH:mm") : ""}</TableCell>
-          </>
-        )}
-
-        {config.assigneeRole === 'qc' && (
-          <>
-          <TableCell className="hidden md:table-cell">{item.qcStartTime ? format(new Date(item.qcStartTime), "yyyy-MM-dd HH:mm") : ""}</TableCell>
-          <TableCell className="hidden md:table-cell">{item.qcEndTime ? format(new Date(item.qcEndTime), "yyyy-MM-dd HH:mm") : ""}</TableCell>
-
-          </>
-        )}
-
-
-
-        {/*
-        <TableCell>
-            <Badge variant={getBadgeVariant(item.status)}>{item.status}</Badge>
-        </TableCell>
-        */}
         <TableCell>
           <div className="flex items-center justify-end gap-2">
             {isCancelable && hasEndTime ? (
@@ -1140,7 +1167,6 @@ const handleMainAction = (book: EnrichedBook) => {
     const book = Object.values(groupedByBook).map(g => g.book).find(b => b.id === doc.bookId);
     if (!book) return;
     
-    // Always load tags based on the book's client.
     const availableTags = rejectionTags.filter(tag => tag.clientId === book.clientId);
 
     setTaggingState({
@@ -1195,18 +1221,53 @@ const handleMainAction = (book: EnrichedBook) => {
       return (
         <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">{selection.length} selected</span>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm">
-                  <Send className="mr-2 h-4 w-4" /> Resubmit Selected To...
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => handleBulkResubmit('To Indexing')}>Indexing 1</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleBulkResubmit('To Checking')}>Quality Control 1</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleBulkResubmit('Delivery')}>Delivery 1</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                    <div className="flex gap-2">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="sm">
+                          <Send className="mr-2 h-4 w-4" /> Send Only Tifs To...
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem
+                          onClick={() => handleBulkResubmitMoveTifs("Storage")}
+                        >
+                          Storage
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleBulkResubmitMoveTifs("To Indexing")}
+                        >
+                          Indexing
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleBulkResubmitMoveTifs("To Checking")}
+                        >
+                          Quality Control
+                        </DropdownMenuItem>
+                        
+                        <DropdownMenuItem
+                          onClick={() => handleBulkResubmitMoveTifs("Ready for Processing")}
+                        >
+                          Ready for Processing
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="sm" variant="secondary">
+                          <Send className="mr-2 h-4 w-4" /> Send All To...
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem
+                          onClick={() => handleBulkResubmit("Final Quality Control")}
+                        >
+                          Final Quality Control
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
         </div>
       );
     } else if (stage === 'client-rejections') {
@@ -1512,7 +1573,7 @@ const handleMainAction = (book: EnrichedBook) => {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+ 
                 </div>
               </div>
             <Table>
@@ -1527,8 +1588,16 @@ const handleMainAction = (book: EnrichedBook) => {
                               aria-label="Selecionar todos"
                           />
                       </TableHead>
-                      <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>Nome do Livro {getSortIndicator('name')}</div></TableHead>
-                      <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('projectName', e.shiftKey)}>Projeto {getSortIndicator('projectName')}</div></TableHead>
+                      <TableHead>
+                        <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>
+                            Nome do Livro {getSortIndicator('name')}
+                        </div>
+                      </TableHead>
+                      <TableHead>
+                         <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('projectName', e.shiftKey)}>
+                            Projeto {getSortIndicator('projectName')}
+                        </div>
+                      </TableHead>
                       {/*<TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('clientName', e.shiftKey)}>Cliente {getSortIndicator('clientName')}</div></TableHead>*/}
                       <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('isbn', e.shiftKey)}>Cota {getSortIndicator('isbn')}</div></TableHead>
                       <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('expectedDocuments', e.shiftKey)}>Documentos {getSortIndicator('expectedDocuments')}</div></TableHead>
@@ -1536,75 +1605,23 @@ const handleMainAction = (book: EnrichedBook) => {
                          <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('assigneeName', e.shiftKey)}>Atribuído a {getSortIndicator('assigneeName')}</div></TableHead>
                       )}
                  
-                      {config.assigneeRole === 'scanner' && (
-                        <>
-                          <TableHead>
-                                  <div
-                              className="flex items-center gap-2 cursor-pointer select-none group"
-                              onClick={(e) => handleSort('scanStartTime', e.shiftKey)}
-                            >
-                              <span className="inline-block w-[10ch] text-left">Início</span>
-                              {getSortIndicator('scanStartTime')}
-                            </div>
-                          </TableHead>
-                          <TableHead>
-                            <div
-                              className="flex items-center gap-2 cursor-pointer select-none group"
-                              onClick={(e) => handleSort('scanEndTime', e.shiftKey)}
-                            >
-                              <span className="inline-block w-[10ch] text-left">Fim</span>
-                              {getSortIndicator('scanEndTime')}
-                            </div>
-                          </TableHead>
-                        </>
+                      {(config.assigneeRole === 'scanner' || config.assigneeRole === 'indexer' || config.assigneeRole === 'qc') && (
+                          <>
+                              <TableHead>
+                                  <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort(`${config.assigneeRole!}StartTime`, e.shiftKey)}>
+                                      <span className="inline-block w-[10ch] text-left">Início</span>
+                                      {getSortIndicator(`${config.assigneeRole!}StartTime`)}
+                                  </div>
+                              </TableHead>
+                              <TableHead>
+                                  <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort(`${config.assigneeRole!}EndTime`, e.shiftKey)}>
+                                      <span className="inline-block w-[10ch] text-left">Fim</span>
+                                      {getSortIndicator(`${config.assigneeRole!}EndTime`)}
+                                  </div>
+                              </TableHead>
+                          </>
                       )}
 
-                      {config.assigneeRole === 'indexer' && (
-                        <>
-                          <TableHead>
-                            <div
-                              className="flex items-center gap-2 cursor-pointer select-none group"
-                              onClick={(e) => handleSort('indexingStartTime', e.shiftKey)}
-                            >
-                         <span className="inline-block w-[10ch] text-left">Início</span>
-                              {getSortIndicator('indexingStartTime')}
-                            </div>
-                          </TableHead>
-                          <TableHead>
-                            <div
-                              className="flex items-center gap-2 cursor-pointer select-none group"
-                              onClick={(e) => handleSort('indexingEndTime', e.shiftKey)}
-                            >
-                              <span className="inline-block w-[10ch] text-left">Fim</span>
-                              {getSortIndicator('indexingEndTime')}
-                            </div>
-                          </TableHead>
-                        </>
-                      )}
-
-                      {config.assigneeRole === 'qc' && (
-                        <>
-                          <TableHead>
-                            <div
-                              className="flex items-center gap-2 cursor-pointer select-none group"
-                              onClick={(e) => handleSort('qcStartTime', e.shiftKey)}
-                            >
-                         <span className="inline-block w-[10ch] text-left">Início</span>
-                              {getSortIndicator('qcStartTime')}
-                            </div>
-                          </TableHead>
-                          <TableHead>
-                            <div
-                              className="flex items-center gap-2 cursor-pointer select-none group"
-                              onClick={(e) => handleSort('qcEndTime', e.shiftKey)}
-                            >
-                              <span className="inline-block w-[10ch] text-left">Fim</span>
-                              {getSortIndicator('qcEndTime')}
-                            </div>
-                          </TableHead>
-                        </>
-                      )}
-              
                       
                       
                       {/*<TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Estado {getSortIndicator('status')}</div></TableHead>*/}
@@ -1628,16 +1645,6 @@ const handleMainAction = (book: EnrichedBook) => {
                             className="h-8"
                         />
                     </TableHead>
-                    {/*
-                    <TableHead className="hidden md:table-cell">
-                        <Input
-                            placeholder="Filtrar cliente..."
-                            value={columnFilters['clientName'] || ''}
-                            onChange={(e) => handleColumnFilterChange('clientName', e.target.value)}
-                            className="h-8"
-                        />
-                    </TableHead>
-                    */}
                     <TableHead className="hidden md:table-cell">
                         <Input
                             placeholder="Filtrar cota..."
@@ -1664,80 +1671,17 @@ const handleMainAction = (book: EnrichedBook) => {
                             />
                        </TableHead>
                      )}
-                     {config.assigneeRole === 'scanner' && (
+                     {(config.assigneeRole === 'scanner' || config.assigneeRole === 'indexer' || config.assigneeRole === 'qc') && (
                         <>
-                          <TableHead>
-                            <Input
-                                placeholder="Filtrar início..."
-                                value={columnFilters['scanStartTime'] || ''}
-                                onChange={(e) => handleColumnFilterChange('scanStartTime', e.target.value)}
-                                className="h-8"
-                            />
-                          </TableHead>
-                          <TableHead>
-                            <Input
-                                placeholder="Filtrar fim..."
-                                value={columnFilters['scanEndTime'] || ''}
-                                onChange={(e) => handleColumnFilterChange('scanEndTime', e.target.value)}
-                                className="h-8"
-                            />
-                          </TableHead>
+                            <TableHead>
+                                <Input placeholder="Filtrar início..." value={columnFilters[`${config.assigneeRole!}StartTime`] || ''} onChange={e => handleColumnFilterChange(`${config.assigneeRole!}StartTime`, e.target.value)} className="h-8" />
+                            </TableHead>
+                            <TableHead>
+                                <Input placeholder="Filtrar fim..." value={columnFilters[`${config.assigneeRole!}EndTime`] || ''} onChange={e => handleColumnFilterChange(`${config.assigneeRole!}EndTime`, e.target.value)} className="h-8" />
+                            </TableHead>
                         </>
-                      )}
-
-                      {config.assigneeRole === 'indexer' && (
-                        <>
-                          <TableHead>
-                            <Input
-                                placeholder="Filtrar início..."
-                                value={columnFilters['indexingStartTime'] || ''}
-                                onChange={(e) => handleColumnFilterChange('indexingStartTime', e.target.value)}
-                                className="h-8"
-                            />
-                          </TableHead>
-                          <TableHead>
-                            <Input
-                                placeholder="Filtrar fim..."
-                                value={columnFilters['indexingEndTime'] || ''}
-                                onChange={(e) => handleColumnFilterChange('indexingEndTime', e.target.value)}
-                                className="h-8"
-                            />
-                          </TableHead>
-                        </>
-                      )}
-
-                      {config.assigneeRole === 'qc' && (
-                        <>
-                          <TableHead>
-                            <Input
-                                placeholder="Filtrar início..."
-                                value={columnFilters['qcStartTime'] || ''}
-                                onChange={(e) => handleColumnFilterChange('qcStartTime', e.target.value)}
-                                className="h-8"
-                            />
-                          </TableHead>
-                          <TableHead>
-                            <Input
-                                placeholder="Filtrar fim..."
-                                value={columnFilters['qcEndTime'] || ''}
-                                onChange={(e) => handleColumnFilterChange('qcEndTime', e.target.value)}
-                                className="h-8"
-                            />
-                          </TableHead>
-                        </>
-                      )}
+                    )}
               
-                    {/*
-                    <TableHead>
-                         <Input
-                            placeholder="Filtrar estado..."
-                            value={columnFilters['status'] || ''}
-                            onChange={(e) => handleColumnFilterChange('status', e.target.value)}
-                            className="h-8"
-                        />
-                    </TableHead>
-                    */}
-
                     <TableHead className="text-right">
                       <Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Limpar Filtros</Button>
                     </TableHead>
@@ -1963,7 +1907,7 @@ const handleMainAction = (book: EnrichedBook) => {
           <DialogHeader>
             <DialogTitle>{bulkAssignState.role ? assignmentConfig[bulkAssignState.role].title : 'Assign User'} for {selection.length} Books</DialogTitle>
             <DialogDescription>
-                Selecione um utilizador para processar todos os livros selecionados. Eles serão adicionados à fila pessoal dele.
+                Selecione um utilizador para processar todos os livros selecionados. Eles serão adicionados à sua lista de pendentes.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -1981,7 +1925,7 @@ const handleMainAction = (book: EnrichedBook) => {
           <DialogFooter>
             <Button variant="outline" onClick={closeBulkAssignmentDialog}>Cancelar</Button>
             <Button onClick={handleBulkAssignmentSubmit} disabled={!bulkAssignState.selectedUserId}>
-              Atribuir e Confirmar
+              Atribuir
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2079,31 +2023,31 @@ const handleMainAction = (book: EnrichedBook) => {
     </Dialog>
 
     <Dialog open={!!observationTarget} onOpenChange={() => setObservationTarget(null)}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Adicionar Observação para: {observationTarget?.name}</DialogTitle>
-                    <DialogDescription>
-                        A sua nota será adicionada ao histórico do livro com o seu nome e data.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="py-4">
-                    <Textarea
-                        placeholder="Escreva a sua observação aqui..."
-                        value={newObservation}
-                        onChange={(e) => setNewObservation(e.target.value)}
-                        rows={5}
-                    />
-                </div>
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => setObservationTarget(null)}>Cancelar</Button>
-                    <Button onClick={() => {
-                        if (observationTarget) addBookObservation(observationTarget.id, newObservation);
-                        setNewObservation('');
-                        setObservationTarget(null);
-                    }} disabled={!newObservation.trim()}>Guardar Observação</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Adicionar Observação para: {observationTarget?.name}</DialogTitle>
+                <DialogDescription>
+                    A sua nota será adicionada ao histórico do livro com o seu nome e data.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+                <Textarea
+                    placeholder="Escreva a sua observação aqui..."
+                    value={newObservation}
+                    onChange={(e) => setNewObservation(e.target.value)}
+                    rows={5}
+                />
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setObservationTarget(null)}>Cancelar</Button>
+                <Button onClick={() => {
+                    if (observationTarget) addBookObservation(observationTarget.id, newObservation);
+                    setNewObservation('');
+                    setObservationTarget(null);
+                }} disabled={!newObservation.trim()}>Guardar Observação</Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
     </>
   )
 }
