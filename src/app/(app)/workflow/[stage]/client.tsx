@@ -61,7 +61,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-
+import { format } from "date-fns";
 
 //const ITEMS_PER_PAGE = 100;
 
@@ -101,11 +101,29 @@ interface WorkflowClientProps {
 
 type BadgeVariant = "default" | "destructive" | "secondary" | "outline";
 type AssignmentRole = 'scanner' | 'indexer' | 'qc';
-
+/*
 const assignmentConfig: { [key in AssignmentRole]: { title: string, description: string, permission: string } } = {
     scanner: { title: "Assign Scanner", description: "Select a scanner operator to process this book.", permission: '/workflow/to-scan' },
     indexer: { title: "Assign Indexer", description: "Select an indexer to process this book.", permission: '/workflow/to-indexing' },
     qc: { title: "Assign for QC", description: "Select a QC specialist to review this book.", permission: '/workflow/to-checking' }
+};*/
+
+const assignmentConfig: { [key in AssignmentRole]: { title: string, description: string, permission: string } } = {
+    scanner: { 
+        title: "Atribuir Scanner", 
+        description: "Selecione um operador de scanner para processar este livro.", 
+        permission: '/workflow/to-scan' 
+    },
+    indexer: { 
+        title: "Atribuir Indexador", 
+        description: "Selecione um indexador para processar este livro.", 
+        permission: '/workflow/to-indexing' 
+    },
+    qc: { 
+        title: "Atribuir para QC", 
+        description: "Selecione um especialista de Controlo de Qualidade para rever este livro.", 
+        permission: '/workflow/to-checking' 
+    }
 };
 
 const getBadgeVariant = (status: string): BadgeVariant => {
@@ -314,7 +332,47 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
     return items;
   }, [books, documents, dataType, dataStatus, currentUser, permissions, config.assigneeRole, users, canViewAll, selectedProjectId]);
+  
+  
   const stageStats = React.useMemo(() => {
+  const totalBooks = allDisplayItems.length;
+
+  if (['scanning-started', 'indexing-started', 'checking-started'].includes(stage)) {
+    const endTimeField: 'scanEndTime' | 'indexingEndTime' | 'qcEndTime' = {
+      'scanning-started': 'scanEndTime',
+      'indexing-started': 'indexingEndTime',
+      'checking-started': 'qcEndTime',
+    }[stage] as 'scanEndTime' | 'indexingEndTime' | 'qcEndTime';
+
+    // livros completados
+    const completedBooks = allDisplayItems.filter(book => !!(book as any)[endTimeField]);
+    const completedCount = completedBooks.length;
+    const totalPagesCompleted = completedBooks.reduce(
+      (sum, book) => sum + (book as EnrichedBook).expectedDocuments,
+      0
+    );
+
+    // livros não completados
+    const notCompletedBooks = allDisplayItems.filter(book => !(book as any)[endTimeField]);
+    const notCompletedCount = notCompletedBooks.length;
+    const totalPagesNotCompleted = notCompletedBooks.reduce(
+      (sum, book) => sum + (book as EnrichedBook).expectedDocuments,
+      0
+    );
+
+    return {
+      total: totalBooks,
+      completed: completedCount,
+      notCompleted: notCompletedCount,
+      totalPagesCompleted,
+      totalPagesNotCompleted,
+    };
+  }
+
+  return { total: totalBooks, completed: 0, notCompleted: 0, totalPagesCompleted: 0, totalPagesNotCompleted: 0 };
+}, [allDisplayItems, stage]);
+  
+  /*const stageStats = React.useMemo(() => {
     const totalBooks = allDisplayItems.length;
 
     if (['scanning-started', 'indexing-started', 'checking-started'].includes(stage)) {
@@ -332,7 +390,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     }
     
     return { total: totalBooks, completed: 0, notCompleted: 0, totalPages: 0 };
-  }, [allDisplayItems, stage]);
+  }, [allDisplayItems, stage]);*/
 
   
   const handleColumnFilterChange = (columnId: string, value: string) => {
@@ -759,7 +817,7 @@ const handleMainAction = (book: EnrichedBook) => {
     
     const nextStageConfig = STAGE_CONFIG[nextStageKey];
     if (nextStageConfig.assigneeRole) {
-        return `Assign for ${nextStageConfig.title}`;
+        return `Atribuir para ${nextStageConfig.title}`;
     }
     return `Move to ${nextStageConfig.title}`;
   }, [config.actionButtonLabel, projectWorkflows, getNextEnabledStage]);
@@ -884,9 +942,35 @@ const handleMainAction = (book: EnrichedBook) => {
         {canViewAll && config.assigneeRole && (
           <TableCell>{item.assigneeName}</TableCell>
         )}
+        {config.assigneeRole === 'scanner' && (
+          <>
+          <TableCell className="hidden md:table-cell">{item.scanStartTime ? format(new Date(item.scanStartTime), "yyyy-MM-dd HH:mm") : ""}</TableCell>
+          <TableCell className="hidden md:table-cell">{item.scanEndTime ? format(new Date(item.scanEndTime), "yyyy-MM-dd HH:mm") : ""}</TableCell>
+          </>
+        )}
+
+        {config.assigneeRole === 'indexer' && (
+          <>
+          <TableCell className="hidden md:table-cell">{item.indexingStartTime ? format(new Date(item.indexingStartTime), "yyyy-MM-dd HH:mm") : ""}</TableCell>
+          <TableCell className="hidden md:table-cell">{item.indexingEndTime ? format(new Date(item.indexingEndTime), "yyyy-MM-dd HH:mm") : ""}</TableCell>
+          </>
+        )}
+
+        {config.assigneeRole === 'qc' && (
+          <>
+          <TableCell className="hidden md:table-cell">{item.qcStartTime ? format(new Date(item.qcStartTime), "yyyy-MM-dd HH:mm") : ""}</TableCell>
+          <TableCell className="hidden md:table-cell">{item.qcEndTime ? format(new Date(item.qcEndTime), "yyyy-MM-dd HH:mm") : ""}</TableCell>
+
+          </>
+        )}
+
+
+
+        {/*
         <TableCell>
             <Badge variant={getBadgeVariant(item.status)}>{item.status}</Badge>
         </TableCell>
+        */}
         <TableCell>
           <div className="flex items-center justify-end gap-2">
             {isCancelable && hasEndTime ? (
@@ -1154,18 +1238,22 @@ const handleMainAction = (book: EnrichedBook) => {
            return (
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">{selection.length} selected</span>
+                {canViewAll && (
                 <Button size="sm" onClick={() => openBulkAssignmentDialog(role)}>
-                  <UserPlus className="mr-2 h-4 w-4" /> Assign Selected
-                </Button>
+                  <UserPlus className="mr-2 h-4 w-4" /> Atribuir Itens Selecionados
+                </Button>)
+                }
               </div>
             );
        } else {
           return (
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">{selection.length} selected</span>
+               {canViewAll && (
               <Button size="sm" onClick={handleBulkAction}>
-                <CheckCheck className="mr-2 h-4 w-4" /> Complete Selected
-              </Button>
+                <CheckCheck className="mr-2 h-4 w-4" /> Concluir Selecionados
+              </Button>)
+              }
             </div>
           )
        }
@@ -1338,7 +1426,28 @@ const handleMainAction = (book: EnrichedBook) => {
                     </AccordionTrigger>
                     <AccordionContent className="pt-4 px-6 border-x border-b rounded-b-lg bg-card">
                       <div className="grid gap-4 md:grid-cols-4">
-                        <KpiCard
+                         <KpiCard
+                              title="Total de Tarefas"
+                              value={stageStats.total} // número total de livros
+                              icon={Book}
+                              description={`Livros nesta fase. (${stageStats.totalPagesCompleted + stageStats.totalPagesNotCompleted} páginas)`}
+                            />
+                            <KpiCard
+                              title="Tarefas Concluídas"
+                              value={stageStats.completed}
+                              icon={CheckCheck}
+                              description={`Tarefas marcadas como concluídas. (${stageStats.totalPagesCompleted} páginas)`}
+                            />
+                            <KpiCard
+                              title="Tarefas Por Concluir"
+                              value={stageStats.notCompleted}
+                              icon={Loader2}
+                              description={`Tarefas ainda ativas. (${stageStats.totalPagesNotCompleted} páginas)`}
+                            />
+                        {
+                       
+                        
+                        /*<KpiCard
                           title="Total de Tarefas"
                           value={stageStats.total}
                           icon={Book}
@@ -1361,7 +1470,7 @@ const handleMainAction = (book: EnrichedBook) => {
                           value={stageStats.notCompleted}
                           icon={Loader2}
                           description="Tarefas ainda ativas."
-                        />
+                        />*/}
                       </div>
                     </AccordionContent>
                   </AccordionItem>
@@ -1426,7 +1535,79 @@ const handleMainAction = (book: EnrichedBook) => {
                       {canViewAll && config.assigneeRole && (
                          <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('assigneeName', e.shiftKey)}>Atribuído a {getSortIndicator('assigneeName')}</div></TableHead>
                       )}
-                      <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Estado {getSortIndicator('status')}</div></TableHead>
+                 
+                      {config.assigneeRole === 'scanner' && (
+                        <>
+                          <TableHead>
+                                  <div
+                              className="flex items-center gap-2 cursor-pointer select-none group"
+                              onClick={(e) => handleSort('scanStartTime', e.shiftKey)}
+                            >
+                              <span className="inline-block w-[10ch] text-left">Início</span>
+                              {getSortIndicator('scanStartTime')}
+                            </div>
+                          </TableHead>
+                          <TableHead>
+                            <div
+                              className="flex items-center gap-2 cursor-pointer select-none group"
+                              onClick={(e) => handleSort('scanEndTime', e.shiftKey)}
+                            >
+                              <span className="inline-block w-[10ch] text-left">Fim</span>
+                              {getSortIndicator('scanEndTime')}
+                            </div>
+                          </TableHead>
+                        </>
+                      )}
+
+                      {config.assigneeRole === 'indexer' && (
+                        <>
+                          <TableHead>
+                            <div
+                              className="flex items-center gap-2 cursor-pointer select-none group"
+                              onClick={(e) => handleSort('indexingStartTime', e.shiftKey)}
+                            >
+                         <span className="inline-block w-[10ch] text-left">Início</span>
+                              {getSortIndicator('indexingStartTime')}
+                            </div>
+                          </TableHead>
+                          <TableHead>
+                            <div
+                              className="flex items-center gap-2 cursor-pointer select-none group"
+                              onClick={(e) => handleSort('indexingEndTime', e.shiftKey)}
+                            >
+                              <span className="inline-block w-[10ch] text-left">Fim</span>
+                              {getSortIndicator('indexingEndTime')}
+                            </div>
+                          </TableHead>
+                        </>
+                      )}
+
+                      {config.assigneeRole === 'qc' && (
+                        <>
+                          <TableHead>
+                            <div
+                              className="flex items-center gap-2 cursor-pointer select-none group"
+                              onClick={(e) => handleSort('qcStartTime', e.shiftKey)}
+                            >
+                         <span className="inline-block w-[10ch] text-left">Início</span>
+                              {getSortIndicator('qcStartTime')}
+                            </div>
+                          </TableHead>
+                          <TableHead>
+                            <div
+                              className="flex items-center gap-2 cursor-pointer select-none group"
+                              onClick={(e) => handleSort('qcEndTime', e.shiftKey)}
+                            >
+                              <span className="inline-block w-[10ch] text-left">Fim</span>
+                              {getSortIndicator('qcEndTime')}
+                            </div>
+                          </TableHead>
+                        </>
+                      )}
+              
+                      
+                      
+                      {/*<TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('status', e.shiftKey)}>Estado {getSortIndicator('status')}</div></TableHead>*/}
                       <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                   <TableRow>
@@ -1483,6 +1664,70 @@ const handleMainAction = (book: EnrichedBook) => {
                             />
                        </TableHead>
                      )}
+                     {config.assigneeRole === 'scanner' && (
+                        <>
+                          <TableHead>
+                            <Input
+                                placeholder="Filtrar início..."
+                                value={columnFilters['scanStartTime'] || ''}
+                                onChange={(e) => handleColumnFilterChange('scanStartTime', e.target.value)}
+                                className="h-8"
+                            />
+                          </TableHead>
+                          <TableHead>
+                            <Input
+                                placeholder="Filtrar fim..."
+                                value={columnFilters['scanEndTime'] || ''}
+                                onChange={(e) => handleColumnFilterChange('scanEndTime', e.target.value)}
+                                className="h-8"
+                            />
+                          </TableHead>
+                        </>
+                      )}
+
+                      {config.assigneeRole === 'indexer' && (
+                        <>
+                          <TableHead>
+                            <Input
+                                placeholder="Filtrar início..."
+                                value={columnFilters['indexingStartTime'] || ''}
+                                onChange={(e) => handleColumnFilterChange('indexingStartTime', e.target.value)}
+                                className="h-8"
+                            />
+                          </TableHead>
+                          <TableHead>
+                            <Input
+                                placeholder="Filtrar fim..."
+                                value={columnFilters['indexingEndTime'] || ''}
+                                onChange={(e) => handleColumnFilterChange('indexingEndTime', e.target.value)}
+                                className="h-8"
+                            />
+                          </TableHead>
+                        </>
+                      )}
+
+                      {config.assigneeRole === 'qc' && (
+                        <>
+                          <TableHead>
+                            <Input
+                                placeholder="Filtrar início..."
+                                value={columnFilters['qcStartTime'] || ''}
+                                onChange={(e) => handleColumnFilterChange('qcStartTime', e.target.value)}
+                                className="h-8"
+                            />
+                          </TableHead>
+                          <TableHead>
+                            <Input
+                                placeholder="Filtrar fim..."
+                                value={columnFilters['qcEndTime'] || ''}
+                                onChange={(e) => handleColumnFilterChange('qcEndTime', e.target.value)}
+                                className="h-8"
+                            />
+                          </TableHead>
+                        </>
+                      )}
+              
+                    {/*
                     <TableHead>
                          <Input
                             placeholder="Filtrar estado..."
@@ -1491,6 +1736,8 @@ const handleMainAction = (book: EnrichedBook) => {
                             className="h-8"
                         />
                     </TableHead>
+                    */}
+
                     <TableHead className="text-right">
                       <Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={Object.values(columnFilters).every(v => !v)}>Limpar Filtros</Button>
                     </TableHead>
@@ -1692,7 +1939,7 @@ const handleMainAction = (book: EnrichedBook) => {
         <div className="space-y-4 py-4">
           <Select value={selectedUserId} onValueChange={setSelectedUserId}>
             <SelectTrigger>
-              <SelectValue placeholder={`Select an ${assignState.role}...`} />
+              <SelectValue placeholder={`Selecione um ${assignState.role}...`} />
             </SelectTrigger>
             <SelectContent>
               {assignState.role && assignState.book && 
@@ -1722,7 +1969,7 @@ const handleMainAction = (book: EnrichedBook) => {
           <div className="space-y-4 py-4">
             <Select value={bulkAssignState.selectedUserId} onValueChange={(val) => setBulkAssignState(s => ({...s, selectedUserId: val}))}>
               <SelectTrigger>
-                <SelectValue placeholder={`Select an ${bulkAssignState.role}...`} />
+                <SelectValue placeholder={`Selecione um ${bulkAssignState.role}...`} />
               </SelectTrigger>
               <SelectContent>
                 {bulkAssignState.role && getAssignableUsers(bulkAssignState.role).map(user => (

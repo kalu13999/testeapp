@@ -209,9 +209,16 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   const [newObservation, setNewObservation] = React.useState('');
   const [observationTarget, setObservationTarget] = React.useState<EnrichedBook | null>(null);
 
+  
   const setBookColumns = (bookId: string, cols: number) => {
     setColumnStates(prev => ({ ...prev, [bookId]: { cols } }));
   };
+
+  const canViewAll = React.useMemo(() => {
+    if (!currentUser) return false;
+    const userPermissions = permissions[currentUser.role] || [];
+    return userPermissions.includes('*') || userPermissions.includes('/client/view-all-validations');
+  }, [currentUser, permissions]);
   
   const bookToBatchMap = React.useMemo(() => {
     const map = new Map<string, { id: string, timestampStr: string }>();
@@ -437,7 +444,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
         
         const nextStageConfig = STAGE_CONFIG[nextStageKey];
         if (nextStageConfig.assigneeRole) {
-            return `Assign for ${nextStageConfig.title}`;
+            return `Atribuir para ${nextStageConfig.title}`;
         }
         return `Move to ${nextStageConfig.title}`;
     }
@@ -457,7 +464,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     
     const nextStageConfig = STAGE_CONFIG[nextStageKey];
     if (nextStageConfig.assigneeRole) {
-        return `Assign for ${nextStageConfig.title}`;
+        return `Atribuir para ${nextStageConfig.title}`;
     }
     return `Move to ${nextStageConfig.title}`;
   }, [stage, config.actionButtonLabel, projectWorkflows, getNextEnabledStage]);
@@ -623,10 +630,12 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
         return (
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">{selection.length} selected</span>
-            <Button size="sm" onClick={handleBulkAction} disabled={isDisabled}>
-              {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
-              {actionLabel} ({selection.length})
-            </Button>
+            {canViewAll && (
+              <Button size="sm" onClick={handleBulkAction} disabled={isDisabled}>
+                {ActionIcon && <ActionIcon className="mr-2 h-4 w-4" />}
+                {actionLabel} ({selection.length})
+              </Button>
+            )}
           </div>
         );
       }
@@ -660,11 +669,11 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     
     if (stage === 'storage') {
         const actionLabel = getDynamicActionButtonLabel(book);
-        return (
+        return (canViewAll && (
             <Button size="sm" onClick={() => handleMainAction(book)}>
                 <ActionIcon className="mr-2 h-4 w-4" />
                 {actionLabel}
-            </Button>
+            </Button>)
         );
     }
 
@@ -1193,15 +1202,15 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     <Dialog open={assignmentState.open} onOpenChange={closeAssignmentDialog}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Assign User for "{assignmentState.bookName}"</DialogTitle>
+          <DialogTitle>Atribuir Utilizador a "{assignmentState.bookName}"</DialogTitle>
           <DialogDescription>
-            Select a user to process this book. It will then move to their personal queue.
+            Atribua esta tarefa a um utilizador. A mesma será remetida para a respetiva lista de pendentes.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <Select value={assignmentState.selectedUserId} onValueChange={(val) => setAssignmentState(s => ({...s, selectedUserId: val}))}>
             <SelectTrigger>
-              <SelectValue placeholder={`Select an ${assignmentState.role}...`} />
+              <SelectValue placeholder={`Selecione um ${assignmentState.role}...`} />
             </SelectTrigger>
             <SelectContent>
               {assignmentState.projectId && assignmentState.role && 
@@ -1214,7 +1223,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
         <DialogFooter>
           <Button variant="outline" onClick={closeAssignmentDialog}>Cancel</Button>
           <Button onClick={handleAssignmentSubmit} disabled={!assignmentState.selectedUserId}>
-            Assign and Confirm
+            Atribuir
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -1223,15 +1232,15 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     <Dialog open={bulkAssignState.open} onOpenChange={closeBulkAssignmentDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Assign {selection.length} books to a {bulkAssignState.role}</DialogTitle>
+            <DialogTitle>Atribuir {selection.length} livros a um {bulkAssignState.role}</DialogTitle>
             <DialogDescription>
-                Select a user to process all selected books. They will be added to their personal queue.
+                Selecione um utilizador para executar a tarefa nos livros selecionados. As tarefas serão adicionadas à sua lista de pendentes.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <Select value={bulkAssignState.selectedUserId} onValueChange={(val) => setBulkAssignState(s => ({...s, selectedUserId: val}))}>
               <SelectTrigger>
-                <SelectValue placeholder={`Select an ${bulkAssignState.role}...`} />
+                <SelectValue placeholder={`Selecione um ${bulkAssignState.role}...`} />
               </SelectTrigger>
               <SelectContent>
                 {bulkAssignState.role && getAssignableUsers(bulkAssignState.role).map(user => (
@@ -1243,7 +1252,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
           <DialogFooter>
             <Button variant="outline" onClick={closeBulkAssignmentDialog}>Cancel</Button>
             <Button onClick={handleBulkAssignmentSubmit} disabled={!bulkAssignState.selectedUserId}>
-              Assign and Confirm
+              Atribuir
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1254,7 +1263,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
             <DialogHeader>
                 <DialogTitle>Tag "{taggingState.docName}"</DialogTitle>
                 <DialogDescription>
-                    Select one or more rejection reasons for this page.
+                    Indique os motivos de rejeição desta página.
                 </DialogDescription>
             </DialogHeader>
             <div className="py-4">
