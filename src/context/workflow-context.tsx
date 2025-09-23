@@ -164,6 +164,7 @@ type AppContextType = {
   deletePageFromBook: (pageId: string, bookId: string) => Promise<void>;
   updateDocumentFlag: (docId: string, flag: AppDocument['flag'], comment?: string) => Promise<void>;
   handlePullNextTask: (currentStage: string, userIdToAssign?: string) => Promise<void>;
+  booksAvaiableInStorageLocalIp: (currentStageKey: string) => Promise<EnrichedBook[] | undefined>;
   logAction: (action: string, details: string, ids: { bookId?: string; documentId?: string; userId?: string; }) => Promise<void>;
   moveBookFolder: (bookName: string, fromStatusName: string, toStatusName: string) => Promise<boolean>;
   moveTifsBookFolder: (bookName: string, fromStatusName: string, toStatusName: string) => Promise<boolean>;
@@ -2573,6 +2574,68 @@ const openAppValidateScan = (bookId: string) => {
       }
     });
   };
+
+  const booksAvaiableInStorageLocalIp = React.useCallback(async (currentStageKey: string) => {
+    return await withMutation(async () => {   // <- return aqui
+   
+      if (currentStageKey !== 'to-indexing' && currentStageKey !== 'to-checking') {
+            return [];
+      }
+      
+      const localIP = await getLocalIP();        
+      const accessibleStorageIds = storages
+        .filter(s => s.ip === localIP)
+        .map(s => String(s.id));
+  
+      if (accessibleStorageIds.length === 0 && (currentStageKey === 'to-indexing' || currentStageKey === 'to-checking')) {
+        //toast({ title: "Erro de Armazenamento", description: "Nenhum armazenamento acessível encontrado para o IP atual. Não é possível puxar tarefas de Indexação ou QC.", variant: "destructive" });
+        return [];
+      }
+  
+      const projectsToScan = selectedProjectId ? rawProjects.filter(p => p.id === selectedProjectId) : accessibleProjectsForUser;
+      let availableBooks: EnrichedBook[] = [];
+  
+      for (const project of projectsToScan) {
+        const projectWorkflow = projectWorkflows[project.id] || [];
+        const currentStageIndexInProjectWorkflow = projectWorkflow.indexOf(currentStageKey);
+  
+        if (currentStageIndexInProjectWorkflow > 0) {
+          const previousStageKey = projectWorkflow[currentStageIndexInProjectWorkflow - 1];
+          const previousStageStatus = STAGE_CONFIG[previousStageKey]?.dataStatus;
+          
+          if (!previousStageStatus) continue;
+  
+          const booksAvaiable = enrichedBooks.filter(b => 
+            b.projectId === project.id &&
+            b.status === previousStageStatus &&
+            !b[workflowConfig.assigneeRole! + 'UserId' as keyof EnrichedBook] &&
+            (
+              (currentStageKey !== 'to-indexing' && currentStageKey !== 'to-checking') ||
+              (b.storageId && accessibleStorageIds.includes(String(b.storageId)))
+            )
+          );
+  
+          if (booksAvaiable.length > 0) {
+            availableBooks = [...availableBooks, ...booksAvaiable];
+          }
+        }
+      }
+  
+      if (availableBooks.length > 0) { 
+        return availableBooks; // retorna todos os objetos
+      }
+  
+      toast({ 
+        title: "Ops, nada por aqui!", 
+        description: "Não encontramos livros disponíveis para você nesta etapa.", 
+        variant: "default" 
+      });
+  
+      return [];
+    });
+  }, [enrichedBooks, selectedProjectId, accessibleProjectsForUser, projectWorkflows, storages, toast]);
+
+
     const handlePullNextTask = React.useCallback(async (currentStageKey: string, userIdToAssign?: string) => {
     await withMutation(async () => {
         const assigneeId = userIdToAssign || currentUser?.id;
@@ -2799,6 +2862,7 @@ const openAppValidateScan = (bookId: string) => {
     handleAdminStatusOverride, handleCreateDeliveryBatch, finalizeDeliveryBatch,
     distributeValidationSample,
     handleCompleteTask,handleCancelCompleteTask, handlePullNextTask,
+    booksAvaiableInStorageLocalIp,
     logAction,
     moveBookFolder,
     moveTifsBookFolder,

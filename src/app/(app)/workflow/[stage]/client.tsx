@@ -181,7 +181,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     handleFinalize, handleMarkAsCorrected, handleResubmit,
     handleResubmitCopyTifs, handleResubmitMoveTifs,
     addPageToBook, deletePageFromBook, updateDocumentFlag, rejectionTags, tagPageForRejection,
-    handleCompleteTask,handleCancelCompleteTask, handlePullNextTask, addBookObservation,
+    handleCompleteTask,handleCancelCompleteTask, handlePullNextTask, addBookObservation, booksAvaiableInStorageLocalIp,
   } = useAppContext();
 
   const { toast } = useToast();
@@ -206,6 +206,9 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   ]);
   const [rejectionComment, setRejectionComment] = React.useState("");
   const [currentBook, setCurrentBook] = React.useState<{id: string, name: string} | null>(null);
+
+  const [availableBooks, setAvailableBooks] = React.useState<EnrichedBook[]>([]);
+
 
   const [flagDialogState, setFlagDialogState] = React.useState<{
     open: boolean;
@@ -233,9 +236,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const [openAccordions, setOpenAccordions] = React.useState<string[]>([]);
   
   const { storages } = useAppContext();
-  const [localCounts, setLocalCounts] = React.useState({ books: 0, pages: 0 });
-  const [localIpMessage, setLocalIpMessage] = React.useState<string | null>(null);
-
+ 
   const storageKey = React.useMemo(() => `accordion_state_${stage}`, [stage]);
 
   React.useEffect(() => {
@@ -248,6 +249,20 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
       console.error(`Failed to parse accordion state for ${stage} from localStorage`, error);
     }
   }, [storageKey]);
+  
+  
+  React.useEffect(() => {
+    (async () => {
+      if (booksAvaiableInStorageLocalIp) {
+        const result = await booksAvaiableInStorageLocalIp(stage);
+        setAvailableBooks(result ?? []);
+      }
+    })();
+  }, [stage, booksAvaiableInStorageLocalIp]);
+
+  const totalLivros = availableBooks.length;
+  const totalPaginas = availableBooks.reduce((soma, b) => soma + b.documentCount, 0);
+
 
   const handleAccordionChange = (value: string[]) => {
     setOpenAccordions(value);
@@ -260,17 +275,6 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
   const userPermissions = currentUser ? permissions[currentUser.role] || [] : [];
   const canViewAll = userPermissions.includes('/workflow/view-all') || userPermissions.includes('*');
-
-  const bookToBatchMap = React.useMemo(() => {
-    const map = new Map<string, { id: string; timestampStr: string }>();
-    processingBatchItems.forEach(item => {
-        const batch = processingBatches.find(b => b.id === item.batchId);
-        if (batch) {
-            map.set(item.bookId, { id: batch.id, timestampStr: batch.timestampStr });
-        }
-    });
-    return map;
-  }, [processingBatchItems, processingBatches]);
 
   const groupedByBook = React.useMemo(() => {
     if (!config.dataStatus) return {};
@@ -290,52 +294,13 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
             book,
             pages,
             hasError: pages.some(p => p.flag === 'error'),
-            hasWarning: pages.some(p => p.flag === 'warning'),
-            batchInfo: bookToBatchMap.get(book.id)
+            hasWarning: pages.some(p => p.flag === 'warning')
         };
         return acc;
     }, {});
-  }, [books, documents, config.dataStatus, selectedProjectId, currentUser, bookToBatchMap]);
+  }, [books, documents, config.dataStatus, selectedProjectId, currentUser]);
 
-  React.useEffect(() => {
-    if (stage === 'storage') {
-      const getLocalIP = async (): Promise<string> => {
-        try {
-          const res = await fetch("/api/getip");
-          if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-          const data = await res.json();
-          return data.ip;
-        } catch (err) {
-          console.error("Erro ao buscar IP:", err);
-          return "IP não identificado";
-        }
-      };
-
-      const calculateLocalCounts = async () => {
-        const ip = await getLocalIP();
-        const localStorages = storages.filter(s => s.ip === ip);
-        
-        if (localStorages.length === 0) {
-          setLocalIpMessage(`Nenhum armazenamento encontrado para o seu IP atual (${ip}). Não é possível mostrar os livros disponíveis localmente.`);
-          setLocalCounts({ books: 0, pages: 0 });
-          return;
-        }
-        
-        setLocalIpMessage(null);
-        const localBooks = Object.values(groupedByBook)
-          .map(g => g.book)
-          .filter(book => localStorages.some(s => s.nome === book.storageName));
-        
-        const bookCount = localBooks.length;
-        const pageCount = localBooks.reduce((sum, book) => sum + book.expectedDocuments, 0);
-        
-        setLocalCounts({ books: bookCount, pages: pageCount });
-      };
-
-      calculateLocalCounts();
-    }
-  }, [stage, storages, groupedByBook]);
-  
+ 
   const getAssigneeIdForBook = (book: EnrichedBook, role: AssignmentRole): string | undefined => {
     switch (role) {
         case 'scanner': return book.scannerUserId;
@@ -448,7 +413,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         'checking-started': 'qcEndTime',
       }[stage] as 'scanEndTime' | 'indexingEndTime' | 'qcEndTime';
   
-      const today = new Date().toISOString().slice(0, 10);
+      const today = format(new Date(), "yyyy-MM-dd");
       const completedBooks = sortedAndFilteredItems.filter(book => !!(book as any)[endTimeField]);
       const tasksToday = completedBooks.filter(book => ((book as any)[endTimeField] as string).startsWith(today)).length;
       const completedCount = completedBooks.length;
@@ -457,6 +422,11 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         (sum, book) => sum + (book as EnrichedBook).expectedDocuments,
         0
       );
+      const totalPagesToday = completedBooks
+      .filter(book => ((book as any)[endTimeField] as string).startsWith(today))
+      .reduce((sum, book) => sum + (book as EnrichedBook).expectedDocuments, 0);
+
+
       const totalPagesNotCompleted = notCompletedCount > 0 
         ? sortedAndFilteredItems
             .filter(book => !(book as any)[endTimeField])
@@ -471,6 +441,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
         totalPagesCompleted,
         totalPagesNotCompleted,
         tasksToday,
+        totalPagesToday,
       };
     }
     
@@ -481,9 +452,66 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
       totalPages,
       totalPagesCompleted: 0,
       totalPagesNotCompleted: 0,
-      tasksToday: 0 
+      tasksToday: 0,
+      totalPagesToday: 0 
     };
   }, [sortedAndFilteredItems, stage]);
+
+  
+  const handleColumnFilterChange = (columnId: string, value: string) => {
+    setColumnFilters(prev => ({ ...prev, [columnId]: value }));
+    setCurrentPage(1);
+  };
+  
+  const handleSort = (columnId: string, isShift: boolean) => {
+    setSorting(currentSorting => {
+        const existingSortIndex = currentSorting.findIndex(s => s.id === columnId);
+
+        if (isShift) {
+            let newSorting = [...currentSorting];
+            if (existingSortIndex > -1) {
+                if (newSorting[existingSortIndex].desc) {
+                    newSorting.splice(existingSortIndex, 1);
+                } else {
+                    newSorting[existingSortIndex].desc = true;
+                }
+            } else {
+                newSorting.push({ id: columnId, desc: false });
+            }
+            return newSorting;
+        } else {
+            if (currentSorting.length === 1 && currentSorting[0].id === columnId) {
+                if (currentSorting[0].desc) {
+                    return [];
+                }
+                return [{ id: columnId, desc: true }];
+            }
+            return [{ id: columnId, desc: false }];
+        }
+    });
+  };
+
+  const getSortIndicator = (columnId: string) => {
+    const sortIndex = sorting.findIndex(s => s.id === columnId);
+    if (sortIndex === -1) return <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-0 group-hover:opacity-50" />;
+    
+    const sort = sorting[sortIndex];
+    const icon = sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />;
+    
+    return (
+        <div className="flex items-center gap-1">
+            {icon}
+            {sorting.length > 1 && (
+                <span className="text-xs font-bold text-muted-foreground">{sortIndex + 1}</span>
+            )}
+        </div>
+    );
+  }
+  
+  const handleClearFilters = () => {
+    setColumnFilters({});
+  };
+
 
   const totalPages = Math.ceil(sortedAndFilteredItems.length / itemsPerPage);
   const displayItems = sortedAndFilteredItems.slice(
@@ -1330,6 +1358,28 @@ const handleMainAction = (book: EnrichedBook) => {
     7: 'grid-cols-7', 8: 'grid-cols-8', 9: 'grid-cols-9', 10: 'grid-cols-10', 11: 'grid-cols-11', 12: 'grid-cols-12'
   };
 
+
+  const openFlagDialog = (doc: AppDocument, flag: NonNullable<AppDocument['flag']>) => {
+    setFlagDialogState({
+      open: true,
+      docId: doc.id,
+      docName: doc.name,
+      flag: flag,
+      comment: doc.flagComment || '',
+    });
+  };
+
+  const closeFlagDialog = () => {
+    setFlagDialogState({ open: false, docId: null, docName: null, flag: null, comment: '' });
+  };
+
+  const handleFlagSubmit = () => {
+    if (flagDialogState.docId && flagDialogState.flag) {
+      updateDocumentFlag(flagDialogState.docId, flagDialogState.flag, flagDialogState.comment);
+    }
+    closeFlagDialog();
+  };
+
   const handleSaveObservation = () => {
     if (observationTarget && newObservation.trim()) {
         addBookObservation(observationTarget.id, newObservation.trim());
@@ -1338,10 +1388,6 @@ const handleMainAction = (book: EnrichedBook) => {
     }
   }
   
-  const handleClearFilters = () => {
-    setColumnFilters({});
-  };
-
   return (
     <>
       <AlertDialog open={pendingTasksState.open} onOpenChange={(open) => !open && setPendingTasksState({ open: false, tasks: [], bookToStart: {} as EnrichedBook, role: 'scanner' })}>
@@ -1438,12 +1484,12 @@ const handleMainAction = (book: EnrichedBook) => {
                             <DropdownMenuLabel>Exportar Seleção ({selection.length})</DropdownMenuLabel>
                             <DropdownMenuItem onSelect={() => exportXLSX(selectedItems)} disabled={selection.length === 0}>Exportar como XLSX</DropdownMenuItem>
                             <DropdownMenuItem onSelect={() => exportJSON(selectedItems)} disabled={selection.length === 0}>Exportar como JSON</DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => exportCSV(selectedItems, ['id', 'name', 'status', 'progress', 'documentCount', 'expectedDocuments'])} disabled={selection.length === 0}>Exportar como CSV</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => exportCSV(selectedItems)} disabled={selection.length === 0}>Exportar como CSV</DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuLabel>Exportar Todos ({sortedAndFilteredItems.length})</DropdownMenuLabel>
                             <DropdownMenuItem onSelect={() => exportXLSX(sortedAndFilteredItems)} disabled={sortedAndFilteredItems.length === 0}>Exportar como XLSX</DropdownMenuItem>
                             <DropdownMenuItem onSelect={() => exportJSON(sortedAndFilteredItems)} disabled={sortedAndFilteredItems.length === 0}>Exportar como JSON</DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredItems, ['id', 'name', 'status', 'progress', 'documentCount', 'expectedDocuments'])} disabled={sortedAndFilteredItems.length === 0}>Exportar como CSV</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => exportCSV(sortedAndFilteredItems)} disabled={sortedAndFilteredItems.length === 0}>Exportar como CSV</DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
@@ -1456,10 +1502,16 @@ const handleMainAction = (book: EnrichedBook) => {
                   </AccordionTrigger>
                   <AccordionContent className="pt-4 px-6 border-x border-b rounded-b-lg bg-card">
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                       {stage === 'storage' && localIpMessage && <Alert variant="destructive" className="col-span-full"><AlertTriangle className="h-4 w-4"/><AlertTitle>Aviso de Rede</AlertTitle><AlertDescription>{localIpMessage}</AlertDescription></Alert>}
-                       {stage === 'storage' && !localIpMessage && <KpiCard title="Disponível no Armazenamento Local" value={localCounts.books} icon={Book} description={`${localCounts.pages.toLocaleString()} páginas prontas para serem puxadas.`} />}
                        <KpiCard title="Total de Tarefas" value={stageStats.total} icon={Book} description={`Total de livros nesta fase (${stageStats.totalPages.toLocaleString()} páginas).`} />
-                       {['scanning-started', 'indexing-started', 'checking-started'].includes(stage) && <KpiCard title="Tarefas Concluídas Hoje" value={stageStats.tasksToday} icon={CheckCheck} description="Tarefas marcadas como concluídas hoje." />}
+                       {['to-indexing', 'to-checking'].includes(stage) && (
+                          <KpiCard
+                            title="Livros no Armazenamento Atual"
+                            value={totalLivros}
+                            icon={CheckCheck}
+                            description={`Total de ${totalPaginas} páginas disponíveis no armazenamento atual.`}
+                          />
+                        )}
+                       {['scanning-started', 'indexing-started', 'checking-started'].includes(stage) && <KpiCard title="Tarefas Concluídas Hoje" value={stageStats.tasksToday} icon={CheckCheck} description={`Total de ${stageStats.totalPagesToday.toLocaleString()} páginas concluídas hoje.`} />}
                        {['scanning-started', 'indexing-started', 'checking-started'].includes(stage) && <KpiCard title="Total Concluído" value={stageStats.completed} icon={CheckCheck} description={`Total de ${stageStats.totalPagesCompleted.toLocaleString()} páginas concluídas.`} />}
                        {['scanning-started', 'indexing-started', 'checking-started'].includes(stage) && <KpiCard title="Por Concluir" value={stageStats.notCompleted} icon={Loader2} description={`${stageStats.totalPagesNotCompleted.toLocaleString()} páginas por concluir.`} />}
                     </div>
@@ -1802,30 +1854,28 @@ const handleMainAction = (book: EnrichedBook) => {
       </DialogContent>
     </Dialog>
 
-    <Dialog open={assignmentState.open} onOpenChange={closeAssignmentDialog}>
+    <Dialog open={assignState.open} onOpenChange={closeAssignmentDialog}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Atribuir Utilizador a "{assignmentState.bookName}"</DialogTitle>
-          <DialogDescription>
-            Atribua esta tarefa a um utilizador. A mesma será remetida para a respetiva lista de pendentes.
-          </DialogDescription>
+          <DialogTitle>{assignState.role ? assignmentConfig[assignState.role].title : 'Assign User'} for "{assignState.book?.name}"</DialogTitle>
+          <DialogDescription>{assignState.role ? assignmentConfig[assignState.role].description : ''}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
-          <Select value={assignmentState.selectedUserId} onValueChange={(val) => setAssignmentState(s => ({...s, selectedUserId: val}))}>
+          <Select value={selectedUserId} onValueChange={setSelectedUserId}>
             <SelectTrigger>
-              <SelectValue placeholder={`Selecione um ${assignmentState.role}...`} />
+              <SelectValue placeholder={`Selecione um ${assignState.role}...`} />
             </SelectTrigger>
             <SelectContent>
-              {assignmentState.projectId && assignmentState.role && 
-                getAssignableUsers(assignmentState.role, assignmentState.projectId).map(user => (
+              {assignState.role && assignState.book && 
+                getAssignableUsers(assignState.role, assignState.book.projectId).map(user => (
                   <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={closeAssignmentDialog}>Cancel</Button>
-          <Button onClick={handleConfirmAssignment} disabled={!assignmentState.selectedUserId}>
+          <Button variant="outline" onClick={closeAssignmentDialog}>Cancelar</Button>
+          <Button onClick={handleConfirmAssignment} disabled={!selectedUserId}>
             Atribuir
           </Button>
         </DialogFooter>
