@@ -2604,7 +2604,7 @@ const openAppValidateScan = (bookId: string) => {
           const previousStageStatus = STAGE_CONFIG[previousStageKey]?.dataStatus;
           
           if (!previousStageStatus) continue;
-  
+          const workflowConfig = STAGE_CONFIG[currentStageKey];
           const booksAvaiable = enrichedBooks.filter(b => 
             b.projectId === project.id &&
             b.status === previousStageStatus &&
@@ -2627,7 +2627,7 @@ const openAppValidateScan = (bookId: string) => {
   
       toast({ 
         title: "Ops, nada por aqui!", 
-        description: "Não encontramos livros disponíveis para você nesta etapa.", 
+        description: "Não encontramos livros disponíveis no para o ip do armazenamento atual.", 
         variant: "default" 
       });
   
