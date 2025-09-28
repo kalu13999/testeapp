@@ -24,30 +24,45 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
   const previousUserIdRef = useRef<string | null | undefined>(null);
   const pathname = usePathname();
   
+  const refreshIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     if (isInitialLoad.current) {
-        isInitialLoad.current = false;
-        loadInitialData(false); // Explicit full load on first mount
-        return;
+      isInitialLoad.current = false;
+      loadInitialData(false); // Explicit full load on first mount
+      return;
     }
-
+  
     if (pathname) {
+      // quando muda de página, limpa intervalo anterior e força refresh
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+  
       loadInitialData(true); // Silent refresh on navigation
     }
   }, [pathname, loadInitialData]);
-
-  React.useEffect(() => {
-    if (isMutating || loadingPage || isPageLoading) return; 
   
-    const interval = setInterval(() => {
+  useEffect(() => {
+    if (isMutating || loadingPage || isPageLoading) return;
+  
+    // cria intervalo e guarda no ref
+    refreshIntervalRef.current = setInterval(() => {
       if (!isMutating && !loadingPage && !isPageLoading) {
         loadInitialData(true); // silent refresh
       }
-    }, 60000);
+    }, 60000); // 60s ou 600000 para 10min
   
-    return () => clearInterval(interval);
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+    };
   }, [isMutating, loadingPage, isPageLoading, loadInitialData]);
 
+  
   useEffect(() => {
     if (loadingPage || isPageLoading) {
       setIsChecking(true);
