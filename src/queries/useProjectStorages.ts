@@ -7,5 +7,6 @@ export function useProjectStorages() {
   return useQuery<ProjectStorage[], Error>({
     queryKey: PROJECT_STORAGES,
     queryFn:  () => dataApi.getProjectStorages(),
+    initialData: [],
   })
 }

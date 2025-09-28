@@ -7,5 +7,6 @@ export function useStatuses() {
   return useQuery<DocumentStatus[], Error>({
     queryKey: STATUSES,
     queryFn:  () => dataApi.getDocumentStatuses(),
+    initialData: [],
   })
 }

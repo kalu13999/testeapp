@@ -7,5 +7,6 @@ export function useStorages() {
   return useQuery<Storage[], Error>({
     queryKey: STORAGES,
     queryFn:  () => dataApi.getStorages(),
+    initialData: [],
   })
 }

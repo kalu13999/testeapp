@@ -7,5 +7,6 @@ export function useBookObservations() {
   return useQuery<BookObservation[], Error>({
     queryKey: BOOK_OBSERVATIONS,
     queryFn:  () => dataApi.getBookObservations(),
+    initialData: [],
   })
 }

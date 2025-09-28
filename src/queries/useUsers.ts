@@ -7,5 +7,6 @@ export function useUsers() {
   return useQuery<User[], Error>({
     queryKey: USERS,
     queryFn:  () => dataApi.getUsers(),
+    initialData: [],
   })
 }

@@ -7,5 +7,6 @@ export function useRejectionTags() {
   return useQuery<RejectionTag[], Error>({
     queryKey: REJECTION_TAGS,
     queryFn:  () => dataApi.getRejectionTags(),
+    initialData: [],
   })
 }

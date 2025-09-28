@@ -7,5 +7,6 @@ export function usePermissions() {
   return useQuery<Permissions, Error>({
     queryKey: PERMISSIONS,
     queryFn:  () => dataApi.getPermissions(),
+    initialData: {},
   })
 }

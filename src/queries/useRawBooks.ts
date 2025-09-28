@@ -7,5 +7,6 @@ export function useRawBooks() {
   return useQuery<RawBook[], Error>({
     queryKey: RAW_BOOKS,
     queryFn:  () => dataApi.getRawBooks(),
+    initialData: [],
   })
 }

@@ -223,9 +223,9 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const { data: clients = [], isLoading: isLoadingClients } = useClients();
   const { data: users = [], isLoading: isLoadingUsers } = useUsers();
   const { data: rawProjects = [], isLoading: isLoadingRawProjects } = useRawProjects();
-  const { data: rawBooks = [], isLoading: isLoadingRawBooks } = useRawBooks();
-  const { data: rawDocuments = [], isLoading: isLoadingRawDocuments } = useRawDocuments();
-  const { data: auditLogs = [], isLoading: isLoadingAuditLogs } = useAuditLogs();
+  const { data: rawBooks, isLoading: isLoadingRawBooks } = useRawBooks();
+  const { data: rawDocuments, isLoading: isLoadingRawDocuments } = useRawDocuments();
+  const { data: rawAuditLogs = [], isLoading: isLoadingAuditLogs } = useAuditLogs();
   const { data: bookObservations = [], isLoading: isLoadingBookObservations } = useBookObservations();
   const { data: processingBatches = [], isLoading: isLoadingProcessingBatches } = useProcessingBatches();
   const { data: processingBatchItems = [], isLoading: isLoadingProcessingBatchItems } = useProcessingBatchItems();
@@ -336,15 +336,15 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
   
   const regLastLogin = async (user: User) => {
-    const action = async () => {
-      const now = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
-      await fetch(`/api/users/${user.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lastLogin: now }),
-      });
-    };
-    return withMutation(action, ['USERS']);
+    return withMutation(async () => {
+        const now = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
+        const response = await fetch(`/api/users/${user.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lastLogin: now }),
+        });
+        if (!response.ok) throw new Error('Falha ao registar o último login');
+    }, ['USERS']);
   };
 
   const changePassword = async (userId: string, currentPassword: string, newPassword: string): Promise<boolean | undefined> => {
@@ -478,6 +478,13 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const enrichedBooks: EnrichedBook[] = React.useMemo(() => {
       return allEnrichedProjects.flatMap(p => p.books);
   }, [allEnrichedProjects]);
+  
+  const enrichedAuditLogs: EnrichedAuditLog[] = React.useMemo(() => {
+    return rawAuditLogs.map(log => {
+      const user = users.find(u => u.id === log.userId);
+      return { ...log, user: user?.name || log.userId };
+    })
+  }, [rawAuditLogs, users]);
 
   const accessibleProjectsForUser = React.useMemo(() => {
     if (!currentUser) return [];
@@ -1134,8 +1141,7 @@ const addBookObservation = async (bookId: string, observation: string) => {
   const moveTifsBookFolder = React.useCallback(async (bookName: string, fromStatusName: string, toStatusName: string): Promise<boolean> => {
     const fromStatus = statuses.find(s => s.name === fromStatusName);
     const toStatus = statuses.find(s => s.name === toStatusName);
-    if (!fromStatus || !toStatus) return false;
-    if (!fromStatus.folderName || !toStatus.folderName) return true; 
+    if (!fromStatus || !toStatus || !fromStatus.folderName || !toStatus.folderName) return true; 
     
     const apiUrl = process.env.NEXT_PUBLIC_WORKFLOW_API_URL;
     if (!apiUrl) return true;
@@ -1992,7 +1998,7 @@ const addBookObservation = async (bookId: string, observation: string) => {
     projects: projectsForContext, 
     books: booksForContext, 
     documents: documentsForContext, 
-    auditLogs,
+    auditLogs: enrichedAuditLogs,
     bookObservations,
     processingBatches, processingBatchItems, processingLogs,
     deliveryBatches, deliveryBatchItems,
@@ -2003,7 +2009,7 @@ const addBookObservation = async (bookId: string, observation: string) => {
     rejectionTags,
     storages,
     scanners,
-    rawBooks,
+    rawBooks: rawBooks || [],
     statuses,
     allProjects: allEnrichedProjects,
     accessibleProjectsForUser,
@@ -2058,3 +2064,4 @@ export function useAppContext() {
   }
   return context;
 }
+

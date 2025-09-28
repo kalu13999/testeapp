@@ -7,5 +7,6 @@ export function useRawProjects() {
   return useQuery<Project[], Error>({
     queryKey: RAW_PROJECTS,
     queryFn:  () => dataApi.getRawProjects(),
+    initialData: [],
   })
 }

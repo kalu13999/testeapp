@@ -7,5 +7,6 @@ export function useDeliveryBatches() {
   return useQuery<DeliveryBatch[], Error>({
     queryKey: DELIVERY_BATCHES,
     queryFn:  () => dataApi.getDeliveryBatches(),
+    initialData: [],
   })
 }

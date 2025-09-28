@@ -7,5 +7,6 @@ export function useAuditLogs() {
   return useQuery<AuditLog[], Error>({
     queryKey: AUDIT_LOGS,
     queryFn:  () => dataApi.getAuditLogs(),
+    initialData: [],
   })
 }

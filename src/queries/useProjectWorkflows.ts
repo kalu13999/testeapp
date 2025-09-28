@@ -7,5 +7,6 @@ export function useProjectWorkflows() {
   return useQuery<ProjectWorkflows, Error>({
     queryKey: PROJECT_WORKFLOWS,
     queryFn:  () => dataApi.getProjectWorkflows(),
+    initialData: {},
   })
 }

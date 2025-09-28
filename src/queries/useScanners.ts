@@ -7,5 +7,6 @@ export function useScanners() {
   return useQuery<Scanner[], Error>({
     queryKey: SCANNERS,
     queryFn:  () => dataApi.getScanners(),
+    initialData: [],
   })
 }

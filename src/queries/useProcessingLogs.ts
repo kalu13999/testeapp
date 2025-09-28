@@ -7,5 +7,6 @@ export function useProcessingLogs() {
   return useQuery<ProcessingLog[], Error>({
     queryKey: PROCESSING_LOGS,
     queryFn:  () => dataApi.getProcessingLogs(),
+    initialData: [],
   })
 }

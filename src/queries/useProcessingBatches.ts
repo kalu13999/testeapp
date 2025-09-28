@@ -7,5 +7,6 @@ export function useProcessingBatches() {
   return useQuery<ProcessingBatch[], Error>({
     queryKey: PROCESSING_BATCHES,
     queryFn:  () => dataApi.getProcessingBatches(),
+    initialData: [],
   })
 }

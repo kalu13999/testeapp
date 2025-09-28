@@ -7,5 +7,6 @@ export function useTransferLogs() {
   return useQuery<LogTransferencia[], Error>({
     queryKey: TRANSFER_LOGS,
     queryFn:  () => dataApi.getTransferLogs(),
+    initialData: [],
   })
 }

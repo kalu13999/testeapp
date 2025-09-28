@@ -7,5 +7,6 @@ export function useProcessingBatchItems() {
   return useQuery<ProcessingBatchItem[], Error>({
     queryKey: PROCESSING_BATCH_ITEMS,
     queryFn:  () => dataApi.getProcessingBatchItems(),
+    initialData: [],
   })
 }
