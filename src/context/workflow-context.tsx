@@ -12,6 +12,29 @@ import { StorageFormValues } from '@/app/(app)/admin/general-configs/storage-for
 import { ScannerFormValues } from '@/app/(app)/admin/general-configs/scanner-form';
 import { format } from 'date-fns';
 import { log } from 'console';
+import { useClients }                from '@/queries/useClients'
+import { useUsers }                  from '@/queries/useUsers'
+import { useRawProjects }            from '@/queries/useRawProjects'
+import { useRawBooks }               from '@/queries/useRawBooks'
+import { useRawDocuments }           from '@/queries/useRawDocuments'
+import { useAuditLogs }              from '@/queries/useAuditLogs'
+import { useProcessingBatches }      from '@/queries/useProcessingBatches'
+import { useProcessingBatchItems }   from '@/queries/useProcessingBatchItems'
+import { useProcessingLogs }         from '@/queries/useProcessingLogs'
+import { usePermissions }            from '@/queries/usePermissions'
+import { useRoles }                  from '@/queries/useRoles'
+import { useProjectWorkflows }       from '@/queries/useProjectWorkflows'
+import { useRejectionTags }          from '@/queries/useRejectionTags'
+import { useStatuses }               from '@/queries/useStatuses'
+import { useStorages }               from '@/queries/useStorages'
+import { useScanners }               from '@/queries/useScanners'
+import { useTransferLogs }           from '@/queries/useTransferLogs'
+import { useProjectStorages }        from '@/queries/useProjectStorages'
+import { useDeliveryBatches }        from '@/queries/useDeliveryBatches'
+import { useDeliveryBatchItems }     from '@/queries/useDeliveryBatchItems'
+import { useBookObservations }       from '@/queries/useBookObservations'
+
+
 
 export type { EnrichedBook, RejectionTag };
 
@@ -82,7 +105,7 @@ type AppContextType = {
   setSelectedProjectId: (projectId: string | null) => void;
 
 
- loadInitialData: (isSilent?: boolean) => Promise<void>;
+  loadInitialData: () => Promise<void>;
   
   // Client Actions
   addClient: (clientData: Omit<Client, 'id'>) => Promise<void>;
@@ -221,8 +244,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
   const [navigationHistory, setNavigationHistory] = React.useState<NavigationHistoryItem[]>([]);
   const { toast } = useToast();
-  const [isPending, startTransition] = React.useTransition();
-  const isMutatingRef = React.useRef(false);
   
   const withMutation = async <T,>(action: () => Promise<T>): Promise<T | undefined> => {
     setIsMutating(true);
@@ -236,11 +257,9 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         setIsMutating(false);
     }
   };
-  const loadInitialData = React.useCallback(async (isSilent = false) => {
+  const loadInitialData = React.useCallback(async () => {
     try {
-        if (!isSilent) {
-          setLoading(true);
-        }
+        setLoading(true);
         const [
             clientsData, usersData, projectsData, booksData, 
             docsData, auditData, batchesData, batchItemsData, logsData,
@@ -257,55 +276,49 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             dataApi.getDeliveryBatches(), dataApi.getDeliveryBatchItems(), dataApi.getBookObservations(),
         ]);
 
+        setClients(clientsData);
+        setUsers(usersData);
+        setRawProjects(projectsData);
+        setRawBooks(booksData);
+        setStatuses(statusesData);
+        setRawDocuments(docsData);
+        setStorages(storagesData);
+        setScanners(scannersData);
+        setTransferLogs(transferLogsData);
+        setProjectStorages(projectStoragesData);
+        setBookObservations(bookObservationsData);
+
+        const enrichedAuditLogs = auditData
+            .map(log => ({ ...log, user: usersData.find(u => u.id === log.userId)?.name || 'Unknown' }))
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setAuditLogs(enrichedAuditLogs);
+
+        setProcessingBatches(batchesData);
+        setProcessingBatchItems(batchItemsData);
+        setProcessingLogs(logsData);
+        setDeliveryBatches(deliveryBatchesData);
+        setDeliveryBatchItems(deliveryBatchItemsData);
+        setPermissions(permissionsData);
+        setRoles(rolesData);
+        setProjectWorkflows(workflowsData);
+        setRejectionTags(rejectionData);
+
         const storedUserId = localStorage.getItem('flowvault_userid');
-          if (storedUserId) {
-              const user = usersData.find(u => u.id === storedUserId);
-              if (user) {
-                setCurrentUser(user);
-                const storedHistory = localStorage.getItem(`nav_history_${user.id}`);
-                if(storedHistory) {
-                  setNavigationHistory(JSON.parse(storedHistory));
-                }
+        if (storedUserId) {
+            const user = usersData.find(u => u.id === storedUserId);
+            if (user) {
+              setCurrentUser(user);
+              const storedHistory = localStorage.getItem(`nav_history_${user.id}`);
+              if(storedHistory) {
+                setNavigationHistory(JSON.parse(storedHistory));
               }
-          }
-
-        startTransition(() => {
-          setClients(clientsData);
-          setUsers(usersData);
-          setRawProjects(projectsData);
-          setRawBooks(booksData);
-          setStatuses(statusesData);
-          setRawDocuments(docsData);
-          setStorages(storagesData);
-          setScanners(scannersData);
-          setTransferLogs(transferLogsData);
-          setProjectStorages(projectStoragesData);
-          setBookObservations(bookObservationsData);
-
-          const enrichedAuditLogs = auditData
-              .map(log => ({ ...log, user: usersData.find(u => u.id === log.userId)?.name || 'Unknown' }))
-              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-          setAuditLogs(enrichedAuditLogs);
-
-          setProcessingBatches(batchesData);
-          setProcessingBatchItems(batchItemsData);
-          setProcessingLogs(logsData);
-          setDeliveryBatches(deliveryBatchesData);
-          setDeliveryBatchItems(deliveryBatchItemsData);
-          setPermissions(permissionsData);
-          setRoles(rolesData);
-          setProjectWorkflows(workflowsData);
-          setRejectionTags(rejectionData);
-
-
-        });
+            }
+        }
     } catch (error) {
         console.error("Failed to load initial data", error);
         toast({title: "Erro ao Carregar Dados", description: "Não foi possível conectar ao servidor. Por favor, verifique a sua conexão e atualize.", variant: "destructive"});
     } finally {
-        if (!isSilent) {
-            setLoading(false);
-        }
+        setLoading(false);
     }
   }, [toast]);
 
@@ -314,23 +327,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     loadInitialData();
   }, [loadInitialData]);
 
-
-React.useEffect(() => {
-  isMutatingRef.current = isMutating;
-}, [isMutating]);
-
-React.useEffect(() => {
-  const interval = setInterval(() => {
-    // se estiver a mutar, cancela o polling
-    if (isMutatingRef.current) return;
-
-    console.log("Polling for data updates...");
-    loadInitialData(true);
-  }, 15000);
-
-  return () => clearInterval(interval);
-}, [loadInitialData]);
-  
   /*
   React.useEffect(() => {
 const loadData = async () => {
@@ -1581,7 +1577,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
 }, [statuses, toast, logAction]);
 
 
-/*
+
   const handleMarkAsShipped = (bookIds: string[]) => {
     withMutation(async () => {
       for (const bookId of bookIds) {
@@ -1596,91 +1592,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
       toast({ title: `${bookIds.length} Livro(s) Marcado(s) como Enviado(s)` });
     });
   };
-*/
-/*
-  const handleMarkAsShipped = (bookIds: string[]) => {
-    withMutation(async () => {
-      try {
-        // corre todos os updates em paralelo
-        const results = await Promise.all(
-          bookIds.map(async (bookId) => {
-            try {
-              const updatedBook = await updateBookStatus(bookId, "In Transit");
-              logAction(
-                "Book Shipped",
-                `Client marked book "${updatedBook?.name}" as shipped.`,
-                { bookId }
-              );
-              return updatedBook;
-            } catch (error) {
-              toast({
-                title: "Erro",
-                description: `Não foi possível marcar o livro ${bookId} como enviado.`,
-                variant: "destructive",
-              });
-              return null; // mantém posição para depois filtrar
-            }
-          })
-        );
 
-        // aplica o update de estado uma única vez, em batch
-        startTransition(() => {
-          setRawBooks((prev) =>
-            prev.map((b) => {
-              const updated = results.find((u) => u && u.id === b.id);
-              return updated ? updated : b;
-            })
-          );
-        });
-
-        toast({
-          title: `${bookIds.length} Livro(s) Marcado(s) como Enviado(s)`,
-        });
-      } catch (error) {
-        // fallback para erro geral
-        toast({
-          title: "Erro",
-          description: "Ocorreu um problema ao atualizar o estado dos livros.",
-          variant: "destructive",
-        });
-      }
-    });
-  };
-*/
-  const handleMarkAsShipped = (bookIds: string[]) => {
-    withMutation(async () => {
-      await Promise.all(
-        bookIds.map(async (bookId) => {
-          try {
-            const updatedBook = await updateBookStatus(bookId, "In Transit");
-
-            // update incremental
-            startTransition(() => {
-              setRawBooks((prev) =>
-                prev.map((b) => (b.id === bookId ? updatedBook : b))
-              );
-            });
-
-            logAction(
-              "Book Shipped",
-              `Client marked book "${updatedBook?.name}" as shipped.`,
-              { bookId }
-            );
-          } catch (error) {
-            toast({
-              title: "Erro",
-              description: `Não foi possível marcar o livro ${bookId} como enviado.`,
-              variant: "destructive",
-            });
-          }
-        })
-      );
-
-      toast({
-        title: `${bookIds.length} Livro(s) Marcado(s) como Enviado(s)`,
-      });
-    });
-  };
   const handleConfirmReception = (bookId: string) => {
     withMutation(async () => {
       const book = rawBooks.find(b => b.id === bookId);

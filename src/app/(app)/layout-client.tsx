@@ -24,7 +24,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
   const [isChecking, setIsChecking] = React.useState(true);
   const [isAllowed, setIsAllowed] = React.useState(false);
   const previousUserIdRef = useRef<string | null | undefined>(null);
-/*
+
   useEffect(() => {
     if (isInitialLoad.current) {
       isInitialLoad.current = false; // Ignorar a primeira execução
@@ -35,7 +35,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
 
   }, [pathname, loadInitialData]);
 
-*/
+
   useEffect(() => {
     if (loading) {
       setIsChecking(true);
@@ -66,10 +66,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
       setIsChecking(false);
       return; // Admin can access everything
     }
-    if (loading || !currentUser || Object.keys(permissions).length === 0) {
-        // ainda não carregou os dados, não faz nada
-        return;
-    }
+
     // Check if the current path is allowed
     const isPathAllowed = userPermissions.some(p => {
         const regex = new RegExp(`^${p.replace(/\[.*?\]/g, '[^/]+')}$`);
