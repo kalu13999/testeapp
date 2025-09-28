@@ -15,10 +15,8 @@ import { RecentPagesNav } from '@/components/layout/recent-pages-nav';
 import { GlobalLoader } from '@/components/layout/global-loader';
 
 export const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
-  const { currentUser, permissions, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loadingPage, addNavigationHistoryItem } = useAppContext();
+  const { currentUser, permissions, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loadingPage, isPageLoading, addNavigationHistoryItem, loadInitialData } = useAppContext();
   const router = useRouter();
-  const { loadInitialData } = useAppContext();
-  const pathname = usePathname();
   const isInitialLoad = useRef(true);
   const { toast } = useToast();
   const [isChecking, setIsChecking] = React.useState(true);
@@ -27,17 +25,19 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
 
   useEffect(() => {
     if (isInitialLoad.current) {
-      isInitialLoad.current = false; // Ignorar a primeira execução
-      return;
+        isInitialLoad.current = false;
+        loadInitialData(false); // Explicit full load on first mount
+        return;
     }
-    
-    loadInitialData(true);
 
+    if (pathname) {
+      loadInitialData(true); // Silent refresh on navigation
+    }
   }, [pathname, loadInitialData]);
 
 
   useEffect(() => {
-    if (loadingPage) {
+    if (loadingPage || isPageLoading) {
       setIsChecking(true);
       return;
     }
@@ -82,11 +82,11 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
         setIsAllowed(true);
     }
     setIsChecking(false);
-  }, [currentUser, pathname, permissions, router, toast, accessibleProjectsForUser, loadingPage]);
+  }, [currentUser, pathname, permissions, router, toast, accessibleProjectsForUser, loadingPage, isPageLoading]);
   
   // Effect to manage the selected project ID automatically
   useEffect(() => {
-    if (loadingPage || !currentUser) {
+    if (loadingPage || isPageLoading || !currentUser) {
       return;
     }
 
@@ -118,7 +118,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
     // Always update the ref AFTER the logic has run
     previousUserIdRef.current = currentUser.id;
 
-  }, [currentUser, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loadingPage]);
+  }, [currentUser, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loadingPage, isPageLoading]);
   
   useEffect(() => {
     if (!pathname || !currentUser) return;
@@ -140,7 +140,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
   }, [pathname, currentUser, addNavigationHistoryItem]);
 
 
-  if (loadingPage) {
+  if (loadingPage || isPageLoading) {
     return (
         <div className="flex h-screen w-screen items-center justify-center">
             <div className="flex flex-col items-center gap-4">

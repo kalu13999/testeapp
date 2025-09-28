@@ -57,6 +57,7 @@ type AppContextType = {
   // Loading state
   loadingPage: boolean;
   isMutating: boolean;
+  isPageLoading: boolean;
   setIsMutating: React.Dispatch<React.SetStateAction<boolean>>;
   processingBookIds: string[];
   
@@ -155,7 +156,7 @@ type AppContextType = {
   getNextEnabledStage: (currentStage: string, workflow: string[]) => string | null;
   handleMarkAsShipped: (bookIds: string[]) => void;
   handleConfirmReception: (bookId: string) => void;
-  handleSendToStorage: (bookId: string, payload: { actualPageCount: number }) => void;
+  handleSendToStorage: (bookId: string, payload: { actualPageCount: number }) => Promise<void>;
   handleMoveBookToNextStage: (bookId: string, currentStatus: string) => Promise<boolean>;
   handleAssignUser: (bookId: string, userId: string, role: 'scanner' | 'indexer' | 'qc') => void;
   reassignUser: (bookId: string, newUserId: string, role: 'scanner' | 'indexer' | 'qc') => void;
@@ -215,6 +216,7 @@ type MutationVariables<TData> = {
 
 export function AppProvider({ children }: { children: React.ReactNode; }) {
   const [isMutating, setIsMutating] = React.useState(false);
+  const [isPageLoading, setIsPageLoading] = React.useState(true);
   const [processingBookIds, setProcessingBookIds] = React.useState<string[]>([]);
   const [currentUser, setCurrentUser] = React.useState<User | null>(null);
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
@@ -268,16 +270,20 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       }
     }
   }, [isLoadingUsers, users]);
-
+  
   const loadInitialData = React.useCallback(async (isSilent = false) => {
-    if (!isSilent) setIsMutating(true);
+    if (!isSilent) {
+      setIsPageLoading(true);
+    }
     try {
-        await queryClient.refetchQueries();
+      await queryClient.refetchQueries();
     } catch (error) {
-        console.error("Failed to refetch data:", error);
-        toast({ title: "Data Sync Failed", description: "Could not sync with the server.", variant: "destructive" });
+      console.error("Failed to refetch data:", error);
+      toast({ title: "Data Sync Failed", description: "Could not sync with the server.", variant: "destructive" });
     } finally {
-        if (!isSilent) setIsMutating(false);
+      if (!isSilent) {
+        setIsPageLoading(false);
+      }
     }
   }, [queryClient, toast]);
 
@@ -328,7 +334,10 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   ) => {
     return mutation.mutate({
       ...variables,
-      mutationFn: () => variables.mutationFn(variables),
+      mutationFn: async () => {
+          const result = await variables.mutationFn(variables);
+          return result;
+      },
       onMutate: async () => {
         await queryClient.cancelQueries();
         const previousData = variables.getPreviousDataFn ? variables.getPreviousDataFn(queryClient) : undefined;
@@ -342,6 +351,13 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             variables.optimisticUpdateFn(queryClient, vars, context.previousData);
         }
         toast({ title: "Operation Failed", description: err.message, variant: "destructive" });
+      },
+      onSuccess: (data: any, vars: any) => {
+          if (typeof data === 'string') {
+              toast({ title: data });
+          } else if (vars.successMessage) {
+              toast({ title: vars.successMessage });
+          }
       },
     });
   }, [mutation, queryClient, toast]);
@@ -2029,7 +2045,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
 
     const handlePullNextTask = React.useCallback(async (currentStageKey: string, userIdToAssign?: string) => {
-      withMutation({
+      await withMutation({
           mutationFn: async () => {
           const assigneeId = userIdToAssign || currentUser?.id;
           if (!assigneeId) throw new Error("Nenhum utilizador especificado para atribuição.");
@@ -2048,9 +2064,10 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
           const bookToAssign = availableBooks[0];
 
           handleAssignUser(bookToAssign.id, assigneeId, workflowConfig.assigneeRole);
-          return "Tarefa Puxada com Sucesso";
+          return; // Return nothing on success to use default message
         }, 
-        invalidateKeys: ['RAW_BOOKS']
+        invalidateKeys: ['RAW_BOOKS'],
+        successMessage: "Tarefa Puxada com Sucesso"
       });
   }, [currentUser, users, handleAssignUser, toast, booksAvaiableInStorageLocalIp, withMutation]);
 
@@ -2075,7 +2092,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   }, [documents, booksForContext]);
 
   const value: AppContextType = { 
-    loadingPage, isMutating, processingBookIds, setIsMutating,
+    loadingPage, isMutating, isPageLoading, processingBookIds, setIsMutating,
     currentUser, login, logout, changePassword,
     navigationHistory, addNavigationHistoryItem,
     clients: clients || [], 
