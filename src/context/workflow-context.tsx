@@ -5,12 +5,10 @@ import * as React from 'react';
 import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions, ProjectWorkflows, RejectionTag, DocumentStatus, ProcessingBatch, ProcessingBatchItem, Storage, LogTransferencia, ProjectStorage, Scanner, DeliveryBatch, DeliveryBatchItem, BookObservation } from '@/lib/data';
 import { useToast } from "@/hooks/use-toast";
 import { WORKFLOW_SEQUENCE, STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage } from '@/lib/workflow-config';
-import * as dataApi from '@/lib/data';
 import { UserFormValues } from '@/app/(app)/users/user-form';
 import { StorageFormValues } from '@/app/(app)/admin/general-configs/storage-form';
 import { ScannerFormValues } from '@/app/(app)/admin/general-configs/scanner-form';
 import { format } from 'date-fns';
-import { log } from 'console';
 import { useClients } from '@/queries/useClients'
 import { useUsers } from '@/queries/useUsers'
 import { useRawProjects } from '@/queries/useRawProjects'
@@ -32,7 +30,7 @@ import { useProjectStorages } from '@/queries/useProjectStorages'
 import { useDeliveryBatches } from '@/queries/useDeliveryBatches'
 import { useDeliveryBatchItems } from '@/queries/useDeliveryBatchItems'
 import { useBookObservations } from '@/queries/useBookObservations'
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useMutation } from '@tanstack/react-query';
 import * as queryKeys from '@/queries/keys';
 
 
@@ -57,7 +55,6 @@ export type NavigationHistoryItem = { href: string, label: string };
 
 type AppContextType = {
   // Loading state
-  loading: boolean;
   loadingPage: boolean;
   isMutating: boolean;
   setIsMutating: React.Dispatch<React.SetStateAction<boolean>>;
@@ -209,83 +206,45 @@ const openLocalApp = (protocol: string, data: Record<string, string>) => {
   }, 100);
 };
 
+type MutationVariables<TData> = {
+    mutationFn: () => Promise<TData>;
+    optimisticUpdateFn?: (queryClient: any, variables: any) => { previousData: any };
+    successMessage?: string;
+    invalidateKeys?: (keyof typeof queryKeys)[];
+};
+
 export function AppProvider({ children }: { children: React.ReactNode; }) {
   const [isMutating, setIsMutating] = React.useState(false);
   const [processingBookIds, setProcessingBookIds] = React.useState<string[]>([]);
   const [currentUser, setCurrentUser] = React.useState<User | null>(null);
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
   const [navigationHistory, setNavigationHistory] = React.useState<NavigationHistoryItem[]>([]);
-  const [loadingPage, setLoadingPage] = React.useState(true);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: queryClients, isLoading: isLoadingClients } = useClients();
-  const { data: queryUsers, isLoading: isLoadingUsers } = useUsers();
-  const { data: queryRawProjects, isLoading: isLoadingRawProjects } = useRawProjects();
-  const { data: queryRawBooks, isLoading: isLoadingRawBooks } = useRawBooks();
-  const { data: queryRawDocuments, isLoading: isLoadingRawDocuments } = useRawDocuments();
-  const { data: queryAuditLogs, isLoading: isLoadingAuditLogs } = useAuditLogs();
-  const { data: queryBookObservations, isLoading: isLoadingBookObservations } = useBookObservations();
-  const { data: queryProcessingBatches, isLoading: isLoadingProcessingBatches } = useProcessingBatches();
-  const { data: queryProcessingBatchItems, isLoading: isLoadingProcessingBatchItems } = useProcessingBatchItems();
-  const { data: queryProcessingLogs, isLoading: isLoadingProcessingLogs } = useProcessingLogs();
-  const { data: queryDeliveryBatches, isLoading: isLoadingDeliveryBatches } = useDeliveryBatches();
-  const { data: queryDeliveryBatchItems, isLoading: isLoadingDeliveryBatchItems } = useDeliveryBatchItems();
-  const { data: queryRoles, isLoading: isLoadingRoles } = useRoles();
-  const { data: queryPermissions, isLoading: isLoadingPermissions } = usePermissions();
-  const { data: queryProjectWorkflows, isLoading: isLoadingProjectWorkflows } = useProjectWorkflows();
-  const { data: queryRejectionTags, isLoading: isLoadingRejectionTags } = useRejectionTags();
-  const { data: queryStatuses, isLoading: isLoadingStatuses } = useStatuses();
-  const { data: queryStorages, isLoading: isLoadingStorages } = useStorages();
-  const { data: queryScanners, isLoading: isLoadingScanners } = useScanners();
-  const { data: queryTransferLogs, isLoading: isLoadingTransferLogs } = useTransferLogs();
-  const { data: queryProjectStorages, isLoading: isLoadingProjectStorages } = useProjectStorages();
+  const { data: clients, isLoading: isLoadingClients } = useClients();
+  const { data: users, isLoading: isLoadingUsers } = useUsers();
+  const { data: rawProjects, isLoading: isLoadingRawProjects } = useRawProjects();
+  const { data: rawBooks, isLoading: isLoadingRawBooks } = useRawBooks();
+  const { data: rawDocuments, isLoading: isLoadingRawDocuments } = useRawDocuments();
+  const { data: auditLogs, isLoading: isLoadingAuditLogs } = useAuditLogs();
+  const { data: bookObservations, isLoading: isLoadingBookObservations } = useBookObservations();
+  const { data: processingBatches, isLoading: isLoadingProcessingBatches } = useProcessingBatches();
+  const { data: processingBatchItems, isLoading: isLoadingProcessingBatchItems } = useProcessingBatchItems();
+  const { data: processingLogs, isLoading: isLoadingProcessingLogs } = useProcessingLogs();
+  const { data: deliveryBatches, isLoading: isLoadingDeliveryBatches } = useDeliveryBatches();
+  const { data: deliveryBatchItems, isLoading: isLoadingDeliveryBatchItems } = useDeliveryBatchItems();
+  const { data: roles, isLoading: isLoadingRoles } = useRoles();
+  const { data: permissions, isLoading: isLoadingPermissions } = usePermissions();
+  const { data: projectWorkflows, isLoading: isLoadingProjectWorkflows } = useProjectWorkflows();
+  const { data: rejectionTags, isLoading: isLoadingRejectionTags } = useRejectionTags();
+  const { data: statuses, isLoading: isLoadingStatuses } = useStatuses();
+  const { data: storages, isLoading: isLoadingStorages } = useStorages();
+  const { data: scanners, isLoading: isLoadingScanners } = useScanners();
+  const { data: transferLogs, isLoading: isLoadingTransferLogs } = useTransferLogs();
+  const { data: projectStorages, isLoading: isLoadingProjectStorages } = useProjectStorages();
 
-  const [clients, setClients] = React.useState<Client[]>([]);
-  const [users, setUsers] = React.useState<User[]>([]);
-  const [rawProjects, setRawProjects] = React.useState<Project[]>([]);
-  const [rawBooks, setRawBooks] = React.useState<RawBook[]>([]);
-  const [rawDocuments, setRawDocuments] = React.useState<RawDocument[]>([]);
-  const [auditLogs, setAuditLogs] = React.useState<AuditLog[]>([]);
-  const [bookObservations, setBookObservations] = React.useState<BookObservation[]>([]);
-  const [processingBatches, setProcessingBatches] = React.useState<ProcessingBatch[]>([]);
-  const [processingBatchItems, setProcessingBatchItems] = React.useState<ProcessingBatchItem[]>([]);
-  const [processingLogs, setProcessingLogs] = React.useState<ProcessingLog[]>([]);
-  const [deliveryBatches, setDeliveryBatches] = React.useState<DeliveryBatch[]>([]);
-  const [deliveryBatchItems, setDeliveryBatchItems] = React.useState<DeliveryBatchItem[]>([]);
-  const [roles, setRoles] = React.useState<string[]>([]);
-  const [permissions, setPermissions] = React.useState<Permissions>({});
-  const [projectWorkflows, setProjectWorkflows] = React.useState<ProjectWorkflows>({});
-  const [rejectionTags, setRejectionTags] = React.useState<RejectionTag[]>([]);
-  const [statuses, setStatuses] = React.useState<DocumentStatus[]>([]);
-  const [storages, setStorages] = React.useState<Storage[]>([]);
-  const [scanners, setScanners] = React.useState<Scanner[]>([]);
-  const [transferLogs, setTransferLogs] = React.useState<LogTransferencia[]>([]);
-  const [projectStorages, setProjectStorages] = React.useState<ProjectStorage[]>([]);
-
-  React.useEffect(() => { if (queryClients) setClients(queryClients) }, [queryClients]);
-  React.useEffect(() => { if (queryUsers) setUsers(queryUsers) }, [queryUsers]);
-  React.useEffect(() => { if (queryRawProjects) setRawProjects(queryRawProjects) }, [queryRawProjects]);
-  React.useEffect(() => { if (queryRawBooks) setRawBooks(queryRawBooks) }, [queryRawBooks]);
-  React.useEffect(() => { if (queryRawDocuments) setRawDocuments(queryRawDocuments) }, [queryRawDocuments]);
-  React.useEffect(() => { if (queryAuditLogs) setAuditLogs(queryAuditLogs) }, [queryAuditLogs]);
-  React.useEffect(() => { if (queryBookObservations) setBookObservations(queryBookObservations) }, [queryBookObservations]);
-  React.useEffect(() => { if (queryProcessingBatches) setProcessingBatches(queryProcessingBatches) }, [queryProcessingBatches]);
-  React.useEffect(() => { if (queryProcessingBatchItems) setProcessingBatchItems(queryProcessingBatchItems) }, [queryProcessingBatchItems]);
-  React.useEffect(() => { if (queryProcessingLogs) setProcessingLogs(queryProcessingLogs) }, [queryProcessingLogs]);
-  React.useEffect(() => { if (queryDeliveryBatches) setDeliveryBatches(queryDeliveryBatches) }, [queryDeliveryBatches]);
-  React.useEffect(() => { if (queryDeliveryBatchItems) setDeliveryBatchItems(queryDeliveryBatchItems) }, [queryDeliveryBatchItems]);
-  React.useEffect(() => { if (queryRoles) setRoles(queryRoles) }, [queryRoles]);
-  React.useEffect(() => { if (queryPermissions) setPermissions(queryPermissions) }, [queryPermissions]);
-  React.useEffect(() => { if (queryProjectWorkflows) setProjectWorkflows(queryProjectWorkflows) }, [queryProjectWorkflows]);
-  React.useEffect(() => { if (queryRejectionTags) setRejectionTags(queryRejectionTags) }, [queryRejectionTags]);
-  React.useEffect(() => { if (queryStatuses) setStatuses(queryStatuses) }, [queryStatuses]);
-  React.useEffect(() => { if (queryStorages) setStorages(queryStorages) }, [queryStorages]);
-  React.useEffect(() => { if (queryScanners) setScanners(queryScanners) }, [queryScanners]);
-  React.useEffect(() => { if (queryTransferLogs) setTransferLogs(queryTransferLogs) }, [queryTransferLogs]);
-  React.useEffect(() => { if (queryProjectStorages) setProjectStorages(queryProjectStorages) }, [queryProjectStorages]);
-
-  const loading = 
+  const loadingPage = 
     isLoadingClients || isLoadingUsers || isLoadingRawProjects || isLoadingRawBooks || 
     isLoadingRawDocuments || isLoadingAuditLogs || isLoadingBookObservations || isLoadingProcessingBatches ||
     isLoadingProcessingBatchItems || isLoadingProcessingLogs || isLoadingDeliveryBatches || 
@@ -311,41 +270,81 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   }, [isLoadingUsers, users]);
 
   const loadInitialData = React.useCallback(async (isSilent = false) => {
-    if (!isSilent) setLoadingPage(true);
+    if (!isSilent) setIsMutating(true);
     try {
         await queryClient.refetchQueries();
     } catch (error) {
         console.error("Failed to refetch data:", error);
         toast({ title: "Data Sync Failed", description: "Could not sync with the server.", variant: "destructive" });
     } finally {
-        if (!isSilent) setLoadingPage(false);
+        if (!isSilent) setIsMutating(false);
     }
   }, [queryClient, toast]);
 
-  React.useEffect(() => {
-    loadInitialData();
-  }, [loadInitialData]);
+  const mutation = useMutation({
+    mutationFn: async ({ mutationFn }: { mutationFn: () => Promise<any> }) => {
+      setIsMutating(true);
+      return mutationFn();
+    },
+    onMutate: async ({ optimisticUpdateFn, variables }: { optimisticUpdateFn: any, variables: any }) => {
+      if (optimisticUpdateFn) {
+        await queryClient.cancelQueries();
+        const { previousData } = optimisticUpdateFn(queryClient, variables);
+        return { previousData };
+      }
+      return {};
+    },
+    onError: (error: any, variables, context: any) => {
+      toast({ title: "Operation Failed", description: error.message, variant: "destructive" });
+      if (context?.previousData) {
+        variables.optimisticUpdateFn(queryClient, context.previousData, true); // Revert
+      }
+    },
+    onSuccess: (data, variables: any) => {
+      if (typeof data === 'string') {
+          toast({ title: data });
+      } else if (variables.successMessage) {
+          toast({ title: variables.successMessage });
+      }
+    },
+    onSettled: (data, error, variables) => {
+      if (variables.invalidateKeys) {
+        variables.invalidateKeys.forEach((key: keyof typeof queryKeys) => {
+          queryClient.invalidateQueries({ queryKey: queryKeys[key] });
+        });
+      }
+      setIsMutating(false);
+    },
+  });
 
-  const withMutation = async <T,>(action: () => Promise<T | string | void>, invalidateKeys?: (keyof typeof queryKeys)[], successMessage?: string): Promise<T | undefined> => {
-    setIsMutating(true);
-    try {
-        const result = await action();
-        //if (invalidateKeys) {
-            //await Promise.all(invalidateKeys.map(key => queryClient.invalidateQueries({ queryKey: queryKeys[key] })));
-        //}
-        if (typeof result === 'string') {
-            toast({ title: result });
-        } else if (successMessage) {
-            toast({ title: successMessage });
-        }
-        return result as T;
-    } catch (error: any) {
-        console.error("A mutation failed:", error);
-        toast({ title: "Operation Failed", description: error.message, variant: "destructive" });
-    } finally {
-        setIsMutating(false);
+  const withMutation = React.useCallback(<TData, TVariables>(
+    variables: TVariables & {
+      mutationFn: (vars: TVariables) => Promise<TData | string | void>;
+      optimisticUpdateFn?: (queryClient: any, variables: TVariables, oldData: any) => void;
+      getPreviousDataFn?: (queryClient: any) => any;
+      successMessage?: string;
+      invalidateKeys?: (keyof typeof queryKeys)[];
     }
-  };
+  ) => {
+    return mutation.mutate({
+      ...variables,
+      mutationFn: () => variables.mutationFn(variables),
+      onMutate: async () => {
+        await queryClient.cancelQueries();
+        const previousData = variables.getPreviousDataFn ? variables.getPreviousDataFn(queryClient) : undefined;
+        if (variables.optimisticUpdateFn) {
+          variables.optimisticUpdateFn(queryClient, variables, previousData);
+        }
+        return { previousData };
+      },
+      onError: (err: any, vars: any, context: any) => {
+        if (context?.previousData && variables.optimisticUpdateFn) {
+            variables.optimisticUpdateFn(queryClient, vars, context.previousData);
+        }
+        toast({ title: "Operation Failed", description: err.message, variant: "destructive" });
+      },
+    });
+  }, [mutation, queryClient, toast]);
 
   const login = async (username: string, password: string): Promise<User | null> => {
     const user = users.find(u => (u.username || '').toLowerCase() === (username || '').toLowerCase() && u.password === password);
@@ -380,32 +379,41 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
   
   const regLastLogin = async (user: User) => {
-    return withMutation(async () => {
-      const now = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
-      const response = await fetch(`/api/users/${user.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lastLogin: now }),
-      });
-      if(!response.ok) throw new Error('Failed to register last login');
-    }, ['USERS']);
+    withMutation({
+      mutationFn: async () => {
+        const now = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
+        const response = await fetch(`/api/users/${user.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lastLogin: now }),
+        });
+        if(!response.ok) throw new Error('Failed to register last login');
+      },
+      invalidateKeys: ['USERS']
+    });
   };
 
   const changePassword = async (userId: string, currentPassword: string, newPassword: string): Promise<boolean | undefined> => {
-    const action = async () => {
-      const response = await fetch(`/api/users/${userId}/change-password`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ currentPassword, newPassword }),
-      });
-      if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Failed to change password.");
-      }
-      logAction('Password Changed', `User changed their password.`, { userId: userId });
-      return true;
-    };
-    return withMutation(action, ['USERS'], "Palavra-passe alterada com sucesso");
+    return new Promise(resolve => {
+        withMutation({
+            mutationFn: async () => {
+                const response = await fetch(`/api/users/${userId}/change-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ currentPassword, newPassword }),
+                });
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || "Failed to change password.");
+                }
+                logAction('Password Changed', `User changed their password.`, { userId: userId });
+                resolve(true);
+            },
+            invalidateKeys: ['USERS'],
+            successMessage: "Palavra-passe alterada com sucesso",
+            onError: () => resolve(false)
+        });
+    });
   };
   
   const addNavigationHistoryItem = React.useCallback((item: NavigationHistoryItem) => {
@@ -441,7 +449,15 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     queryClient.invalidateQueries({ queryKey: queryKeys.AUDIT_LOGS });
   }, [currentUser, queryClient]);
 
+  const enrichedAuditLogs: EnrichedAuditLog[] = React.useMemo(() => {
+    return (auditLogs || []).map(log => ({
+      ...log,
+      user: users?.find(u => u.id === log.userId)?.name || log.userId,
+    }));
+  }, [auditLogs, users]);
+
   const documents: AppDocument[] = React.useMemo(() => {
+    if (!rawDocuments || !rawBooks || !statuses || !clients) return [];
     return rawDocuments.map(doc => {
         const book = rawBooks.find(b => b.id === doc.bookId);
         const bookStatus = statuses.find(s => s.id === book?.statusId)?.name || 'Unknown';
@@ -465,6 +481,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   }, [rawDocuments, rawBooks, statuses, clients]);
 
   const allEnrichedProjects: EnrichedProject[] = React.useMemo(() => {
+    if (!rawProjects || !clients || !rawBooks || !rawDocuments || !statuses || !storages || !transferLogs || !scanners) return [];
     const storageMap = new Map(storages.map(s => [s.id, s.nome]));
     const scannerDeviceMap = new Map(scanners.map(s => [s.id, s.nome]));
     const bookInfoMap = new Map<string, { storageName?: string, storageId?: string, scannerDeviceName?: string }>();
@@ -522,13 +539,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const enrichedBooks: EnrichedBook[] = React.useMemo(() => {
     return allEnrichedProjects.flatMap(p => p.books);
   }, [allEnrichedProjects]);
-  
-  const enrichedAuditLogs: EnrichedAuditLog[] = React.useMemo(() => {
-    return auditLogs.map(log => {
-      const user = users.find(u => u.id === log.userId);
-      return { ...log, user: user?.name || log.userId };
-    })
-  }, [auditLogs, users]);
 
   const accessibleProjectsForUser = React.useMemo(() => {
     if (!currentUser) return [];
@@ -544,8 +554,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
 
   const addClient = async (clientData: Omit<Client, 'id'>) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const response = await fetch('/api/clients', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -555,14 +565,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         const newClient = await response.json();
         logAction('Client Created', `New client "${newClient.name}" added.`, {});
       },
-      ['CLIENTS'],
-      "Cliente Adicionado"
-    );
+      invalidateKeys: ['CLIENTS'],
+      successMessage: "Cliente Adicionado"
+    });
   };
 
   const updateClient = async (clientId: string, clientData: Partial<Omit<Client, 'id'>>) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const response = await fetch(`/api/clients/${clientId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -572,14 +582,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         const updatedClient = await response.json();
         logAction('Client Updated', `Details for "${updatedClient.name}" updated.`, {});
       },
-      ['CLIENTS'],
-      "Cliente Atualizado"
-    );
+      invalidateKeys: ['CLIENTS'],
+      successMessage: "Cliente Atualizado"
+    });
   };
 
   const deleteClient = async (clientId: string) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const clientToDelete = clients.find(c => c.id === clientId);
         const response = await fetch(`/api/clients/${clientId}`, { method: 'DELETE' });
         if (!response.ok) {
@@ -594,14 +604,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         }
         logAction('Client Deleted', `Client "${clientToDelete?.name}" was deleted.`, {});
       },
-      ['CLIENTS', 'RAW_PROJECTS', 'RAW_BOOKS', 'RAW_DOCUMENTS', 'REJECTION_TAGS'],
-      "Cliente Eliminado"
-    );
+      invalidateKeys: ['CLIENTS', 'RAW_PROJECTS', 'RAW_BOOKS', 'RAW_DOCUMENTS', 'REJECTION_TAGS'],
+      successMessage: "Cliente Eliminado"
+    });
   };
   
   const addUser = async (userData: UserFormValues) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const response = await fetch('/api/users', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -614,14 +624,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         const newUser: User = await response.json();
         logAction('User Created', `New user "${newUser.name}" added with role ${newUser.role}.`, {});
       },
-      ['USERS'],
-      "Utilizador Adicionado"
-    );
+      invalidateKeys: ['USERS'],
+      successMessage: "Utilizador Adicionado"
+    });
   };
 
   const updateUser = async (userId: string, userData: Partial<User>) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const response = await fetch(`/api/users/${userId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -631,17 +641,17 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         const updatedUser = await response.json();
         logAction('User Updated', `Details for user "${updatedUser.name}" updated.`, {});
       },
-      ['USERS'],
-      "Utilizador Atualizado"
-    );
+      invalidateKeys: ['USERS'],
+      successMessage: "Utilizador Atualizado"
+    });
   };
   
   const toggleUserStatus = async (userId: string) => {
     const user = users.find(u => u.id === userId);
     if (!user || user.role === 'System') return;
     const newStatus = user.status === 'active' ? 'disabled' : 'active';
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const response = await fetch(`/api/users/${userId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -650,28 +660,28 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         if (!response.ok) throw new Error('Falha ao alternar estado do utilizador');
         logAction('User Status Changed', `User "${user.name}" was ${newStatus}.`, {});
       },
-      ['USERS'],
-      `Utilizador ${newStatus === 'active' ? 'Ativado' : 'Desativado'}`
-    );
+      invalidateKeys: ['USERS'],
+      successMessage: `Utilizador ${newStatus === 'active' ? 'Ativado' : 'Desativado'}`
+    });
   };
 
   const deleteUser = async (userId: string) => {
     const userToDelete = users.find(u => u.id === userId);
     if (!userToDelete || userToDelete.role === 'System') return;
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const response = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Falha ao eliminar utilizador');
         logAction('User Deleted', `User "${userToDelete?.name}" was deleted.`, {});
       },
-      ['USERS'],
-      "Utilizador Eliminado"
-    );
+      invalidateKeys: ['USERS'],
+      successMessage: "Utilizador Eliminado"
+    });
   };
   
   const updateUserDefaultProject = (userId: string, projectId: string | null) => {
-    withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const response = await fetch(`/api/users/${userId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -684,14 +694,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         }
         logAction('Default Project Set', `Default project for user ${updatedUser.name} set.`, {});
       },
-      ['USERS'],
-      "Projeto Padrão Atualizado"
-    );
+      invalidateKeys: ['USERS'],
+      successMessage: "Projeto Padrão Atualizado"
+    });
   };
   
   const addProject = async (projectData: Omit<Project, 'id'>) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const response = await fetch('/api/projects', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -701,14 +711,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         const newProject = await response.json();
         logAction('Project Created', `New project "${newProject.name}" added.`, {});
       },
-      ['RAW_PROJECTS', 'PROJECT_WORKFLOWS'],
-      "Projeto Adicionado"
-    );
+      invalidateKeys: ['RAW_PROJECTS', 'PROJECT_WORKFLOWS'],
+      successMessage: "Projeto Adicionado"
+    });
   };
   
   const updateProject = async (projectId: string, projectData: Partial<Omit<Project, 'id'>>) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const response = await fetch(`/api/projects/${projectId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -717,28 +727,28 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         if (!response.ok) throw new Error('Falha ao atualizar o projeto');
         logAction('Project Updated', `Details for project "${projectData.name}" updated.`, {});
       },
-      ['RAW_PROJECTS'],
-      "Projeto Atualizado"
-    );
+      invalidateKeys: ['RAW_PROJECTS'],
+      successMessage: "Projeto Atualizado"
+    });
   };
 
   const deleteProject = async (projectId: string) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const projectToDelete = rawProjects.find(p => p.id === projectId);
         const response = await fetch(`/api/projects/${projectId}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Falha ao eliminar projeto');
         if (selectedProjectId === projectId) setSelectedProjectId(null);
         logAction('Project Deleted', `Project "${projectToDelete?.name}" was deleted.`, {});
       },
-      ['RAW_PROJECTS', 'RAW_BOOKS', 'RAW_DOCUMENTS'],
-      "Projeto Eliminado"
-    );
+      invalidateKeys: ['RAW_PROJECTS', 'RAW_BOOKS', 'RAW_DOCUMENTS'],
+      successMessage: "Projeto Eliminado"
+    });
   };
 
   const addBook = async (projectId: string, bookData: Omit<RawBook, 'id' | 'projectId' | 'statusId'>) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const statusId = statuses.find(s => s.name === 'Pending Shipment')?.id;
         if (!statusId) throw new Error("Não foi possível encontrar o estado 'Envio Pendente'.");
         const response = await fetch('/api/books', {
@@ -750,14 +760,14 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         const newRawBook = await response.json();
         logAction('Book Added', `Book "${newRawBook.name}" was added to project.`, { bookId: newRawBook.id });
       },
-      ['RAW_BOOKS'],
-      "Livro Adicionado"
-    );
+      invalidateKeys: ['RAW_BOOKS'],
+      successMessage: "Livro Adicionado"
+    });
   };
   
   const updateBook = async (bookId: string, bookData: Partial<Omit<RawBook, 'id' | 'projectId' | 'statusId'>>) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const response = await fetch(`/api/books/${bookId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -767,27 +777,27 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         const updatedRawBook = await response.json();
         logAction('Book Updated', `Details for book "${updatedRawBook.name}" were updated.`, { bookId });
       },
-      ['RAW_BOOKS'],
-      "Livro Atualizado"
-    );
+      invalidateKeys: ['RAW_BOOKS'],
+      successMessage: "Livro Atualizado"
+    });
   };
 
   const deleteBook = async (bookId: string) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const bookToDelete = rawBooks.find(b => b.id === bookId);
         const response = await fetch(`/api/books/${bookId}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Falha ao eliminar livro');
         logAction('Book Deleted', `Book "${bookToDelete?.name}" and its pages were deleted.`, { bookId });
       },
-      ['RAW_BOOKS', 'RAW_DOCUMENTS', 'AUDIT_LOGS'],
-      "Livro Eliminado"
-    );
+      invalidateKeys: ['RAW_BOOKS', 'RAW_DOCUMENTS', 'AUDIT_LOGS'],
+      successMessage: "Livro Eliminado"
+    });
   };
 
   const importBooks = async (projectId: string, newBooks: BookImport[]) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const response = await fetch('/api/books', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -797,15 +807,15 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         const createdBooks = await response.json();
         logAction('Books Imported', `${createdBooks.length} books imported for project.`, {});
       },
-      ['RAW_BOOKS'],
-      "Importação Bem-Sucedida"
-    );
+      invalidateKeys: ['RAW_BOOKS'],
+      successMessage: "Importação Bem-Sucedida"
+    });
   };
 
-const addBookObservation = async (bookId: string, observation: string) => {
+  const addBookObservation = async (bookId: string, observation: string) => {
     if (!currentUser) return;
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const book = rawBooks.find(b => b.id === bookId);
         const bookStatus = statuses.find(s => s.id === book?.statusId)?.name;
 
@@ -822,13 +832,14 @@ const addBookObservation = async (bookId: string, observation: string) => {
         if (!response.ok) throw new Error('Falha ao adicionar observação');
         logAction('Observation Added', `Observation added to book.`, { bookId });
       },
-      ['BOOK_OBSERVATIONS'],
-      "Observação Adicionada"
-    );
+      invalidateKeys: ['BOOK_OBSERVATIONS'],
+      successMessage: "Observação Adicionada"
+    });
   };
 
   const addRole = (roleName: string, rolePermissions: string[]) => {
-    withMutation(async () => {
+    withMutation({
+      mutationFn: async () => {
       if (roles.includes(roleName)) {
         toast({ title: "Perfil Já Existe", description: "Já existe um perfil com este nome.", variant: "destructive" });
         return;
@@ -840,11 +851,15 @@ const addBookObservation = async (bookId: string, observation: string) => {
       });
       if (!response.ok) throw new Error('Falha ao guardar perfil.');
       logAction('Role Created', `New role "${roleName}" was created.`, {});
-    }, ['ROLES', 'PERMISSIONS'], "Perfil Criado");
+      },
+      invalidateKeys: ['ROLES', 'PERMISSIONS'],
+      successMessage: "Perfil Criado"
+    });
   };
 
   const updateRole = (roleName: string, rolePermissions: string[]) => {
-    withMutation(async () => {
+    withMutation({
+      mutationFn: async () => {
       const response = await fetch('/api/permissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -852,11 +867,14 @@ const addBookObservation = async (bookId: string, observation: string) => {
       });
       if (!response.ok) throw new Error('Falha ao guardar permissões no banco de dados.');
       logAction('Role Updated', `Permissions for role "${roleName}" were updated.`, {});
-    }, ['PERMISSIONS'], "Perfil Atualizado");
+    }, 
+    invalidateKeys: ['PERMISSIONS'],
+    successMessage: "Perfil Atualizado"});
   };
   
   const deleteRole = (roleName: string) => {
-    withMutation(async () => {
+    withMutation({
+      mutationFn: async () => {
       const response = await fetch('/api/permissions', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
@@ -864,12 +882,15 @@ const addBookObservation = async (bookId: string, observation: string) => {
       });
       if (!response.ok) throw new Error('Falha ao eliminar perfil.');
       logAction('Role Deleted', `Role "${roleName}" was deleted.`, {});
-    }, ['ROLES', 'PERMISSIONS', 'USERS'], "Perfil Eliminado");
+    }, 
+    invalidateKeys: ['ROLES', 'PERMISSIONS', 'USERS'],
+    successMessage: "Perfil Eliminado"
+    });
   };
 
   const updateProjectWorkflow = (projectId: string, workflow: string[]) => {
-    withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const response = await fetch(`/api/project-workflows/${projectId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -878,14 +899,14 @@ const addBookObservation = async (bookId: string, observation: string) => {
         if (!response.ok) throw new Error("Falha ao atualizar o fluxo de trabalho no servidor.");
         logAction('Project Workflow Updated', `Workflow for project ID ${projectId} was updated.`, {});
       },
-      ['PROJECT_WORKFLOWS'],
-      "Fluxo de Trabalho do Projeto Atualizado"
-    );
+      invalidateKeys: ['PROJECT_WORKFLOWS'],
+      successMessage: "Fluxo de Trabalho do Projeto Atualizado"
+    });
   };
 
   const addRejectionTag = async (tagData: Omit<RejectionTag, 'id' | 'clientId'>, clientId: string) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         if (!clientId) throw new Error("ID do Cliente está ausente");
         const response = await fetch('/api/rejection-tags', {
             method: 'POST',
@@ -897,14 +918,14 @@ const addBookObservation = async (bookId: string, observation: string) => {
         const client = clients.find(c => c.id === clientId);
         logAction('Rejection Tag Created', `Tag "${newTag.label}" criada para o cliente "${client?.name}".`, {});
       },
-      ['REJECTION_TAGS'],
-      "Motivo de Rejeição Adicionado"
-    );
+      invalidateKeys: ['REJECTION_TAGS'],
+      successMessage: "Motivo de Rejeição Adicionado"
+    });
   };
 
   const updateRejectionTag = async (tagId: string, tagData: Partial<Omit<RejectionTag, 'id' | 'clientId'>>) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const response = await fetch(`/api/rejection-tags/${tagId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -914,27 +935,27 @@ const addBookObservation = async (bookId: string, observation: string) => {
         const updatedTag = await response.json();
         logAction('Rejection Tag Updated', `Tag "${updatedTag.label}" updated.`, {});
       },
-      ['REJECTION_TAGS'],
-      "Motivo de Rejeição Atualizado"
-    );
+      invalidateKeys: ['REJECTION_TAGS'],
+      successMessage: "Motivo de Rejeição Atualizado"
+    });
   };
 
   const deleteRejectionTag = async (tagId: string) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const tag = rejectionTags.find(t => t.id === tagId);
         const response = await fetch(`/api/rejection-tags/${tagId}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Falha ao eliminar etiqueta de rejeição');
         logAction('Rejection Tag Deleted', `Tag "${tag?.label}" deleted.`, {});
       },
-      ['REJECTION_TAGS'],
-      "Etiqueta de Rejeição Eliminada"
-    );
+      invalidateKeys: ['REJECTION_TAGS'],
+      successMessage: "Etiqueta de Rejeição Eliminada"
+    });
   };
 
   const addStorage = async (storageData: StorageFormValues) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const response = await fetch('/api/storages', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -944,14 +965,14 @@ const addBookObservation = async (bookId: string, observation: string) => {
         const newStorage = await response.json();
         logAction('Storage Created', `New storage location "${newStorage.nome}" added.`, {});
       },
-      ['STORAGES'],
-      "Armazenamento Adicionado"
-    );
+      invalidateKeys: ['STORAGES'],
+      successMessage: "Armazenamento Adicionado"
+    });
   };
 
   const updateStorage = async (storageId: string, storageData: StorageFormValues) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const response = await fetch(`/api/storages/${storageId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -961,27 +982,27 @@ const addBookObservation = async (bookId: string, observation: string) => {
         const updatedStorage = await response.json();
         logAction('Storage Updated', `Storage location "${updatedStorage.nome}" updated.`, {});
       },
-      ['STORAGES'],
-      "Armazenamento Atualizado"
-    );
+      invalidateKeys: ['STORAGES'],
+      successMessage: "Armazenamento Atualizado"
+    });
   };
 
   const deleteStorage = async (storageId: string) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const storage = storages.find(s => s.id === Number(storageId));
         const response = await fetch(`/api/storages/${storageId}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Falha ao eliminar armazenamento');
         logAction('Storage Deleted', `Storage location "${storage?.nome}" deleted.`, {});
       },
-      ['STORAGES', 'PROJECT_STORAGES'],
-      "Armazenamento Eliminado"
-    );
+      invalidateKeys: ['STORAGES', 'PROJECT_STORAGES'],
+      successMessage: "Armazenamento Eliminado"
+    });
   };
   
   const addScanner = async (scannerData: ScannerFormValues) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const response = await fetch('/api/scanners', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -991,14 +1012,14 @@ const addBookObservation = async (bookId: string, observation: string) => {
         const newScanner = await response.json();
         logAction('Scanner Created', `New scanner "${newScanner.nome}" added.`, {});
       },
-      ['SCANNERS'],
-      "Scanner Adicionado"
-    );
+      invalidateKeys: ['SCANNERS'],
+      successMessage: "Scanner Adicionado"
+    });
   };
 
   const updateScanner = async (scannerId: number, scannerData: ScannerFormValues) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const response = await fetch(`/api/scanners/${scannerId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -1008,27 +1029,27 @@ const addBookObservation = async (bookId: string, observation: string) => {
         const updatedScanner = await response.json();
         logAction('Scanner Updated', `Scanner "${updatedScanner.nome}" updated.`, {});
       },
-      ['SCANNERS'],
-      "Scanner Atualizado"
-    );
+      invalidateKeys: ['SCANNERS'],
+      successMessage: "Scanner Atualizado"
+    });
   };
 
   const deleteScanner = async (scannerId: number) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const scanner = scanners.find(s => s.id === scannerId);
         const response = await fetch(`/api/scanners/${scannerId}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Falha ao eliminar scanner');
         logAction('Scanner Deleted', `Scanner "${scanner?.nome}" deleted.`, {});
       },
-      ['SCANNERS'],
-      "Scanner Eliminado"
-    );
+      invalidateKeys: ['SCANNERS'],
+      successMessage: "Scanner Eliminado"
+    });
   };
   
   const addProjectStorage = async (associationData: Omit<ProjectStorage, 'projectId'> & {projectId: string}) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const response = await fetch('/api/project-storages', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1037,14 +1058,14 @@ const addBookObservation = async (bookId: string, observation: string) => {
         if (!response.ok) throw new Error('Falha ao adicionar associação de armazenamento ao projeto');
         logAction('Project Storage Added', `Storage associated with project.`, {});
       },
-      ['PROJECT_STORAGES'],
-      "Associação Adicionada"
-    );
+      invalidateKeys: ['PROJECT_STORAGES'],
+      successMessage: "Associação Adicionada"
+    });
   };
 
   const updateProjectStorage = async (associationData: Omit<ProjectStorage, 'projectId'> & {projectId: string}) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const response = await fetch('/api/project-storages', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -1053,14 +1074,14 @@ const addBookObservation = async (bookId: string, observation: string) => {
         if (!response.ok) throw new Error('Falha ao atualizar associação de armazenamento do projeto');
         logAction('Project Storage Updated', `Association for project ${associationData.projectId} updated.`, {});
       },
-      ['PROJECT_STORAGES'],
-      "Associação Atualizada"
-    );
+      invalidateKeys: ['PROJECT_STORAGES'],
+      successMessage: "Associação Atualizada"
+    });
   };
 
   const deleteProjectStorage = async (projectId: string, storageId: number) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const response = await fetch('/api/project-storages', {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
@@ -1069,15 +1090,15 @@ const addBookObservation = async (bookId: string, observation: string) => {
         if (!response.ok) throw new Error('Falha ao eliminar associação de armazenamento do projeto');
         logAction('Project Storage Removed', `Association between project ${projectId} and storage ${storageId} removed.`, {});
       },
-      ['PROJECT_STORAGES'],
-      "Associação Eliminada"
-    );
+      invalidateKeys: ['PROJECT_STORAGES'],
+      successMessage: "Associação Eliminada"
+    });
   };
 
 
   const updateDocument = async (docId: string, data: Partial<AppDocument>) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const doc = rawDocuments.find(d => d.id === docId);
         if (!doc) return;
         const response = await fetch(`/api/documents/${docId}`, {
@@ -1092,9 +1113,9 @@ const addBookObservation = async (bookId: string, observation: string) => {
         if (data.flag !== undefined) logDetails = `Flag for document "${doc.name}" set to ${data.flag || 'None'}.`;
         logAction('Document Updated', logDetails, { documentId: docId, bookId: doc.bookId ?? undefined });
       },
-      ['RAW_DOCUMENTS'],
-      "Documento Atualizado"
-    );
+      invalidateKeys: ['RAW_DOCUMENTS'],
+      successMessage: "Documento Atualizado"
+    });
   };
   
   const tagPageForRejection = async (pageId: string, tags: string[]) => {
@@ -1102,9 +1123,10 @@ const addBookObservation = async (bookId: string, observation: string) => {
   };
 
   const updateDocumentFlag = async (docId: string, flag: AppDocument['flag'], comment?: string) => await updateDocument(docId, { flag, flagComment: flag ? comment : undefined });
+  
   const addPageToBook = async (bookId: string, position: number) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const book = enrichedBooks.find(b => b.id === bookId);
         if (!book) return;
         const newPageName = `${book.name} - Page ${position} (Added)`;
@@ -1123,22 +1145,22 @@ const addBookObservation = async (bookId: string, observation: string) => {
         
         logAction('Page Added', `New page added to "${book.name}" at position ${position}.`, { bookId, documentId: newPageId });
       },
-      ['RAW_DOCUMENTS', 'RAW_BOOKS'],
-      "Página Adicionada"
-    );
+      invalidateKeys: ['RAW_DOCUMENTS', 'RAW_BOOKS'],
+      successMessage: "Página Adicionada"
+    });
   }
 
   const deletePageFromBook = async (pageId: string, bookId: string) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
           const page = rawDocuments.find(p => p.id === pageId);
           const response = await fetch(`/api/documents/${pageId}`, { method: 'DELETE' });
           if (!response.ok) throw new Error('Falha ao eliminar página');
           logAction('Page Deleted', `Page "${page?.name}" was deleted from book.`, { bookId, documentId: pageId });
       },
-      ['RAW_DOCUMENTS', 'RAW_BOOKS'],
-      "Página Eliminada"
-    );
+      invalidateKeys: ['RAW_DOCUMENTS', 'RAW_BOOKS'],
+      successMessage: "Página Eliminada"
+    });
   };
 
   const updateBookStatus = React.useCallback(async (
@@ -1234,21 +1256,21 @@ const addBookObservation = async (bookId: string, observation: string) => {
   }, [statuses, toast]);
 
   const handleMarkAsShipped = (bookIds: string[]) => {
-    withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         for (const bookId of bookIds) {
           await updateBookStatus(bookId, 'In Transit');
           logAction('Book Shipped', `Client marked book as shipped.`, { bookId });
         }
       },
-      ['RAW_BOOKS'],
-      `${bookIds.length} Livro(s) Marcado(s) como Enviado(s)`
-    );
+      invalidateKeys: ['RAW_BOOKS'],
+      successMessage: `${bookIds.length} Livro(s) Marcado(s) como Enviado(s)`
+    });
   };
 
   const handleConfirmReception = (bookId: string) => {
-    withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const book = rawBooks.find(b => b.id === bookId);
         if (!book) return;
         const moveResult = await moveBookFolder(book.name, 'In Transit', 'Received');
@@ -1257,16 +1279,16 @@ const addBookObservation = async (bookId: string, observation: string) => {
           logAction('Reception Confirmed', `Book "${book.name}" has been marked as received.`, { bookId });
         }
       },
-      ['RAW_BOOKS'],
-      "Recepção Confirmada"
-    );
+      invalidateKeys: ['RAW_BOOKS'],
+      successMessage: "Recepção Confirmada"
+    });
   };
   
   const handleSendToStorage = async (bookId: string, payload: { actualPageCount: number }) => {
     setProcessingBookIds(prev => [...prev, bookId]);
     try {
-        await withMutation(
-          async () => {
+        await withMutation({
+          mutationFn: async () => {
             const book = rawBooks.find(b => b.id === bookId);
             const project = rawProjects.find(p => p.id === book?.projectId);
             if (!book || !project) throw new Error("Livro ou Projeto não encontrado");
@@ -1282,9 +1304,9 @@ const addBookObservation = async (bookId: string, observation: string) => {
             const logMessage = findStageKeyFromStatus(currentStatusName) === 'already-received' ? 'Reception & Scan Skipped' : 'Scanning Finished';
             logAction(logMessage, `${payload.actualPageCount} pages created. Book "${book.name}" moved to Storage.`, { bookId });
           },
-          ['RAW_BOOKS', 'RAW_DOCUMENTS'],
-          "Tarefa Completa"
-        );
+          invalidateKeys: ['RAW_BOOKS', 'RAW_DOCUMENTS'],
+          successMessage: "Tarefa Completa"
+        });
     } catch(error) {
         console.error("Error in handleSendToStorage:", error);
     } finally {
@@ -1315,8 +1337,8 @@ const addBookObservation = async (bookId: string, observation: string) => {
 
 
   const handleAssignUser = (bookId: string, userId: string, role: 'scanner' | 'indexer' | 'qc') => {
-    withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const user = users.find(u => u.id === userId);
         const book = rawBooks.find(b => b.id === bookId);
         if (!user || !book || !book.projectId) return;
@@ -1342,14 +1364,14 @@ const addBookObservation = async (bookId: string, observation: string) => {
         await updateBookStatus(bookId, newStatusName, updates);
         logAction('Task Assigned', `Book "${book.name}" assigned to ${user.name} for ${newStatusName}.`, { bookId });
       },
-      ['RAW_BOOKS'],
-      "Livro Atribuído"
-    );
+      invalidateKeys: ['RAW_BOOKS'],
+      successMessage: "Livro Atribuído"
+    });
   };
 
   const reassignUser = (bookId: string, newUserId: string, role: 'scanner' | 'indexer' | 'qc') => {
-    withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const book = rawBooks.find(b => b.id === bookId);
         const newUser = users.find(u => u.id === newUserId);
         if (!book || !newUser) return;
@@ -1358,9 +1380,9 @@ const addBookObservation = async (bookId: string, observation: string) => {
         const oldUser = users.find(u => u.id === book[updateField]);
         logAction('User Reassigned', `Task for book "${book.name}" was reassigned from ${oldUser?.name || 'Unassigned'} to ${newUser.name}.`, { bookId });
       },
-      ['RAW_BOOKS'],
-      "Utilizador Reatribuído"
-    );
+      invalidateKeys: ['RAW_BOOKS'],
+      successMessage: "Utilizador Reatribuído"
+    });
   };
   
   const getLocalIP = async (): Promise<string> => {
@@ -1377,7 +1399,8 @@ const addBookObservation = async (bookId: string, observation: string) => {
   };
 
   const openAppValidateScan = (bookId: string) => {
-    withMutation(async () => {
+    withMutation({
+      mutationFn: async () => {
       const book = rawBooks.find(b => b.id === bookId);
       if (!book || !book.projectId || !currentUser) return;
 
@@ -1400,12 +1423,13 @@ const addBookObservation = async (bookId: string, observation: string) => {
         bookId: book.id, 
         bookDirectory: `${scanner.scanner_root_folder}/${book.name}`
       });
+      }
     });
   };
 
   const handleStartTask = (bookId: string, role: 'scanner' | 'indexer' | 'qc') => {
-    withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const book = rawBooks.find(b => b.id === bookId);
         if (!book || !book.projectId || !currentUser) return;
         
@@ -1467,13 +1491,14 @@ const addBookObservation = async (bookId: string, observation: string) => {
             openLocalApp(appProtocol, { userId: currentUser.id, bookId: book.id, bookDirectory });
         }
       },
-      ['RAW_BOOKS'],
-      "Tarefa iniciada"
-    );
+      invalidateKeys: ['RAW_BOOKS'],
+      successMessage: "Tarefa iniciada"
+    });
   };
   
   const handleCompleteTask = async (bookId: string, stage: string) => {
-    await withMutation(async () => {
+    await withMutation({
+      mutationFn: async () => {
       const updateFields: { [key: string]: Partial<RawBook> } = {
         'Scanning Started': { scanEndTime: getDbSafeDate() },
         'Indexing Started': { indexingEndTime: getDbSafeDate() },
@@ -1504,12 +1529,13 @@ const addBookObservation = async (bookId: string, observation: string) => {
       }
       return msgfinal;
     },
-    ['RAW_BOOKS'],
-    "Tarefa Completa");
+    invalidateKeys: ['RAW_BOOKS'],
+    successMessage: "Tarefa Completa"});
   };
 
   const handleCancelCompleteTask = async (bookId: string, stage: string) => {
-    await withMutation(async () => {
+    await withMutation({
+      mutationFn: async () => {
       const updateFields: { [key: string]: Partial<RawBook> } = {
         'Scanning Started': { scanEndTime: null },
         'Indexing Started': { indexingEndTime: null },
@@ -1521,11 +1547,12 @@ const addBookObservation = async (bookId: string, observation: string) => {
         const book = rawBooks.find(b => b.id === bookId);
         logAction('Task Completion Cancelled', `Task "${stage}" cancelled for book "${book?.name}".`, { bookId });
       }
-    }, ['RAW_BOOKS'], "Tarefa em Espera");
+    }, invalidateKeys: ['RAW_BOOKS'], successMessage: "Tarefa em Espera"});
   };
 
   const handleCancelTask = (bookId: string, currentStatus: string) => {
-    withMutation(async () => {
+    withMutation({
+      mutationFn: async () => {
       const book = rawBooks.find(b => b.id === bookId);
       if (!book) return;
       const updates: { [key: string]: { bookStatus: string, logMsg: string, clearFields: Partial<RawBook> } } = {
@@ -1541,11 +1568,12 @@ const addBookObservation = async (bookId: string, observation: string) => {
         await updateBookStatus(bookId, update.bookStatus, update.clearFields);
         logAction('Task Cancelled', `${update.logMsg} for book "${book.name}" was cancelled.`, { bookId });
       }
-    }, ['RAW_BOOKS'], 'Tarefa Cancelada');
+    }, invalidateKeys: ['RAW_BOOKS'], successMessage: 'Tarefa Cancelada'});
   };
   
   const handleAdminStatusOverride = (bookId: string, newStatusName: string, reason: string) => {
-    withMutation(async () => {
+    withMutation({
+      mutationFn: async () => {
       const book = rawBooks.find(b => b.id === bookId);
       const newStatus = statuses.find(s => s.name === newStatusName);
       if (!book || !newStatus) return;
@@ -1563,7 +1591,7 @@ const addBookObservation = async (bookId: string, observation: string) => {
         await updateBookStatus(bookId, newStatus.name, updates);
         logAction('Admin Status Override', `Status of "${book.name}" manually changed to "${newStatus.name}". Reason: ${reason}`, { bookId });
       }
-    }, ['RAW_BOOKS'], "Status Sobrescrito");
+    }, invalidateKeys: ['RAW_BOOKS'], successMessage: "Status Sobrescrito"});
   };
 
   const logProcessingEvent = React.useCallback(async (batchId: string, message: string, level: 'INFO' | 'ERROR' | 'WARN' = 'INFO') => {
@@ -1576,8 +1604,8 @@ const addBookObservation = async (bookId: string, observation: string) => {
   }, [queryClient]);
 
   const startProcessingBatch = async (bookIds: string[], storageId: string) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         if (!currentUser) throw new Error("Utilizador atual não encontrado.");
         
         const fromStatusName = 'Ready for Processing';
@@ -1617,14 +1645,14 @@ const addBookObservation = async (bookId: string, observation: string) => {
         await logAction('Processing Batch Started', `Batch ${newBatch.id} started with ${bookIds.length} books.`, {});
         await logProcessingEvent(newBatch.id, `Batch ${newBatch.id} started with ${bookIds.length} books.`);
       },
-      ['PROCESSING_BATCHES', 'RAW_BOOKS'],
-      "Lote de Processamento Iniciado"
-    );
+      invalidateKeys: ['PROCESSING_BATCHES', 'RAW_BOOKS'],
+      successMessage: "Lote de Processamento Iniciado"
+    });
   };
 
   const failureProcessingBatch = async (batchId: string, storageId: string) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const batch = processingBatches.find(b => b.id === batchId);
         if (!batch || !currentUser) throw new Error("Lote ou utilizador não encontrado.");
         
@@ -1649,14 +1677,14 @@ const addBookObservation = async (bookId: string, observation: string) => {
           rootPath: storage.root_path,
         });
       },
-      [],
-      "A Reiniciar Lote..."
-    );
+      invalidateKeys: [],
+      successMessage: "A Reiniciar Lote..."
+    });
   };
 
   const completeProcessingBatch = async (batchId: string) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const batch = processingBatches.find(b => b.id === batchId);
         if (!batch) return;
         
@@ -1677,14 +1705,14 @@ const addBookObservation = async (bookId: string, observation: string) => {
         logAction('Processing Batch Completed', `Batch ${batchId} was completed.`, {});
         await logProcessingEvent(batchId, `Batch ${batchId} marked as completed by user.`);
       },
-      ['PROCESSING_BATCHES', 'RAW_BOOKS', 'PROCESSING_BATCH_ITEMS'],
-      "Lote de Processamento Completo"
-    );
+      invalidateKeys: ['PROCESSING_BATCHES', 'RAW_BOOKS', 'PROCESSING_BATCH_ITEMS'],
+      successMessage: "Lote de Processamento Completo"
+    });
   };
   
   const failProcessingBatch = async (batchId: string) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const response = await fetch(`/api/processing-batches/${batchId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -1694,13 +1722,14 @@ const addBookObservation = async (bookId: string, observation: string) => {
         logAction('Processing Batch mark as Failed', `Batch ${batchId} was failed.`, {});
         await logProcessingEvent(batchId, `Batch ${batchId} marked as Failed by user.`);
       },
-      ['PROCESSING_BATCHES'],
-      "Lote Marcado como Falha"
-    );
+      invalidateKeys: ['PROCESSING_BATCHES'],
+      successMessage: "Lote Marcado como Falha"
+    });
   };
   
   const handleSendBatchToNextStage = async (batchIds: string[]) => {
-    await withMutation(async () => {
+    withMutation({
+      mutationFn: async () => {
       let allSucceeded = true;
       const failedBooks: string[] = [];
   
@@ -1745,12 +1774,14 @@ const addBookObservation = async (bookId: string, observation: string) => {
       if (failedBooks.length > 0) {
         throw new Error(`Could not move the following books: ${failedBooks.join(', ')}.`);
       }
-    }, ['PROCESSING_BATCHES', 'PROCESSING_BATCH_ITEMS', 'RAW_BOOKS'], `${batchIds.length} lote(s) movido(s) para o Controle de Qualidade Final.`);
+    }, 
+    invalidateKeys: ['PROCESSING_BATCHES', 'PROCESSING_BATCH_ITEMS', 'RAW_BOOKS'],
+    successMessage: `${batchIds.length} lote(s) movido(s) para o Controle de Qualidade Final.`});
   };
 
   const setProvisionalDeliveryStatus = async (deliveryItemId: string, bookId: string, status: 'approved' | 'rejected', reason?: string) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         if (!currentUser) throw new Error("Utilizador não autenticado");
         const response = await fetch(`/api/delivery-batch-items/${deliveryItemId}`, {
             method: 'PUT',
@@ -1770,14 +1801,14 @@ const addBookObservation = async (bookId: string, observation: string) => {
           logAction('Approval Marked', `Book "${book?.name}" marked as approved by client.`, { bookId });
         }
       },
-      ['DELIVERY_BATCH_ITEMS', 'RAW_BOOKS'],
-      `Livro Marcado como ${status}`
-    );
+      invalidateKeys: ['DELIVERY_BATCH_ITEMS', 'RAW_BOOKS'],
+      successMessage: `Livro Marcado como ${status}`
+    });
   };
 
   const finalizeDeliveryBatch = async (deliveryId: string, finalDecision: 'approve_remaining' | 'reject_all') => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         if (!currentUser) throw new Error("Utilizador não autenticado");
         
         const itemsInBatch = deliveryBatchItems.filter(item => item.deliveryId === deliveryId);
@@ -1805,14 +1836,14 @@ const addBookObservation = async (bookId: string, observation: string) => {
         
         logAction('Delivery Batch Finalized', `Batch ${deliveryId} was finalized by ${currentUser.name}. Decision: ${finalDecision}.`, { userId: currentUser.id });
       },
-      ['DELIVERY_BATCHES', 'DELIVERY_BATCH_ITEMS', 'RAW_BOOKS', 'AUDIT_LOGS'],
-      "Validação Confirmada"
-    );
+      invalidateKeys: ['DELIVERY_BATCHES', 'DELIVERY_BATCH_ITEMS', 'RAW_BOOKS', 'AUDIT_LOGS'],
+      successMessage: "Validação Confirmada"
+    });
   };
   
    const distributeValidationSample = async (batchId: string, assignments: { itemId: string, userId: string}[]) => {
-     await withMutation(
-       async () => {
+     withMutation({
+       mutationFn: async () => {
         const response = await fetch('/api/delivery-batches/distribute', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1821,28 +1852,28 @@ const addBookObservation = async (bookId: string, observation: string) => {
         if (!response.ok) throw new Error('Falha ao distribuir amostra');
         logAction('Validation Distributed', `${assignments.length} items from batch ${batchId} distributed.`, {});
       },
-      ['DELIVERY_BATCHES', 'DELIVERY_BATCH_ITEMS'],
-      "Amostra Distribuída"
-     );
+      invalidateKeys: ['DELIVERY_BATCHES', 'DELIVERY_BATCH_ITEMS'],
+      successMessage: "Amostra Distribuída"
+     });
    };
 
   const approveBatch = async (deliveryId: string) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const itemsToApprove = deliveryBatchItems.filter(item => item.deliveryId === deliveryId && item.status === 'pending');
         for (const item of itemsToApprove) {
             await setProvisionalDeliveryStatus(item.id, item.bookId, 'approved');
         }
         await finalizeDeliveryBatch(deliveryId, 'approve_remaining');
       },
-      ['DELIVERY_BATCHES', 'DELIVERY_BATCH_ITEMS', 'RAW_BOOKS'],
-      "Lote Aprovado"
-    );
+      invalidateKeys: ['DELIVERY_BATCHES', 'DELIVERY_BATCH_ITEMS', 'RAW_BOOKS'],
+      successMessage: "Lote Aprovado"
+    });
   };
 
   const handleFinalize = (bookId: string) => {
-    withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const book = rawBooks.find(b => b.id === bookId);
         if (!book || !book.projectId) return;
         const workflow = projectWorkflows[book.projectId] || [];
@@ -1857,14 +1888,14 @@ const addBookObservation = async (bookId: string, observation: string) => {
           logAction('Book Archived', `Book "${book?.name}" was finalized and moved to ${newStatus}.`, { bookId });
         }
       },
-      ['RAW_BOOKS'],
-      "Livro Arquivado"
-    );
+      invalidateKeys: ['RAW_BOOKS'],
+      successMessage: "Livro Arquivado"
+    });
   };
   
   const handleMarkAsCorrected = (bookId: string) => {
-    withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const book = rawBooks.find(b => b.id === bookId);
         if (!book || !book.projectId) return;
         const workflow = projectWorkflows[book.projectId] || [];
@@ -1879,14 +1910,14 @@ const addBookObservation = async (bookId: string, observation: string) => {
           logAction('Marked as Corrected', `Book "${book.name}" marked as corrected after client rejection.`, { bookId });
         }
       },
-      ['RAW_BOOKS'],
-      "Livro Corrigido"
-    );
+      invalidateKeys: ['RAW_BOOKS'],
+      successMessage: "Livro Corrigido"
+    });
   };
 
   const handleResubmit = (bookId: string, targetStage: string) => {
-    withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const book = rawBooks.find(b => b.id === bookId);
         if (!book) return;
         const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
@@ -1897,14 +1928,14 @@ const addBookObservation = async (bookId: string, observation: string) => {
           logAction('Book All Resubmitted', `Book "${book.name}" resubmitted to ${targetStage}.`, { bookId });
         }
       },
-      ['RAW_BOOKS'],
-      "Todos os Livros Reenviados"
-    );
+      invalidateKeys: ['RAW_BOOKS'],
+      successMessage: "Todos os Livros Reenviados"
+    });
   };
 
     const handleResubmitCopyTifs = (bookId: string, targetStage: string) => {
-    withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const book = rawBooks.find(b => b.id === bookId);
         if (!book) return;
         const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
@@ -1915,15 +1946,15 @@ const addBookObservation = async (bookId: string, observation: string) => {
           logAction('Book Copy Tifs Resubmitted', `Book "${book.name}" resubmitted to ${targetStage}.`, { bookId });
         }
       },
-      ['RAW_BOOKS'],
-      "Reenvio de TIFs do Livro"
-    );
+      invalidateKeys: ['RAW_BOOKS'],
+      successMessage: "Reenvio de TIFs do Livro"
+    });
   };
 
 
     const handleResubmitMoveTifs = (bookId: string, targetStage: string) => {
-    withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const book = rawBooks.find(b => b.id === bookId);
         if (!book) return;
         const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
@@ -1934,15 +1965,15 @@ const addBookObservation = async (bookId: string, observation: string) => {
           logAction('Book Move Tifs Resubmitted', `Book "${book.name}" resubmitted to ${targetStage}.`, { bookId });
         }
       },
-      ['RAW_BOOKS'],
-      "Reenvio de TIFs do Livro"
-    );
+      invalidateKeys: ['RAW_BOOKS'],
+      successMessage: "Reenvio de TIFs do Livro"
+    });
   };
 
 
   const handleCreateDeliveryBatch = async (bookIds: string[]) => {
-    await withMutation(
-      async () => {
+    withMutation({
+      mutationFn: async () => {
         const response = await fetch('/api/delivery-batches', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1956,9 +1987,9 @@ const addBookObservation = async (bookId: string, observation: string) => {
         
         logAction('Delivery Batch Created', `Batch created with ${bookIds.length} books and sent to client.`, {});
       },
-      ['DELIVERY_BATCHES', 'DELIVERY_BATCH_ITEMS', 'RAW_BOOKS'],
-      "Lote de Entrega Criado e Enviado"
-    );
+      invalidateKeys: ['DELIVERY_BATCHES', 'DELIVERY_BATCH_ITEMS', 'RAW_BOOKS'],
+      successMessage: "Lote de Entrega Criado e Enviado"
+    });
   };
 
   const booksAvaiableInStorageLocalIp = React.useCallback(async (currentStageKey: string) => {
@@ -1998,7 +2029,8 @@ const addBookObservation = async (bookId: string, observation: string) => {
 
 
     const handlePullNextTask = React.useCallback(async (currentStageKey: string, userIdToAssign?: string) => {
-      return withMutation(async () => {
+      withMutation({
+          mutationFn: async () => {
           const assigneeId = userIdToAssign || currentUser?.id;
           if (!assigneeId) throw new Error("Nenhum utilizador especificado para atribuição.");
           const user = users.find(u => u.id === assigneeId);
@@ -2010,18 +2042,21 @@ const addBookObservation = async (bookId: string, observation: string) => {
           const availableBooks = await booksAvaiableInStorageLocalIp(currentStageKey);
 
           if(!availableBooks || availableBooks.length === 0) {
-            return "Não há livros não atribuídos na etapa anterior para os seus projetos.";
+            return "Sem Tarefas Disponíveis";
           }
 
           const bookToAssign = availableBooks[0];
 
           handleAssignUser(bookToAssign.id, assigneeId, workflowConfig.assigneeRole);
-      }, ['RAW_BOOKS'], "Tarefa Puxada com Sucesso");
-  }, [currentUser, users, handleAssignUser, toast, booksAvaiableInStorageLocalIp]);
+          return "Tarefa Puxada com Sucesso";
+        }, 
+        invalidateKeys: ['RAW_BOOKS']
+      });
+  }, [currentUser, users, handleAssignUser, toast, booksAvaiableInStorageLocalIp, withMutation]);
 
-  const scannerUsers = React.useMemo(() => users.filter(user => user.role === 'Scanning'), [users]);
-  const indexerUsers = React.useMemo(() => users.filter(user => user.role === 'Indexing'), [users]);
-  const qcUsers = React.useMemo(() => users.filter(user => user.role === 'QC Specialist'), [users]);
+  const scannerUsers = React.useMemo(() => (users || []).filter(user => user.role === 'Scanning'), [users]);
+  const indexerUsers = React.useMemo(() => (users || []).filter(user => user.role === 'Indexing'), [users]);
+  const qcUsers = React.useMemo(() => (users || []).filter(user => user.role === 'QC Specialist'), [users]);
 
   const projectsForContext = React.useMemo(() => {
     if (!selectedProjectId) return accessibleProjectsForUser;
@@ -2039,34 +2074,31 @@ const addBookObservation = async (bookId: string, observation: string) => {
     return documents.filter(d => d.bookId && bookIdsInScope.has(d.bookId));
   }, [documents, booksForContext]);
 
-  const enrichedAuditLogsWithUser = React.useMemo(() => {
-    return auditLogs.map(log => ({
-      ...log,
-      user: users.find(u => u.id === log.userId)?.name || log.userId,
-    }));
-  }, [auditLogs, users]);
-
-
   const value: AppContextType = { 
-    loading, loadingPage, isMutating, processingBookIds, setIsMutating,
+    loadingPage, isMutating, processingBookIds, setIsMutating,
     currentUser, login, logout, changePassword,
     navigationHistory, addNavigationHistoryItem,
-    clients, users, scannerUsers, indexerUsers, qcUsers,
+    clients: clients || [], 
+    users: users || [], 
+    scannerUsers, indexerUsers, qcUsers,
     projects: projectsForContext, 
     books: booksForContext, 
     documents: documentsForContext, 
-    auditLogs: enrichedAuditLogsWithUser,
-    bookObservations,
-    processingBatches, processingBatchItems, processingLogs,
-    deliveryBatches, deliveryBatchItems,
-    roles,
-    permissions,
-    projectWorkflows,
-    projectStorages,
-    rejectionTags,
-    storages,
-    scanners,
-    statuses,
+    auditLogs: enrichedAuditLogs,
+    bookObservations: bookObservations || [],
+    processingBatches: processingBatches || [], 
+    processingBatchItems: processingBatchItems || [], 
+    processingLogs: processingLogs || [],
+    deliveryBatches: deliveryBatches || [], 
+    deliveryBatchItems: deliveryBatchItems || [],
+    roles: roles || [],
+    permissions: permissions || {},
+    projectWorkflows: projectWorkflows || {},
+    projectStorages: projectStorages || [],
+    rejectionTags: rejectionTags || [],
+    storages: storages || [],
+    scanners: scanners || [],
+    statuses: statuses || [],
     allProjects: allEnrichedProjects,
     accessibleProjectsForUser,
     selectedProjectId,
