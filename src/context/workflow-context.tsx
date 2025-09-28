@@ -271,7 +271,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
           }
         }
       }
-      setIsPageLoading(false); 
     }
   }, [isLoadingUsers, users]);
   

@@ -53,20 +53,27 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
       setIsChecking(true);
       return;
     }
-    // Route guarding logic
+
+    if(!isChecking){
+      if (!currentUser) {
+        router.push('/');
+        return;
+      }
+    }
+    
+    // currentUser is guaranteed to be non-null after this point if isChecking is false
     if (!currentUser) {
-      router.push('/');
-      return;
+        // Still loading or no user found yet, wait for the next render cycle
+        setIsChecking(true);
+        return;
     }
 
-    // *** INÍCIO DA CORREÇÃO ***
     // Aguarda que as permissões estejam carregadas antes de verificar.
     if (Object.keys(permissions).length === 0) {
       setIsChecking(true); // Continua a mostrar o loader enquanto as permissões carregam
       return;
     }
-    // *** FIM DA CORREÇÃO ***
-
+    
     if (accessibleProjectsForUser.length === 0 && !['Admin', 'Client'].includes(currentUser.role)) {
        toast({ title: "Nenhum Projeto Selecionado", description: "Por favor, selecione um projeto antes de continuar.", variant: "destructive" });
       // Allow access only to profile page if no projects assigned
@@ -78,6 +85,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
       setIsChecking(false);
       return;
     }
+
 
     const userPermissions = permissions[currentUser.role] || [];
     const isAdmin = userPermissions.includes('*');
@@ -102,7 +110,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
         setIsAllowed(true);
     }
     setIsChecking(false);
-  }, [currentUser, pathname, permissions, router, toast, accessibleProjectsForUser, loadingPage, isPageLoading]);
+  }, [currentUser, pathname, permissions, router, toast, accessibleProjectsForUser, loadingPage, isPageLoading, isChecking]);
   
   // Effect to manage the selected project ID automatically
   useEffect(() => {
