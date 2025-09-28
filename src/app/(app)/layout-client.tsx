@@ -15,7 +15,7 @@ import { RecentPagesNav } from '@/components/layout/recent-pages-nav';
 import { GlobalLoader } from '@/components/layout/global-loader';
 
 export const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
-  const { currentUser, permissions, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loading, addNavigationHistoryItem } = useAppContext();
+  const { currentUser, permissions, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loadingPage, addNavigationHistoryItem } = useAppContext();
   const router = useRouter();
   const { loadInitialData } = useAppContext();
   const pathname = usePathname();
@@ -31,13 +31,13 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
       return;
     }
     
-    loadInitialData();
+    loadInitialData(true);
 
   }, [pathname, loadInitialData]);
 
 
   useEffect(() => {
-    if (loading) {
+    if (loadingPage) {
       setIsChecking(true);
       return;
     }
@@ -82,11 +82,11 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
         setIsAllowed(true);
     }
     setIsChecking(false);
-  }, [currentUser, pathname, permissions, router, toast, accessibleProjectsForUser, loading]);
+  }, [currentUser, pathname, permissions, router, toast, accessibleProjectsForUser, loadingPage]);
   
   // Effect to manage the selected project ID automatically
   useEffect(() => {
-    if (loading || !currentUser) {
+    if (loadingPage || !currentUser) {
       return;
     }
 
@@ -118,7 +118,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
     // Always update the ref AFTER the logic has run
     previousUserIdRef.current = currentUser.id;
 
-  }, [currentUser, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loading]);
+  }, [currentUser, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loadingPage]);
   
   useEffect(() => {
     if (!pathname || !currentUser) return;
@@ -140,7 +140,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
   }, [pathname, currentUser, addNavigationHistoryItem]);
 
 
-  if (loading) {
+  if (loadingPage) {
     return (
         <div className="flex h-screen w-screen items-center justify-center">
             <div className="flex flex-col items-center gap-4">

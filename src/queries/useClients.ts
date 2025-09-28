@@ -1,0 +1,13 @@
+
+import { useQuery } from '@tanstack/react-query'
+import * as dataApi  from '@/lib/data'
+import { CLIENTS }   from '@/queries/keys'
+import type { Client } from '@/lib/data'
+
+export function useClients() {
+  return useQuery<Client[], Error>({
+    queryKey: CLIENTS,
+    queryFn:  () => dataApi.getClients(),
+    initialData: [],
+  })
+}
