@@ -1,4 +1,5 @@
 
+
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,7 @@ export function UserNav({ user }: UserNavProps) {
   const { logout } = useAppContext();
 
   const getInitials = (name: string) => {
+    if(!name) return "";
     return name.split(' ').map(n => n[0]).join('');
   }
 
@@ -86,5 +88,3 @@ export function UserNav({ user }: UserNavProps) {
     </DropdownMenu>
   );
 }
-
-    
