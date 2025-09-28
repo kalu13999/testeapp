@@ -53,24 +53,17 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
       setIsChecking(true);
       return;
     }
-
-    if(!isChecking){
-      if (!currentUser) {
-        router.push('/');
-        return;
+    if (!currentUser) {
+      if(!isChecking){
+        router.push('/');  
       }
+      return;
     }
     
-    // currentUser is guaranteed to be non-null after this point if isChecking is false
-    if (!currentUser) {
-        // Still loading or no user found yet, wait for the next render cycle
-        setIsChecking(true);
-        return;
-    }
 
     // Aguarda que as permissões estejam carregadas antes de verificar.
     if (Object.keys(permissions).length === 0) {
-      setIsChecking(true); // Continua a mostrar o loader enquanto as permissões carregam
+      //setIsChecking(true); // Continua a mostrar o loader enquanto as permissões carregam
       return;
     }
     

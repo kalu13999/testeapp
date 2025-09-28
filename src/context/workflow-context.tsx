@@ -336,31 +336,44 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         ...rest,
     });
   }, [mutation]);
-
   const login = async (username: string, password: string): Promise<User | null> => {
-    const user = users?.find(u => (u.username || '').toLowerCase() === (username || '').toLowerCase() && u.password === password);
-    if (user) {
-      if (user.status === 'disabled') {
-        toast({title: "Login Falhou", description: "A sua conta está desativada. Por favor, contacte um administrador.", variant: "destructive"});
-        return null;
+    setIsPageLoading(true);
+    try {
+      const user = users?.find(u => (u.username || '').toLowerCase() === (username || '').toLowerCase() && u.password === password);
+      if (user) {
+        if (user.status === 'disabled') {
+          toast({title: "Login Falhou", description: "A sua conta está desativada. Por favor, contacte um administrador.", variant: "destructive"});
+          return null;
+        }
+        setSelectedProjectId(null);
+        setCurrentUser(user);
+        localStorage.setItem('flowvault_userid', user.id);
+        if (localStorage.getItem('flowvault_projectid')) {
+          localStorage.removeItem('flowvault_projectid');
+        }
+        const storedHistory = localStorage.getItem(`nav_history_${user.id}`);
+        if(storedHistory) {
+          setNavigationHistory(JSON.parse(storedHistory));
+        } else {
+          setNavigationHistory([]);
+        }
+        await regLastLogin(user);
+        return user;
       }
-      setSelectedProjectId(null);
-      setCurrentUser(user);
-      localStorage.setItem('flowvault_userid', user.id);
-      if (localStorage.getItem('flowvault_projectid')) {
-        localStorage.removeItem('flowvault_projectid');
-      }
-      const storedHistory = localStorage.getItem(`nav_history_${user.id}`);
-      if(storedHistory) {
-        setNavigationHistory(JSON.parse(storedHistory));
-      } else {
-        setNavigationHistory([]);
-      }
-      await regLastLogin(user);
-      return user;
+      return null;
+    } catch (err) {
+      console.error("Erro no login:", err);
+      toast({
+        title: "Erro no Login",
+        description: "Ocorreu um problema inesperado. Tente novamente.",
+        variant: "destructive"
+      });
+      return null;
+    } finally {
+      setIsPageLoading(false);
     }
-    return null;
   };
+
 
   const logout = () => {
     setCurrentUser(null);
