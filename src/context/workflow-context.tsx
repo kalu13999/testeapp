@@ -96,7 +96,6 @@ type AppContextType = {
   rejectionTags: RejectionTag[];
   storages: Storage[];
   scanners: Scanner[];
-  statuses: DocumentStatus[];
   rawBooks: RawBook[];
   
   // Global Project Filter
@@ -279,29 +278,25 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     }
   }, [queryClient, toast]);
 
-  const withMutation = async <T,>(
-    action: () => Promise<T>,
-    invalidateKeys?: (keyof typeof queryKeys)[],
-    successMessage?: string
-  ): Promise<T | undefined> => {
+  const withMutation = async <T,>(action: () => Promise<T>, invalidateKeys?: (keyof typeof queryKeys)[], successMessage?: string): Promise<T | undefined> => {
     setIsMutating(true);
     try {
-      const result = await action();
-      if (invalidateKeys) {
-        await Promise.all(invalidateKeys.map(key => queryClient.invalidateQueries({ queryKey: queryKeys[key] })));
-      }
-      if (successMessage) {
-        toast({ title: successMessage });
-      }
-      return result;
+        const result = await action();
+        if (invalidateKeys) {
+            await Promise.all(invalidateKeys.map(key => queryClient.invalidateQueries({ queryKey: queryKeys[key] })));
+        }
+        if (successMessage) {
+            toast({ title: successMessage });
+        }
+        return result;
     } catch (error: any) {
-      console.error("A mutation failed:", error);
-      toast({ title: "Operation Failed", description: error.message, variant: "destructive" });
-      return undefined;
+        console.error("A mutation failed:", error);
+        toast({ title: "Operation Failed", description: error.message, variant: "destructive" });
     } finally {
-      setIsMutating(false);
+        setIsMutating(false);
     }
   };
+
 
   const login = async (username: string, password: string): Promise<User | null> => {
     const user = users.find(u => (u.username || '').toLowerCase() === (username || '').toLowerCase() && u.password === password);
@@ -398,6 +393,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   }, [currentUser, queryClient]);
 
   const documents: AppDocument[] = React.useMemo(() => {
+    if (!rawDocuments || !rawBooks || !statuses || !clients) return [];
     return rawDocuments.map(doc => {
         const book = rawBooks.find(b => b.id === doc.bookId);
         const bookStatus = statuses.find(s => s.id === book?.statusId)?.name || 'Unknown';
@@ -421,6 +417,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   }, [rawDocuments, rawBooks, statuses, clients]);
 
   const allEnrichedProjects: EnrichedProject[] = React.useMemo(() => {
+    if (!rawProjects || !clients || !rawBooks || !rawDocuments || !statuses || !transferLogs || !storages || !scanners) return [];
     const storageMap = new Map(storages.map(s => [s.id, s.nome]));
     const scannerDeviceMap = new Map(scanners.map(s => [s.id, s.nome]));
     const bookInfoMap = new Map<string, { storageName?: string, storageId?: string, scannerDeviceName?: string }>();
@@ -476,10 +473,12 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   }, [rawProjects, clients, rawBooks, rawDocuments, statuses, storages, transferLogs, users, scanners]);
   
   const enrichedBooks: EnrichedBook[] = React.useMemo(() => {
+    if (!allEnrichedProjects) return [];
       return allEnrichedProjects.flatMap(p => p.books);
   }, [allEnrichedProjects]);
   
   const enrichedAuditLogs: EnrichedAuditLog[] = React.useMemo(() => {
+    if (!rawAuditLogs || !users) return [];
     return rawAuditLogs.map(log => {
       const user = users.find(u => u.id === log.userId);
       return { ...log, user: user?.name || log.userId };
@@ -1219,26 +1218,33 @@ const addBookObservation = async (bookId: string, observation: string) => {
   };
   
   const handleSendToStorage = async (bookId: string, payload: { actualPageCount: number }) => {
-    await withMutation(
-      async () => {
-        const book = rawBooks.find(b => b.id === bookId);
-        const project = rawProjects.find(p => p.id === book?.projectId);
-        if (!book || !project) throw new Error("Livro ou Projeto não encontrado");
+    setProcessingBookIds(prev => [...prev, bookId]);
+    try {
+        await withMutation(
+          async () => {
+            const book = rawBooks.find(b => b.id === bookId);
+            const project = rawProjects.find(p => p.id === book?.projectId);
+            if (!book || !project) throw new Error("Livro ou Projeto não encontrado");
 
-        const response = await fetch(`/api/books/${bookId}/complete-scan`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...payload, bookName: book.name, clientId: project.clientId, projectId: book.projectId })
-        });
-        if (!response.ok) throw new Error(await response.text());
-        
-        const currentStatusName = statuses.find(s => s.id === book.statusId)?.name || 'Unknown';
-        const logMessage = findStageKeyFromStatus(currentStatusName) === 'already-received' ? 'Reception & Scan Skipped' : 'Scanning Finished';
-        logAction(logMessage, `${payload.actualPageCount} pages created. Book "${book.name}" moved to Storage.`, { bookId });
-      },
-      ['RAW_BOOKS', 'RAW_DOCUMENTS'],
-      "Tarefa Completa"
-    );
+            const response = await fetch(`/api/books/${bookId}/complete-scan`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ...payload, bookName: book.name, clientId: project.clientId, projectId: book.projectId })
+            });
+            if (!response.ok) throw new Error(await response.text());
+            
+            const currentStatusName = statuses.find(s => s.id === book.statusId)?.name || 'Unknown';
+            const logMessage = findStageKeyFromStatus(currentStatusName) === 'already-received' ? 'Reception & Scan Skipped' : 'Scanning Finished';
+            logAction(logMessage, `${payload.actualPageCount} pages created. Book "${book.name}" moved to Storage.`, { bookId });
+          },
+          ['RAW_BOOKS', 'RAW_DOCUMENTS'],
+          "Tarefa Completa"
+        );
+    } catch(error) {
+        console.error("Error in handleSendToStorage:", error);
+    } finally {
+        setProcessingBookIds(prev => prev.filter(id => id !== bookId));
+    }
   };
 
   const handleMoveBookToNextStage = React.useCallback(async (bookId: string, currentStatus: string): Promise<boolean> => {
@@ -2010,7 +2016,6 @@ const addBookObservation = async (bookId: string, observation: string) => {
     storages,
     scanners,
     rawBooks: rawBooks || [],
-    statuses,
     allProjects: allEnrichedProjects,
     accessibleProjectsForUser,
     selectedProjectId,
