@@ -36,13 +36,17 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
     }
   }, [pathname, loadInitialData]);
 
-React.useEffect(() => {
-  const interval = setInterval(() => {
-    loadInitialData(true); // usa o modo "silent refresh"
-  }, 60000); // 60.000 ms = 60 segundos
-
-  return () => clearInterval(interval); // cleanup ao desmontar
-}, [loadInitialData]);
+  React.useEffect(() => {
+    if (isMutating || loadingPage || isPageLoading) return; 
+  
+    const interval = setInterval(() => {
+      if (!isMutating && !loadingPage && !isPageLoading) {
+        loadInitialData(true); // silent refresh
+      }
+    }, 60000);
+  
+    return () => clearInterval(interval);
+  }, [isMutating, loadingPage, isPageLoading, loadInitialData]);
 
   useEffect(() => {
     if (loadingPage || isPageLoading) {
@@ -54,6 +58,14 @@ React.useEffect(() => {
       router.push('/');
       return;
     }
+
+    // *** INÍCIO DA CORREÇÃO ***
+    // Aguarda que as permissões estejam carregadas antes de verificar.
+    if (Object.keys(permissions).length === 0) {
+      setIsChecking(true); // Continua a mostrar o loader enquanto as permissões carregam
+      return;
+    }
+    // *** FIM DA CORREÇÃO ***
 
     if (accessibleProjectsForUser.length === 0 && !['Admin', 'Client'].includes(currentUser.role)) {
        toast({ title: "Nenhum Projeto Selecionado", description: "Por favor, selecione um projeto antes de continuar.", variant: "destructive" });
