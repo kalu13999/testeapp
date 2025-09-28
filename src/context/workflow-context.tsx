@@ -1,5 +1,4 @@
 
-
 "use client"
 
 import * as React from 'react';
@@ -96,7 +95,7 @@ type AppContextType = {
   rejectionTags: RejectionTag[];
   storages: Storage[];
   scanners: Scanner[];
-  rawBooks: RawBook[];
+  statuses: DocumentStatus[];
   
   // Global Project Filter
   allProjects: EnrichedProject[];
@@ -186,7 +185,7 @@ type AppContextType = {
   addPageToBook: (bookId: string, position: number) => Promise<void>;
   deletePageFromBook: (pageId: string, bookId: string) => Promise<void>;
   updateDocumentFlag: (docId: string, flag: AppDocument['flag'], comment?: string) => Promise<void>;
-  handlePullNextTask: (currentStage: string, userIdToAssign?: string) => Promise<void>;
+  handlePullNextTask: (currentStage: string, userIdToAssign?: string) => Promise<string | void>;
   booksAvaiableInStorageLocalIp: (currentStageKey: string) => Promise<EnrichedBook[] | undefined>;
   logAction: (action: string, details: string, ids: { bookId?: string; documentId?: string; userId?: string; }) => Promise<void>;
   moveBookFolder: (bookName: string, fromStatusName: string, toStatusName: string) => Promise<boolean>;
@@ -219,27 +218,71 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: clients = [], isLoading: isLoadingClients } = useClients();
-  const { data: users = [], isLoading: isLoadingUsers } = useUsers();
-  const { data: rawProjects = [], isLoading: isLoadingRawProjects } = useRawProjects();
-  const { data: rawBooks, isLoading: isLoadingRawBooks } = useRawBooks();
-  const { data: rawDocuments, isLoading: isLoadingRawDocuments } = useRawDocuments();
-  const { data: rawAuditLogs = [], isLoading: isLoadingAuditLogs } = useAuditLogs();
-  const { data: bookObservations = [], isLoading: isLoadingBookObservations } = useBookObservations();
-  const { data: processingBatches = [], isLoading: isLoadingProcessingBatches } = useProcessingBatches();
-  const { data: processingBatchItems = [], isLoading: isLoadingProcessingBatchItems } = useProcessingBatchItems();
-  const { data: processingLogs = [], isLoading: isLoadingProcessingLogs } = useProcessingLogs();
-  const { data: deliveryBatches = [], isLoading: isLoadingDeliveryBatches } = useDeliveryBatches();
-  const { data: deliveryBatchItems = [], isLoading: isLoadingDeliveryBatchItems } = useDeliveryBatchItems();
-  const { data: roles = [], isLoading: isLoadingRoles } = useRoles();
-  const { data: permissions = {}, isLoading: isLoadingPermissions } = usePermissions();
-  const { data: projectWorkflows = {}, isLoading: isLoadingProjectWorkflows } = useProjectWorkflows();
-  const { data: rejectionTags = [], isLoading: isLoadingRejectionTags } = useRejectionTags();
-  const { data: statuses = [], isLoading: isLoadingStatuses } = useStatuses();
-  const { data: storages = [], isLoading: isLoadingStorages } = useStorages();
-  const { data: scanners = [], isLoading: isLoadingScanners } = useScanners();
-  const { data: transferLogs = [], isLoading: isLoadingTransferLogs } = useTransferLogs();
-  const { data: projectStorages = [], isLoading: isLoadingProjectStorages } = useProjectStorages();
+  const { data: queryClients, isLoading: isLoadingClients } = useClients();
+  const { data: queryUsers, isLoading: isLoadingUsers } = useUsers();
+  const { data: queryRawProjects, isLoading: isLoadingRawProjects } = useRawProjects();
+  const { data: queryRawBooks, isLoading: isLoadingRawBooks } = useRawBooks();
+  const { data: queryRawDocuments, isLoading: isLoadingRawDocuments } = useRawDocuments();
+  const { data: queryAuditLogs, isLoading: isLoadingAuditLogs } = useAuditLogs();
+  const { data: queryBookObservations, isLoading: isLoadingBookObservations } = useBookObservations();
+  const { data: queryProcessingBatches, isLoading: isLoadingProcessingBatches } = useProcessingBatches();
+  const { data: queryProcessingBatchItems, isLoading: isLoadingProcessingBatchItems } = useProcessingBatchItems();
+  const { data: queryProcessingLogs, isLoading: isLoadingProcessingLogs } = useProcessingLogs();
+  const { data: queryDeliveryBatches, isLoading: isLoadingDeliveryBatches } = useDeliveryBatches();
+  const { data: queryDeliveryBatchItems, isLoading: isLoadingDeliveryBatchItems } = useDeliveryBatchItems();
+  const { data: queryRoles, isLoading: isLoadingRoles } = useRoles();
+  const { data: queryPermissions, isLoading: isLoadingPermissions } = usePermissions();
+  const { data: queryProjectWorkflows, isLoading: isLoadingProjectWorkflows } = useProjectWorkflows();
+  const { data: queryRejectionTags, isLoading: isLoadingRejectionTags } = useRejectionTags();
+  const { data: queryStatuses, isLoading: isLoadingStatuses } = useStatuses();
+  const { data: queryStorages, isLoading: isLoadingStorages } = useStorages();
+  const { data: queryScanners, isLoading: isLoadingScanners } = useScanners();
+  const { data: queryTransferLogs, isLoading: isLoadingTransferLogs } = useTransferLogs();
+  const { data: queryProjectStorages, isLoading: isLoadingProjectStorages } = useProjectStorages();
+
+  const [clients, setClients] = React.useState<Client[]>([]);
+  const [users, setUsers] = React.useState<User[]>([]);
+  const [rawProjects, setRawProjects] = React.useState<Project[]>([]);
+  const [rawBooks, setRawBooks] = React.useState<RawBook[]>([]);
+  const [rawDocuments, setRawDocuments] = React.useState<RawDocument[]>([]);
+  const [auditLogs, setAuditLogs] = React.useState<AuditLog[]>([]);
+  const [bookObservations, setBookObservations] = React.useState<BookObservation[]>([]);
+  const [processingBatches, setProcessingBatches] = React.useState<ProcessingBatch[]>([]);
+  const [processingBatchItems, setProcessingBatchItems] = React.useState<ProcessingBatchItem[]>([]);
+  const [processingLogs, setProcessingLogs] = React.useState<ProcessingLog[]>([]);
+  const [deliveryBatches, setDeliveryBatches] = React.useState<DeliveryBatch[]>([]);
+  const [deliveryBatchItems, setDeliveryBatchItems] = React.useState<DeliveryBatchItem[]>([]);
+  const [roles, setRoles] = React.useState<string[]>([]);
+  const [permissions, setPermissions] = React.useState<Permissions>({});
+  const [projectWorkflows, setProjectWorkflows] = React.useState<ProjectWorkflows>({});
+  const [rejectionTags, setRejectionTags] = React.useState<RejectionTag[]>([]);
+  const [statuses, setStatuses] = React.useState<DocumentStatus[]>([]);
+  const [storages, setStorages] = React.useState<Storage[]>([]);
+  const [scanners, setScanners] = React.useState<Scanner[]>([]);
+  const [transferLogs, setTransferLogs] = React.useState<LogTransferencia[]>([]);
+  const [projectStorages, setProjectStorages] = React.useState<ProjectStorage[]>([]);
+
+  React.useEffect(() => { if (queryClients) setClients(queryClients) }, [queryClients]);
+  React.useEffect(() => { if (queryUsers) setUsers(queryUsers) }, [queryUsers]);
+  React.useEffect(() => { if (queryRawProjects) setRawProjects(queryRawProjects) }, [queryRawProjects]);
+  React.useEffect(() => { if (queryRawBooks) setRawBooks(queryRawBooks) }, [queryRawBooks]);
+  React.useEffect(() => { if (queryRawDocuments) setRawDocuments(queryRawDocuments) }, [queryRawDocuments]);
+  React.useEffect(() => { if (queryAuditLogs) setAuditLogs(queryAuditLogs) }, [queryAuditLogs]);
+  React.useEffect(() => { if (queryBookObservations) setBookObservations(queryBookObservations) }, [queryBookObservations]);
+  React.useEffect(() => { if (queryProcessingBatches) setProcessingBatches(queryProcessingBatches) }, [queryProcessingBatches]);
+  React.useEffect(() => { if (queryProcessingBatchItems) setProcessingBatchItems(queryProcessingBatchItems) }, [queryProcessingBatchItems]);
+  React.useEffect(() => { if (queryProcessingLogs) setProcessingLogs(queryProcessingLogs) }, [queryProcessingLogs]);
+  React.useEffect(() => { if (queryDeliveryBatches) setDeliveryBatches(queryDeliveryBatches) }, [queryDeliveryBatches]);
+  React.useEffect(() => { if (queryDeliveryBatchItems) setDeliveryBatchItems(queryDeliveryBatchItems) }, [queryDeliveryBatchItems]);
+  React.useEffect(() => { if (queryRoles) setRoles(queryRoles) }, [queryRoles]);
+  React.useEffect(() => { if (queryPermissions) setPermissions(queryPermissions) }, [queryPermissions]);
+  React.useEffect(() => { if (queryProjectWorkflows) setProjectWorkflows(queryProjectWorkflows) }, [queryProjectWorkflows]);
+  React.useEffect(() => { if (queryRejectionTags) setRejectionTags(queryRejectionTags) }, [queryRejectionTags]);
+  React.useEffect(() => { if (queryStatuses) setStatuses(queryStatuses) }, [queryStatuses]);
+  React.useEffect(() => { if (queryStorages) setStorages(queryStorages) }, [queryStorages]);
+  React.useEffect(() => { if (queryScanners) setScanners(queryScanners) }, [queryScanners]);
+  React.useEffect(() => { if (queryTransferLogs) setTransferLogs(queryTransferLogs) }, [queryTransferLogs]);
+  React.useEffect(() => { if (queryProjectStorages) setProjectStorages(queryProjectStorages) }, [queryProjectStorages]);
 
   const loading = 
     isLoadingClients || isLoadingUsers || isLoadingRawProjects || isLoadingRawBooks || 
@@ -278,17 +321,19 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     }
   }, [queryClient, toast]);
 
-  const withMutation = async <T,>(action: () => Promise<T>, invalidateKeys?: (keyof typeof queryKeys)[], successMessage?: string): Promise<T | undefined> => {
+  const withMutation = async <T,>(action: () => Promise<T | string | void>, invalidateKeys?: (keyof typeof queryKeys)[], successMessage?: string): Promise<T | undefined> => {
     setIsMutating(true);
     try {
         const result = await action();
         if (invalidateKeys) {
             await Promise.all(invalidateKeys.map(key => queryClient.invalidateQueries({ queryKey: queryKeys[key] })));
         }
-        if (successMessage) {
+        if (typeof result === 'string') {
+            toast({ title: result });
+        } else if (successMessage) {
             toast({ title: successMessage });
         }
-        return result;
+        return result as T;
     } catch (error: any) {
         console.error("A mutation failed:", error);
         toast({ title: "Operation Failed", description: error.message, variant: "destructive" });
@@ -296,7 +341,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         setIsMutating(false);
     }
   };
-
 
   const login = async (username: string, password: string): Promise<User | null> => {
     const user = users.find(u => (u.username || '').toLowerCase() === (username || '').toLowerCase() && u.password === password);
@@ -332,13 +376,13 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   
   const regLastLogin = async (user: User) => {
     return withMutation(async () => {
-        const now = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
-        const response = await fetch(`/api/users/${user.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ lastLogin: now }),
-        });
-        if (!response.ok) throw new Error('Falha ao registar o último login');
+      const now = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
+      const response = await fetch(`/api/users/${user.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lastLogin: now }),
+      });
+      if(!response.ok) throw new Error('Failed to register last login');
     }, ['USERS']);
   };
 
@@ -393,7 +437,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   }, [currentUser, queryClient]);
 
   const documents: AppDocument[] = React.useMemo(() => {
-    if (!rawDocuments || !rawBooks || !statuses || !clients) return [];
     return rawDocuments.map(doc => {
         const book = rawBooks.find(b => b.id === doc.bookId);
         const bookStatus = statuses.find(s => s.id === book?.statusId)?.name || 'Unknown';
@@ -417,7 +460,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   }, [rawDocuments, rawBooks, statuses, clients]);
 
   const allEnrichedProjects: EnrichedProject[] = React.useMemo(() => {
-    if (!rawProjects || !clients || !rawBooks || !rawDocuments || !statuses || !transferLogs || !storages || !scanners) return [];
     const storageMap = new Map(storages.map(s => [s.id, s.nome]));
     const scannerDeviceMap = new Map(scanners.map(s => [s.id, s.nome]));
     const bookInfoMap = new Map<string, { storageName?: string, storageId?: string, scannerDeviceName?: string }>();
@@ -473,17 +515,15 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   }, [rawProjects, clients, rawBooks, rawDocuments, statuses, storages, transferLogs, users, scanners]);
   
   const enrichedBooks: EnrichedBook[] = React.useMemo(() => {
-    if (!allEnrichedProjects) return [];
-      return allEnrichedProjects.flatMap(p => p.books);
+    return allEnrichedProjects.flatMap(p => p.books);
   }, [allEnrichedProjects]);
   
   const enrichedAuditLogs: EnrichedAuditLog[] = React.useMemo(() => {
-    if (!rawAuditLogs || !users) return [];
-    return rawAuditLogs.map(log => {
+    return auditLogs.map(log => {
       const user = users.find(u => u.id === log.userId);
       return { ...log, user: user?.name || log.userId };
     })
-  }, [rawAuditLogs, users]);
+  }, [auditLogs, users]);
 
   const accessibleProjectsForUser = React.useMemo(() => {
     if (!currentUser) return [];
@@ -1953,26 +1993,25 @@ const addBookObservation = async (bookId: string, observation: string) => {
 
 
     const handlePullNextTask = React.useCallback(async (currentStageKey: string, userIdToAssign?: string) => {
-    await withMutation(async () => {
-        const assigneeId = userIdToAssign || currentUser?.id;
-        if (!assigneeId) throw new Error("Nenhum utilizador especificado para atribuição.");
-        const user = users.find(u => u.id === assigneeId);
-        if (!user) throw new Error("Utilizador atribuído não encontrado.");
-        
-        const workflowConfig = STAGE_CONFIG[currentStageKey];
-        if (!workflowConfig || !workflowConfig.assigneeRole) throw new Error("Fase inválida para puxar tarefas.");
-        
-        const availableBooks = await booksAvaiableInStorageLocalIp(currentStageKey);
+      return withMutation(async () => {
+          const assigneeId = userIdToAssign || currentUser?.id;
+          if (!assigneeId) throw new Error("Nenhum utilizador especificado para atribuição.");
+          const user = users.find(u => u.id === assigneeId);
+          if (!user) throw new Error("Utilizador atribuído não encontrado.");
+          
+          const workflowConfig = STAGE_CONFIG[currentStageKey];
+          if (!workflowConfig || !workflowConfig.assigneeRole) throw new Error("Fase inválida para puxar tarefas.");
+          
+          const availableBooks = await booksAvaiableInStorageLocalIp(currentStageKey);
 
-        if(!availableBooks || availableBooks.length === 0) {
-          toast({ title: "Sem Tarefas Disponíveis", description: "Não há livros não atribuídos na etapa anterior para os seus projetos.", variant: "default" });
-          return;
-        }
+          if(!availableBooks || availableBooks.length === 0) {
+            return "Não há livros não atribuídos na etapa anterior para os seus projetos.";
+          }
 
-        const bookToAssign = availableBooks[0];
+          const bookToAssign = availableBooks[0];
 
-        handleAssignUser(bookToAssign.id, assigneeId, workflowConfig.assigneeRole);
-    }, ['RAW_BOOKS'], "Tarefa Puxada com Sucesso");
+          handleAssignUser(bookToAssign.id, assigneeId, workflowConfig.assigneeRole);
+      }, ['RAW_BOOKS'], "Tarefa Puxada com Sucesso");
   }, [currentUser, users, handleAssignUser, toast, booksAvaiableInStorageLocalIp]);
 
   const scannerUsers = React.useMemo(() => users.filter(user => user.role === 'Scanning'), [users]);
@@ -1995,6 +2034,13 @@ const addBookObservation = async (bookId: string, observation: string) => {
     return documents.filter(d => d.bookId && bookIdsInScope.has(d.bookId));
   }, [documents, booksForContext]);
 
+  const enrichedAuditLogsWithUser = React.useMemo(() => {
+    return auditLogs.map(log => ({
+      ...log,
+      user: users.find(u => u.id === log.userId)?.name || log.userId,
+    }));
+  }, [auditLogs, users]);
+
 
   const value: AppContextType = { 
     loading, isMutating, processingBookIds, setIsMutating,
@@ -2004,7 +2050,7 @@ const addBookObservation = async (bookId: string, observation: string) => {
     projects: projectsForContext, 
     books: booksForContext, 
     documents: documentsForContext, 
-    auditLogs: enrichedAuditLogs,
+    auditLogs: enrichedAuditLogsWithUser,
     bookObservations,
     processingBatches, processingBatchItems, processingLogs,
     deliveryBatches, deliveryBatchItems,
@@ -2015,7 +2061,7 @@ const addBookObservation = async (bookId: string, observation: string) => {
     rejectionTags,
     storages,
     scanners,
-    rawBooks: rawBooks || [],
+    statuses,
     allProjects: allEnrichedProjects,
     accessibleProjectsForUser,
     selectedProjectId,
@@ -2069,4 +2115,3 @@ export function useAppContext() {
   }
   return context;
 }
-
