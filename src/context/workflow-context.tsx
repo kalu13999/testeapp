@@ -1,10 +1,11 @@
 
+
 "use client"
 
 import * as React from 'react';
 import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions, ProjectWorkflows, RejectionTag, DocumentStatus, ProcessingBatch, ProcessingBatchItem, Storage, LogTransferencia, ProjectStorage, Scanner, DeliveryBatch, DeliveryBatchItem, BookObservation } from '@/lib/data';
 import { useToast } from "@/hooks/use-toast";
-import { WORKFLOW_SEQUENCE, STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage } from '@/lib/workflow-config';
+import { WORKFLOW_SEQUENCE, STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage, StageConfigItem } from '@/lib/workflow-config';
 import { UserFormValues } from '@/app/(app)/users/user-form';
 import { StorageFormValues } from '@/app/(app)/admin/general-configs/storage-form';
 import { ScannerFormValues } from '@/app/(app)/admin/general-configs/scanner-form';
@@ -15,6 +16,7 @@ import { useRawProjects } from '@/queries/useRawProjects'
 import { useRawBooks } from '@/queries/useRawBooks'
 import { useRawDocuments } from '@/queries/useRawDocuments'
 import { useAuditLogs } from '@/queries/useAuditLogs'
+import { useBookObservations } from '@/queries/useBookObservations'
 import { useProcessingBatches } from '@/queries/useProcessingBatches'
 import { useProcessingBatchItems } from '@/queries/useProcessingBatchItems'
 import { useProcessingLogs } from '@/queries/useProcessingLogs'
@@ -29,8 +31,7 @@ import { useTransferLogs } from '@/queries/useTransferLogs'
 import { useProjectStorages } from '@/queries/useProjectStorages'
 import { useDeliveryBatches } from '@/queries/useDeliveryBatches'
 import { useDeliveryBatchItems } from '@/queries/useDeliveryBatchItems'
-import { useBookObservations } from '@/queries/useBookObservations'
-import { useQueryClient, useMutation } from '@tanstack/react-query';
+import { useQueryClient, useMutation, type QueryKey } from '@tanstack/react-query';
 import * as queryKeys from '@/queries/keys';
 
 
@@ -184,7 +185,7 @@ type AppContextType = {
   addPageToBook: (bookId: string, position: number) => Promise<void>;
   deletePageFromBook: (pageId: string, bookId: string) => Promise<void>;
   updateDocumentFlag: (docId: string, flag: AppDocument['flag'], comment?: string) => Promise<void>;
-  handlePullNextTask: (currentStage: string, userIdToAssign?: string) => Promise<string | void>;
+  handlePullNextTask: (currentStage: string, userIdToAssign?: string) => Promise<void>;
   booksAvaiableInStorageLocalIp: (currentStageKey: string) => Promise<EnrichedBook[] | undefined>;
   logAction: (action: string, details: string, ids: { bookId?: string; documentId?: string; userId?: string; }) => Promise<void>;
   moveBookFolder: (bookName: string, fromStatusName: string, toStatusName: string) => Promise<boolean>;
@@ -207,12 +208,14 @@ const openLocalApp = (protocol: string, data: Record<string, string>) => {
   }, 100);
 };
 
-type MutationVariables<TData> = {
-    mutationFn: () => Promise<TData>;
-    optimisticUpdateFn?: (queryClient: any, variables: any) => { previousData: any };
+type MutationVariables<TData, TVariables> = {
+    mutationFn: (vars: TVariables) => Promise<TData | string | void>;
+    optimisticUpdateFn?: (queryClient: any, variables: TVariables, context: any) => void;
+    getPreviousDataFn?: (queryClient: any) => any;
     successMessage?: string;
     invalidateKeys?: (keyof typeof queryKeys)[];
-};
+} & TVariables;
+
 
 export function AppProvider({ children }: { children: React.ReactNode; }) {
   const [isMutating, setIsMutating] = React.useState(false);
@@ -245,7 +248,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const { data: scanners, isLoading: isLoadingScanners } = useScanners();
   const { data: transferLogs, isLoading: isLoadingTransferLogs } = useTransferLogs();
   const { data: projectStorages, isLoading: isLoadingProjectStorages } = useProjectStorages();
-
+  
   const loadingPage = 
     isLoadingClients || isLoadingUsers || isLoadingRawProjects || isLoadingRawBooks || 
     isLoadingRawDocuments || isLoadingAuditLogs || isLoadingBookObservations || isLoadingProcessingBatches ||
@@ -256,7 +259,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
   // Restore current user on initial load
   React.useEffect(() => {
-    if (!isLoadingUsers) {
+    if (!isLoadingUsers && users) {
       const storedUserId = localStorage.getItem('flowvault_userid');
       if (storedUserId) {
         const user = users.find(u => u.id === storedUserId);
@@ -268,6 +271,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
           }
         }
       }
+      setIsPageLoading(false); 
     }
   }, [isLoadingUsers, users]);
   
@@ -288,23 +292,24 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   }, [queryClient, toast]);
 
   const mutation = useMutation({
-    mutationFn: async ({ mutationFn }: { mutationFn: () => Promise<any> }) => {
+    mutationFn: async (variables: { mutationFn: () => Promise<any> }) => {
       setIsMutating(true);
-      return mutationFn();
+      return variables.mutationFn();
     },
-    onMutate: async ({ optimisticUpdateFn, variables }: { optimisticUpdateFn: any, variables: any }) => {
-      if (optimisticUpdateFn) {
+    onMutate: async (variables: any) => {
+      if (variables.optimisticUpdateFn) {
         await queryClient.cancelQueries();
-        const { previousData } = optimisticUpdateFn(queryClient, variables);
+        const previousData = variables.getPreviousDataFn ? variables.getPreviousDataFn(queryClient) : undefined;
+        variables.optimisticUpdateFn(queryClient, variables, previousData);
         return { previousData };
       }
       return {};
     },
-    onError: (error: any, variables, context: any) => {
-      toast({ title: "Operation Failed", description: error.message, variant: "destructive" });
-      if (context?.previousData) {
-        variables.optimisticUpdateFn(queryClient, context.previousData, true); // Revert
+    onError: (error: any, variables: any, context: any) => {
+      if (context?.previousData && variables.optimisticUpdateFn) {
+        variables.optimisticUpdateFn(queryClient, variables, context.previousData);
       }
+      toast({ title: "Operation Failed", description: error.message, variant: "destructive" });
     },
     onSuccess: (data, variables: any) => {
       if (typeof data === 'string') {
@@ -313,7 +318,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
           toast({ title: variables.successMessage });
       }
     },
-    onSettled: (data, error, variables) => {
+    onSettled: (data, error, variables: any) => {
       if (variables.invalidateKeys) {
         variables.invalidateKeys.forEach((key: keyof typeof queryKeys) => {
           queryClient.invalidateQueries({ queryKey: queryKeys[key] });
@@ -324,46 +329,17 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   });
 
   const withMutation = React.useCallback(<TData, TVariables>(
-    variables: TVariables & {
-      mutationFn: (vars: TVariables) => Promise<TData | string | void>;
-      optimisticUpdateFn?: (queryClient: any, variables: TVariables, oldData: any) => void;
-      getPreviousDataFn?: (queryClient: any) => any;
-      successMessage?: string;
-      invalidateKeys?: (keyof typeof queryKeys)[];
-    }
+    options: MutationVariables<TData, TVariables>
   ) => {
+    const { mutationFn, ...rest } = options;
     return mutation.mutate({
-      ...variables,
-      mutationFn: async () => {
-          const result = await variables.mutationFn(variables);
-          return result;
-      },
-      onMutate: async () => {
-        await queryClient.cancelQueries();
-        const previousData = variables.getPreviousDataFn ? variables.getPreviousDataFn(queryClient) : undefined;
-        if (variables.optimisticUpdateFn) {
-          variables.optimisticUpdateFn(queryClient, variables, previousData);
-        }
-        return { previousData };
-      },
-      onError: (err: any, vars: any, context: any) => {
-        if (context?.previousData && variables.optimisticUpdateFn) {
-            variables.optimisticUpdateFn(queryClient, vars, context.previousData);
-        }
-        toast({ title: "Operation Failed", description: err.message, variant: "destructive" });
-      },
-      onSuccess: (data: any, vars: any) => {
-          if (typeof data === 'string') {
-              toast({ title: data });
-          } else if (vars.successMessage) {
-              toast({ title: vars.successMessage });
-          }
-      },
+        mutationFn: () => mutationFn(rest as TVariables),
+        ...rest,
     });
-  }, [mutation, queryClient, toast]);
+  }, [mutation]);
 
   const login = async (username: string, password: string): Promise<User | null> => {
-    const user = users.find(u => (u.username || '').toLowerCase() === (username || '').toLowerCase() && u.password === password);
+    const user = users?.find(u => (u.username || '').toLowerCase() === (username || '').toLowerCase() && u.password === password);
     if (user) {
       if (user.status === 'disabled') {
         toast({title: "Login Falhou", description: "A sua conta está desativada. Por favor, contacte um administrador.", variant: "destructive"});
@@ -519,8 +495,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     return rawProjects.map(project => {
         const client = clients.find(c => c.id === project.clientId);
         
-        const projectBooks = rawBooks.filter(b => b.projectId === project.id).map(book => {
-            const bookDocuments = rawDocuments.filter(d => d.bookId === book.id);
+        const projectBooks = (rawBooks || []).filter(b => b.projectId === project.id).map(book => {
+            const bookDocuments = (rawDocuments || []).filter(d => d.bookId === book.id);
             const bookProgress = book.expectedDocuments > 0 ? (bookDocuments.length / book.expectedDocuments) * 100 : 0;
             const extraInfo = bookInfoMap.get(book.id);
             return {
@@ -557,7 +533,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   }, [allEnrichedProjects]);
 
   const accessibleProjectsForUser = React.useMemo(() => {
-    if (!currentUser) return [];
+    if (!currentUser || !allEnrichedProjects) return [];
     if (currentUser.clientId) {
       return allEnrichedProjects.filter(p => p.clientId === currentUser.clientId);
     }
@@ -570,7 +546,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
 
   const addClient = async (clientData: Omit<Client, 'id'>) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/clients', {
             method: 'POST',
@@ -587,7 +563,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const updateClient = async (clientId: string, clientData: Partial<Omit<Client, 'id'>>) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/clients/${clientId}`, {
             method: 'PUT',
@@ -604,7 +580,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const deleteClient = async (clientId: string) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const clientToDelete = clients.find(c => c.id === clientId);
         const response = await fetch(`/api/clients/${clientId}`, { method: 'DELETE' });
@@ -615,7 +591,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             }
             throw new Error('Falha ao eliminar cliente');
         }
-        if (selectedProjectId && rawProjects.find(p => p.id === selectedProjectId)?.clientId === clientId) {
+        if (selectedProjectId && rawProjects?.find(p => p.id === selectedProjectId)?.clientId === clientId) {
           setSelectedProjectId(null);
         }
         logAction('Client Deleted', `Client "${clientToDelete?.name}" was deleted.`, {});
@@ -626,7 +602,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
   
   const addUser = async (userData: UserFormValues) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/users', {
             method: 'POST',
@@ -646,7 +622,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const updateUser = async (userId: string, userData: Partial<User>) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/users/${userId}`, {
             method: 'PUT',
@@ -666,7 +642,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     const user = users.find(u => u.id === userId);
     if (!user || user.role === 'System') return;
     const newStatus = user.status === 'active' ? 'disabled' : 'active';
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/users/${userId}`, {
             method: 'PATCH',
@@ -684,7 +660,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const deleteUser = async (userId: string) => {
     const userToDelete = users.find(u => u.id === userId);
     if (!userToDelete || userToDelete.role === 'System') return;
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Falha ao eliminar utilizador');
@@ -716,7 +692,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
   
   const addProject = async (projectData: Omit<Project, 'id'>) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/projects', {
             method: 'POST',
@@ -733,7 +709,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
   
   const updateProject = async (projectId: string, projectData: Partial<Omit<Project, 'id'>>) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/projects/${projectId}`, {
             method: 'PUT',
@@ -749,9 +725,9 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const deleteProject = async (projectId: string) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
-        const projectToDelete = rawProjects.find(p => p.id === projectId);
+        const projectToDelete = rawProjects?.find(p => p.id === projectId);
         const response = await fetch(`/api/projects/${projectId}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Falha ao eliminar projeto');
         if (selectedProjectId === projectId) setSelectedProjectId(null);
@@ -763,9 +739,9 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const addBook = async (projectId: string, bookData: Omit<RawBook, 'id' | 'projectId' | 'statusId'>) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
-        const statusId = statuses.find(s => s.name === 'Pending Shipment')?.id;
+        const statusId = statuses?.find(s => s.name === 'Pending Shipment')?.id;
         if (!statusId) throw new Error("Não foi possível encontrar o estado 'Envio Pendente'.");
         const response = await fetch('/api/books', {
             method: 'POST',
@@ -782,7 +758,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
   
   const updateBook = async (bookId: string, bookData: Partial<Omit<RawBook, 'id' | 'projectId' | 'statusId'>>) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/books/${bookId}`, {
             method: 'PUT',
@@ -799,9 +775,9 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const deleteBook = async (bookId: string) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
-        const bookToDelete = rawBooks.find(b => b.id === bookId);
+        const bookToDelete = rawBooks?.find(b => b.id === bookId);
         const response = await fetch(`/api/books/${bookId}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Falha ao eliminar livro');
         logAction('Book Deleted', `Book "${bookToDelete?.name}" and its pages were deleted.`, { bookId });
@@ -812,7 +788,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const importBooks = async (projectId: string, newBooks: BookImport[]) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/books', {
             method: 'POST',
@@ -830,10 +806,10 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
   const addBookObservation = async (bookId: string, observation: string) => {
     if (!currentUser) return;
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
-        const book = rawBooks.find(b => b.id === bookId);
-        const bookStatus = statuses.find(s => s.id === book?.statusId)?.name;
+        const book = rawBooks?.find(b => b.id === bookId);
+        const bookStatus = statuses?.find(s => s.id === book?.statusId)?.name;
 
         const response = await fetch('/api/book-observations', {
             method: 'POST',
@@ -856,7 +832,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const addRole = (roleName: string, rolePermissions: string[]) => {
     withMutation({
       mutationFn: async () => {
-      if (roles.includes(roleName)) {
+      if (roles?.includes(roleName)) {
         toast({ title: "Perfil Já Existe", description: "Já existe um perfil com este nome.", variant: "destructive" });
         return;
       }
@@ -921,7 +897,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const addRejectionTag = async (tagData: Omit<RejectionTag, 'id' | 'clientId'>, clientId: string) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         if (!clientId) throw new Error("ID do Cliente está ausente");
         const response = await fetch('/api/rejection-tags', {
@@ -931,7 +907,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         });
         if (!response.ok) throw new Error('Falha ao criar tag de rejeição');
         const newTag = await response.json();
-        const client = clients.find(c => c.id === clientId);
+        const client = clients?.find(c => c.id === clientId);
         logAction('Rejection Tag Created', `Tag "${newTag.label}" criada para o cliente "${client?.name}".`, {});
       },
       invalidateKeys: ['REJECTION_TAGS'],
@@ -940,7 +916,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const updateRejectionTag = async (tagId: string, tagData: Partial<Omit<RejectionTag, 'id' | 'clientId'>>) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/rejection-tags/${tagId}`, {
             method: 'PUT',
@@ -957,9 +933,9 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const deleteRejectionTag = async (tagId: string) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
-        const tag = rejectionTags.find(t => t.id === tagId);
+        const tag = rejectionTags?.find(t => t.id === tagId);
         const response = await fetch(`/api/rejection-tags/${tagId}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Falha ao eliminar etiqueta de rejeição');
         logAction('Rejection Tag Deleted', `Tag "${tag?.label}" deleted.`, {});
@@ -970,7 +946,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const addStorage = async (storageData: StorageFormValues) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/storages', {
             method: 'POST',
@@ -987,7 +963,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const updateStorage = async (storageId: string, storageData: StorageFormValues) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/storages/${storageId}`, {
             method: 'PUT',
@@ -1004,9 +980,9 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const deleteStorage = async (storageId: string) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
-        const storage = storages.find(s => s.id === Number(storageId));
+        const storage = storages?.find(s => s.id === Number(storageId));
         const response = await fetch(`/api/storages/${storageId}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Falha ao eliminar armazenamento');
         logAction('Storage Deleted', `Storage location "${storage?.nome}" deleted.`, {});
@@ -1017,7 +993,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
   
   const addScanner = async (scannerData: ScannerFormValues) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/scanners', {
             method: 'POST',
@@ -1034,7 +1010,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const updateScanner = async (scannerId: number, scannerData: ScannerFormValues) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/scanners/${scannerId}`, {
             method: 'PUT',
@@ -1051,9 +1027,9 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const deleteScanner = async (scannerId: number) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
-        const scanner = scanners.find(s => s.id === scannerId);
+        const scanner = scanners?.find(s => s.id === scannerId);
         const response = await fetch(`/api/scanners/${scannerId}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Falha ao eliminar scanner');
         logAction('Scanner Deleted', `Scanner "${scanner?.nome}" deleted.`, {});
@@ -1064,7 +1040,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
   
   const addProjectStorage = async (associationData: Omit<ProjectStorage, 'projectId'> & {projectId: string}) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/project-storages', {
             method: 'POST',
@@ -1080,7 +1056,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const updateProjectStorage = async (associationData: Omit<ProjectStorage, 'projectId'> & {projectId: string}) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/project-storages', {
             method: 'PUT',
@@ -1096,7 +1072,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const deleteProjectStorage = async (projectId: string, storageId: number) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/project-storages', {
             method: 'DELETE',
@@ -1113,9 +1089,9 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
 
   const updateDocument = async (docId: string, data: Partial<AppDocument>) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
-        const doc = rawDocuments.find(d => d.id === docId);
+        const doc = rawDocuments?.find(d => d.id === docId);
         if (!doc) return;
         const response = await fetch(`/api/documents/${docId}`, {
             method: 'PATCH',
@@ -1141,7 +1117,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const updateDocumentFlag = async (docId: string, flag: AppDocument['flag'], comment?: string) => await updateDocument(docId, { flag, flagComment: flag ? comment : undefined });
   
   const addPageToBook = async (bookId: string, position: number) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const book = enrichedBooks.find(b => b.id === bookId);
         if (!book) return;
@@ -1167,9 +1143,9 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   }
 
   const deletePageFromBook = async (pageId: string, bookId: string) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
-          const page = rawDocuments.find(p => p.id === pageId);
+          const page = rawDocuments?.find(p => p.id === pageId);
           const response = await fetch(`/api/documents/${pageId}`, { method: 'DELETE' });
           if (!response.ok) throw new Error('Falha ao eliminar página');
           logAction('Page Deleted', `Page "${page?.name}" was deleted from book.`, { bookId, documentId: pageId });
@@ -1182,7 +1158,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const updateBookStatus = React.useCallback(async (
     bookId: string, newStatusName: string, additionalUpdates: Partial<RawBook> = {}
   ) => {
-    const statusId = statuses.find(s => s.name === newStatusName)?.id;
+    const statusId = statuses?.find(s => s.name === newStatusName)?.id;
     if (!statusId) throw new Error(`Status ${newStatusName} not found.`);
     const response = await fetch(`/api/books/${bookId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ statusId, ...additionalUpdates }) });
     if (!response.ok) {
@@ -1192,8 +1168,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   }, [statuses]);
 
   const moveBookFolder = React.useCallback(async (bookName: string, fromStatusName: string, toStatusName: string): Promise<boolean> => {
-    const fromStatus = statuses.find(s => s.name === fromStatusName);
-    const toStatus = statuses.find(s => s.name === toStatusName);
+    const fromStatus = statuses?.find(s => s.name === fromStatusName);
+    const toStatus = statuses?.find(s => s.name === toStatusName);
     if (!fromStatus || !toStatus) {
         toast({ title: "Erro de Configuração do Fluxo de Trabalho", variant: "destructive" });
         return false;
@@ -1221,8 +1197,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   }, [statuses, toast]);
   
   const moveTifsBookFolder = React.useCallback(async (bookName: string, fromStatusName: string, toStatusName: string): Promise<boolean> => {
-    const fromStatus = statuses.find(s => s.name === fromStatusName);
-    const toStatus = statuses.find(s => s.name === toStatusName);
+    const fromStatus = statuses?.find(s => s.name === fromStatusName);
+    const toStatus = statuses?.find(s => s.name === toStatusName);
     if (!fromStatus || !toStatus || !fromStatus.folderName || !toStatus.folderName) return true; 
     
     const apiUrl = process.env.NEXT_PUBLIC_WORKFLOW_API_URL;
@@ -1247,8 +1223,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
 
   const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatusName: string, toStatusName: string): Promise<boolean> => {
-    const fromStatus = statuses.find(s => s.name === fromStatusName);
-    const toStatus = statuses.find(s => s.name === toStatusName);
+    const fromStatus = statuses?.find(s => s.name === fromStatusName);
+    const toStatus = statuses?.find(s => s.name === toStatusName);
     if (!fromStatus || !toStatus || !fromStatus.folderName || !toStatus.folderName) return true; 
     
     const apiUrl = process.env.NEXT_PUBLIC_WORKFLOW_API_URL;
@@ -1287,7 +1263,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const handleConfirmReception = (bookId: string) => {
     withMutation({
       mutationFn: async () => {
-        const book = rawBooks.find(b => b.id === bookId);
+        const book = rawBooks?.find(b => b.id === bookId);
         if (!book) return;
         const moveResult = await moveBookFolder(book.name, 'In Transit', 'Received');
         if (moveResult) {
@@ -1305,8 +1281,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     try {
         await withMutation({
           mutationFn: async () => {
-            const book = rawBooks.find(b => b.id === bookId);
-            const project = rawProjects.find(p => p.id === book?.projectId);
+            const book = rawBooks?.find(b => b.id === bookId);
+            const project = rawProjects?.find(p => p.id === book?.projectId);
             if (!book || !project) throw new Error("Livro ou Projeto não encontrado");
 
             const response = await fetch(`/api/books/${bookId}/complete-scan`, {
@@ -1316,7 +1292,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             });
             if (!response.ok) throw new Error(await response.text());
             
-            const currentStatusName = statuses.find(s => s.id === book.statusId)?.name || 'Unknown';
+            const currentStatusName = statuses?.find(s => s.id === book.statusId)?.name || 'Unknown';
             const logMessage = findStageKeyFromStatus(currentStatusName) === 'already-received' ? 'Reception & Scan Skipped' : 'Scanning Finished';
             logAction(logMessage, `${payload.actualPageCount} pages created. Book "${book.name}" moved to Storage.`, { bookId });
           },
@@ -1331,8 +1307,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const handleMoveBookToNextStage = React.useCallback(async (bookId: string, currentStatus: string): Promise<boolean> => {
-    const book = rawBooks.find(b => b.id === bookId);
-    if (!book || !book.projectId) return false;
+    const book = rawBooks?.find(b => b.id === bookId);
+    if (!book || !book.projectId || !projectWorkflows || !statuses) return false;
 
     const workflow = projectWorkflows[book.projectId] || [];
     const currentStageKey = findStageKeyFromStatus(currentStatus);
@@ -1355,16 +1331,16 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const handleAssignUser = (bookId: string, userId: string, role: 'scanner' | 'indexer' | 'qc') => {
     withMutation({
       mutationFn: async () => {
-        const user = users.find(u => u.id === userId);
-        const book = rawBooks.find(b => b.id === bookId);
-        if (!user || !book || !book.projectId) return;
+        const user = users?.find(u => u.id === userId);
+        const book = rawBooks?.find(b => b.id === bookId);
+        if (!user || !book || !book.projectId || !statuses) return;
 
         const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
         if (!currentStatusName) return;
         const currentStageKey = findStageKeyFromStatus(currentStatusName);
         if (!currentStageKey) return;
         
-        const nextStageKey = getNextEnabledStage(currentStageKey, projectWorkflows[book.projectId] || []);
+        const nextStageKey = getNextEnabledStage(currentStageKey, projectWorkflows?.[book.projectId] || []);
         if (!nextStageKey) return;
         const newStatusName = STAGE_CONFIG[nextStageKey]?.dataStatus || 'Unknown';
         if(newStatusName === 'Unknown') return;
@@ -1388,8 +1364,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const reassignUser = (bookId: string, newUserId: string, role: 'scanner' | 'indexer' | 'qc') => {
     withMutation({
       mutationFn: async () => {
-        const book = rawBooks.find(b => b.id === bookId);
-        const newUser = users.find(u => u.id === newUserId);
+        const book = rawBooks?.find(b => b.id === bookId);
+        const newUser = users?.find(u => u.id === newUserId);
         if (!book || !newUser) return;
         const updateField: 'scannerUserId' | 'indexerUserId' | 'qcUserId' = `${role}UserId`;
         await updateBook(bookId, { [updateField]: newUserId });
@@ -1417,13 +1393,13 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const openAppValidateScan = (bookId: string) => {
     withMutation({
       mutationFn: async () => {
-      const book = rawBooks.find(b => b.id === bookId);
+      const book = rawBooks?.find(b => b.id === bookId);
       if (!book || !book.projectId || !currentUser) return;
 
       const localIP = await getLocalIP();
-      const matchingScanners = scanners.filter(s => s.ip === localIP);
+      const matchingScanners = scanners?.filter(s => s.ip === localIP);
 
-      if (matchingScanners.length === 0) {
+      if (!matchingScanners || matchingScanners.length === 0) {
         toast({
           title: "Scanner Não Encontrado",
           description: `Não foi possível encontrar nenhum scanner para o seu IP atual ${localIP}.`,
@@ -1446,8 +1422,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const handleStartTask = (bookId: string, role: 'scanner' | 'indexer' | 'qc') => {
     withMutation({
       mutationFn: async () => {
-        const book = rawBooks.find(b => b.id === bookId);
-        if (!book || !book.projectId || !currentUser) return;
+        const book = rawBooks?.find(b => b.id === bookId);
+        if (!book || !book.projectId || !currentUser || !statuses || !rawProjects || !transferLogs || !storages || !scanners) return;
         
         let updates: Partial<RawBook> = {};
         let newStatusName = '';
@@ -1464,7 +1440,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         } else {
             const currentStageKey = findStageKeyFromStatus(currentStatusName);
             if (!currentStageKey) return;
-            const nextStageKey = getNextEnabledStage(currentStageKey, projectWorkflows[book.projectId] || []);
+            const nextStageKey = getNextEnabledStage(currentStageKey, projectWorkflows?.[book.projectId] || []);
             if (!nextStageKey) return;
             newStatusName = STAGE_CONFIG[nextStageKey]?.dataStatus || 'Unknown';
             if(newStatusName === 'Unknown') return;
@@ -1523,7 +1499,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
       let msgfinal = "";
       if(stage === 'Scanning Started'){
-        const book = rawBooks.find(b => b.id === bookId);
+        const book = rawBooks?.find(b => b.id === bookId);
         const apiUrl = process.env.NEXT_PUBLIC_WORKFLOW_API_URL;
         const localIP = await getLocalIP();
         const response = await fetch(`${apiUrl}/api/scan/count-tifs`, {
@@ -1540,7 +1516,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       const update = updateFields[stage];
       if (update) {
         await updateBook(bookId, update);
-        const book = rawBooks.find(b => b.id === bookId);
+        const book = rawBooks?.find(b => b.id === bookId);
         logAction('Task Completed', `Task "${stage}" completed for book "${book?.name}".`, { bookId });
       }
       return msgfinal;
@@ -1560,7 +1536,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       const update = updateFields[stage];
       if (update) {
         await updateBook(bookId, update);
-        const book = rawBooks.find(b => b.id === bookId);
+        const book = rawBooks?.find(b => b.id === bookId);
         logAction('Task Completion Cancelled', `Task "${stage}" cancelled for book "${book?.name}".`, { bookId });
       }
     }, invalidateKeys: ['RAW_BOOKS'], successMessage: "Tarefa em Espera"});
@@ -1569,8 +1545,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const handleCancelTask = (bookId: string, currentStatus: string) => {
     withMutation({
       mutationFn: async () => {
-      const book = rawBooks.find(b => b.id === bookId);
-      if (!book) return;
+      const book = rawBooks?.find(b => b.id === bookId);
+      if (!book || !statuses) return;
       const updates: { [key: string]: { bookStatus: string, logMsg: string, clearFields: Partial<RawBook> } } = {
         'Scanning Started': { bookStatus: 'To Scan', logMsg: 'Scanning', clearFields: { scanStartTime: undefined } },
         'Indexing Started': { bookStatus: 'To Indexing', logMsg: 'Indexing', clearFields: { indexingStartTime: undefined } },
@@ -1590,9 +1566,9 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const handleAdminStatusOverride = (bookId: string, newStatusName: string, reason: string) => {
     withMutation({
       mutationFn: async () => {
-      const book = rawBooks.find(b => b.id === bookId);
-      const newStatus = statuses.find(s => s.name === newStatusName);
-      if (!book || !newStatus) return;
+      const book = rawBooks?.find(b => b.id === bookId);
+      const newStatus = statuses?.find(s => s.name === newStatusName);
+      if (!book || !newStatus || !statuses) return;
       const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
       if (!currentStatusName) return;
       const newStageKey = findStageKeyFromStatus(newStatus.name);
@@ -1627,7 +1603,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         const fromStatusName = 'Ready for Processing';
         const toStatusName = 'In Processing';
         for (const bookId of bookIds) {
-          const book = rawBooks.find(b => b.id === bookId);
+          const book = rawBooks?.find(b => b.id === bookId);
           if (book) {
             const moveResult = await moveBookFolder(book.name, fromStatusName, toStatusName);
             if (!moveResult) throw new Error(`Falha ao mover a pasta do livro "${book.name}". Início do lote abortado.`);
@@ -1642,10 +1618,10 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         if (!response.ok) throw new Error('Falha ao criar lote de processamento');
         const newBatch = await response.json();
         
-        const storage = storages.find(s => String(s.id) === storageId);
+        const storage = storages?.find(s => String(s.id) === storageId);
         if (!storage) throw new Error(`Armazenamento com ID ${storageId} não encontrado.`);
 
-        const firstBook = rawBooks.find(b => b.id === bookIds[0]);
+        const firstBook = rawBooks?.find(b => b.id === bookIds[0]);
         if (!firstBook) throw new Error("Não foi possível encontrar o livro para determinar o ID do projeto.");
         const projectId = firstBook.projectId;
 
@@ -1669,19 +1645,19 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const failureProcessingBatch = async (batchId: string, storageId: string) => {
     withMutation({
       mutationFn: async () => {
-        const batch = processingBatches.find(b => b.id === batchId);
+        const batch = processingBatches?.find(b => b.id === batchId);
         if (!batch || !currentUser) throw new Error("Lote ou utilizador não encontrado.");
         
         await logAction('Processing Batch Retry', `User retrying failed batch ${batch.id}.`, { userId: currentUser.id });
         await logProcessingEvent(batch.id, `User ${currentUser.name} initiated a retry for this failed batch.`);
         
-        const storage = storages.find(s => String(s.id) === storageId);
+        const storage = storages?.find(s => String(s.id) === storageId);
         if (!storage) throw new Error(`Armazenamento com ID ${storageId} não encontrado.`);
 
-        const firstItemInBatch = processingBatchItems.find(item => item.batchId === batchId);
+        const firstItemInBatch = processingBatchItems?.find(item => item.batchId === batchId);
         if (!firstItemInBatch) throw new Error("Não foi possível encontrar itens para este lote.");
         
-        const book = rawBooks.find(b => b.id === firstItemInBatch.bookId);
+        const book = rawBooks?.find(b => b.id === firstItemInBatch.bookId);
         if (!book) throw new Error(`Não foi possível encontrar o livro com ID ${firstItemInBatch.bookId}.`);
         
         openLocalApp('rfs-processa-app', {
@@ -1701,10 +1677,10 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const completeProcessingBatch = async (batchId: string) => {
     withMutation({
       mutationFn: async () => {
-        const batch = processingBatches.find(b => b.id === batchId);
+        const batch = processingBatches?.find(b => b.id === batchId);
         if (!batch) return;
         
-        const itemsInBatch = processingBatchItems.filter(i => i.batchId === batchId);
+        const itemsInBatch = (processingBatchItems || []).filter(i => i.batchId === batchId);
         const bookIdsInBatch = itemsInBatch.map(i => i.bookId);
 
         const response = await fetch(`/api/processing-batches/${batchId}`, {
@@ -1750,7 +1726,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       const failedBooks: string[] = [];
   
       for (const batchId of batchIds) {
-        const itemsInBatch = processingBatchItems.filter(i => i.batchId === batchId);
+        const itemsInBatch = (processingBatchItems || []).filter(i => i.batchId === batchId);
         for (const item of itemsInBatch) {
           const moveResult = await handleMoveBookToNextStage(item.bookId, 'Processed');
           
@@ -1766,7 +1742,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
           if (!moveResult) {
             allSucceeded = false;
-            const book = rawBooks.find(b => b.id === item.bookId);
+            const book = rawBooks?.find(b => b.id === item.bookId);
             if (book) {
               failedBooks.push(book.name);
               logAction('Final QC Failed', `Book "${book.name}" failed to move to Final QC.`, { bookId: item.bookId });
@@ -1808,9 +1784,9 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         
         if (status === 'rejected') {
           await updateBook(bookId, { rejectionReason: reason });
-          logAction('Rejection Marked', `Book "${rawBooks.find(b => b.id === bookId)?.name}" marked as rejected. Reason: ${reason}`, { bookId });
+          logAction('Rejection Marked', `Book "${rawBooks?.find(b => b.id === bookId)?.name}" marked as rejected. Reason: ${reason}`, { bookId });
         } else {
-          const book = rawBooks.find(b => b.id === bookId);
+          const book = rawBooks?.find(b => b.id === bookId);
           if (book?.rejectionReason) {
             await updateBook(bookId, { rejectionReason: null });
           }
@@ -1827,11 +1803,11 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       mutationFn: async () => {
         if (!currentUser) throw new Error("Utilizador não autenticado");
         
-        const itemsInBatch = deliveryBatchItems.filter(item => item.deliveryId === deliveryId);
+        const itemsInBatch = (deliveryBatchItems || []).filter(item => item.deliveryId === deliveryId);
 
         for (const item of itemsInBatch) {
-            const book = rawBooks.find(b => b.id === item.bookId);
-            if (!book) continue;
+            const book = rawBooks?.find(b => b.id === item.bookId);
+            if (!book || !statuses) continue;
             const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
             if (!currentStatusName) continue;
             
@@ -1876,7 +1852,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const approveBatch = async (deliveryId: string) => {
     withMutation({
       mutationFn: async () => {
-        const itemsToApprove = deliveryBatchItems.filter(item => item.deliveryId === deliveryId && item.status === 'pending');
+        const itemsToApprove = (deliveryBatchItems || []).filter(item => item.deliveryId === deliveryId && item.status === 'pending');
         for (const item of itemsToApprove) {
             await setProvisionalDeliveryStatus(item.id, item.bookId, 'approved');
         }
@@ -1890,9 +1866,9 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const handleFinalize = (bookId: string) => {
     withMutation({
       mutationFn: async () => {
-        const book = rawBooks.find(b => b.id === bookId);
-        if (!book || !book.projectId) return;
-        const workflow = projectWorkflows[book.projectId] || [];
+        const book = rawBooks?.find(b => b.id === bookId);
+        if (!book || !book.projectId || !statuses) return;
+        const workflow = projectWorkflows?.[book.projectId] || [];
         const nextStageKey = getNextEnabledStage('finalized', workflow) || 'archive';
         const newStatus = STAGE_CONFIG[nextStageKey]?.dataStatus || 'Archived';
         const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
@@ -1912,9 +1888,9 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const handleMarkAsCorrected = (bookId: string) => {
     withMutation({
       mutationFn: async () => {
-        const book = rawBooks.find(b => b.id === bookId);
-        if (!book || !book.projectId) return;
-        const workflow = projectWorkflows[book.projectId] || [];
+        const book = rawBooks?.find(b => b.id === bookId);
+        if (!book || !book.projectId || !statuses) return;
+        const workflow = projectWorkflows?.[book.projectId] || [];
         const nextStageKey = getNextEnabledStage('client-rejections', workflow) || 'corrected';
         const newStatus = STAGE_CONFIG[nextStageKey]?.dataStatus || 'Corrected';
         const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
@@ -1934,8 +1910,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const handleResubmit = (bookId: string, targetStage: string) => {
     withMutation({
       mutationFn: async () => {
-        const book = rawBooks.find(b => b.id === bookId);
-        if (!book) return;
+        const book = rawBooks?.find(b => b.id === bookId);
+        if (!book || !statuses) return;
         const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
         if (!currentStatusName) return;
         const moveResult = await moveBookFolder(book.name, currentStatusName, targetStage);
@@ -1952,8 +1928,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     const handleResubmitCopyTifs = (bookId: string, targetStage: string) => {
     withMutation({
       mutationFn: async () => {
-        const book = rawBooks.find(b => b.id === bookId);
-        if (!book) return;
+        const book = rawBooks?.find(b => b.id === bookId);
+        if (!book || !statuses) return;
         const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
         if (!currentStatusName) return;
         const moveResult = await copyTifsBookFolder(book.name, currentStatusName, targetStage);
@@ -1971,8 +1947,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     const handleResubmitMoveTifs = (bookId: string, targetStage: string) => {
     withMutation({
       mutationFn: async () => {
-        const book = rawBooks.find(b => b.id === bookId);
-        if (!book) return;
+        const book = rawBooks?.find(b => b.id === bookId);
+        if (!book || !statuses) return;
         const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
         if (!currentStatusName) return;
         const moveResult = await moveTifsBookFolder(book.name, currentStatusName, targetStage);
@@ -1988,7 +1964,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
 
   const handleCreateDeliveryBatch = async (bookIds: string[]) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/delivery-batches', {
           method: 'POST',
@@ -2009,7 +1985,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const booksAvaiableInStorageLocalIp = React.useCallback(async (currentStageKey: string) => {
-    if (currentStageKey !== 'to-indexing' && currentStageKey !== 'to-checking') {
+    if ((currentStageKey !== 'to-indexing' && currentStageKey !== 'to-checking') || !storages) {
         return [];
     }
     const localIP = await getLocalIP();        
@@ -2018,11 +1994,11 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     if (accessibleStorageIds.length === 0) {
       return [];
     }
-    const projectsToScan = selectedProjectId ? rawProjects.filter(p => p.id === selectedProjectId) : accessibleProjectsForUser;
+    const projectsToScan = selectedProjectId ? (rawProjects || []).filter(p => p.id === selectedProjectId) : accessibleProjectsForUser;
     let availableBooks: EnrichedBook[] = [];
 
     for (const project of projectsToScan) {
-      const projectWorkflow = projectWorkflows[project.id] || [];
+      const projectWorkflow = projectWorkflows?.[project.id] || [];
       const currentStageIndexInProjectWorkflow = projectWorkflow.indexOf(currentStageKey);
       if (currentStageIndexInProjectWorkflow > 0) {
         const previousStageKey = projectWorkflow[currentStageIndexInProjectWorkflow - 1];
@@ -2049,7 +2025,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
           mutationFn: async () => {
           const assigneeId = userIdToAssign || currentUser?.id;
           if (!assigneeId) throw new Error("Nenhum utilizador especificado para atribuição.");
-          const user = users.find(u => u.id === assigneeId);
+          const user = users?.find(u => u.id === assigneeId);
           if (!user) throw new Error("Utilizador atribuído não encontrado.");
           
           const workflowConfig = STAGE_CONFIG[currentStageKey];
@@ -2064,12 +2040,11 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
           const bookToAssign = availableBooks[0];
 
           handleAssignUser(bookToAssign.id, assigneeId, workflowConfig.assigneeRole);
-          return; // Return nothing on success to use default message
         }, 
         invalidateKeys: ['RAW_BOOKS'],
         successMessage: "Tarefa Puxada com Sucesso"
       });
-  }, [currentUser, users, handleAssignUser, toast, booksAvaiableInStorageLocalIp, withMutation]);
+  }, [currentUser, users, handleAssignUser, booksAvaiableInStorageLocalIp, withMutation]);
 
   const scannerUsers = React.useMemo(() => (users || []).filter(user => user.role === 'Scanning'), [users]);
   const indexerUsers = React.useMemo(() => (users || []).filter(user => user.role === 'Indexing'), [users]);

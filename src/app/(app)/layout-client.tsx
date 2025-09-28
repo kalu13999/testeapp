@@ -15,14 +15,15 @@ import { RecentPagesNav } from '@/components/layout/recent-pages-nav';
 import { GlobalLoader } from '@/components/layout/global-loader';
 
 export const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
-  const { currentUser, permissions, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loadingPage, isPageLoading, addNavigationHistoryItem, loadInitialData } = useAppContext();
+  const { isMutating, currentUser, permissions, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loadingPage, isPageLoading, addNavigationHistoryItem, loadInitialData } = useAppContext();
   const router = useRouter();
   const isInitialLoad = useRef(true);
   const { toast } = useToast();
   const [isChecking, setIsChecking] = React.useState(true);
   const [isAllowed, setIsAllowed] = React.useState(false);
   const previousUserIdRef = useRef<string | null | undefined>(null);
-
+  const pathname = usePathname();
+  
   useEffect(() => {
     if (isInitialLoad.current) {
         isInitialLoad.current = false;
@@ -35,6 +36,13 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
     }
   }, [pathname, loadInitialData]);
 
+React.useEffect(() => {
+  const interval = setInterval(() => {
+    loadInitialData(true); // usa o modo "silent refresh"
+  }, 60000); // 60.000 ms = 60 segundos
+
+  return () => clearInterval(interval); // cleanup ao desmontar
+}, [loadInitialData]);
 
   useEffect(() => {
     if (loadingPage || isPageLoading) {
@@ -140,7 +148,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
   }, [pathname, currentUser, addNavigationHistoryItem]);
 
 
-  if (loadingPage || isPageLoading) {
+  if (isPageLoading) {
     return (
         <div className="flex h-screen w-screen items-center justify-center">
             <div className="flex flex-col items-center gap-4">
