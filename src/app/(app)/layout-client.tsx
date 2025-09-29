@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useEffect, useRef } from 'react';
@@ -68,17 +69,17 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
       setIsChecking(true);
       return;
     }
-    if (!currentUser) {
-      if(!isChecking){
-        router.push('/');  
+
+    if(!isChecking){
+      if (!currentUser) {
+        router.push('/');
+        return;
       }
-      return;
     }
     
-
     // Aguarda que as permissões estejam carregadas antes de verificar.
-    if (Object.keys(permissions).length === 0) {
-      //setIsChecking(true); // Continua a mostrar o loader enquanto as permissões carregam
+    if (!currentUser || Object.keys(permissions).length === 0) {
+      setIsChecking(true); // Continua a mostrar o loader enquanto as permissões carregam
       return;
     }
     
@@ -190,7 +191,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
     );
   }
 
-  if (!currentUser) {
+  if (!currentUser && !isChecking) {
     // Render nothing or a loading spinner while redirecting
     return null;
   }

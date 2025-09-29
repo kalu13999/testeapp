@@ -271,6 +271,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
           }
         }
       }
+      setIsPageLoading(false); // Signal that initial user check is done
     }
   }, [isLoadingUsers, users]);
   
@@ -279,7 +280,13 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       setIsPageLoading(true);
     }
     try {
-      await queryClient.refetchQueries();
+      if (isSilent) {
+        // Fire and forget for silent refreshes
+        queryClient.refetchQueries();
+      } else {
+        // Await for non-silent, blocking refreshes
+        await queryClient.refetchQueries();
+      }
     } catch (error) {
       console.error("Failed to refetch data:", error);
       toast({ title: "Data Sync Failed", description: "Could not sync with the server.", variant: "destructive" });
@@ -306,7 +313,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     },
     onError: (error: any, variables: any, context: any) => {
       if (context?.previousData && variables.optimisticUpdateFn) {
-        variables.optimisticUpdateFn(queryClient, variables, context.previousData);
+        variables.optimisticUpdateFn(queryClient, context.previousData, true); // Revert
       }
       toast({ title: "Operation Failed", description: error.message, variant: "destructive" });
     },
