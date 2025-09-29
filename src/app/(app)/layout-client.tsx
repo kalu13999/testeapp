@@ -53,7 +53,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
       loadInitialData(false); // Explicit full load on first mount
       return;
     }
-  
+    if (isMutating || loadingPage || isPageLoading) return;
     if (pathname) {
       // quando muda de página, limpa intervalo anterior e força refresh
       if (refreshIntervalRef.current) {
