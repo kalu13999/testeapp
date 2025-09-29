@@ -47,41 +47,38 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
   
   const refreshIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
 
- useEffect(() => {
+  // Effect for navigation-triggered data refresh
+  useEffect(() => {
     if (isInitialLoad.current) {
       isInitialLoad.current = false;
-      loadInitialData(false); // Explicit full load on first mount
+      // The initial load after login is now handled inside the login function
       return;
     }
-    if (isMutating || loadingPage || isPageLoading) return;
+
     if (pathname) {
-      // quando muda de página, limpa intervalo anterior e força refresh
-      if (refreshIntervalRef.current) {
-        clearInterval(refreshIntervalRef.current);
-        refreshIntervalRef.current = null;
-      }
-  
+      console.log("REFRESH: Triggered by Navigation Change");
       loadInitialData(true); // Silent refresh on navigation
     }
   }, [pathname, loadInitialData]);
-  
+
+  // Effect for periodic background refresh
   useEffect(() => {
-    if (isMutating || loadingPage || isPageLoading) return;
-  
-    // cria intervalo e guarda no ref
+    // This effect runs only once to set up the interval
     refreshIntervalRef.current = setInterval(() => {
+      // The logic inside the interval checks the state on each tick
       if (!isMutating && !loadingPage && !isPageLoading) {
+        console.log("REFRESH: Triggered by 60s Interval");
         loadInitialData(true); // silent refresh
       }
-    }, 60000); // 60s ou 600000 para 10min
-  
+    }, 60000); // 60s
+
+    // Cleanup function to clear the interval when the component unmounts
     return () => {
       if (refreshIntervalRef.current) {
         clearInterval(refreshIntervalRef.current);
-        refreshIntervalRef.current = null;
       }
     };
-  }, [isMutating, loadingPage, isPageLoading, loadInitialData]);
+  }, [isMutating, loadingPage, isPageLoading, loadInitialData]); // Dependencies re-run the effect if their values change
 
 
   useEffect(() => {
@@ -91,7 +88,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
       return;
     }
 
-    if (!isChecking) {
+    if(!isChecking){
       if (!currentUser) {
         router.push('/');
         return;
@@ -153,28 +150,36 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
   
   // Effect to manage the selected project ID automatically
   useEffect(() => {
+    // Don't run if data is loading, no user, or no projects are available for them
     if (isPageLoading || !currentUser || accessibleProjectsForUser.length === 0) return;
 
     const isNewUser = previousUserIdRef.current !== currentUser.id;
-    const isSelectionInvalid = !selectedProjectId || !accessibleProjectsForUser.some(p => p.id === selectedProjectId);
-
-    if (isNewUser || isSelectionInvalid) {
+    
+    // Only automatically set the project if it's a new user login OR if the current selection is invalid
+    if (isNewUser || !accessibleProjectsForUser.some(p => p.id === selectedProjectId)) {
         let idealProjectId: string | null = null;
-        const storedProjectId = localStorage.getItem('flowvault_projectid');
         
+        // 1. Try localStorage first
+        const storedProjectId = localStorage.getItem('flowvault_projectid');
         if (storedProjectId && accessibleProjectsForUser.some(p => p.id === storedProjectId)) {
             idealProjectId = storedProjectId;
-        } else if (currentUser.defaultProjectId && accessibleProjectsForUser.some(p => p.id === currentUser.defaultProjectId)) {
+        } 
+        // 2. Then, try user's default project
+        else if (currentUser.defaultProjectId && accessibleProjectsForUser.some(p => p.id === currentUser.defaultProjectId)) {
             idealProjectId = currentUser.defaultProjectId;
-        } else {
+        } 
+        // 3. Finally, fall back to the first accessible project
+        else {
             idealProjectId = accessibleProjectsForUser[0].id;
         }
         
+        // Update state only if necessary
         if (idealProjectId && idealProjectId !== selectedProjectId) {
             setSelectedProjectId(idealProjectId);
         }
     }
     
+    // Update the ref to the current user ID for the next render
     previousUserIdRef.current = currentUser.id;
 
 }, [currentUser, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, isPageLoading]);
