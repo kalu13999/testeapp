@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useEffect, useRef } from 'react';
@@ -8,13 +9,13 @@ import { MainNav } from '@/components/layout/main-nav';
 import { UserNav } from '@/components/ui/user-nav';
 import { FileLock2, Loader2, Workflow } from 'lucide-react';
 import { useAppContext } from '@/context/workflow-context';
-import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { GlobalProjectFilter } from '@/components/layout/global-project-filter';
 import { allMenuItems } from '@/lib/menu-config';
 import { RecentPagesNav } from '@/components/layout/recent-pages-nav';
 import { GlobalLoader } from '@/components/layout/global-loader';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { MANDATORY_STAGES } from '@/lib/workflow-config';
 
 const InvalidWorkflowPage = () => (
@@ -32,10 +33,11 @@ const InvalidWorkflowPage = () => (
   </Card>
 );
 
-export default function AppLayoutClient({ children }: { children: React.ReactNode }) {
-  const { currentUser } = useAuth();
-  const { isMutating, permissions, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loadingPage, isPageLoading, addNavigationHistoryItem, projectWorkflows } = useAppContext();
+
+export const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
+  const { isMutating, currentUser, permissions, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loadingPage, isPageLoading, addNavigationHistoryItem, loadInitialData, projectWorkflows } = useAppContext();
   const router = useRouter();
+  const isInitialLoad = useRef(true);
   const { toast } = useToast();
   const [isChecking, setIsChecking] = React.useState(true);
   const [isAllowed, setIsAllowed] = React.useState(false);
@@ -43,6 +45,42 @@ export default function AppLayoutClient({ children }: { children: React.ReactNod
   const previousUserIdRef = useRef<string | null | undefined>(null);
   const pathname = usePathname();
   
+  const refreshIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  // Effect for navigation-triggered data refresh
+  /*useEffect(() => {
+    if (isInitialLoad.current) {
+      isInitialLoad.current = false;
+      // The initial load after login is now handled inside the login function
+      return;
+    }
+
+    if (pathname) {
+      console.log("REFRESH: Triggered by Navigation Change");
+      loadInitialData(true); // Silent refresh on navigation
+    }
+  }, [pathname, loadInitialData]);*/
+
+  // Effect for periodic background refresh
+  useEffect(() => {
+    // This effect runs only once to set up the interval
+    refreshIntervalRef.current = setInterval(() => {
+      // The logic inside the interval checks the state on each tick
+      if (!isMutating && !loadingPage && !isPageLoading) {
+        console.log("REFRESH: Triggered by 30s Interval");
+        loadInitialData(true); // silent refresh
+      }
+    }, 30000); // 60s
+
+    // Cleanup function to clear the interval when the component unmounts
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+    };
+  }, [isMutating, loadingPage, isPageLoading, loadInitialData]); // Dependencies re-run the effect if their values change
+
+
   useEffect(() => {
     // Show loader while initial user/permission check is happening
     if (isPageLoading || loadingPage) {
@@ -50,14 +88,22 @@ export default function AppLayoutClient({ children }: { children: React.ReactNod
       return;
     }
 
-    if (!currentUser) {
-      router.push('/');
-      return;
+    if(!isChecking){
+      if (!currentUser) {
+        router.push('/');
+        return;
+      }
     }
     
+    // Wait for currentUser to be available before proceeding
+    if (!currentUser) {
+      setIsChecking(true); // Still checking if no user yet
+      return;
+    }
+
     // Wait for permissions to be loaded before checking.
     if (Object.keys(permissions).length === 0) {
-      setIsChecking(true);
+      setIsChecking(true); // Continue to show loader while permissions load
       return;
     }
     
@@ -100,33 +146,43 @@ export default function AppLayoutClient({ children }: { children: React.ReactNod
     }
 
     setIsChecking(false);
-  }, [currentUser, pathname, permissions, router, toast, accessibleProjectsForUser, isPageLoading, loadingPage]);
+  }, [currentUser, pathname, permissions, router, toast, accessibleProjectsForUser, isPageLoading, isChecking, loadingPage]);
   
   // Effect to manage the selected project ID automatically
   useEffect(() => {
+    // Don't run if data is loading, no user, or no projects are available for them
     if (isPageLoading || !currentUser || accessibleProjectsForUser.length === 0) return;
-  
+
     const isNewUser = previousUserIdRef.current !== currentUser.id;
-  
-    if (isNewUser || (selectedProjectId && !accessibleProjectsForUser.some(p => p.id === selectedProjectId))) {
-      let idealProjectId: string | null = null;
-  
-      const storedProjectId = localStorage.getItem('flowvault_projectid');
-      if (storedProjectId && accessibleProjectsForUser.some(p => p.id === storedProjectId)) {
-        idealProjectId = storedProjectId;
-      } else if (currentUser.defaultProjectId && accessibleProjectsForUser.some(p => p.id === currentUser.defaultProjectId)) {
-        idealProjectId = currentUser.defaultProjectId;
-      } else {
-        idealProjectId = accessibleProjectsForUser[0].id;
-      }
-  
-      if (idealProjectId && idealProjectId !== selectedProjectId) {
-        setSelectedProjectId(idealProjectId);
-      }
+    
+    // Only automatically set the project if it's a new user login OR if the current selection is invalid
+    if (isNewUser || !accessibleProjectsForUser.some(p => p.id === selectedProjectId)) {
+        let idealProjectId: string | null = null;
+        
+        // 1. Try localStorage first
+        const storedProjectId = localStorage.getItem('flowvault_projectid');
+        if (storedProjectId && accessibleProjectsForUser.some(p => p.id === storedProjectId)) {
+            idealProjectId = storedProjectId;
+        } 
+        // 2. Then, try user's default project
+        else if (currentUser.defaultProjectId && accessibleProjectsForUser.some(p => p.id === currentUser.defaultProjectId)) {
+            idealProjectId = currentUser.defaultProjectId;
+        } 
+        // 3. Finally, fall back to the first accessible project
+        else {
+            idealProjectId = accessibleProjectsForUser[0].id;
+        }
+        
+        // Update state only if necessary
+        if (idealProjectId && idealProjectId !== selectedProjectId) {
+            setSelectedProjectId(idealProjectId);
+        }
     }
-  
+    
+    // Update the ref to the current user ID for the next render
     previousUserIdRef.current = currentUser.id;
-  }, [currentUser, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, isPageLoading, pathname]);
+
+}, [currentUser, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, isPageLoading]);
 
   
   useEffect(() => {
@@ -160,6 +216,23 @@ export default function AppLayoutClient({ children }: { children: React.ReactNod
     }
   }, [pathname, selectedProjectId, projectWorkflows]);
 
+
+  if (!currentUser && !isPageLoading && !loadingPage) {
+    // This will show while the app is trying to restore the user from localStorage
+    // Or if the user is genuinely not logged in
+    return (
+        <div className="flex h-screen w-screen items-center justify-center">
+            <div className="flex flex-col items-center gap-4">
+                <div className="bg-primary rounded-lg p-3 flex items-center justify-center">
+                    <FileLock2 className="h-8 w-8 text-primary-foreground" />
+                </div>
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <p className="text-muted-foreground">Loading user session...</p>
+            </div>
+        </div>
+    );
+  }
+  
   if (isPageLoading || loadingPage) {
     return (
         <div className="flex h-screen w-screen items-center justify-center">
@@ -199,7 +272,7 @@ export default function AppLayoutClient({ children }: { children: React.ReactNod
               <RecentPagesNav />
             </div> 
             <div className="flex items-center gap-4">
-              <UserNav />
+              <UserNav user={currentUser} />
             </div>
         </header>
         <main className="flex-1 p-4 md:p-6">

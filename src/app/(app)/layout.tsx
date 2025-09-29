@@ -1,17 +1,18 @@
 
 import React from 'react';
 import { SidebarProvider } from '@/components/ui/sidebar';
-import AppLayoutClient from './layout-client';
-import { AppProvider } from '@/context/workflow-context';
+import { AppLayoutContent } from './layout-client';
+import { ClientValidationProvider } from '@/context/workflow-cliente-context';
+
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AppProvider>
-      <SidebarProvider>
-        <AppLayoutClient>
-            {children}
-        </AppLayoutClient>
-      </SidebarProvider>
-    </AppProvider>
+    <SidebarProvider>
+      <AppLayoutContent>
+        <ClientValidationProvider>
+          {children}
+        </ClientValidationProvider>
+      </AppLayoutContent>
+    </SidebarProvider>
   );
 }

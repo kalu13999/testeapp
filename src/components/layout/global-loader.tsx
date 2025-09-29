@@ -1,17 +1,13 @@
 
 "use client";
 
-import { useAuth } from "@/context/auth-context";
 import { useAppContext } from "@/context/workflow-context";
 import { Loader2 } from "lucide-react";
 
 export function GlobalLoader() {
-  const { isMutating, isPageLoading } = useAppContext();
-  const { isAuthLoading } = useAuth();
+  const { isMutating } = useAppContext();
 
-  const showLoader = isMutating || isPageLoading || isAuthLoading;
-
-  if (!showLoader) {
+  if (!isMutating) {
     return null;
   }
 

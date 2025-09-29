@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { MonitorCheck, ThumbsDown, ThumbsUp, Check, X, User } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
-//import { useClientValidationContext } from "@/context/workflow-cliente-context";
+import { useClientValidationContext } from "@/context/workflow-cliente-context";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import type { EnrichedBook } from "@/context/workflow-context";
 import { Progress } from "@/components/ui/progress";
@@ -42,7 +42,8 @@ const StatusBadge = ({ status }: { status: 'pending' | 'approved' | 'rejected' }
 }
 
 export default function ValidationMonitoringClient() {
-  const { deliveryBatches, deliveryBatchItems, books, currentUser, users, handleValidationDeliveryBatch } = useAppContext();
+  const { deliveryBatches, deliveryBatchItems, books, currentUser, users } = useAppContext();
+  const { handleValidationDeliveryBatch } = useClientValidationContext();
   const [confirmationState, setConfirmationState] = React.useState({ open: false, batchId: '', finalDecision: '' as 'approve_remaining' | 'reject_all', title: '', description: '' });
 
   const batchesToMonitor = React.useMemo(() => {

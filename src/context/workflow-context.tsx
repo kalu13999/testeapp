@@ -31,7 +31,7 @@ import { useTransferLogs } from '@/queries/useTransferLogs'
 import { useProjectStorages } from '@/queries/useProjectStorages'
 import { useDeliveryBatches } from '@/queries/useDeliveryBatches'
 import { useDeliveryBatchItems } from '@/queries/useDeliveryBatchItems'
-import { useQueryClient, useMutation, type QueryKey  } from '@tanstack/react-query';
+import { useQueryClient, useMutation, type QueryKey } from '@tanstack/react-query';
 import * as queryKeys from '@/queries/keys';
 
 
@@ -192,9 +192,6 @@ type AppContextType = {
   moveTifsBookFolder: (bookName: string, fromStatusName: string, toStatusName: string) => Promise<boolean>;
   copyTifsBookFolder: (bookName: string, fromStatusName: string, toStatusName: string) => Promise<boolean>;
   updateBookStatus: (bookId: string, newStatusName: string, additionalUpdates?: Partial<EnrichedBook>) => Promise<any>;
-
-  //
-  handleValidationDeliveryBatch: (deliveryId: string, finalDecision: 'approve_remaining' | 'reject_all') => Promise<void>;
 };
 
 const AppContext = React.createContext<AppContextType | undefined>(undefined);
@@ -211,19 +208,14 @@ const openLocalApp = (protocol: string, data: Record<string, string>) => {
   }, 100);
 };
 
-export type MutationVariables<
-  TData = unknown,
-  TVars extends Record<string, any> = {}
-> = TVars & {
-  mutationFn: (vars: TVars) => Promise<TData | string | void>
-  invalidateKeys?: (keyof typeof queryKeys)[]
-  successMessage?: string
+type MutationVariables<TData, TVariables> = {
+    mutationFn: (vars: TVariables) => Promise<TData | string | void>;
+    optimisticUpdateFn?: (queryClient: any, variables: TVariables, context: any) => void;
+    getPreviousDataFn?: (queryClient: any) => any;
+    successMessage?: string;
+    invalidateKeys?: (keyof typeof queryKeys)[];
+} & TVariables;
 
-  onError?:   (error: any, vars: TVars) => void
-  onSuccess?: (data: TData | string | void, vars: TVars) => void
-  onSettled?: (data: TData | string | void, error: any, vars: TVars) => void
-  onMutate?:  (vars: TVars) => void
-}
 
 export function AppProvider({ children }: { children: React.ReactNode; }) {
   const [isMutating, setIsMutating] = React.useState(false);
@@ -233,7 +225,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
   const [navigationHistory, setNavigationHistory] = React.useState<NavigationHistoryItem[]>([]);
   const { toast } = useToast();
-
   const queryClient = useQueryClient();
 
   const { data: clients, isLoading: isLoadingClients } = useClients();
@@ -309,56 +300,52 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     }
 }, [queryClient, toast]);
 
-//
-// 2) Criar o mutation aceitando qualquer MutationVariables
-//
-const mutation = useMutation<
-  unknown,                       // retorno genérico
-  Error,                         // tipo do erro
-  MutationVariables             // nosso tipo completo
->({
-  // mutationFn recebe TODO o objeto opts
-  mutationFn: async opts => {
-    setIsMutating(true)
-    return opts.mutationFn(opts as any)
-  },
+  const mutation = useMutation({
+    mutationFn: async (variables: { mutationFn: () => Promise<any> }) => {
+      setIsMutating(true);
+      return variables.mutationFn();
+    },
+    onMutate: async (variables: any) => {
+      if (variables.optimisticUpdateFn) {
+        await queryClient.cancelQueries();
+        const previousData = variables.getPreviousDataFn ? variables.getPreviousDataFn(queryClient) : undefined;
+        variables.optimisticUpdateFn(queryClient, variables, previousData);
+        return { previousData };
+      }
+      return {};
+    },
+    onError: (error: any, variables: any, context: any) => {
+      if (context?.previousData && variables.optimisticUpdateFn) {
+        variables.optimisticUpdateFn(queryClient, context.previousData, true); // Revert
+      }
+      toast({ title: "Operation Failed", description: error.message, variant: "destructive" });
+    },
+    onSuccess: (data, variables: any) => {
+      if (typeof data === 'string') {
+          toast({ title: data });
+      } else if (variables.successMessage) {
+          toast({ title: variables.successMessage });
+      }
+    },
+    onSettled: (data, error, variables: any) => {
+      if (variables.invalidateKeys) {
+        variables.invalidateKeys.forEach((key: keyof typeof queryKeys) => {
+          queryClient.invalidateQueries({ queryKey: queryKeys[key] });
+        });
+      }
+      setIsMutating(false);
+    },
+  });
 
-  // repassa callbacks se existirem
-  onMutate: opts => opts.onMutate?.(opts as any),
-  onError:  (err, opts) => opts.onError?.(err, opts as any),
-  onSuccess:(data, opts) => {
-    opts.onSuccess?.(data, opts as any)
-    if (opts.successMessage) toast({ title: opts.successMessage })
-  },
-  onSettled:(data, err, opts) => {
-    // invalida apenas as queries indicadas
-    opts.invalidateKeys?.forEach(key => {
-      queryClient.invalidateQueries({ queryKey: queryKeys[key] as QueryKey })
-    })
-    opts.onSettled?.(data, err, opts as any)
-    setIsMutating(false)
-  }
-})
-
-//
-// 3) Wrapper sem generics no callback e sem await
-//
-const withMutation = React.useCallback(
-  (opts: MutationVariables) => {
-    mutation.mutate(opts)
-  },
-  [mutation]
-)
-
-const withMutationAsync = React.useCallback(
-  <TData, TVars extends Record<string, any>>(opts: MutationVariables) => {
-    setIsMutating(true)
-    return mutation
-      .mutateAsync(opts)
-      .finally(() => setIsMutating(false))
-  },
-  [mutation]
-)
+  const withMutation = React.useCallback(<TData, TVariables>(
+    options: MutationVariables<TData, TVariables>
+  ) => {
+    const { mutationFn, ...rest } = options;
+    return mutation.mutate({
+        mutationFn: () => mutationFn(rest as TVariables),
+        ...rest,
+    });
+  }, [mutation]);
 
   const login = async (username: string, password: string): Promise<User | null> => {
     try {
@@ -419,49 +406,28 @@ const withMutationAsync = React.useCallback(
     });
   };
 
-    const changePassword = async (
-    userId: string,
-    currentPassword: string,
-    newPassword: string
-  ): Promise<boolean> => {
-    try {
-      await withMutationAsync({
-        mutationFn: async () => {
-          const res = await fetch(
-            `/api/users/${userId}/change-password`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ currentPassword, newPassword })
-            }
-          )
-          if (!res.ok) {
-            const body = await res.json()
-            throw new Error(body.error || "Failla ao alterar Palavra-passe.")
-          }
-          // regista o audit log
-          logAction(
-            "Palavra-passe alterada",
-            `User ${userId} mudou a password.`,
-            { userId }
-          )
-        },
-        invalidateKeys: ["USERS"],
-
-
-        successMessage: "Palavra-passe alterada com sucesso",
-
-        onError: (err) => {
-          console.error("Alterar Palavra-passe falhou:", err)
-        }
-      })
-
-      return true
-
-    } catch (err) {
-      return false
-    }
-  }
+  const changePassword = async (userId: string, currentPassword: string, newPassword: string): Promise<boolean | undefined> => {
+    return new Promise(resolve => {
+        withMutation({
+            mutationFn: async () => {
+                const response = await fetch(`/api/users/${userId}/change-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ currentPassword, newPassword }),
+                });
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || "Failed to change password.");
+                }
+                logAction('Password Changed', `User changed their password.`, { userId: userId });
+                resolve(true);
+            },
+            invalidateKeys: ['USERS'],
+            successMessage: "Palavra-passe alterada com sucesso",
+            onError: () => resolve(false)
+        });
+    });
+  };
   
   const addNavigationHistoryItem = React.useCallback((item: NavigationHistoryItem) => {
     if(!currentUser) return;
@@ -601,7 +567,7 @@ const withMutationAsync = React.useCallback(
 
 
   const addClient = async (clientData: Omit<Client, 'id'>) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/clients', {
             method: 'POST',
@@ -618,7 +584,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const updateClient = async (clientId: string, clientData: Partial<Omit<Client, 'id'>>) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/clients/${clientId}`, {
             method: 'PUT',
@@ -635,7 +601,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const deleteClient = async (clientId: string) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const clientToDelete = clients.find(c => c.id === clientId);
         const response = await fetch(`/api/clients/${clientId}`, { method: 'DELETE' });
@@ -657,7 +623,7 @@ const withMutationAsync = React.useCallback(
   };
   
   const addUser = async (userData: UserFormValues) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/users', {
             method: 'POST',
@@ -677,7 +643,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const updateUser = async (userId: string, userData: Partial<User>) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/users/${userId}`, {
             method: 'PUT',
@@ -697,7 +663,7 @@ const withMutationAsync = React.useCallback(
     const user = users.find(u => u.id === userId);
     if (!user || user.role === 'System') return;
     const newStatus = user.status === 'active' ? 'disabled' : 'active';
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/users/${userId}`, {
             method: 'PATCH',
@@ -715,7 +681,7 @@ const withMutationAsync = React.useCallback(
   const deleteUser = async (userId: string) => {
     const userToDelete = users.find(u => u.id === userId);
     if (!userToDelete || userToDelete.role === 'System') return;
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Falha ao eliminar utilizador');
@@ -747,7 +713,7 @@ const withMutationAsync = React.useCallback(
   };
   
   const addProject = async (projectData: Omit<Project, 'id'>) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/projects', {
             method: 'POST',
@@ -764,7 +730,7 @@ const withMutationAsync = React.useCallback(
   };
   
   const updateProject = async (projectId: string, projectData: Partial<Omit<Project, 'id'>>) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/projects/${projectId}`, {
             method: 'PUT',
@@ -780,7 +746,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const deleteProject = async (projectId: string) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const projectToDelete = rawProjects?.find(p => p.id === projectId);
         const response = await fetch(`/api/projects/${projectId}`, { method: 'DELETE' });
@@ -794,7 +760,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const addBook = async (projectId: string, bookData: Omit<RawBook, 'id' | 'projectId' | 'statusId'>) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const statusId = statuses?.find(s => s.name === 'Pending Shipment')?.id;
         if (!statusId) throw new Error("Não foi possível encontrar o estado 'Envio Pendente'.");
@@ -813,7 +779,7 @@ const withMutationAsync = React.useCallback(
   };
   
   const updateBook = async (bookId: string, bookData: Partial<Omit<RawBook, 'id' | 'projectId' | 'statusId'>>) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/books/${bookId}`, {
             method: 'PUT',
@@ -830,7 +796,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const deleteBook = async (bookId: string) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const bookToDelete = rawBooks?.find(b => b.id === bookId);
         const response = await fetch(`/api/books/${bookId}`, { method: 'DELETE' });
@@ -843,7 +809,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const importBooks = async (projectId: string, newBooks: BookImport[]) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/books', {
             method: 'POST',
@@ -861,7 +827,7 @@ const withMutationAsync = React.useCallback(
 
   const addBookObservation = async (bookId: string, observation: string) => {
     if (!currentUser) return;
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const book = rawBooks?.find(b => b.id === bookId);
         const bookStatus = statuses?.find(s => s.id === book?.statusId)?.name;
@@ -952,7 +918,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const addRejectionTag = async (tagData: Omit<RejectionTag, 'id' | 'clientId'>, clientId: string) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         if (!clientId) throw new Error("ID do Cliente está ausente");
         const response = await fetch('/api/rejection-tags', {
@@ -971,7 +937,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const updateRejectionTag = async (tagId: string, tagData: Partial<Omit<RejectionTag, 'id' | 'clientId'>>) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/rejection-tags/${tagId}`, {
             method: 'PUT',
@@ -988,7 +954,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const deleteRejectionTag = async (tagId: string) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const tag = rejectionTags?.find(t => t.id === tagId);
         const response = await fetch(`/api/rejection-tags/${tagId}`, { method: 'DELETE' });
@@ -1001,7 +967,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const addStorage = async (storageData: StorageFormValues) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/storages', {
             method: 'POST',
@@ -1018,7 +984,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const updateStorage = async (storageId: string, storageData: StorageFormValues) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/storages/${storageId}`, {
             method: 'PUT',
@@ -1035,7 +1001,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const deleteStorage = async (storageId: string) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const storage = storages?.find(s => s.id === Number(storageId));
         const response = await fetch(`/api/storages/${storageId}`, { method: 'DELETE' });
@@ -1048,7 +1014,7 @@ const withMutationAsync = React.useCallback(
   };
   
   const addScanner = async (scannerData: ScannerFormValues) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/scanners', {
             method: 'POST',
@@ -1065,7 +1031,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const updateScanner = async (scannerId: number, scannerData: ScannerFormValues) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/scanners/${scannerId}`, {
             method: 'PUT',
@@ -1082,7 +1048,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const deleteScanner = async (scannerId: number) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const scanner = scanners?.find(s => s.id === scannerId);
         const response = await fetch(`/api/scanners/${scannerId}`, { method: 'DELETE' });
@@ -1095,7 +1061,7 @@ const withMutationAsync = React.useCallback(
   };
   
   const addProjectStorage = async (associationData: Omit<ProjectStorage, 'projectId'> & {projectId: string}) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/project-storages', {
             method: 'POST',
@@ -1111,7 +1077,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const updateProjectStorage = async (associationData: Omit<ProjectStorage, 'projectId'> & {projectId: string}) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/project-storages', {
             method: 'PUT',
@@ -1127,7 +1093,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const deleteProjectStorage = async (projectId: string, storageId: number) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/project-storages', {
             method: 'DELETE',
@@ -1144,7 +1110,7 @@ const withMutationAsync = React.useCallback(
 
 
   const updateDocument = async (docId: string, data: Partial<AppDocument>) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const doc = rawDocuments?.find(d => d.id === docId);
         if (!doc) return;
@@ -1172,7 +1138,7 @@ const withMutationAsync = React.useCallback(
   const updateDocumentFlag = async (docId: string, flag: AppDocument['flag'], comment?: string) => await updateDocument(docId, { flag, flagComment: flag ? comment : undefined });
   
   const addPageToBook = async (bookId: string, position: number) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const book = enrichedBooks.find(b => b.id === bookId);
         if (!book) return;
@@ -1198,7 +1164,7 @@ const withMutationAsync = React.useCallback(
   }
 
   const deletePageFromBook = async (pageId: string, bookId: string) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
           const page = rawDocuments?.find(p => p.id === pageId);
           const response = await fetch(`/api/documents/${pageId}`, { method: 'DELETE' });
@@ -1334,7 +1300,7 @@ const withMutationAsync = React.useCallback(
   const handleSendToStorage = async (bookId: string, payload: { actualPageCount: number }) => {
     setProcessingBookIds(prev => [...prev, bookId]);
     try {
-        withMutation({
+        await withMutation({
           mutationFn: async () => {
             const book = rawBooks?.find(b => b.id === bookId);
             const project = rawProjects?.find(p => p.id === book?.projectId);
@@ -1544,7 +1510,7 @@ const withMutationAsync = React.useCallback(
   };
   
   const handleCompleteTask = async (bookId: string, stage: string) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
       const updateFields: { [key: string]: Partial<RawBook> } = {
         'Scanning Started': { scanEndTime: getDbSafeDate() },
@@ -1581,7 +1547,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const handleCancelCompleteTask = async (bookId: string, stage: string) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
       const updateFields: { [key: string]: Partial<RawBook> } = {
         'Scanning Started': { scanEndTime: null },
@@ -2019,7 +1985,7 @@ const withMutationAsync = React.useCallback(
 
 
   const handleCreateDeliveryBatch = async (bookIds: string[]) => {
-    withMutation({
+    await withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/delivery-batches', {
           method: 'POST',
@@ -2076,7 +2042,7 @@ const withMutationAsync = React.useCallback(
 
 
     const handlePullNextTask = React.useCallback(async (currentStageKey: string, userIdToAssign?: string) => {
-      withMutation({
+      await withMutation({
           mutationFn: async () => {
           const assigneeId = userIdToAssign || currentUser?.id;
           if (!assigneeId) throw new Error("Nenhum utilizador especificado para atribuição.");
@@ -2100,76 +2066,6 @@ const withMutationAsync = React.useCallback(
         successMessage: "Tarefa Puxada com Sucesso"
       });
   }, [currentUser, users, handleAssignUser, booksAvaiableInStorageLocalIp, withMutation]);
-
-
-  const handleValidationDeliveryBatch = async (deliveryId: string, finalDecision: 'approve_remaining' | 'reject_all') => {
-    withMutation({
-          mutationFn: async () => {
-            if (!currentUser) return;
-        
-            const batch = deliveryBatches.find(b => b.id === deliveryId);
-            if (!batch) return;
-            
-            const itemsInBatch = deliveryBatchItems.filter(item => item.deliveryId === deliveryId);
-            const failedMoves: string[] = [];
-
-            for (const item of itemsInBatch) {
-                const book = rawBooks.find(b => b.id === item.bookId);
-                if (!book) continue;
-
-                const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
-                if (!currentStatusName) {
-                    console.error(`Could not find status name for statusId: ${book.statusId}`);
-                    failedMoves.push(book.name);
-                    continue;
-                }
-                
-                let newStatusName: string;
-                
-                if (finalDecision === 'reject_all') {
-                    newStatusName = 'Client Rejected';
-                } else { // approve_remaining
-                    newStatusName = item.status === 'rejected' ? 'Client Rejected' : 'Finalized';
-                }
-                
-                if (currentStatusName !== newStatusName) {
-                    const moveResult = await moveBookFolder(book.name, currentStatusName, newStatusName);
-                    if(moveResult) {
-                        await updateBookStatus(book.id, newStatusName);
-
-                        await logAction(
-                            newStatusName === 'Client Rejected' ? 'Client Rejection' : 'Client Approval',
-                            `Batch Finalization: Book status set to ${newStatusName}.`,
-                            { bookId: book.id, userId: currentUser.id }
-                        );
-                    } else {
-                        failedMoves.push(book.name);
-                    }
-                }
-            }
-
-            if (failedMoves.length > 0) {
-                toast({title: "Batch Finalization Failed", description: `Could not move folders for the following books: ${failedMoves.join(', ')}. The batch status was not updated.`, variant: "destructive", duration: 5000});
-                return;
-            }
-
-            const response = await fetch(`/api/delivery-batches/${deliveryId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'Finalized' }),
-            });
-            if (!response.ok) throw new Error('Failed to finalize batch via API.');
-            
-            const updatedBatch = await response.json();
-
-
-            await logAction('Delivery Batch Finalized', `Batch ${deliveryId} was finalized by ${currentUser.name}. Decision: ${finalDecision}.`, { userId: currentUser.id });
-            toast({ title: "Validation Confirmed", description: "All books in the batch have been processed." });
-        }, 
-        invalidateKeys: ['RAW_BOOKS', 'DELIVERY_BATCHES'],
-        successMessage: "Tarefa Puxada com Sucesso"
-      });
-  };
 
   const scannerUsers = React.useMemo(() => (users || []).filter(user => user.role === 'Scanning'), [users]);
   const indexerUsers = React.useMemo(() => (users || []).filter(user => user.role === 'Indexing'), [users]);
@@ -2253,7 +2149,6 @@ const withMutationAsync = React.useCallback(
     copyTifsBookFolder,
     updateBookStatus,
     loadInitialData,
-    handleValidationDeliveryBatch,
   };
 
   return (
