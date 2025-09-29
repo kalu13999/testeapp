@@ -275,6 +275,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   }, [isLoadingUsers, users]);
   
   const loadInitialData = React.useCallback(async (isSilent = false) => {
+    console.log(isSilent? "Silent Refetch loadInitialData...":"Not Silent Refetch loadInitialData...");
     if (!isSilent) {
       setIsPageLoading(true);
     }

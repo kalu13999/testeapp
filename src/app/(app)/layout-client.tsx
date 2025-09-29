@@ -31,17 +31,21 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
     if (isInitialLoad.current) {
       isInitialLoad.current = false;
       loadInitialData(false); // Explicit full load on first mount
+      console.log("Carregando dados iniciais (full load)...");
       return;
     }
-  
+
+    if (isMutating || loadingPage || isPageLoading) return;
+
     if (pathname) {
       // quando muda de página, limpa intervalo anterior e força refresh
       if (refreshIntervalRef.current) {
         clearInterval(refreshIntervalRef.current);
         refreshIntervalRef.current = null;
       }
-  
+      
       loadInitialData(true); // Silent refresh on navigation
+      console.log("Carregando dados da página (silent refresh)...");
     }
   }, [pathname, loadInitialData]);
   
@@ -52,6 +56,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
     refreshIntervalRef.current = setInterval(() => {
       if (!isMutating && !loadingPage && !isPageLoading) {
         loadInitialData(true); // silent refresh
+        console.log(" Timer 60: Refetch silencioso dos dados...");
       }
     }, 60000); // 60s ou 600000 para 10min
   
