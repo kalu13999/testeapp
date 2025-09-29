@@ -582,7 +582,7 @@ const withMutationAsync = React.useCallback(
 
 
   const addClient = async (clientData: Omit<Client, 'id'>) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/clients', {
             method: 'POST',
@@ -599,7 +599,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const updateClient = async (clientId: string, clientData: Partial<Omit<Client, 'id'>>) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/clients/${clientId}`, {
             method: 'PUT',
@@ -616,7 +616,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const deleteClient = async (clientId: string) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const clientToDelete = clients.find(c => c.id === clientId);
         const response = await fetch(`/api/clients/${clientId}`, { method: 'DELETE' });
@@ -638,7 +638,7 @@ const withMutationAsync = React.useCallback(
   };
   
   const addUser = async (userData: UserFormValues) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/users', {
             method: 'POST',
@@ -658,7 +658,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const updateUser = async (userId: string, userData: Partial<User>) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/users/${userId}`, {
             method: 'PUT',
@@ -678,7 +678,7 @@ const withMutationAsync = React.useCallback(
     const user = users.find(u => u.id === userId);
     if (!user || user.role === 'System') return;
     const newStatus = user.status === 'active' ? 'disabled' : 'active';
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/users/${userId}`, {
             method: 'PATCH',
@@ -696,7 +696,7 @@ const withMutationAsync = React.useCallback(
   const deleteUser = async (userId: string) => {
     const userToDelete = users.find(u => u.id === userId);
     if (!userToDelete || userToDelete.role === 'System') return;
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Falha ao eliminar utilizador');
@@ -728,7 +728,7 @@ const withMutationAsync = React.useCallback(
   };
   
   const addProject = async (projectData: Omit<Project, 'id'>) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/projects', {
             method: 'POST',
@@ -745,7 +745,7 @@ const withMutationAsync = React.useCallback(
   };
   
   const updateProject = async (projectId: string, projectData: Partial<Omit<Project, 'id'>>) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/projects/${projectId}`, {
             method: 'PUT',
@@ -761,7 +761,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const deleteProject = async (projectId: string) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const projectToDelete = rawProjects?.find(p => p.id === projectId);
         const response = await fetch(`/api/projects/${projectId}`, { method: 'DELETE' });
@@ -775,7 +775,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const addBook = async (projectId: string, bookData: Omit<RawBook, 'id' | 'projectId' | 'statusId'>) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const statusId = statuses?.find(s => s.name === 'Pending Shipment')?.id;
         if (!statusId) throw new Error("Não foi possível encontrar o estado 'Envio Pendente'.");
@@ -794,7 +794,7 @@ const withMutationAsync = React.useCallback(
   };
   
   const updateBook = async (bookId: string, bookData: Partial<Omit<RawBook, 'id' | 'projectId' | 'statusId'>>) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/books/${bookId}`, {
             method: 'PUT',
@@ -811,7 +811,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const deleteBook = async (bookId: string) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const bookToDelete = rawBooks?.find(b => b.id === bookId);
         const response = await fetch(`/api/books/${bookId}`, { method: 'DELETE' });
@@ -824,7 +824,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const importBooks = async (projectId: string, newBooks: BookImport[]) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/books', {
             method: 'POST',
@@ -842,7 +842,7 @@ const withMutationAsync = React.useCallback(
 
   const addBookObservation = async (bookId: string, observation: string) => {
     if (!currentUser) return;
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const book = rawBooks?.find(b => b.id === bookId);
         const bookStatus = statuses?.find(s => s.id === book?.statusId)?.name;
@@ -933,7 +933,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const addRejectionTag = async (tagData: Omit<RejectionTag, 'id' | 'clientId'>, clientId: string) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         if (!clientId) throw new Error("ID do Cliente está ausente");
         const response = await fetch('/api/rejection-tags', {
@@ -952,7 +952,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const updateRejectionTag = async (tagId: string, tagData: Partial<Omit<RejectionTag, 'id' | 'clientId'>>) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/rejection-tags/${tagId}`, {
             method: 'PUT',
@@ -969,7 +969,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const deleteRejectionTag = async (tagId: string) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const tag = rejectionTags?.find(t => t.id === tagId);
         const response = await fetch(`/api/rejection-tags/${tagId}`, { method: 'DELETE' });
@@ -982,7 +982,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const addStorage = async (storageData: StorageFormValues) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/storages', {
             method: 'POST',
@@ -999,7 +999,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const updateStorage = async (storageId: string, storageData: StorageFormValues) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/storages/${storageId}`, {
             method: 'PUT',
@@ -1016,7 +1016,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const deleteStorage = async (storageId: string) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const storage = storages?.find(s => s.id === Number(storageId));
         const response = await fetch(`/api/storages/${storageId}`, { method: 'DELETE' });
@@ -1029,7 +1029,7 @@ const withMutationAsync = React.useCallback(
   };
   
   const addScanner = async (scannerData: ScannerFormValues) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/scanners', {
             method: 'POST',
@@ -1046,7 +1046,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const updateScanner = async (scannerId: number, scannerData: ScannerFormValues) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/scanners/${scannerId}`, {
             method: 'PUT',
@@ -1063,7 +1063,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const deleteScanner = async (scannerId: number) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const scanner = scanners?.find(s => s.id === scannerId);
         const response = await fetch(`/api/scanners/${scannerId}`, { method: 'DELETE' });
@@ -1076,7 +1076,7 @@ const withMutationAsync = React.useCallback(
   };
   
   const addProjectStorage = async (associationData: Omit<ProjectStorage, 'projectId'> & {projectId: string}) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/project-storages', {
             method: 'POST',
@@ -1092,7 +1092,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const updateProjectStorage = async (associationData: Omit<ProjectStorage, 'projectId'> & {projectId: string}) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/project-storages', {
             method: 'PUT',
@@ -1108,7 +1108,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const deleteProjectStorage = async (projectId: string, storageId: number) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/project-storages', {
             method: 'DELETE',
@@ -1125,7 +1125,7 @@ const withMutationAsync = React.useCallback(
 
 
   const updateDocument = async (docId: string, data: Partial<AppDocument>) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const doc = rawDocuments?.find(d => d.id === docId);
         if (!doc) return;
@@ -1153,7 +1153,7 @@ const withMutationAsync = React.useCallback(
   const updateDocumentFlag = async (docId: string, flag: AppDocument['flag'], comment?: string) => await updateDocument(docId, { flag, flagComment: flag ? comment : undefined });
   
   const addPageToBook = async (bookId: string, position: number) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const book = enrichedBooks.find(b => b.id === bookId);
         if (!book) return;
@@ -1179,7 +1179,7 @@ const withMutationAsync = React.useCallback(
   }
 
   const deletePageFromBook = async (pageId: string, bookId: string) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
           const page = rawDocuments?.find(p => p.id === pageId);
           const response = await fetch(`/api/documents/${pageId}`, { method: 'DELETE' });
@@ -1315,7 +1315,7 @@ const withMutationAsync = React.useCallback(
   const handleSendToStorage = async (bookId: string, payload: { actualPageCount: number }) => {
     setProcessingBookIds(prev => [...prev, bookId]);
     try {
-        await withMutation({
+        withMutation({
           mutationFn: async () => {
             const book = rawBooks?.find(b => b.id === bookId);
             const project = rawProjects?.find(p => p.id === book?.projectId);
@@ -1525,7 +1525,7 @@ const withMutationAsync = React.useCallback(
   };
   
   const handleCompleteTask = async (bookId: string, stage: string) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
       const updateFields: { [key: string]: Partial<RawBook> } = {
         'Scanning Started': { scanEndTime: getDbSafeDate() },
@@ -1562,7 +1562,7 @@ const withMutationAsync = React.useCallback(
   };
 
   const handleCancelCompleteTask = async (bookId: string, stage: string) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
       const updateFields: { [key: string]: Partial<RawBook> } = {
         'Scanning Started': { scanEndTime: null },
@@ -2000,7 +2000,7 @@ const withMutationAsync = React.useCallback(
 
 
   const handleCreateDeliveryBatch = async (bookIds: string[]) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/delivery-batches', {
           method: 'POST',
@@ -2057,7 +2057,7 @@ const withMutationAsync = React.useCallback(
 
 
     const handlePullNextTask = React.useCallback(async (currentStageKey: string, userIdToAssign?: string) => {
-      await withMutation({
+      withMutation({
           mutationFn: async () => {
           const assigneeId = userIdToAssign || currentUser?.id;
           if (!assigneeId) throw new Error("Nenhum utilizador especificado para atribuição.");
