@@ -32,7 +32,7 @@ const InvalidWorkflowPage = () => (
   </Card>
 );
 
-export const AppLayoutClient = ({ children }: { children: React.ReactNode }) => {
+export default function AppLayoutClient({ children }: { children: React.ReactNode }) {
   const { currentUser } = useAuth();
   const { isMutating, permissions, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loadingPage, isPageLoading, addNavigationHistoryItem, projectWorkflows } = useAppContext();
   const router = useRouter();
