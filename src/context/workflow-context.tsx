@@ -217,7 +217,10 @@ export type MutationVariables<
 > = TVars & {
   mutationFn: (vars: TVars) => Promise<TData | string | void>
   invalidateKeys?: (keyof typeof queryKeys)[]
-  successMessage?: string
+    successToast?: { 
+    title: string
+    description?: string
+  }
 
   onError?:   (error: any, vars: TVars) => void
   onSuccess?: (data: TData | string | void, vars: TVars) => void
@@ -329,7 +332,12 @@ const mutation = useMutation<
   onError:  (err, opts) => opts.onError?.(err, opts as any),
   onSuccess:(data, opts) => {
     opts.onSuccess?.(data, opts as any)
-    if (opts.successMessage) toast({ title: opts.successMessage })
+        if (opts.successToast) {
+      toast({
+        title: opts.successToast.title,
+        description: opts.successToast.description
+      })
+    }
   },
   onSettled:(data, err, opts) => {
     // invalida apenas as queries indicadas
@@ -439,7 +447,7 @@ const withMutationAsync = React.useCallback(
             )
             if (!res.ok) {
               const body = await res.json()
-              throw new Error(body.error || "Failla ao alterar Palavra-passe.")
+              throw new Error(body.error || "Falha ao alterar Palavra-passe.")
             }
             // regista o audit log
             logAction(
@@ -453,8 +461,12 @@ const withMutationAsync = React.useCallback(
 
           successMessage: "Palavra-passe alterada com sucesso",
 
-          onError: (err) => {
-            console.error("Alterar Palavra-passe falhou:", err)
+            onError: (err) => {
+            toast({
+              title: "Erro ao alterar Palavra-passe",
+              description: err.message || "Ocorreu um erro ao tentar alterar Palavra-passe.",
+              variant: "destructive"
+            });
           }
         })
 
@@ -2079,6 +2091,7 @@ const withMutationAsync = React.useCallback(
 
     const handlePullNextTask = React.useCallback(
       async (currentStageKey: string, userIdToAssign?: string) => {
+        let msgAcction;
         withMutation({
           mutationFn: async () => {
             const assigneeId = userIdToAssign || currentUser?.id;
@@ -2123,10 +2136,7 @@ const withMutationAsync = React.useCallback(
                 if (bookToAssign) {
                   handleAssignUser(bookToAssign.id, assigneeId, workflowConfig.assigneeRole);
 
-                  toast({
-                    title: "Tarefa Obtida com Sucesso",
-                    description: `"${bookToAssign.name}" foi atribuído a si.`
-                  });
+                  msgAcction = `"${bookToAssign.name}" foi atribuído a si.`
 
                   return;
                 }
@@ -2137,7 +2147,7 @@ const withMutationAsync = React.useCallback(
             throw new Error("Não há livros não atribuídos disponíveis na etapa anterior para os seus projetos.");
           },
           invalidateKeys: ['RAW_BOOKS'],
-          successMessage: "Tarefa Puxada com Sucesso",
+            successToast: {title: "Tarefa Recebida com Sucesso", description: msgAcction},
             onError: (err) => {
             toast({
               title: "Erro ao Receber Tarefa",
@@ -2217,7 +2227,7 @@ const withMutationAsync = React.useCallback(
             toast({ title: "Validation Confirmed", description: "All books in the batch have been processed." });
         }, 
         invalidateKeys: ['RAW_BOOKS', 'DELIVERY_BATCHES'],
-        successMessage: "Tarefa Puxada com Sucesso"
+        successMessage: "Sucess Batch Finalization"
       });
   };
 
