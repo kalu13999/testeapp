@@ -18,7 +18,7 @@ import { type User as UserData } from '@/lib/data';
 import { CreditCard, LogOut, Settings, User } from 'lucide-react';
 
 interface UserNavProps {
-  user?: UserData;
+  user?: UserData | null;
 }
 
 export function UserNav({ user }: UserNavProps) {

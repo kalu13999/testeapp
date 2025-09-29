@@ -177,22 +177,11 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
   }, [pathname, currentUser, addNavigationHistoryItem]);
 
 
-  if (isPageLoading) {
-    return (
-        <div className="flex h-screen w-screen items-center justify-center">
-            <div className="flex flex-col items-center gap-4">
-                <div className="bg-primary rounded-lg p-3 flex items-center justify-center">
-                    <FileLock2 className="h-8 w-8 text-primary-foreground" />
-                </div>
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                <p className="text-muted-foreground">Loading application data...</p>
-            </div>
-        </div>
-    );
-  }
+  
 
   if (!currentUser && !isChecking) {
     // Render nothing or a loading spinner while redirecting
+    router.push('/');
     return null;
   }
   
@@ -225,7 +214,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
             </div>
         </header>
         <main className="flex-1 p-4 md:p-6">
-          {isChecking ? (
+          {isChecking || isPageLoading ? (
             <div className="flex h-full items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
