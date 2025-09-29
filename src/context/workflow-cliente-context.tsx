@@ -1,5 +1,5 @@
 
-"use client"
+/*"use client"
 
 import React from 'react';
 import { useAppContext } from './workflow-context';
@@ -41,7 +41,7 @@ export function ClientValidationProvider({ children }: { children: React.ReactNo
         const failedMoves: string[] = [];
 
         for (const item of itemsInBatch) {
-            const book = appContext.rawBooks.find(b => b.id === item.bookId);
+            const book = appContext.books.find(b => b.id === item.bookId);
             if (!book) continue;
 
             const currentStatusName = appContext.statuses.find(s => s.id === book.statusId)?.name;
@@ -112,4 +112,4 @@ export function useClientValidationContext() {
     throw new Error('useClientValidationContext must be used within a ClientValidationProvider');
   }
   return context;
-}
+}*/

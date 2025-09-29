@@ -5,11 +5,11 @@
 import * as React from 'react';
 import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions, ProjectWorkflows, RejectionTag, DocumentStatus, ProcessingBatch, ProcessingBatchItem, Storage, LogTransferencia, ProjectStorage, Scanner, DeliveryBatch, DeliveryBatchItem, BookObservation } from '@/lib/data';
 import { useToast } from "@/hooks/use-toast";
-import { WORKFLOW_SEQUENCE, STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage, StageConfigItem } from "@/lib/workflow-config";
+import { WORKFLOW_SEQUENCE, STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage, StageConfigItem } from '@/lib/workflow-config';
 import { UserFormValues } from '@/app/(app)/users/user-form';
 import { StorageFormValues } from '@/app/(app)/admin/general-configs/storage-form';
 import { ScannerFormValues } from '@/app/(app)/admin/general-configs/scanner-form';
-import { format } from "date-fns";
+import { format } from 'date-fns';
 import { useClients } from '@/queries/useClients'
 import { useUsers } from '@/queries/useUsers'
 import { useRawProjects } from '@/queries/useRawProjects'
@@ -31,9 +31,8 @@ import { useTransferLogs } from '@/queries/useTransferLogs'
 import { useProjectStorages } from '@/queries/useProjectStorages'
 import { useDeliveryBatches } from '@/queries/useDeliveryBatches'
 import { useDeliveryBatchItems } from '@/queries/useDeliveryBatchItems'
-import { useQueryClient, useMutation, type QueryKey, useIsFetching } from '@tanstack/react-query';
+import { useQueryClient, useMutation, type QueryKey  } from '@tanstack/react-query';
 import * as queryKeys from '@/queries/keys';
-import { useAuth } from './auth-context';
 
 
 export type { EnrichedBook, RejectionTag };
@@ -65,6 +64,9 @@ type AppContextType = {
   
   // Auth state
   currentUser: User | null;
+  login: (username: string, password: string) => Promise<User | null>;
+  logout: () => void;
+  changePassword: (userId: string, currentPassword: string, newPassword: string) => Promise<boolean | undefined>;
 
   // Navigation History
   navigationHistory: NavigationHistoryItem[];
@@ -190,6 +192,9 @@ type AppContextType = {
   moveTifsBookFolder: (bookName: string, fromStatusName: string, toStatusName: string) => Promise<boolean>;
   copyTifsBookFolder: (bookName: string, fromStatusName: string, toStatusName: string) => Promise<boolean>;
   updateBookStatus: (bookId: string, newStatusName: string, additionalUpdates?: Partial<EnrichedBook>) => Promise<any>;
+
+  //
+  handleValidationDeliveryBatch: (deliveryId: string, finalDecision: 'approve_remaining' | 'reject_all') => Promise<void>;
 };
 
 const AppContext = React.createContext<AppContextType | undefined>(undefined);
@@ -206,27 +211,30 @@ const openLocalApp = (protocol: string, data: Record<string, string>) => {
   }, 100);
 };
 
-type MutationVariables<TData, TVariables> = {
-    mutationFn: (vars: TVariables) => Promise<TData | string | void>;
-    optimisticUpdateFn?: (queryClient: any, variables: TVariables, context: any) => void;
-    getPreviousDataFn?: (queryClient: any) => any;
-    successMessage?: string;
-    invalidateKeys?: (keyof typeof queryKeys)[];
-} & TVariables;
+export type MutationVariables<
+  TData = unknown,
+  TVars extends Record<string, any> = {}
+> = TVars & {
+  mutationFn: (vars: TVars) => Promise<TData | string | void>
+  invalidateKeys?: (keyof typeof queryKeys)[]
+  successMessage?: string
 
+  onError?:   (error: any, vars: TVars) => void
+  onSuccess?: (data: TData | string | void, vars: TVars) => void
+  onSettled?: (data: TData | string | void, error: any, vars: TVars) => void
+  onMutate?:  (vars: TVars) => void
+}
 
 export function AppProvider({ children }: { children: React.ReactNode; }) {
   const [isMutating, setIsMutating] = React.useState(false);
   const [isPageLoading, setIsPageLoading] = React.useState(true);
   const [processingBookIds, setProcessingBookIds] = React.useState<string[]>([]);
-  const { currentUser } = useAuth();
+  const [currentUser, setCurrentUser] = React.useState<User | null>(null);
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
   const [navigationHistory, setNavigationHistory] = React.useState<NavigationHistoryItem[]>([]);
   const { toast } = useToast();
+
   const queryClient = useQueryClient();
-  const isInitialLoad = React.useRef(true);
-  
-  const isFetching = useIsFetching();
 
   const { data: clients, isLoading: isLoadingClients } = useClients();
   const { data: users, isLoading: isLoadingUsers } = useUsers();
@@ -251,7 +259,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const { data: projectStorages, isLoading: isLoadingProjectStorages } = useProjectStorages();
   
   const loadingPage = 
-    isFetching > 0 ||
     isLoadingClients || isLoadingUsers || isLoadingRawProjects || isLoadingRawBooks || 
     isLoadingRawDocuments || isLoadingAuditLogs || isLoadingBookObservations || isLoadingProcessingBatches ||
     isLoadingProcessingBatchItems || isLoadingProcessingLogs || isLoadingDeliveryBatches || 
@@ -259,12 +266,39 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     isLoadingProjectWorkflows || isLoadingRejectionTags || isLoadingStatuses ||
     isLoadingStorages || isLoadingScanners || isLoadingTransferLogs || isLoadingProjectStorages;
 
+  // Restore current user on initial load
+  React.useEffect(() => {
+    if (!isLoadingUsers && users) {
+      const storedUserId = localStorage.getItem('flowvault_userid');
+      if (storedUserId) {
+        const user = users.find(u => u.id === storedUserId);
+        if (user) {
+          setCurrentUser(user);
+          //loadInitialData(false); // Load data after setting user from storage
+          const storedHistory = localStorage.getItem(`nav_history_${user.id}`);
+          if (storedHistory) {
+            setNavigationHistory(JSON.parse(storedHistory));
+          }
+        } else {
+            setIsPageLoading(false);
+        }
+      } else {
+        setIsPageLoading(false);
+      }
+    }
+  }, [isLoadingUsers, users]);
+  
   const loadInitialData = React.useCallback(async (isSilent = false) => {
+    console.log(isSilent ? "Silent Refetch loadInitialData..." : "Not Silent Refetch loadInitialData...");
     if (!isSilent) {
         setIsPageLoading(true);
     }
     try {
-        await queryClient.refetchQueries();
+        if (!isSilent) {
+            await queryClient.refetchQueries();
+        } else {
+            queryClient.refetchQueries();
+        }
     } catch (error) {
         console.error("Failed to refetch data:", error);
         toast({ title: "Data Sync Failed", description: "Could not sync with the server.", variant: "destructive" });
@@ -273,63 +307,162 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
             setIsPageLoading(false);
         }
     }
-  }, [queryClient, toast]);
+}, [queryClient, toast]);
 
-  React.useEffect(() => {
-    // Only load initial data if a user is logged in
-    if (currentUser && isInitialLoad.current) {
-        isInitialLoad.current = false;
+//
+// 2) Criar o mutation aceitando qualquer MutationVariables
+//
+const mutation = useMutation<
+  unknown,                       // retorno genérico
+  Error,                         // tipo do erro
+  MutationVariables             // nosso tipo completo
+>({
+  // mutationFn recebe TODO o objeto opts
+  mutationFn: async opts => {
+    setIsMutating(true)
+    return opts.mutationFn(opts as any)
+  },
+
+  // repassa callbacks se existirem
+  onMutate: opts => opts.onMutate?.(opts as any),
+  onError:  (err, opts) => opts.onError?.(err, opts as any),
+  onSuccess:(data, opts) => {
+    opts.onSuccess?.(data, opts as any)
+    if (opts.successMessage) toast({ title: opts.successMessage })
+  },
+  onSettled:(data, err, opts) => {
+    // invalida apenas as queries indicadas
+    opts.invalidateKeys?.forEach(key => {
+      queryClient.invalidateQueries({ queryKey: queryKeys[key] as QueryKey })
+    })
+    opts.onSettled?.(data, err, opts as any)
+    setIsMutating(false)
+  }
+})
+
+//
+// 3) Wrapper sem generics no callback e sem await
+//
+const withMutation = React.useCallback(
+  (opts: MutationVariables) => {
+    mutation.mutate(opts)
+  },
+  [mutation]
+)
+
+const withMutationAsync = React.useCallback(
+  <TData, TVars extends Record<string, any>>(opts: MutationVariables) => {
+    setIsMutating(true)
+    return mutation
+      .mutateAsync(opts)
+      .finally(() => setIsMutating(false))
+  },
+  [mutation]
+)
+
+  const login = async (username: string, password: string): Promise<User | null> => {
+    try {
+      const user = users?.find(u => (u.username || '').toLowerCase() === (username || '').toLowerCase() && u.password === password);
+      if (user) {
+        if (user.status === 'disabled') {
+          toast({title: "Login Falhou", description: "A sua conta está desativada. Por favor, contacte um administrador.", variant: "destructive"});
+          return null;
+        }
         loadInitialData(false);
+        setSelectedProjectId(null);
+        setCurrentUser(user);
+        localStorage.setItem('flowvault_userid', user.id);
+        if (localStorage.getItem('flowvault_projectid')) {
+          localStorage.removeItem('flowvault_projectid');
+        }
+        const storedHistory = localStorage.getItem(`nav_history_${user.id}`);
+        if(storedHistory) {
+          setNavigationHistory(JSON.parse(storedHistory));
+        } else {
+          setNavigationHistory([]);
+        }
+        await regLastLogin(user);
+        return user;
+      }
+      return null;
+    } catch (err) {
+      console.error("Erro no login:", err);
+      toast({
+        title: "Erro no Login",
+        description: "Ocorreu um problema inesperado. Tente novamente.",
+        variant: "destructive"
+      });
+      return null;
     }
-  }, [currentUser, loadInitialData]);
+  };
 
-  const mutation = useMutation({
-    mutationFn: async (variables: { mutationFn: () => Promise<any> }) => {
-      setIsMutating(true);
-      return variables.mutationFn();
-    },
-    onMutate: async (variables: any) => {
-      if (variables.optimisticUpdateFn) {
-        await queryClient.cancelQueries();
-        const previousData = variables.getPreviousDataFn ? variables.getPreviousDataFn(queryClient) : undefined;
-        variables.optimisticUpdateFn(queryClient, variables, previousData);
-        return { previousData };
-      }
-      return {};
-    },
-    onError: (error: any, variables: any, context: any) => {
-      if (context?.previousData && variables.optimisticUpdateFn) {
-        variables.optimisticUpdateFn(queryClient, context.previousData, true); // Revert
-      }
-      toast({ title: "Operation Failed", description: error.message, variant: "destructive" });
-    },
-    onSuccess: (data, variables: any) => {
-      if (typeof data === 'string') {
-          toast({ title: data });
-      } else if (variables.successMessage) {
-          toast({ title: variables.successMessage });
-      }
-    },
-    onSettled: (data, error, variables: any) => {
-      if (variables.invalidateKeys) {
-        variables.invalidateKeys.forEach((key: keyof typeof queryKeys) => {
-          queryClient.invalidateQueries({ queryKey: queryKeys[key] });
+
+  const logout = () => {
+    setCurrentUser(null);
+    setSelectedProjectId(null);
+    setNavigationHistory([]);
+    localStorage.removeItem('flowvault_userid');
+  };
+  
+  const regLastLogin = async (user: User) => {
+    withMutation({
+      mutationFn: async () => {
+        const now = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
+        const response = await fetch(`/api/users/${user.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lastLogin: now }),
         });
-      }
-      setIsMutating(false);
-    },
-  });
-
-  const withMutation = React.useCallback(<TData, TVariables>(
-    options: MutationVariables<TData, TVariables>
-  ) => {
-    const { mutationFn, ...rest } = options;
-    return mutation.mutate({
-        mutationFn: () => mutationFn(rest as TVariables),
-        ...rest,
+        if(!response.ok) throw new Error('Failed to register last login');
+      },
+      invalidateKeys: ['USERS']
     });
-  }, [mutation]);
+  };
 
+    const changePassword = async (
+    userId: string,
+    currentPassword: string,
+    newPassword: string
+  ): Promise<boolean> => {
+    try {
+      await withMutationAsync({
+        mutationFn: async () => {
+          const res = await fetch(
+            `/api/users/${userId}/change-password`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ currentPassword, newPassword })
+            }
+          )
+          if (!res.ok) {
+            const body = await res.json()
+            throw new Error(body.error || "Failla ao alterar Palavra-passe.")
+          }
+          // regista o audit log
+          logAction(
+            "Palavra-passe alterada",
+            `User ${userId} mudou a password.`,
+            { userId }
+          )
+        },
+        invalidateKeys: ["USERS"],
+
+
+        successMessage: "Palavra-passe alterada com sucesso",
+
+        onError: (err) => {
+          console.error("Alterar Palavra-passe falhou:", err)
+        }
+      })
+
+      return true
+
+    } catch (err) {
+      return false
+    }
+  }
+  
   const addNavigationHistoryItem = React.useCallback((item: NavigationHistoryItem) => {
     if(!currentUser) return;
     setNavigationHistory(prev => {
@@ -468,7 +601,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
 
   const addClient = async (clientData: Omit<Client, 'id'>) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/clients', {
             method: 'POST',
@@ -485,7 +618,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const updateClient = async (clientId: string, clientData: Partial<Omit<Client, 'id'>>) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/clients/${clientId}`, {
             method: 'PUT',
@@ -502,7 +635,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const deleteClient = async (clientId: string) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const clientToDelete = clients.find(c => c.id === clientId);
         const response = await fetch(`/api/clients/${clientId}`, { method: 'DELETE' });
@@ -524,7 +657,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
   
   const addUser = async (userData: UserFormValues) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/users', {
             method: 'POST',
@@ -544,7 +677,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const updateUser = async (userId: string, userData: Partial<User>) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/users/${userId}`, {
             method: 'PUT',
@@ -564,7 +697,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     const user = users.find(u => u.id === userId);
     if (!user || user.role === 'System') return;
     const newStatus = user.status === 'active' ? 'disabled' : 'active';
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/users/${userId}`, {
             method: 'PATCH',
@@ -582,7 +715,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const deleteUser = async (userId: string) => {
     const userToDelete = users.find(u => u.id === userId);
     if (!userToDelete || userToDelete.role === 'System') return;
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Falha ao eliminar utilizador');
@@ -604,9 +737,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         if (!response.ok) throw new Error("Falha ao atualizar o projeto padrão do utilizador.");
         const updatedUser = await response.json();
         if (currentUser?.id === userId) {
-          // This local update is not ideal, but needed since we don't have a setCurrentUser from auth context here.
-          // Consider passing setCurrentUser down if this becomes complex.
-          // For now, this just updates the local instance in the 'users' array.
+          setCurrentUser(updatedUser);
         }
         logAction('Default Project Set', `Default project for user ${updatedUser.name} set.`, {});
       },
@@ -616,7 +747,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
   
   const addProject = async (projectData: Omit<Project, 'id'>) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/projects', {
             method: 'POST',
@@ -633,7 +764,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
   
   const updateProject = async (projectId: string, projectData: Partial<Omit<Project, 'id'>>) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/projects/${projectId}`, {
             method: 'PUT',
@@ -649,7 +780,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const deleteProject = async (projectId: string) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const projectToDelete = rawProjects?.find(p => p.id === projectId);
         const response = await fetch(`/api/projects/${projectId}`, { method: 'DELETE' });
@@ -663,7 +794,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const addBook = async (projectId: string, bookData: Omit<RawBook, 'id' | 'projectId' | 'statusId'>) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const statusId = statuses?.find(s => s.name === 'Pending Shipment')?.id;
         if (!statusId) throw new Error("Não foi possível encontrar o estado 'Envio Pendente'.");
@@ -682,7 +813,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
   
   const updateBook = async (bookId: string, bookData: Partial<Omit<RawBook, 'id' | 'projectId' | 'statusId'>>) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/books/${bookId}`, {
             method: 'PUT',
@@ -699,7 +830,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const deleteBook = async (bookId: string) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const bookToDelete = rawBooks?.find(b => b.id === bookId);
         const response = await fetch(`/api/books/${bookId}`, { method: 'DELETE' });
@@ -712,7 +843,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const importBooks = async (projectId: string, newBooks: BookImport[]) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/books', {
             method: 'POST',
@@ -730,7 +861,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
   const addBookObservation = async (bookId: string, observation: string) => {
     if (!currentUser) return;
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const book = rawBooks?.find(b => b.id === bookId);
         const bookStatus = statuses?.find(s => s.id === book?.statusId)?.name;
@@ -821,7 +952,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const addRejectionTag = async (tagData: Omit<RejectionTag, 'id' | 'clientId'>, clientId: string) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         if (!clientId) throw new Error("ID do Cliente está ausente");
         const response = await fetch('/api/rejection-tags', {
@@ -840,7 +971,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const updateRejectionTag = async (tagId: string, tagData: Partial<Omit<RejectionTag, 'id' | 'clientId'>>) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/rejection-tags/${tagId}`, {
             method: 'PUT',
@@ -857,7 +988,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const deleteRejectionTag = async (tagId: string) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const tag = rejectionTags?.find(t => t.id === tagId);
         const response = await fetch(`/api/rejection-tags/${tagId}`, { method: 'DELETE' });
@@ -870,7 +1001,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const addStorage = async (storageData: StorageFormValues) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/storages', {
             method: 'POST',
@@ -887,7 +1018,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const updateStorage = async (storageId: string, storageData: StorageFormValues) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/storages/${storageId}`, {
             method: 'PUT',
@@ -904,7 +1035,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const deleteStorage = async (storageId: string) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const storage = storages?.find(s => s.id === Number(storageId));
         const response = await fetch(`/api/storages/${storageId}`, { method: 'DELETE' });
@@ -917,7 +1048,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
   
   const addScanner = async (scannerData: ScannerFormValues) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/scanners', {
             method: 'POST',
@@ -934,7 +1065,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const updateScanner = async (scannerId: number, scannerData: ScannerFormValues) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/scanners/${scannerId}`, {
             method: 'PUT',
@@ -951,7 +1082,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const deleteScanner = async (scannerId: number) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const scanner = scanners?.find(s => s.id === scannerId);
         const response = await fetch(`/api/scanners/${scannerId}`, { method: 'DELETE' });
@@ -964,7 +1095,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
   
   const addProjectStorage = async (associationData: Omit<ProjectStorage, 'projectId'> & {projectId: string}) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/project-storages', {
             method: 'POST',
@@ -980,7 +1111,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const updateProjectStorage = async (associationData: Omit<ProjectStorage, 'projectId'> & {projectId: string}) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/project-storages', {
             method: 'PUT',
@@ -996,7 +1127,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const deleteProjectStorage = async (projectId: string, storageId: number) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/project-storages', {
             method: 'DELETE',
@@ -1013,7 +1144,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
 
   const updateDocument = async (docId: string, data: Partial<AppDocument>) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const doc = rawDocuments?.find(d => d.id === docId);
         if (!doc) return;
@@ -1041,7 +1172,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const updateDocumentFlag = async (docId: string, flag: AppDocument['flag'], comment?: string) => await updateDocument(docId, { flag, flagComment: flag ? comment : undefined });
   
   const addPageToBook = async (bookId: string, position: number) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const book = enrichedBooks.find(b => b.id === bookId);
         if (!book) return;
@@ -1067,7 +1198,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   }
 
   const deletePageFromBook = async (pageId: string, bookId: string) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
           const page = rawDocuments?.find(p => p.id === pageId);
           const response = await fetch(`/api/documents/${pageId}`, { method: 'DELETE' });
@@ -1203,7 +1334,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const handleSendToStorage = async (bookId: string, payload: { actualPageCount: number }) => {
     setProcessingBookIds(prev => [...prev, bookId]);
     try {
-        await withMutation({
+        withMutation({
           mutationFn: async () => {
             const book = rawBooks?.find(b => b.id === bookId);
             const project = rawProjects?.find(p => p.id === book?.projectId);
@@ -1413,7 +1544,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
   
   const handleCompleteTask = async (bookId: string, stage: string) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
       const updateFields: { [key: string]: Partial<RawBook> } = {
         'Scanning Started': { scanEndTime: getDbSafeDate() },
@@ -1450,7 +1581,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   };
 
   const handleCancelCompleteTask = async (bookId: string, stage: string) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
       const updateFields: { [key: string]: Partial<RawBook> } = {
         'Scanning Started': { scanEndTime: null },
@@ -1888,7 +2019,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
 
   const handleCreateDeliveryBatch = async (bookIds: string[]) => {
-    await withMutation({
+    withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/delivery-batches', {
           method: 'POST',
@@ -1945,7 +2076,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
 
     const handlePullNextTask = React.useCallback(async (currentStageKey: string, userIdToAssign?: string) => {
-      await withMutation({
+      withMutation({
           mutationFn: async () => {
           const assigneeId = userIdToAssign || currentUser?.id;
           if (!assigneeId) throw new Error("Nenhum utilizador especificado para atribuição.");
@@ -1970,6 +2101,76 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       });
   }, [currentUser, users, handleAssignUser, booksAvaiableInStorageLocalIp, withMutation]);
 
+
+  const handleValidationDeliveryBatch = async (deliveryId: string, finalDecision: 'approve_remaining' | 'reject_all') => {
+    withMutation({
+          mutationFn: async () => {
+            if (!currentUser) return;
+        
+            const batch = deliveryBatches.find(b => b.id === deliveryId);
+            if (!batch) return;
+            
+            const itemsInBatch = deliveryBatchItems.filter(item => item.deliveryId === deliveryId);
+            const failedMoves: string[] = [];
+
+            for (const item of itemsInBatch) {
+                const book = rawBooks.find(b => b.id === item.bookId);
+                if (!book) continue;
+
+                const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
+                if (!currentStatusName) {
+                    console.error(`Could not find status name for statusId: ${book.statusId}`);
+                    failedMoves.push(book.name);
+                    continue;
+                }
+                
+                let newStatusName: string;
+                
+                if (finalDecision === 'reject_all') {
+                    newStatusName = 'Client Rejected';
+                } else { // approve_remaining
+                    newStatusName = item.status === 'rejected' ? 'Client Rejected' : 'Finalized';
+                }
+                
+                if (currentStatusName !== newStatusName) {
+                    const moveResult = await moveBookFolder(book.name, currentStatusName, newStatusName);
+                    if(moveResult) {
+                        await updateBookStatus(book.id, newStatusName);
+
+                        await logAction(
+                            newStatusName === 'Client Rejected' ? 'Client Rejection' : 'Client Approval',
+                            `Batch Finalization: Book status set to ${newStatusName}.`,
+                            { bookId: book.id, userId: currentUser.id }
+                        );
+                    } else {
+                        failedMoves.push(book.name);
+                    }
+                }
+            }
+
+            if (failedMoves.length > 0) {
+                toast({title: "Batch Finalization Failed", description: `Could not move folders for the following books: ${failedMoves.join(', ')}. The batch status was not updated.`, variant: "destructive", duration: 5000});
+                return;
+            }
+
+            const response = await fetch(`/api/delivery-batches/${deliveryId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'Finalized' }),
+            });
+            if (!response.ok) throw new Error('Failed to finalize batch via API.');
+            
+            const updatedBatch = await response.json();
+
+
+            await logAction('Delivery Batch Finalized', `Batch ${deliveryId} was finalized by ${currentUser.name}. Decision: ${finalDecision}.`, { userId: currentUser.id });
+            toast({ title: "Validation Confirmed", description: "All books in the batch have been processed." });
+        }, 
+        invalidateKeys: ['RAW_BOOKS', 'DELIVERY_BATCHES'],
+        successMessage: "Tarefa Puxada com Sucesso"
+      });
+  };
+
   const scannerUsers = React.useMemo(() => (users || []).filter(user => user.role === 'Scanning'), [users]);
   const indexerUsers = React.useMemo(() => (users || []).filter(user => user.role === 'Indexing'), [users]);
   const qcUsers = React.useMemo(() => (users || []).filter(user => user.role === 'QC Specialist'), [users]);
@@ -1992,7 +2193,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
 
   const value: AppContextType = { 
     loadingPage, isMutating, isPageLoading, processingBookIds, setIsMutating,
-    currentUser,
+    currentUser, login, logout, changePassword,
     navigationHistory, addNavigationHistoryItem,
     clients: clients || [], 
     users: users || [], 
@@ -2020,7 +2221,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     selectedProjectId,
     setSelectedProjectId,
     addClient, updateClient, deleteClient,
-    addUser, updateUser: (userId, data) => {}, deleteUser, toggleUserStatus, updateUserDefaultProject,
+    addUser, updateUser, deleteUser, toggleUserStatus, updateUserDefaultProject,
     addRole, updateRole, deleteRole,
     addProject, updateProject, deleteProject,
     updateProjectWorkflow,
@@ -2052,6 +2253,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     copyTifsBookFolder,
     updateBookStatus,
     loadInitialData,
+    handleValidationDeliveryBatch,
   };
 
   return (
