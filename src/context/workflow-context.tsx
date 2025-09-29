@@ -265,37 +265,40 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         const user = users.find(u => u.id === storedUserId);
         if (user) {
           setCurrentUser(user);
+          loadInitialData(false); // Load data after setting user from storage
           const storedHistory = localStorage.getItem(`nav_history_${user.id}`);
           if (storedHistory) {
             setNavigationHistory(JSON.parse(storedHistory));
           }
+        } else {
+            setIsPageLoading(false);
         }
+      } else {
+        setIsPageLoading(false);
       }
     }
   }, [isLoadingUsers, users]);
   
   const loadInitialData = React.useCallback(async (isSilent = false) => {
-    console.log(isSilent? "Silent Refetch loadInitialData...":"Not Silent Refetch loadInitialData...");
+    console.log(isSilent ? "Silent Refetch loadInitialData..." : "Not Silent Refetch loadInitialData...");
     if (!isSilent) {
-      setIsPageLoading(true);
+        setIsPageLoading(true);
     }
     try {
-      if (isSilent) {
-        // Fire and forget for silent refreshes
-        queryClient.refetchQueries();
-      } else {
-        // Await for non-silent, blocking refreshes
-        await queryClient.refetchQueries();
-      }
+        if (!isSilent) {
+            await queryClient.refetchQueries();
+        } else {
+            queryClient.refetchQueries();
+        }
     } catch (error) {
-      console.error("Failed to refetch data:", error);
-      toast({ title: "Data Sync Failed", description: "Could not sync with the server.", variant: "destructive" });
+        console.error("Failed to refetch data:", error);
+        toast({ title: "Data Sync Failed", description: "Could not sync with the server.", variant: "destructive" });
     } finally {
-      if (!isSilent) {
-        setIsPageLoading(false);
-      }
+        if (!isSilent) {
+            setIsPageLoading(false);
+        }
     }
-  }, [queryClient, toast]);
+}, [queryClient, toast]);
 
   const mutation = useMutation({
     mutationFn: async (variables: { mutationFn: () => Promise<any> }) => {
@@ -343,8 +346,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         ...rest,
     });
   }, [mutation]);
+
   const login = async (username: string, password: string): Promise<User | null> => {
-    setIsPageLoading(true);
     try {
       const user = users?.find(u => (u.username || '').toLowerCase() === (username || '').toLowerCase() && u.password === password);
       if (user) {
@@ -352,6 +355,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
           toast({title: "Login Falhou", description: "A sua conta está desativada. Por favor, contacte um administrador.", variant: "destructive"});
           return null;
         }
+        await loadInitialData(false);
         setSelectedProjectId(null);
         setCurrentUser(user);
         localStorage.setItem('flowvault_userid', user.id);
@@ -376,8 +380,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         variant: "destructive"
       });
       return null;
-    } finally {
-      setIsPageLoading(false);
     }
   };
 

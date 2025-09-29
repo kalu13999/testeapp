@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -7,19 +8,22 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { FileLock2 } from 'lucide-react';
+import { FileLock2, Loader2 } from 'lucide-react';
 import { useAppContext } from '@/context/workflow-context';
 import { useToast } from '@/hooks/use-toast';
 
 export default function LoginPage() {
   const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
+  const [isLoading, setIsLoading] = React.useState(false);
   const router = useRouter();
   const { login, permissions } = useAppContext();
   const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
+
     const user = await login(username, password);
 
     if (user) {
@@ -35,6 +39,7 @@ export default function LoginPage() {
       }
     } else {
       toast({title: "Falha no Login", description: "Nome de utilizador ou palavra-passe inválidos. Tente novamente.", variant: "destructive"});
+      setIsLoading(false);
     }
   };
 
@@ -61,6 +66,7 @@ export default function LoginPage() {
                 required 
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+                disabled={isLoading}
               />
             </div>
             <div className="space-y-2">
@@ -76,9 +82,11 @@ export default function LoginPage() {
                 required 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
               />
             </div>
-            <Button type="submit" className="w-full">
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Iniciar Sessão
             </Button>
           </form>

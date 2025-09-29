@@ -4,6 +4,8 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { AppProvider } from "@/context/workflow-context";
 import { QueryProvider } from "@/components/query-provider";
+import { GlobalLoader } from "@/components/layout/global-loader";
+
 
 export const metadata: Metadata = {
   title: "FlowVault",
@@ -34,6 +36,7 @@ export default function RootLayout({
           <AppProvider>
             {children}
             <Toaster />
+            <GlobalLoader />
           </AppProvider>
         </QueryProvider>
       </body>

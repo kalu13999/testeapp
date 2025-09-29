@@ -30,22 +30,18 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
   useEffect(() => {
     if (isInitialLoad.current) {
       isInitialLoad.current = false;
-      loadInitialData(false); // Explicit full load on first mount
-      console.log("Carregando dados iniciais (full load)...");
+      // Do nothing on initial load, login will trigger data fetch.
       return;
     }
-
-    if (isMutating || loadingPage || isPageLoading) return;
-
+  
     if (pathname) {
       // quando muda de página, limpa intervalo anterior e força refresh
       if (refreshIntervalRef.current) {
         clearInterval(refreshIntervalRef.current);
         refreshIntervalRef.current = null;
       }
-      
+  
       loadInitialData(true); // Silent refresh on navigation
-      console.log("Carregando dados da página (silent refresh)...");
     }
   }, [pathname, loadInitialData]);
   
@@ -56,7 +52,6 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
     refreshIntervalRef.current = setInterval(() => {
       if (!isMutating && !loadingPage && !isPageLoading) {
         loadInitialData(true); // silent refresh
-        console.log(" Timer 60: Refetch silencioso dos dados...");
       }
     }, 60000); // 60s ou 600000 para 10min
   
@@ -68,62 +63,63 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
     };
   }, [isMutating, loadingPage, isPageLoading, loadInitialData]);
 
-  
   useEffect(() => {
-    if (loadingPage || isPageLoading) {
+    // Show loader while initial user/permission check is happening
+    if (loadingPage) {
       setIsChecking(true);
       return;
     }
-
-    if(!isChecking){
+  
+    // If we've finished loading but have no user, redirect to login
+    if (!isChecking) {
       if (!currentUser) {
         router.push('/');
         return;
       }
     }
-    
-    // Aguarda que as permissões estejam carregadas antes de verificar.
-    if (!currentUser || Object.keys(permissions).length === 0) {
-      setIsChecking(true); // Continua a mostrar o loader enquanto as permissões carregam
-      return;
-    }
-    
-    if (accessibleProjectsForUser.length === 0 && !['Admin', 'Client'].includes(currentUser.role)) {
-       toast({ title: "Nenhum Projeto Selecionado", description: "Por favor, selecione um projeto antes de continuar.", variant: "destructive" });
-      // Allow access only to profile page if no projects assigned
-      if (pathname !== '/profile') {
-        router.push('/profile');
+  
+    // Wait for permissions to be loaded before checking access
+    if (currentUser && Object.keys(permissions).length > 0) {
+      // Don't check access if we are still waiting for initial data
+      if (isPageLoading) {
+        setIsChecking(true);
+        return;
+      }
+  
+      if (accessibleProjectsForUser.length === 0 && !['Admin', 'Client'].includes(currentUser.role)) {
+        toast({ title: "Nenhum Projeto Selecionado", description: "Por favor, selecione um projeto antes de continuar.", variant: "destructive" });
+        if (pathname !== '/profile') {
+          router.push('/profile');
+        } else {
+          setIsAllowed(true);
+        }
+        setIsChecking(false);
+        return;
+      }
+  
+      const userPermissions = permissions[currentUser.role] || [];
+      const isAdmin = userPermissions.includes('*');
+      if (isAdmin) {
+        setIsAllowed(true);
+        setIsChecking(false);
+        return;
+      }
+  
+      const isPathAllowed = userPermissions.some(p => {
+        const regex = new RegExp(`^${p.replace(/\[.*?\]/g, '[^/]+')}$`);
+        return regex.test(pathname);
+      });
+  
+      if (!isPathAllowed) {
+        toast({ title: "Acesso Negado", description: "Não tem permissão para ver essa página.", variant: "destructive" });
+        const firstAllowedPage = userPermissions.find(p => !p.includes('[')) || '/dashboard';
+        router.push(firstAllowedPage);
       } else {
         setIsAllowed(true);
       }
+  
       setIsChecking(false);
-      return;
     }
-
-
-    const userPermissions = permissions[currentUser.role] || [];
-    const isAdmin = userPermissions.includes('*');
-    if (isAdmin) {
-      setIsAllowed(true);
-      setIsChecking(false);
-      return; // Admin can access everything
-    }
-
-    // Check if the current path is allowed
-    const isPathAllowed = userPermissions.some(p => {
-        const regex = new RegExp(`^${p.replace(/\[.*?\]/g, '[^/]+')}$`);
-        return regex.test(pathname);
-    });
-
-    if (!isPathAllowed) {
-        toast({ title: "Acesso Negado", description: "Não tem permissão para ver essa página.", variant: "destructive" });
-        // Redirect to the first allowed page or dashboard
-        const firstAllowedPage = userPermissions.find(p => !p.includes('[')) || '/dashboard';
-        router.push(firstAllowedPage);
-    } else {
-        setIsAllowed(true);
-    }
-    setIsChecking(false);
   }, [currentUser, pathname, permissions, router, toast, accessibleProjectsForUser, loadingPage, isPageLoading, isChecking]);
   
   // Effect to manage the selected project ID automatically
@@ -181,15 +177,36 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
     }
   }, [pathname, currentUser, addNavigationHistoryItem]);
 
-
-  
-
-  if (!currentUser && !isChecking) {
-    // Render nothing or a loading spinner while redirecting
-    router.push('/');
-    return null;
+  if (!currentUser) {
+    // This will show while the app is trying to restore the user from localStorage
+    // Or if the user is genuinely not logged in
+    return (
+        <div className="flex h-screen w-screen items-center justify-center">
+            <div className="flex flex-col items-center gap-4">
+                <div className="bg-primary rounded-lg p-3 flex items-center justify-center">
+                    <FileLock2 className="h-8 w-8 text-primary-foreground" />
+                </div>
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <p className="text-muted-foreground">Loading user session...</p>
+            </div>
+        </div>
+    );
   }
   
+  if (isPageLoading) {
+    return (
+        <div className="flex h-screen w-screen items-center justify-center">
+            <div className="flex flex-col items-center gap-4">
+                <div className="bg-primary rounded-lg p-3 flex items-center justify-center">
+                    <FileLock2 className="h-8 w-8 text-primary-foreground" />
+                </div>
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <p className="text-muted-foreground">Loading application data...</p>
+            </div>
+        </div>
+    );
+  }
+
   return (
     <>
       <Sidebar>
@@ -219,7 +236,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
             </div>
         </header>
         <main className="flex-1 p-4 md:p-6">
-          {isChecking || isPageLoading ? (
+          {isChecking ? (
             <div className="flex h-full items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
