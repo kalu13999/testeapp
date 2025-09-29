@@ -24,7 +24,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useAppContext } from '@/context/workflow-context';
+import { useAuth } from '@/context/auth-context';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 
@@ -48,7 +48,7 @@ type ProfileFormValues = z.infer<typeof profileFormSchema>;
 type PasswordFormValues = z.infer<typeof passwordFormSchema>;
 
 export default function SettingsClient() {
-  const { currentUser, updateUser, changePassword } = useAppContext();
+  const { currentUser, updateUser, changePassword } = useAuth();
   const { toast } = useToast();
 
   const profileForm = useForm<ProfileFormValues>({

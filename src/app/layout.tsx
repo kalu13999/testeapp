@@ -2,10 +2,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
-import { AppProvider } from "@/context/workflow-context";
+import { AuthProvider } from "@/context/auth-context";
 import { QueryProvider } from "@/components/query-provider";
-import { GlobalLoader } from "@/components/layout/global-loader";
-
+import { GlobalLoader } from "@/components/ui/global-loader";
 
 export const metadata: Metadata = {
   title: "FlowVault",
@@ -33,11 +32,11 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <QueryProvider>
-          <AppProvider>
+          <AuthProvider>
             {children}
             <Toaster />
             <GlobalLoader />
-          </AppProvider>
+          </AuthProvider>
         </QueryProvider>
       </body>
     </html>

@@ -1,5 +1,3 @@
-
-
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -13,7 +11,7 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useAppContext } from '@/context/workflow-context';
+import { useAuth } from '@/context/auth-context';
 import { type User as UserData } from '@/lib/data';
 import { CreditCard, LogOut, Settings, User } from 'lucide-react';
 
@@ -22,7 +20,7 @@ interface UserNavProps {
 }
 
 export function UserNav({ user }: UserNavProps) {
-  const { logout } = useAppContext();
+  const { logout } = useAuth();
 
   const getInitials = (name: string) => {
     if(!name) return "";

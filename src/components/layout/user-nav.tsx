@@ -1,5 +1,4 @@
 
-
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -13,29 +12,23 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useAppContext } from '@/context/workflow-context';
-import { type User as UserData } from '@/lib/data';
+import { useAuth } from '@/context/auth-context';
 import { CreditCard, LogOut, Settings, User } from 'lucide-react';
 
-interface UserNavProps {
-  user?: UserData;
-}
-
-export function UserNav({ user }: UserNavProps) {
-  const { logout } = useAppContext();
+export function UserNav() {
+  const { currentUser, logout } = useAuth();
 
   const getInitials = (name: string) => {
     if(!name) return "";
     return name.split(' ').map(n => n[0]).join('');
   }
 
-  if (!user) {
-    return null; // Or a login button
+  if (!currentUser) {
+    return null;
   }
 
   const handleLogout = () => {
     logout();
-    // The route guard in layout-client.tsx will handle the redirect
   };
 
   return (
@@ -43,16 +36,16 @@ export function UserNav({ user }: UserNavProps) {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-9 w-9 rounded-full">
           <Avatar className="h-9 w-9">
-            {user.avatar && <AvatarImage src={user.avatar} alt="User avatar" data-ai-hint="person avatar" />}
-            <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+            {currentUser.avatar && <AvatarImage src={currentUser.avatar} alt="User avatar" data-ai-hint="person avatar" />}
+            <AvatarFallback>{getInitials(currentUser.name)}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{user.name}</p>
-            {user.email && <p className="text-xs leading-none text-muted-foreground">{user.email}</p>}
+            <p className="text-sm font-medium leading-none">{currentUser.name}</p>
+            {currentUser.email && <p className="text-xs leading-none text-muted-foreground">{currentUser.email}</p>}
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -63,12 +56,7 @@ export function UserNav({ user }: UserNavProps) {
                 <span>Perfil</span>
             </Link>
           </DropdownMenuItem>
-          {/*<DropdownMenuItem>
-            <CreditCard className="mr-2 h-4 w-4" />
-            <span>Billing</span>
-            <DropdownMenuShortcut>⌘B</DropdownMenuShortcut>
-          </DropdownMenuItem>*/}
-          {user.role === 'Admin' && (
+          {currentUser.role === 'Admin' && (
              <DropdownMenuItem asChild>
                 <Link href="/settings">
                     <Settings className="mr-2 h-4 w-4" />

@@ -9,15 +9,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { FileLock2, Loader2 } from 'lucide-react';
-import { useAppContext } from '@/context/workflow-context';
+import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 
 export default function LoginPage() {
   const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
+  const { login, isAuthLoading } = useAuth();
   const [isLoading, setIsLoading] = React.useState(false);
   const router = useRouter();
-  const { login, permissions } = useAppContext();
   const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -26,22 +26,17 @@ export default function LoginPage() {
 
     const user = await login(username, password);
 
+    setIsLoading(false);
+
     if (user) {
-      toast({ title: "Login Efectuado", description: "Bem-vindo de volta!" });
-
-      const userPermissions = permissions[user.role] || [];
-      const canAccessDashboard = userPermissions.includes('/dashboard') || userPermissions.includes('*');
-
-      if (canAccessDashboard) {
-        router.push('/dashboard');
-      } else {
-        router.push('/profile');
-      }
+      toast({ title: "Login Successful", description: "Welcome back!" });
+      router.push('/dashboard'); 
     } else {
-      toast({title: "Falha no Login", description: "Nome de utilizador ou palavra-passe inválidos. Tente novamente.", variant: "destructive"});
-      setIsLoading(false);
+      toast({title: "Login Failed", description: "Invalid username or password. Please try again.", variant: "destructive"});
     }
   };
+  
+  const isButtonDisabled = isLoading || isAuthLoading;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -66,15 +61,12 @@ export default function LoginPage() {
                 required 
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                disabled={isLoading}
+                disabled={isButtonDisabled}
               />
             </div>
             <div className="space-y-2">
               <div className="flex items-center">
                 <Label htmlFor="password">Palavra-passe</Label>
-                {/*<Link href="#" className="ml-auto inline-block text-sm underline">
-                  Esqueceu a sua palavra-passe?
-                </Link>*/}
               </div>
               <Input 
                 id="password" 
@@ -82,11 +74,11 @@ export default function LoginPage() {
                 required 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                disabled={isLoading}
+                disabled={isButtonDisabled}
               />
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button type="submit" className="w-full" disabled={isButtonDisabled}>
+              {isButtonDisabled && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Iniciar Sessão
             </Button>
           </form>
