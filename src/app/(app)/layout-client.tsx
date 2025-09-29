@@ -16,7 +16,7 @@ import { RecentPagesNav } from '@/components/layout/recent-pages-nav';
 import { GlobalLoader } from '@/components/layout/global-loader';
 
 export const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
-  const { isMutating, currentUser, permissions, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loadingPage, isPageLoading, addNavigationHistoryItem, loadInitialData } = useAppContext();
+  const { isMutating, currentUser, permissions, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, isPageLoading, addNavigationHistoryItem, loadInitialData } = useAppContext();
   const router = useRouter();
   const isInitialLoad = useRef(true);
   const { toast } = useToast();
@@ -46,11 +46,11 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
   }, [pathname, loadInitialData]);
   
   useEffect(() => {
-    if (isMutating || loadingPage || isPageLoading) return;
+    if (isMutating || isPageLoading) return;
   
     // cria intervalo e guarda no ref
     refreshIntervalRef.current = setInterval(() => {
-      if (!isMutating && !loadingPage && !isPageLoading) {
+      if (!isMutating && !isPageLoading) {
         loadInitialData(true); // silent refresh
       }
     }, 60000); // 60s ou 600000 para 10min
@@ -61,16 +61,15 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
         refreshIntervalRef.current = null;
       }
     };
-  }, [isMutating, loadingPage, isPageLoading, loadInitialData]);
+  }, [isMutating, isPageLoading, loadInitialData]);
 
   useEffect(() => {
     // Show loader while initial user/permission check is happening
-    if (loadingPage) {
+    if (isPageLoading) {
       setIsChecking(true);
       return;
     }
-  
-    // If we've finished loading but have no user, redirect to login
+
     if (!isChecking) {
       if (!currentUser) {
         router.push('/');
@@ -120,43 +119,37 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
   
       setIsChecking(false);
     }
-  }, [currentUser, pathname, permissions, router, toast, accessibleProjectsForUser, loadingPage, isPageLoading, isChecking]);
+  }, [currentUser, pathname, permissions, router, toast, accessibleProjectsForUser, isPageLoading, isChecking]);
   
   // Effect to manage the selected project ID automatically
   useEffect(() => {
-    if (loadingPage || isPageLoading || !currentUser) {
-      return;
-    }
-
-    const hasUserChanged = previousUserIdRef.current !== null && previousUserIdRef.current !== currentUser.id;
-    const isSelectionValid = selectedProjectId && accessibleProjectsForUser.some(p => p.id === selectedProjectId);
-
-    // This is the core logic:
-    // 1. If user has changed: Force set to default/first project.
-    // 2. If selection is invalid (e.g. no longer accessible): Force set to default/first.
-    // 3. If no project is selected: Force set to default/first.
-    // Otherwise, do nothing and respect the current selection.
-    if (hasUserChanged || !isSelectionValid) {
-        let idealProjectId: string | null = null;
-        if (currentUser.defaultProjectId && accessibleProjectsForUser.some(p => p.id === currentUser.defaultProjectId)) {
-            idealProjectId = currentUser.defaultProjectId;
-        } else if (accessibleProjectsForUser.length > 0) {
-            idealProjectId = accessibleProjectsForUser[0].id;
-        }
-        
-        if (localStorage.getItem('flowvault_projectid')){
-          idealProjectId = localStorage.getItem('flowvault_projectid');
-        }
-
-        if(selectedProjectId !== idealProjectId) {
-          setSelectedProjectId(idealProjectId);
-        }
+    if (isPageLoading || !currentUser) return;
+  
+    const isNewUser = previousUserIdRef.current !== currentUser.id;
+    const isSelectionInvalid = !selectedProjectId || !accessibleProjectsForUser.some(p => p.id === selectedProjectId);
+  
+    if (isNewUser || isSelectionInvalid) {
+      let idealProjectId: string | null = null;
+      if (currentUser.defaultProjectId && accessibleProjectsForUser.some(p => p.id === currentUser.defaultProjectId)) {
+        idealProjectId = currentUser.defaultProjectId;
+      } else if (accessibleProjectsForUser.length > 0) {
+        idealProjectId = accessibleProjectsForUser[0].id;
+      }
+      
+      const storedProjectId = localStorage.getItem('flowvault_projectid');
+      if (storedProjectId && accessibleProjectsForUser.some(p => p.id === storedProjectId)) {
+        idealProjectId = storedProjectId;
+      }
+  
+      if (idealProjectId && idealProjectId !== selectedProjectId) {
+        setSelectedProjectId(idealProjectId);
+      }
     }
     
     // Always update the ref AFTER the logic has run
     previousUserIdRef.current = currentUser.id;
-
-  }, [currentUser, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loadingPage, isPageLoading]);
+  
+  }, [currentUser, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, isPageLoading]);
   
   useEffect(() => {
     if (!pathname || !currentUser) return;
@@ -177,7 +170,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
     }
   }, [pathname, currentUser, addNavigationHistoryItem]);
 
-  if (!currentUser) {
+  if (!currentUser && !isPageLoading) {
     // This will show while the app is trying to restore the user from localStorage
     // Or if the user is genuinely not logged in
     return (
