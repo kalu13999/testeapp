@@ -265,7 +265,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         const user = users.find(u => u.id === storedUserId);
         if (user) {
           setCurrentUser(user);
-          loadInitialData(false); // Load data after setting user from storage
+          //loadInitialData(false); // Load data after setting user from storage
           const storedHistory = localStorage.getItem(`nav_history_${user.id}`);
           if (storedHistory) {
             setNavigationHistory(JSON.parse(storedHistory));
@@ -355,7 +355,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
           toast({title: "Login Falhou", description: "A sua conta está desativada. Por favor, contacte um administrador.", variant: "destructive"});
           return null;
         }
-        await loadInitialData(false);
+        loadInitialData(false);
         setSelectedProjectId(null);
         setCurrentUser(user);
         localStorage.setItem('flowvault_userid', user.id);

@@ -48,7 +48,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
   const refreshIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
 
   // Effect for navigation-triggered data refresh
-  useEffect(() => {
+  /*useEffect(() => {
     if (isInitialLoad.current) {
       isInitialLoad.current = false;
       // The initial load after login is now handled inside the login function
@@ -59,7 +59,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
       console.log("REFRESH: Triggered by Navigation Change");
       loadInitialData(true); // Silent refresh on navigation
     }
-  }, [pathname, loadInitialData]);
+  }, [pathname, loadInitialData]);*/
 
   // Effect for periodic background refresh
   useEffect(() => {
@@ -67,10 +67,10 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
     refreshIntervalRef.current = setInterval(() => {
       // The logic inside the interval checks the state on each tick
       if (!isMutating && !loadingPage && !isPageLoading) {
-        console.log("REFRESH: Triggered by 60s Interval");
+        console.log("REFRESH: Triggered by 30s Interval");
         loadInitialData(true); // silent refresh
       }
-    }, 60000); // 60s
+    }, 30000); // 60s
 
     // Cleanup function to clear the interval when the component unmounts
     return () => {
