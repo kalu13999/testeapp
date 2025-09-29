@@ -16,7 +16,7 @@ import { RecentPagesNav } from '@/components/layout/recent-pages-nav';
 import { GlobalLoader } from '@/components/layout/global-loader';
 
 export const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
-  const { isMutating, currentUser, permissions, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, isPageLoading, addNavigationHistoryItem, loadInitialData } = useAppContext();
+  const { isMutating, currentUser, permissions, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loadingPage, isPageLoading, addNavigationHistoryItem, loadInitialData } = useAppContext();
   const router = useRouter();
   const isInitialLoad = useRef(true);
   const { toast } = useToast();
@@ -46,11 +46,11 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
   }, [pathname, loadInitialData]);
   
   useEffect(() => {
-    if (isMutating || isPageLoading) return;
+    if (isMutating || loadingPage || isPageLoading) return;
   
     // cria intervalo e guarda no ref
     refreshIntervalRef.current = setInterval(() => {
-      if (!isMutating && !isPageLoading) {
+      if (!isMutating && !isPageLoading && !loadingPage ) {
         loadInitialData(true); // silent refresh
       }
     }, 60000); // 60s ou 600000 para 10min
@@ -61,11 +61,11 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
         refreshIntervalRef.current = null;
       }
     };
-  }, [isMutating, isPageLoading, loadInitialData]);
+  }, [isMutating, isPageLoading, loadingPage, loadInitialData]);
 
   useEffect(() => {
     // Show loader while initial user/permission check is happening
-    if (isPageLoading) {
+    if (isPageLoading || loadingPage) {
       setIsChecking(true);
       return;
     }
