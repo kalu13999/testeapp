@@ -421,28 +421,49 @@ const withMutationAsync = React.useCallback(
     });
   };
 
-  const changePassword = async (userId: string, currentPassword: string, newPassword: string): Promise<boolean | undefined> => {
-    return new Promise(resolve => {
-        withMutation({
-            mutationFn: async () => {
-                const response = await fetch(`/api/users/${userId}/change-password`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ currentPassword, newPassword }),
-                });
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || "Failed to change password.");
-                }
-                logAction('Password Changed', `User changed their password.`, { userId: userId });
-                resolve(true);
-            },
-            invalidateKeys: ['USERS'],
-            successMessage: "Palavra-passe alterada com sucesso",
-            onError: () => resolve(false)
-        });
-    });
-  };
+  const changePassword = async (
+      userId: string,
+      currentPassword: string,
+      newPassword: string
+    ): Promise<boolean> => {
+      try {
+        await withMutationAsync({
+          mutationFn: async () => {
+            const res = await fetch(
+              `/api/users/${userId}/change-password`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ currentPassword, newPassword })
+              }
+            )
+            if (!res.ok) {
+              const body = await res.json()
+              throw new Error(body.error || "Failla ao alterar Palavra-passe.")
+            }
+            // regista o audit log
+            logAction(
+              "Palavra-passe alterada",
+              `User ${userId} mudou a password.`,
+              { userId }
+            )
+          },
+          invalidateKeys: ["USERS"],
+
+
+          successMessage: "Palavra-passe alterada com sucesso",
+
+          onError: (err) => {
+            console.error("Alterar Palavra-passe falhou:", err)
+          }
+        })
+
+        return true
+
+      } catch (err) {
+        return false
+      }
+    }
   
   const addNavigationHistoryItem = React.useCallback((item: NavigationHistoryItem) => {
     if(!currentUser) return;
