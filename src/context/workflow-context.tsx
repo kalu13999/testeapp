@@ -192,6 +192,9 @@ type AppContextType = {
   moveTifsBookFolder: (bookName: string, fromStatusName: string, toStatusName: string) => Promise<boolean>;
   copyTifsBookFolder: (bookName: string, fromStatusName: string, toStatusName: string) => Promise<boolean>;
   updateBookStatus: (bookId: string, newStatusName: string, additionalUpdates?: Partial<EnrichedBook>) => Promise<any>;
+
+  //
+  handleValidationDeliveryBatch: (deliveryId: string, finalDecision: 'approve_remaining' | 'reject_all') => Promise<void>;
 };
 
 const AppContext = React.createContext<AppContextType | undefined>(undefined);
@@ -208,13 +211,20 @@ const openLocalApp = (protocol: string, data: Record<string, string>) => {
   }, 100);
 };
 
-type MutationVariables<TData, TVariables> = {
-    mutationFn: (vars: TVariables) => Promise<TData | string | void>;
-    optimisticUpdateFn?: (queryClient: any, variables: TVariables, context: any) => void;
-    getPreviousDataFn?: (queryClient: any) => any;
-    successMessage?: string;
-    invalidateKeys?: (keyof typeof queryKeys)[];
-} & TVariables;
+export type MutationVariables<
+  TData = unknown,
+  TVars extends Record<string, any> = {}
+> = TVars & {
+  mutationFn: (vars: TVars) => Promise<TData | string | void>
+  invalidateKeys?: (keyof typeof queryKeys)[]
+  successMessage?: string
+
+  onError?:   (error: any, vars: TVars) => void
+  onSuccess?: (data: TData | string | void, vars: TVars) => void
+  onSettled?: (data: TData | string | void, error: any, vars: TVars) => void
+  onMutate?:  (vars: TVars) => void
+}
+
 
 
 export function AppProvider({ children }: { children: React.ReactNode; }) {
@@ -300,52 +310,57 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     }
 }, [queryClient, toast]);
 
-  const mutation = useMutation({
-    mutationFn: async (variables: { mutationFn: () => Promise<any> }) => {
-      setIsMutating(true);
-      return variables.mutationFn();
-    },
-    onMutate: async (variables: any) => {
-      if (variables.optimisticUpdateFn) {
-        await queryClient.cancelQueries();
-        const previousData = variables.getPreviousDataFn ? variables.getPreviousDataFn(queryClient) : undefined;
-        variables.optimisticUpdateFn(queryClient, variables, previousData);
-        return { previousData };
-      }
-      return {};
-    },
-    onError: (error: any, variables: any, context: any) => {
-      if (context?.previousData && variables.optimisticUpdateFn) {
-        variables.optimisticUpdateFn(queryClient, context.previousData, true); // Revert
-      }
-      toast({ title: "Operation Failed", description: error.message, variant: "destructive" });
-    },
-    onSuccess: (data, variables: any) => {
-      if (typeof data === 'string') {
-          toast({ title: data });
-      } else if (variables.successMessage) {
-          toast({ title: variables.successMessage });
-      }
-    },
-    onSettled: (data, error, variables: any) => {
-      if (variables.invalidateKeys) {
-        variables.invalidateKeys.forEach((key: keyof typeof queryKeys) => {
-          queryClient.invalidateQueries({ queryKey: queryKeys[key] });
-        });
-      }
-      setIsMutating(false);
-    },
-  });
+//
+// 2) Criar o mutation aceitando qualquer MutationVariables
+//
+const mutation = useMutation<
+  unknown,                       // retorno genérico
+  Error,                         // tipo do erro
+  MutationVariables             // nosso tipo completo
+>({
+  // mutationFn recebe TODO o objeto opts
+  mutationFn: async opts => {
+    setIsMutating(true)
+    return opts.mutationFn(opts as any)
+  },
 
-  const withMutation = React.useCallback(<TData, TVariables>(
-    options: MutationVariables<TData, TVariables>
-  ) => {
-    const { mutationFn, ...rest } = options;
-    return mutation.mutate({
-        mutationFn: () => mutationFn(rest as TVariables),
-        ...rest,
-    });
-  }, [mutation]);
+  // repassa callbacks se existirem
+  onMutate: opts => opts.onMutate?.(opts as any),
+  onError:  (err, opts) => opts.onError?.(err, opts as any),
+  onSuccess:(data, opts) => {
+    opts.onSuccess?.(data, opts as any)
+    if (opts.successMessage) toast({ title: opts.successMessage })
+  },
+  onSettled:(data, err, opts) => {
+    // invalida apenas as queries indicadas
+    opts.invalidateKeys?.forEach(key => {
+      queryClient.invalidateQueries({ queryKey: queryKeys[key] as QueryKey })
+    })
+    opts.onSettled?.(data, err, opts as any)
+    setIsMutating(false)
+  }
+})
+
+//
+// 3) Wrapper sem generics no callback e sem await
+//
+const withMutation = React.useCallback(
+  (opts: MutationVariables) => {
+    mutation.mutate(opts)
+  },
+  [mutation]
+)
+
+const withMutationAsync = React.useCallback(
+  <TData, TVars extends Record<string, any>>(opts: MutationVariables) => {
+    setIsMutating(true)
+    return mutation
+      .mutateAsync(opts)
+      .finally(() => setIsMutating(false))
+  },
+  [mutation]
+)
+
 
   const login = async (username: string, password: string): Promise<User | null> => {
     try {
@@ -2067,6 +2082,76 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
       });
   }, [currentUser, users, handleAssignUser, booksAvaiableInStorageLocalIp, withMutation]);
 
+
+  const handleValidationDeliveryBatch = async (deliveryId: string, finalDecision: 'approve_remaining' | 'reject_all') => {
+    withMutation({
+          mutationFn: async () => {
+            if (!currentUser) return;
+        
+            const batch = deliveryBatches.find(b => b.id === deliveryId);
+            if (!batch) return;
+            
+            const itemsInBatch = deliveryBatchItems.filter(item => item.deliveryId === deliveryId);
+            const failedMoves: string[] = [];
+
+            for (const item of itemsInBatch) {
+                const book = rawBooks.find(b => b.id === item.bookId);
+                if (!book) continue;
+
+                const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
+                if (!currentStatusName) {
+                    console.error(`Could not find status name for statusId: ${book.statusId}`);
+                    failedMoves.push(book.name);
+                    continue;
+                }
+                
+                let newStatusName: string;
+                
+                if (finalDecision === 'reject_all') {
+                    newStatusName = 'Client Rejected';
+                } else { // approve_remaining
+                    newStatusName = item.status === 'rejected' ? 'Client Rejected' : 'Finalized';
+                }
+                
+                if (currentStatusName !== newStatusName) {
+                    const moveResult = await moveBookFolder(book.name, currentStatusName, newStatusName);
+                    if(moveResult) {
+                        await updateBookStatus(book.id, newStatusName);
+
+                        await logAction(
+                            newStatusName === 'Client Rejected' ? 'Client Rejection' : 'Client Approval',
+                            `Batch Finalization: Book status set to ${newStatusName}.`,
+                            { bookId: book.id, userId: currentUser.id }
+                        );
+                    } else {
+                        failedMoves.push(book.name);
+                    }
+                }
+            }
+
+            if (failedMoves.length > 0) {
+                toast({title: "Batch Finalization Failed", description: `Could not move folders for the following books: ${failedMoves.join(', ')}. The batch status was not updated.`, variant: "destructive", duration: 5000});
+                return;
+            }
+
+            const response = await fetch(`/api/delivery-batches/${deliveryId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'Finalized' }),
+            });
+            if (!response.ok) throw new Error('Failed to finalize batch via API.');
+            
+            const updatedBatch = await response.json();
+
+
+            await logAction('Delivery Batch Finalized', `Batch ${deliveryId} was finalized by ${currentUser.name}. Decision: ${finalDecision}.`, { userId: currentUser.id });
+            toast({ title: "Validation Confirmed", description: "All books in the batch have been processed." });
+        }, 
+        invalidateKeys: ['RAW_BOOKS', 'DELIVERY_BATCHES'],
+        successMessage: "Tarefa Puxada com Sucesso"
+      });
+  };
+
   const scannerUsers = React.useMemo(() => (users || []).filter(user => user.role === 'Scanning'), [users]);
   const indexerUsers = React.useMemo(() => (users || []).filter(user => user.role === 'Indexing'), [users]);
   const qcUsers = React.useMemo(() => (users || []).filter(user => user.role === 'QC Specialist'), [users]);
@@ -2149,6 +2234,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
     copyTifsBookFolder,
     updateBookStatus,
     loadInitialData,
+    handleValidationDeliveryBatch,
   };
 
   return (
