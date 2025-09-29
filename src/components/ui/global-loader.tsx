@@ -1,13 +1,26 @@
 
 "use client";
 
+import { useAuth } from "@/context/auth-context";
 import { useAppContext } from "@/context/workflow-context";
 import { Loader2 } from "lucide-react";
 
-export function GlobalLoader() {
-  const { isMutating, isPageLoading } = useAppContext();
+// A custom hook to safely access useAppContext
+const useSafeAppContext = () => {
+  try {
+    return useAppContext();
+  } catch (e) {
+    // This will happen on pages outside the AppProvider, like the login page.
+    return { isMutating: false, isPageLoading: false };
+  }
+};
 
-  const showLoader = isMutating || isPageLoading;
+
+export function GlobalLoader() {
+  const { isMutating, isPageLoading } = useSafeAppContext();
+  const { isAuthLoading } = useAuth();
+
+  const showLoader = isMutating || isPageLoading || isAuthLoading;
 
   if (!showLoader) {
     return null;
