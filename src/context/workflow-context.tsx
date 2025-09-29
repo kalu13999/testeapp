@@ -2077,31 +2077,79 @@ const withMutationAsync = React.useCallback(
   }, [enrichedBooks, selectedProjectId, accessibleProjectsForUser, projectWorkflows, storages, toast]);
 
 
-    const handlePullNextTask = React.useCallback(async (currentStageKey: string, userIdToAssign?: string) => {
-      withMutation({
+    const handlePullNextTask = React.useCallback(
+      async (currentStageKey: string, userIdToAssign?: string) => {
+        withMutation({
           mutationFn: async () => {
-          const assigneeId = userIdToAssign || currentUser?.id;
-          if (!assigneeId) throw new Error("Nenhum utilizador especificado para atribuição.");
-          const user = users?.find(u => u.id === assigneeId);
-          if (!user) throw new Error("Utilizador atribuído não encontrado.");
-          
-          const workflowConfig = STAGE_CONFIG[currentStageKey];
-          if (!workflowConfig || !workflowConfig.assigneeRole) throw new Error("Fase inválida para puxar tarefas.");
-          
-          const availableBooks = await booksAvaiableInStorageLocalIp(currentStageKey);
+            const assigneeId = userIdToAssign || currentUser?.id;
+            if (!assigneeId) throw new Error("Nenhum utilizador especificado para atribuição.");
 
-          if(!availableBooks || availableBooks.length === 0) {
-            return "Sem Tarefas Disponíveis";
+            const user = users.find(u => u.id === assigneeId);
+            if (!user) throw new Error("Utilizador atribuído não encontrado.");
+
+            const workflowConfig = STAGE_CONFIG[currentStageKey];
+            if (!workflowConfig || !workflowConfig.assigneeRole) throw new Error("Fase inválida para puxar tarefas.");
+
+            const localIP = await getLocalIP();
+            const accessibleStorageIds = storages
+              .filter(s => s.ip === localIP)
+              .map(s => String(s.id));
+
+            if (accessibleStorageIds.length === 0 && (currentStageKey === 'to-indexing' || currentStageKey === 'to-checking')) {
+              throw new Error("Nenhum armazenamento acessível encontrado para o IP atual. Não é possível puxar tarefas de Indexação ou QC.");
+            }
+
+            // Determinar a lista de projetos a verificar
+            const projectsToScan = selectedProjectId ? rawProjects.filter(p => p.id === selectedProjectId) : accessibleProjectsForUser;
+
+            for (const project of projectsToScan) {
+              const projectWorkflow = projectWorkflows[project.id] || [];
+              const currentStageIndexInProjectWorkflow = projectWorkflow.indexOf(currentStageKey);
+
+              if (currentStageIndexInProjectWorkflow > 0) {
+                const previousStageKey = projectWorkflow[currentStageIndexInProjectWorkflow - 1];
+                const previousStageStatus = STAGE_CONFIG[previousStageKey]?.dataStatus;
+                if (!previousStageStatus) continue;
+
+                // Procurar livro elegível neste projeto
+                const bookToAssign = enrichedBooks.find(b =>
+                  b.projectId === project.id &&
+                  b.status === previousStageStatus &&
+                  !b[workflowConfig.assigneeRole + 'UserId' as keyof EnrichedBook] &&
+                  ((currentStageKey !== 'to-indexing' && currentStageKey !== 'to-checking') ||
+                    (b.storageId && accessibleStorageIds.includes(String(b.storageId))))
+                );
+
+                if (bookToAssign) {
+                  handleAssignUser(bookToAssign.id, assigneeId, workflowConfig.assigneeRole);
+
+                  toast({
+                    title: "Tarefa Obtida com Sucesso",
+                    description: `"${bookToAssign.name}" foi atribuído a si.`
+                  });
+
+                  return;
+                }
+              }
+            }
+
+            // Se nenhum livro foi encontrado
+            throw new Error("Não há livros não atribuídos disponíveis na etapa anterior para os seus projetos.");
+          },
+          invalidateKeys: ['RAW_BOOKS'],
+          successMessage: "Tarefa Puxada com Sucesso",
+            onError: (err) => {
+            toast({
+              title: "Erro ao Receber Tarefa",
+              description: err.message || "Ocorreu um erro ao tentar receber a próxima tarefa.",
+              variant: "destructive"
+            });
           }
-
-          const bookToAssign = availableBooks[0];
-
-          handleAssignUser(bookToAssign.id, assigneeId, workflowConfig.assigneeRole);
-        }, 
-        invalidateKeys: ['RAW_BOOKS'],
-        successMessage: "Tarefa Puxada com Sucesso"
-      });
-  }, [currentUser, users, handleAssignUser, booksAvaiableInStorageLocalIp, withMutation]);
+        });
+      },
+      [
+        currentUser, users, enrichedBooks, selectedProjectId, accessibleProjectsForUser, projectWorkflows, storages, handleAssignUser, toast]
+    );
 
 
   const handleValidationDeliveryBatch = async (deliveryId: string, finalDecision: 'approve_remaining' | 'reject_all') => {
