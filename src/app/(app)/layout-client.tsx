@@ -35,7 +35,7 @@ const InvalidWorkflowPage = () => (
 
 
 export const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
-  const { isMutating, currentUser, permissions, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loadingPage, isPageLoading, addNavigationHistoryItem, loadInitialData, projectWorkflows } = useAppContext();
+  const { isMutating, currentUser, permissions, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loading, addNavigationHistoryItem, loadInitialData, projectWorkflows } = useAppContext();
   const router = useRouter();
   const isInitialLoad = useRef(true);
   const { toast } = useToast();
@@ -59,31 +59,37 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
       console.log("REFRESH: Triggered by Navigation Change");
       loadInitialData(true); // Silent refresh on navigation
     }
-  }, [pathname, loadInitialData]);*/
+  }, [pathname, loadInitialData]);
 
-  // Effect for periodic background refresh
+
   useEffect(() => {
-    // This effect runs only once to set up the interval
+
     refreshIntervalRef.current = setInterval(() => {
-      // The logic inside the interval checks the state on each tick
-      if (!isMutating && !loadingPage && !isPageLoading) {
+      if (!isMutating && loading) {
         console.log("REFRESH: Triggered by 30s Interval");
         loadInitialData(true); // silent refresh
       }
     }, 30000); // 60s
 
-    // Cleanup function to clear the interval when the component unmounts
     return () => {
       if (refreshIntervalRef.current) {
         clearInterval(refreshIntervalRef.current);
       }
     };
-  }, [isMutating, loadingPage, isPageLoading, loadInitialData]); // Dependencies re-run the effect if their values change
+  }, [isMutating, loading, loadInitialData]);*/
+  useEffect(() => {
+    if (isInitialLoad.current) {
+      isInitialLoad.current = false; // Ignorar a primeira execução
+      return;
+    }
+    
+    loadInitialData();
 
+  }, [pathname, loadInitialData]);
 
   useEffect(() => {
-    // Show loader while initial user/permission check is happening
-    if (isPageLoading || loadingPage) {
+
+    if (loading) {
       setIsChecking(true);
       return;
     }
@@ -146,12 +152,12 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
     }
 
     setIsChecking(false);
-  }, [currentUser, pathname, permissions, router, toast, accessibleProjectsForUser, isPageLoading, isChecking, loadingPage]);
+  }, [currentUser, pathname, permissions, router, toast, accessibleProjectsForUser, loading, isChecking]);
   
   // Effect to manage the selected project ID automatically
   useEffect(() => {
     // Don't run if data is loading, no user, or no projects are available for them
-    if (isPageLoading || !currentUser || accessibleProjectsForUser.length === 0) return;
+    if (loading || !currentUser || accessibleProjectsForUser.length === 0) return;
 
     const isNewUser = previousUserIdRef.current !== currentUser.id;
     
@@ -182,7 +188,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
     // Update the ref to the current user ID for the next render
     previousUserIdRef.current = currentUser.id;
 
-}, [currentUser, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, isPageLoading]);
+}, [currentUser, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loading]);
 
   
   useEffect(() => {
@@ -217,7 +223,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
   }, [pathname, selectedProjectId, projectWorkflows]);
 
 
-  if (!currentUser && !isPageLoading && !loadingPage) {
+  if (!currentUser && loading) {
     // This will show while the app is trying to restore the user from localStorage
     // Or if the user is genuinely not logged in
     return (
@@ -233,7 +239,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
     );
   }
   
-  if (isPageLoading || loadingPage) {
+  if (loading) {
     return (
         <div className="flex h-screen w-screen items-center justify-center">
             <div className="flex flex-col items-center gap-4">
