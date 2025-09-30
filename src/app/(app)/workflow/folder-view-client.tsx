@@ -209,7 +209,10 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   const [newObservation, setNewObservation] = React.useState('');
   const [observationTarget, setObservationTarget] = React.useState<EnrichedBook | null>(null);
 
-  
+  const setBookColumns = (bookId: string, cols: number) => {
+    setColumnStates(prev => ({ ...prev, [bookId]: { cols } }));
+  };
+
   const [openAccordions, setOpenAccordions] = React.useState<string[]>([]);
   const storageKey = React.useMemo(() => `accordion_state_${stage}`, [stage]);
 
@@ -410,7 +413,8 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     const nextStage = getNextEnabledStage(currentStageKey, workflow);
     
     if (!nextStage) {
-      handleMoveBookToNextStage(book.id, book.status);
+      toast({ title: "Fim de Workflow", description: "Esta é a última etapa para este projeto.", variant: "default" });
+      //handleMoveBookToNextStage(book.id, book.status);
       return;
     }
     
@@ -1232,8 +1236,10 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     <Dialog open={assignmentState.open} onOpenChange={closeAssignmentDialog}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{assignmentState.role ? assignmentConfig[assignmentState.role].title : 'Assign User'} for "{assignmentState.bookName}"</DialogTitle>
-          <DialogDescription>{assignmentState.role ? assignmentConfig[assignmentState.role].description : ''}</DialogDescription>
+          <DialogTitle>Atribuir Utilizador a "{assignmentState.bookName}"</DialogTitle>
+          <DialogDescription>
+            Atribua esta tarefa a um utilizador. A mesma será remetida para a respetiva lista de pendentes.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <Select value={assignmentState.selectedUserId} onValueChange={(val) => setAssignmentState(s => ({...s, selectedUserId: val}))}>

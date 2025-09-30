@@ -268,7 +268,7 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
   };
   const exportCSV = (data: EnrichedBook[]) => {
     if (data.length === 0) return;
-    const headers = ['id', 'name', 'status', 'progress', 'documentCount', 'totalExpected'];
+    const headers = ['id', 'name', 'status', 'progress', 'documentCount', 'expectedDocuments'];
     const csvContent = [headers.join(','), ...data.map(d => headers.map(h => JSON.stringify(d[h as keyof typeof d])).join(','))].join('\n');
     downloadFile(csvContent, 'project_books_export.csv', 'text/csv;charset=utf-8;');
     toast({ title: "Exportação Concluída", description: `${data.length} livros exportados em formato CSV.` });
