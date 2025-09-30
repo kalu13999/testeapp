@@ -28,6 +28,7 @@ const formSchema = z.object({
   publicationYear: z.coerce.number().optional(),
   priority: z.enum(["Low", "Medium", "High"]).optional(),
   info: z.string().optional(),
+  color: z.string().optional(),
 })
 
 type BookFormValues = z.infer<typeof formSchema>
@@ -49,6 +50,7 @@ export function BookForm({ book, onSave, onCancel }: BookFormProps) {
       publicationYear: book?.publicationYear || undefined,
       priority: book?.priority || "Medium",
       info: book?.info || "",
+      color: book?.color || "#FFFFFF",
     },
   })
 
@@ -61,6 +63,7 @@ export function BookForm({ book, onSave, onCancel }: BookFormProps) {
       publicationYear: book?.publicationYear || undefined,
       priority: book?.priority || "Medium",
       info: book?.info || "",
+      color: book?.color || "#FFFFFF",
     })
   }, [book, form])
 
@@ -159,6 +162,21 @@ export function BookForm({ book, onSave, onCancel }: BookFormProps) {
                             <SelectItem value="High">Alta</SelectItem>
                         </SelectContent>
                     </Select>
+                    <FormMessage />
+                    </FormItem>
+                )}
+            />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+            <FormField
+                control={form.control}
+                name="color"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Cor</FormLabel>
+                    <FormControl>
+                         <Input type="color" {...field} className="h-10 w-20 p-1" />
+                    </FormControl>
                     <FormMessage />
                     </FormItem>
                 )}

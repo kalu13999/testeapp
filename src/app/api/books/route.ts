@@ -34,8 +34,8 @@ export async function POST(request: Request) {
             const newBooks: RawBook[] = [];
 
             const bookInsertQuery = `
-              INSERT INTO books (id, name, statusId, expectedDocuments, projectId, priority, info, author, isbn, publicationYear)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              INSERT INTO books (id, name, statusId, expectedDocuments, projectId, priority, info, author, isbn, publicationYear, color)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `;
 
             for (const book of books) {
@@ -50,10 +50,11 @@ export async function POST(request: Request) {
                     author: book.author || null,
                     isbn: book.isbn || null,
                     publicationYear: book.publicationYear || null,
+                    color: book.color || '#FFFFFF',
                 };
                 await connection.execute(bookInsertQuery, [
                     newBook.id, newBook.name, newBook.statusId, newBook.expectedDocuments, newBook.projectId,
-                    newBook.priority, newBook.info, newBook.author, newBook.isbn, newBook.publicationYear
+                    newBook.priority, newBook.info, newBook.author, newBook.isbn, newBook.publicationYear, newBook.color
                 ]);
                 newBooks.push(newBook as RawBook);
             }
@@ -78,11 +79,12 @@ export async function POST(request: Request) {
                 author: book.author || null,
                 isbn: book.isbn || null,
                 publicationYear: book.publicationYear || null,
+                color: book.color || '#FFFFFF',
             };
             
             const bookInsertQuery = `
-              INSERT INTO books (id, name, statusId, expectedDocuments, projectId, priority, info, author, isbn, publicationYear)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              INSERT INTO books (id, name, statusId, expectedDocuments, projectId, priority, info, author, isbn, publicationYear, color)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `;
 
             await connection.execute(bookInsertQuery, Object.values(newBook));

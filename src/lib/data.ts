@@ -1,6 +1,7 @@
 
 
 
+
 // Define types for our data structures
 export interface Client {
     id: string;
@@ -107,6 +108,7 @@ export interface RawBook {
     qcUserId?: string;
     qcStartTime?: string;
     qcEndTime?: string | null;
+    color?: string | null;
     rejectionReason?: string | null;
 }
 

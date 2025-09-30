@@ -34,7 +34,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         }
 
         // Filter out fields that don't exist in the books table to prevent errors
-        const allowedFields = ['name', 'statusId', 'expectedDocuments', 'priority', 'info', 'scannerUserId', 'scanStartTime', 'scanEndTime', 'indexerUserId', 'indexingStartTime', 'indexingEndTime', 'qcUserId', 'qcStartTime', 'qcEndTime', 'rejectionReason', 'author', 'isbn', 'publicationYear'];
+        const allowedFields = ['name', 'statusId', 'expectedDocuments', 'priority', 'info', 'scannerUserId', 'scanStartTime', 'scanEndTime', 'indexerUserId', 'indexingStartTime', 'indexingEndTime', 'qcUserId', 'qcStartTime', 'qcEndTime', 'rejectionReason', 'author', 'isbn', 'publicationYear', 'color'];
         const filteredFields = fields.filter(field => allowedFields.includes(field));
         
         if (filteredFields.length === 0) {
