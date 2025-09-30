@@ -1,5 +1,4 @@
 
-
 "use client"
 
 import * as React from 'react';
@@ -20,8 +19,10 @@ import { useBookObservations } from '@/queries/useBookObservations'
 import { useProcessingBatches } from '@/queries/useProcessingBatches'
 import { useProcessingBatchItems } from '@/queries/useProcessingBatchItems'
 import { useProcessingLogs } from '@/queries/useProcessingLogs'
-import { usePermissions } from '@/queries/usePermissions'
+import { useDeliveryBatches } from '@/queries/useDeliveryBatches'
+import { useDeliveryBatchItems } from '@/queries/useDeliveryBatchItems'
 import { useRoles } from '@/queries/useRoles'
+import { usePermissions } from '@/queries/usePermissions'
 import { useProjectWorkflows } from '@/queries/useProjectWorkflows'
 import { useRejectionTags } from '@/queries/useRejectionTags'
 import { useStatuses } from '@/queries/useStatuses'
@@ -29,8 +30,6 @@ import { useStorages } from '@/queries/useStorages'
 import { useScanners } from '@/queries/useScanners'
 import { useTransferLogs } from '@/queries/useTransferLogs'
 import { useProjectStorages } from '@/queries/useProjectStorages'
-import { useDeliveryBatches } from '@/queries/useDeliveryBatches'
-import { useDeliveryBatchItems } from '@/queries/useDeliveryBatchItems'
 import { useQueryClient, useMutation, type QueryKey } from '@tanstack/react-query';
 import * as queryKeys from '@/queries/keys';
 
@@ -192,9 +191,6 @@ type AppContextType = {
   moveTifsBookFolder: (bookName: string, fromStatusName: string, toStatusName: string) => Promise<boolean>;
   copyTifsBookFolder: (bookName: string, fromStatusName: string, toStatusName: string) => Promise<boolean>;
   updateBookStatus: (bookId: string, newStatusName: string, additionalUpdates?: Partial<EnrichedBook>) => Promise<any>;
-
-  //
-  handleValidationDeliveryBatch: (deliveryId: string, finalDecision: 'approve_remaining' | 'reject_all') => Promise<void>;
 };
 
 const AppContext = React.createContext<AppContextType | undefined>(undefined);
@@ -213,20 +209,21 @@ const openLocalApp = (protocol: string, data: Record<string, string>) => {
 
 export type MutationVariables<
   TData = unknown,
-  TVars extends Record<string, any> = {},
+  TError = unknown,
+  TVars = unknown,
   TContext = unknown
 > = TVars & {
-  mutationFn: (vars: TVars) => Promise<TData | string | void>;
-  getPreviousDataFn?: () => TContext | undefined;
+  mutationFn: (vars: TVars) => Promise<TData>;
   optimisticUpdateFn?: (context?: TContext) => void;
+  getPreviousDataFn?: () => TContext | undefined;
   invalidateKeys?: (keyof typeof queryKeys)[];
   successToast?: {
     title: string;
-    description?: string;
+    description?: (data: TData) => string;
   };
-  onError?: (error: any, vars: TVars, context?: TContext) => void;
-  onSuccess?: (data: TData | string | void, vars: TVars, context?: TContext) => void;
-  onSettled?: (data: TData | string | void | undefined, error: any, vars: TVars, context?: TContext) => void;
+  onError?: (error: TError, vars: TVars, context?: TContext) => void;
+  onSuccess?: (data: TData, vars: TVars, context?: TContext) => void;
+  onSettled?: (data: TData | undefined, error: TError | null, vars: TVars, context?: TContext) => void;
   onMutate?: (vars: TVars) => Promise<TContext | undefined> | TContext | undefined;
 }
 
@@ -300,6 +297,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   }, [isLoadingUsers, users]);
   
   const loadInitialData = React.useCallback(async (isSilent = false) => {
+    console.log(isSilent ? "Silent Refetch loadInitialData..." : "Not Silent Refetch loadInitialData...");
     if (!isSilent) {
         setIsPageLoading(true);
     }
@@ -309,15 +307,24 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         console.error("Failed to refetch data:", error);
         toast({ title: "Data Sync Failed", description: "Could not sync with the server.", variant: "destructive" });
     }
-    // The useEffect watching loadingPage will set isPageLoading to false
 }, [queryClient, toast]);
 
-  const mutation = useMutation({
-    mutationFn: async (opts: MutationVariables) => {
-        return opts.mutationFn(opts as any);
+React.useEffect(() => {
+  if (!loadingPage && isPageLoading) {
+      setIsPageLoading(false);
+  }
+}, [loadingPage, isPageLoading]);
+
+
+const mutation = useMutation({
+    mutationFn: async <TData, TVars extends Record<string, any>>(opts: MutationVariables<TData, any, TVars, any>) => {
+      return opts.mutationFn(opts as TVars);
     },
-    onMutate: async (opts) => {
+    onMutate: async (opts: MutationVariables<any, any, any, any>) => {
         setIsMutating(true);
+        if (opts.onMutate) {
+          return opts.onMutate(opts);
+        }
         await queryClient.cancelQueries();
         const previousData = opts.getPreviousDataFn ? opts.getPreviousDataFn() : undefined;
         if (opts.optimisticUpdateFn) {
@@ -325,53 +332,51 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         }
         return previousData;
     },
-    onError: (err: Error, opts: MutationVariables, context) => {
+    onError: (err: any, opts: MutationVariables<any, any, any, any>, context: any) => {
         if (opts.optimisticUpdateFn) {
              queryClient.setQueryData((queryKeys[opts.invalidateKeys?.[0] as keyof typeof queryKeys] as QueryKey), context);
         }
         if(opts.onError) {
-          opts.onError(err, opts as any, context);
-        } else {
-           toast({
-              title: "Ocorreu um Erro",
-              description: err.message || "A operação falhou.",
-              variant: "destructive",
-           });
+          opts.onError(err, opts, context);
         }
     },
-    onSuccess: (data, opts, context) => {
-        if (opts.onSuccess) {
-            opts.onSuccess(data, opts as any, context);
-        }
+    onSuccess: (data: any, opts: MutationVariables<any, any, any, any>, context: any) => {
         if (opts.successToast) {
+            const description = typeof opts.successToast.description === 'function'
+                ? opts.successToast.description(data)
+                : data; // Use the returned data as description if no function is provided
             toast({
                 title: opts.successToast.title,
-                description: opts.successToast.description,
+                description,
             });
         }
+        if (opts.onSuccess) {
+            opts.onSuccess(data, opts, context);
+        }
     },
-    onSettled: (data, error, opts, context) => {
+    onSettled: (data, error, opts: MutationVariables<any, any, any, any>, context) => {
         if(opts.invalidateKeys) {
             opts.invalidateKeys.forEach(key => {
                 queryClient.invalidateQueries({ queryKey: queryKeys[key] as QueryKey });
             });
         }
         if (opts.onSettled) {
-            opts.onSettled(data, error, opts as any, context);
+            opts.onSettled(data, error, opts, context);
         }
         setIsMutating(false);
     }
-  });
+});
+
 
 const withMutation = React.useCallback(
-  (opts: MutationVariables<any, any, any>) => {
-    mutation.mutate(opts);
+  (opts: MutationVariables) => {
+    mutation.mutate(opts as any);
   },
   [mutation]
 );
 
 const withMutationAsync = React.useCallback(
-  <TData, TVars extends Record<string, any>>(opts: MutationVariables<TData, TVars>) => {
+  <TData, TVars extends Record<string, any>>(opts: MutationVariables<TData, any, TVars, any>) => {
     return mutation.mutateAsync(opts as any);
   },
   [mutation]
@@ -454,9 +459,10 @@ const withMutationAsync = React.useCallback(
               throw new Error(body.error || "Falha ao alterar Palavra-passe.");
             }
             logAction("Palavra-passe alterada", `User ${userId} mudou a password.`, { userId });
+            return "Palavra-passe alterada com sucesso."
           },
           invalidateKeys: ["USERS"],
-          successToast: {title: "Palavra-passe alterada com sucesso"},
+          successToast: {title: "Palavra-passe alterada", description: (data) => String(data)},
           onError: (err) => {
             toast({
               title: "Erro ao alterar Palavra-passe",
@@ -609,7 +615,6 @@ const withMutationAsync = React.useCallback(
 
 
   const addClient = async (clientData: Omit<Client, 'id'>) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/clients', {
@@ -620,16 +625,15 @@ const withMutationAsync = React.useCallback(
         if (!response.ok) throw new Error('Falha ao criar cliente');
         const newClient = await response.json();
         logAction('Client Created', `New client "${newClient.name}" added.`, {});
-        msgAcction = `Cliente "${newClient.name}" foi criado.`;
+        return `Cliente "${newClient.name}" foi criado.`;
       },
       invalidateKeys: ['CLIENTS'],
-      successToast: { title: "Cliente Adicionado", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Cliente Adicionado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Adicionar Cliente", description: err.message, variant: "destructive" }); }
     });
   };
 
   const updateClient = async (clientId: string, clientData: Partial<Omit<Client, 'id'>>) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/clients/${clientId}`, {
@@ -640,20 +644,18 @@ const withMutationAsync = React.useCallback(
         if (!response.ok) throw new Error('Failed to update client');
         const updatedClient = await response.json();
         logAction('Client Updated', `Details for "${updatedClient.name}" updated.`, {});
-        msgAcction = `Os detalhes para o cliente "${updatedClient.name}" foram guardados.`;
+        return `Os detalhes para o cliente "${updatedClient.name}" foram guardados.`;
       },
       invalidateKeys: ['CLIENTS'],
-      successToast: { title: "Cliente Atualizado", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Cliente Atualizado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Atualizar Cliente", description: err.message, variant: "destructive" }); }
     });
   };
 
   const deleteClient = async (clientId: string) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const clientToDelete = clients.find(c => c.id === clientId);
-        msgAcction = `O cliente "${clientToDelete?.name}" foi eliminado.`;
         const response = await fetch(`/api/clients/${clientId}`, { method: 'DELETE' });
         if (!response.ok) {
             if (response.status === 409) {
@@ -665,15 +667,15 @@ const withMutationAsync = React.useCallback(
           setSelectedProjectId(null);
         }
         logAction('Client Deleted', `Client "${clientToDelete?.name}" was deleted.`, {});
+        return `O cliente "${clientToDelete?.name}" foi eliminado.`;
       },
       invalidateKeys: ['CLIENTS', 'RAW_PROJECTS', 'RAW_BOOKS', 'RAW_DOCUMENTS', 'REJECTION_TAGS'],
-      successToast: { title: "Cliente Eliminado", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Cliente Eliminado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Eliminar Cliente", description: err.message, variant: "destructive" }); }
     });
   };
   
   const addUser = async (userData: UserFormValues) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/users', {
@@ -687,16 +689,15 @@ const withMutationAsync = React.useCallback(
         }
         const newUser: User = await response.json();
         logAction('User Created', `New user "${newUser.name}" added with role ${newUser.role}.`, {});
-        msgAcction = `O utilizador "${newUser.name}" foi criado.`;
+        return `O utilizador "${newUser.name}" foi criado.`;
       },
       invalidateKeys: ['USERS'],
-      successToast: { title: "Utilizador Adicionado", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Utilizador Adicionado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Adicionar Utilizador", description: err.message, variant: "destructive" }); }
     });
   };
 
   const updateUser = async (userId: string, userData: Partial<User>) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/users/${userId}`, {
@@ -707,11 +708,11 @@ const withMutationAsync = React.useCallback(
         if (!response.ok) throw new Error('Falha ao atualizar utilizador');
         const updatedUser = await response.json();
         logAction('User Updated', `Details for user "${updatedUser.name}" updated.`, {});
-        msgAcction = `Os detalhes para "${updatedUser.name}" foram atualizados.`
+        return `Os detalhes para "${updatedUser.name}" foram atualizados.`
       },
       invalidateKeys: ['USERS'],
-      successToast: { title: "Utilizador Atualizado", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Utilizador Atualizado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Atualizar Utilizador", description: err.message, variant: "destructive" }); }
     });
   };
   
@@ -719,7 +720,6 @@ const withMutationAsync = React.useCallback(
     const user = users.find(u => u.id === userId);
     if (!user || user.role === 'System') return;
     const newStatus = user.status === 'active' ? 'disabled' : 'active';
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/users/${userId}`, {
@@ -729,16 +729,15 @@ const withMutationAsync = React.useCallback(
         });
         if (!response.ok) throw new Error('Falha ao alternar estado do utilizador');
         logAction('User Status Changed', `User "${user.name}" was ${newStatus}.`, {});
-        msgAcction = `O utilizador "${user.name}" está agora ${newStatus === 'active' ? 'ativo' : 'desativado'}.`;
+        return `O utilizador "${user.name}" está agora ${newStatus === 'active' ? 'ativo' : 'desativado'}.`;
       },
       invalidateKeys: ['USERS'],
-      successToast: { title: `Estado do Utilizador Alterado`, description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: `Estado do Utilizador Alterado`, description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Alterar Estado", description: err.message, variant: "destructive" }); }
     });
   };
 
   const deleteUser = async (userId: string) => {
-    let msgAcction: string;
     const userToDelete = users.find(u => u.id === userId);
     if (!userToDelete || userToDelete.role === 'System') return;
     withMutation({
@@ -746,16 +745,15 @@ const withMutationAsync = React.useCallback(
         const response = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Falha ao eliminar utilizador');
         logAction('User Deleted', `User "${userToDelete?.name}" was deleted.`, {});
-        msgAcction = `O utilizador "${userToDelete.name}" foi eliminado.`
+        return `O utilizador "${userToDelete.name}" foi eliminado.`
       },
       invalidateKeys: ['USERS'],
-      successToast: { title: "Utilizador Eliminado", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Utilizador Eliminado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Eliminar Utilizador", description: err.message, variant: "destructive" }); }
     });
   };
   
   const updateUserDefaultProject = (userId: string, projectId: string | null) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/users/${userId}`, {
@@ -770,16 +768,15 @@ const withMutationAsync = React.useCallback(
         }
         logAction('Default Project Set', `Default project for user ${updatedUser.name} set.`, {});
         const projectName = allProjects.find(p => p.id === projectId)?.name;
-        msgAcction = `O projeto padrão para ${updatedUser.name} foi definido para "${projectName}".`
+        return `O projeto padrão para ${updatedUser.name} foi definido para "${projectName}".`
       },
       invalidateKeys: ['USERS'],
-      successToast: { title: "Projeto Padrão Atualizado", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Projeto Padrão Atualizado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
     });
   };
   
   const addProject = async (projectData: Omit<Project, 'id'>) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/projects', {
@@ -790,16 +787,15 @@ const withMutationAsync = React.useCallback(
         if (!response.ok) throw new Error('Falha ao criar o projeto');
         const newProject = await response.json();
         logAction('Project Created', `New project "${newProject.name}" added.`, {});
-        msgAcction = `O projeto "${newProject.name}" foi criado.`
+        return `O projeto "${newProject.name}" foi criado.`
       },
       invalidateKeys: ['RAW_PROJECTS', 'PROJECT_WORKFLOWS'],
-      successToast: { title: "Projeto Adicionado", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Projeto Adicionado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Adicionar Projeto", description: err.message, variant: "destructive" }); }
     });
   };
   
   const updateProject = async (projectId: string, projectData: Partial<Omit<Project, 'id'>>) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/projects/${projectId}`, {
@@ -810,33 +806,31 @@ const withMutationAsync = React.useCallback(
         if (!response.ok) throw new Error('Falha ao atualizar o projeto');
         const updatedProject = await response.json();
         logAction('Project Updated', `Details for project "${updatedProject.name}" updated.`, {});
-        msgAcction = `Os detalhes do projeto "${updatedProject.name}" foram atualizados.`
+        return `Os detalhes do projeto "${updatedProject.name}" foram atualizados.`
       },
       invalidateKeys: ['RAW_PROJECTS'],
-      successToast: { title: "Projeto Atualizado", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Projeto Atualizado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Atualizar Projeto", description: err.message, variant: "destructive" }); }
     });
   };
 
   const deleteProject = async (projectId: string) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const projectToDelete = rawProjects?.find(p => p.id === projectId);
-        msgAcction = `O projeto "${projectToDelete?.name}" foi eliminado.`
         const response = await fetch(`/api/projects/${projectId}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Falha ao eliminar projeto');
         if (selectedProjectId === projectId) setSelectedProjectId(null);
         logAction('Project Deleted', `Project "${projectToDelete?.name}" was deleted.`, {});
+        return `O projeto "${projectToDelete?.name}" foi eliminado.`
       },
       invalidateKeys: ['RAW_PROJECTS', 'RAW_BOOKS', 'RAW_DOCUMENTS'],
-      successToast: { title: "Projeto Eliminado", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Projeto Eliminado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Eliminar Projeto", description: err.message, variant: "destructive" }); }
     });
   };
 
   const addBook = async (projectId: string, bookData: Omit<RawBook, 'id' | 'projectId' | 'statusId'>) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const statusId = statuses?.find(s => s.name === 'Pending Shipment')?.id;
@@ -849,11 +843,11 @@ const withMutationAsync = React.useCallback(
         if (!response.ok) throw new Error('Falha ao criar livro');
         const newRawBook = await response.json();
         logAction('Book Added', `Book "${newRawBook.name}" was added to project.`, { bookId: newRawBook.id });
-        msgAcction = `O livro "${newRawBook.name}" foi adicionado.`
+        return `O livro "${newRawBook.name}" foi adicionado.`
       },
       invalidateKeys: ['RAW_BOOKS'],
-      successToast: { title: "Livro Adicionado", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Livro Adicionado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Adicionar Livro", description: err.message, variant: "destructive" }); }
     });
   };
   
@@ -868,31 +862,30 @@ const withMutationAsync = React.useCallback(
         if (!response.ok) throw new Error('Falha ao atualizar livro');
         const updatedRawBook = await response.json();
         logAction('Book Updated', `Details for book "${updatedRawBook.name}" were updated.`, { bookId });
+        return `Details for book "${updatedRawBook.name}" were updated.`;
       },
       invalidateKeys: ['RAW_BOOKS'],
-      successToast: { title: "Livro Atualizado" },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Livro Atualizado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Atualizar Livro", description: err.message, variant: "destructive" }); }
     });
   };
 
   const deleteBook = async (bookId: string) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const bookToDelete = rawBooks?.find(b => b.id === bookId);
-        msgAcction = `O livro "${bookToDelete?.name}" foi eliminado.`
         const response = await fetch(`/api/books/${bookId}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Falha ao eliminar livro');
         logAction('Book Deleted', `Book "${bookToDelete?.name}" and its pages were deleted.`, { bookId });
+        return `O livro "${bookToDelete?.name}" foi eliminado.`;
       },
       invalidateKeys: ['RAW_BOOKS', 'RAW_DOCUMENTS', 'AUDIT_LOGS'],
-      successToast: { title: "Livro Eliminado", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Livro Eliminado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Eliminar Livro", description: err.message, variant: "destructive" }); }
     });
   };
 
   const importBooks = async (projectId: string, newBooks: BookImport[]) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/books', {
@@ -903,11 +896,11 @@ const withMutationAsync = React.useCallback(
         if (!response.ok) throw new Error('Falha ao importar livros');
         const createdBooks = await response.json();
         logAction('Books Imported', `${createdBooks.length} books imported for project.`, {});
-        msgAcction = `${createdBooks.length} livros foram adicionados ao projeto.`
+        return `${createdBooks.length} livros foram adicionados ao projeto.`
       },
       invalidateKeys: ['RAW_BOOKS'],
-      successToast: { title: "Importação Bem-Sucedida", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Importação Bem-Sucedida", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro na Importação", description: err.message, variant: "destructive" }); }
     });
   };
 
@@ -929,15 +922,15 @@ const withMutationAsync = React.useCallback(
         });
         if (!response.ok) throw new Error('Falha ao adicionar observação');
         logAction('Observation Added', `Observation added to book.`, { bookId });
+        return "Observação adicionada com sucesso."
       },
       invalidateKeys: ['BOOK_OBSERVATIONS'],
-      successToast: { title: "Observação Adicionada" },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Observação Adicionada", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Adicionar Observação", description: err.message, variant: "destructive" }); }
     });
   };
 
   const addRole = (roleName: string, rolePermissions: string[]) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
       if (roles?.includes(roleName)) {
@@ -950,16 +943,15 @@ const withMutationAsync = React.useCallback(
       });
       if (!response.ok) throw new Error('Falha ao guardar perfil.');
       logAction('Role Created', `New role "${roleName}" was created.`, {});
-      msgAcction = `Perfil "${roleName}" foi adicionado.`;
+      return `Perfil "${roleName}" foi adicionado.`;
       },
       invalidateKeys: ['ROLES', 'PERMISSIONS'],
-      successToast: { title: "Perfil Criado", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Perfil Criado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Criar Perfil", description: err.message, variant: "destructive" }); }
     });
   };
 
   const updateRole = (roleName: string, rolePermissions: string[]) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
       const response = await fetch('/api/permissions', {
@@ -969,16 +961,15 @@ const withMutationAsync = React.useCallback(
       });
       if (!response.ok) throw new Error('Falha ao guardar permissões no banco de dados.');
       logAction('Role Updated', `Permissions for role "${roleName}" were updated.`, {});
-      msgAcction = `Permissões para "${roleName}" foram guardadas.`;
+      return `Permissões para "${roleName}" foram guardadas.`;
     }, 
     invalidateKeys: ['PERMISSIONS'],
-    successToast: { title: "Perfil Atualizado", description: msgAcction },
-    onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+    successToast: { title: "Perfil Atualizado", description: (data) => String(data) },
+    onError: (err, vars) => { toast({ title: "Erro ao Atualizar Perfil", description: err.message, variant: "destructive" }); }
     });
   };
   
   const deleteRole = (roleName: string) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
       const response = await fetch('/api/permissions', {
@@ -988,11 +979,11 @@ const withMutationAsync = React.useCallback(
       });
       if (!response.ok) throw new Error('Falha ao eliminar perfil.');
       logAction('Role Deleted', `Role "${roleName}" was deleted.`, {});
-      msgAcction = `Perfil "${roleName}" foi eliminado.`;
+      return `Perfil "${roleName}" foi eliminado.`;
     }, 
     invalidateKeys: ['ROLES', 'PERMISSIONS', 'USERS'],
-    successToast: { title: "Perfil Eliminado", description: msgAcction },
-    onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+    successToast: { title: "Perfil Eliminado", description: (data) => String(data) },
+    onError: (err, vars) => { toast({ title: "Erro ao Eliminar Perfil", description: err.message, variant: "destructive" }); }
     });
   };
 
@@ -1006,15 +997,15 @@ const withMutationAsync = React.useCallback(
         });
         if (!response.ok) throw new Error("Falha ao atualizar o fluxo de trabalho no servidor.");
         logAction('Project Workflow Updated', `Workflow for project ID ${projectId} was updated.`, {});
+        return "Workflow do projeto atualizado com sucesso."
       },
       invalidateKeys: ['PROJECT_WORKFLOWS'],
-      successToast: { title: "Fluxo de Trabalho do Projeto Atualizado" },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Fluxo de Trabalho do Projeto Atualizado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Atualizar Workflow", description: err.message, variant: "destructive" }); }
     });
   };
 
   const addRejectionTag = async (tagData: Omit<RejectionTag, 'id' | 'clientId'>, clientId: string) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         if (!clientId) throw new Error("ID do Cliente está ausente");
@@ -1027,16 +1018,15 @@ const withMutationAsync = React.useCallback(
         const newTag = await response.json();
         const client = clients?.find(c => c.id === clientId);
         logAction('Rejection Tag Created', `Tag "${newTag.label}" criada para o cliente "${client?.name}".`, {});
-        msgAcction = `Tag "${newTag.label}" foi criada.`
+        return `Tag "${newTag.label}" foi criada.`
       },
       invalidateKeys: ['REJECTION_TAGS'],
-      successToast: { title: "Motivo de Rejeição Adicionado", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Motivo de Rejeição Adicionado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Adicionar Motivo", description: err.message, variant: "destructive" }); }
     });
   };
 
   const updateRejectionTag = async (tagId: string, tagData: Partial<Omit<RejectionTag, 'id' | 'clientId'>>) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/rejection-tags/${tagId}`, {
@@ -1047,32 +1037,30 @@ const withMutationAsync = React.useCallback(
         if (!response.ok) throw new Error('Falha ao atualizar tag de rejeição');
         const updatedTag = await response.json();
         logAction('Rejection Tag Updated', `Tag "${updatedTag.label}" updated.`, {});
-        msgAcction = `Tag "${updatedTag.label}" atualizada.`
+        return `Tag "${updatedTag.label}" atualizada.`
       },
       invalidateKeys: ['REJECTION_TAGS'],
-      successToast: { title: "Motivo de Rejeição Atualizado", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Motivo de Rejeição Atualizado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Atualizar Motivo", description: err.message, variant: "destructive" }); }
     });
   };
 
   const deleteRejectionTag = async (tagId: string) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const tag = rejectionTags?.find(t => t.id === tagId);
-        msgAcction = `Tag "${tag?.label}" eliminada.`;
         const response = await fetch(`/api/rejection-tags/${tagId}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Falha ao eliminar etiqueta de rejeição');
         logAction('Rejection Tag Deleted', `Tag "${tag?.label}" deleted.`, {});
+        return `Tag "${tag?.label}" eliminada.`;
       },
       invalidateKeys: ['REJECTION_TAGS'],
-      successToast: { title: "Etiqueta de Rejeição Eliminada", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Etiqueta de Rejeição Eliminada", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Eliminar Etiqueta", description: err.message, variant: "destructive" }); }
     });
   };
 
   const addStorage = async (storageData: StorageFormValues) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/storages', {
@@ -1083,16 +1071,15 @@ const withMutationAsync = React.useCallback(
         if (!response.ok) throw new Error('Falha ao criar Armazenamento');
         const newStorage = await response.json();
         logAction('Storage Created', `New storage location "${newStorage.nome}" added.`, {});
-        msgAcction = `Local de armazenamento "${newStorage.nome}" adicionado.`
+        return `Local de armazenamento "${newStorage.nome}" adicionado.`
       },
       invalidateKeys: ['STORAGES'],
-      successToast: { title: "Armazenamento Adicionado", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Armazenamento Adicionado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Adicionar Armazenamento", description: err.message, variant: "destructive" }); }
     });
   };
 
   const updateStorage = async (storageId: string, storageData: StorageFormValues) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/storages/${storageId}`, {
@@ -1103,32 +1090,30 @@ const withMutationAsync = React.useCallback(
         if (!response.ok) throw new Error('Falha ao atualizar o armazenamento');
         const updatedStorage = await response.json();
         logAction('Storage Updated', `Storage location "${updatedStorage.nome}" updated.`, {});
-        msgAcction = `Local de armazenamento "${updatedStorage.nome}" atualizado.`
+        return `Local de armazenamento "${updatedStorage.nome}" atualizado.`
       },
       invalidateKeys: ['STORAGES'],
-      successToast: { title: "Armazenamento Atualizado", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Armazenamento Atualizado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Atualizar Armazenamento", description: err.message, variant: "destructive" }); }
     });
   };
 
   const deleteStorage = async (storageId: string) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const storage = storages?.find(s => s.id === Number(storageId));
-        msgAcction = `Local de armazenamento "${storage?.nome}" eliminado.`
         const response = await fetch(`/api/storages/${storageId}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Falha ao eliminar armazenamento');
         logAction('Storage Deleted', `Storage location "${storage?.nome}" deleted.`, {});
+        return `Local de armazenamento "${storage?.nome}" eliminado.`
       },
       invalidateKeys: ['STORAGES', 'PROJECT_STORAGES'],
-      successToast: { title: "Armazenamento Eliminado", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Armazenamento Eliminado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Eliminar Armazenamento", description: err.message, variant: "destructive" }); }
     });
   };
   
   const addScanner = async (scannerData: ScannerFormValues) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const response = await fetch('/api/scanners', {
@@ -1139,16 +1124,15 @@ const withMutationAsync = React.useCallback(
         if (!response.ok) throw new Error('Falha ao criar scanner');
         const newScanner = await response.json();
         logAction('Scanner Created', `New scanner "${newScanner.nome}" added.`, {});
-        msgAcction = `Scanner "${newScanner.nome}" adicionado.`
+        return `Scanner "${newScanner.nome}" adicionado.`
       },
       invalidateKeys: ['SCANNERS'],
-      successToast: { title: "Scanner Adicionado", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Scanner Adicionado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Adicionar Scanner", description: err.message, variant: "destructive" }); }
     });
   };
 
   const updateScanner = async (scannerId: number, scannerData: ScannerFormValues) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/scanners/${scannerId}`, {
@@ -1159,27 +1143,26 @@ const withMutationAsync = React.useCallback(
         if (!response.ok) throw new Error('Falha ao atualizar scanner');
         const updatedScanner = await response.json();
         logAction('Scanner Updated', `Scanner "${updatedScanner.nome}" updated.`, {});
-        msgAcction = `Scanner "${updatedScanner.nome}" atualizado.`
+        return `Scanner "${updatedScanner.nome}" atualizado.`
       },
       invalidateKeys: ['SCANNERS'],
-      successToast: { title: "Scanner Atualizado", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Scanner Atualizado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Atualizar Scanner", description: err.message, variant: "destructive" }); }
     });
   };
 
   const deleteScanner = async (scannerId: number) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const scanner = scanners?.find(s => s.id === scannerId);
-        msgAcction = `Scanner "${scanner?.nome}" eliminado.`
         const response = await fetch(`/api/scanners/${scannerId}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Falha ao eliminar scanner');
         logAction('Scanner Deleted', `Scanner "${scanner?.nome}" deleted.`, {});
+        return `Scanner "${scanner?.nome}" eliminado.`;
       },
       invalidateKeys: ['SCANNERS'],
-      successToast: { title: "Scanner Eliminado", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Scanner Eliminado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Eliminar Scanner", description: err.message, variant: "destructive" }); }
     });
   };
   
@@ -1193,10 +1176,11 @@ const withMutationAsync = React.useCallback(
         });
         if (!response.ok) throw new Error('Falha ao adicionar associação de armazenamento ao projeto');
         logAction('Project Storage Added', `Storage associated with project.`, {});
+        return "Associação de armazenamento adicionada com sucesso."
       },
       invalidateKeys: ['PROJECT_STORAGES'],
-      successToast: { title: "Associação Adicionada" },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Associação Adicionada", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Adicionar Associação", description: err.message, variant: "destructive" }); }
     });
   };
 
@@ -1210,10 +1194,11 @@ const withMutationAsync = React.useCallback(
         });
         if (!response.ok) throw new Error('Falha ao atualizar associação de armazenamento do projeto');
         logAction('Project Storage Updated', `Association for project ${associationData.projectId} updated.`, {});
+        return "Associação de armazenamento atualizada com sucesso.";
       },
       invalidateKeys: ['PROJECT_STORAGES'],
-      successToast: { title: "Associação Atualizada" },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Associação Atualizada", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Atualizar Associação", description: err.message, variant: "destructive" }); }
     });
   };
 
@@ -1227,10 +1212,11 @@ const withMutationAsync = React.useCallback(
         });
         if (!response.ok) throw new Error('Falha ao eliminar associação de armazenamento do projeto');
         logAction('Project Storage Removed', `Association between project ${projectId} and storage ${storageId} removed.`, {});
+        return "Associação de armazenamento eliminada com sucesso.";
       },
       invalidateKeys: ['PROJECT_STORAGES'],
-      successToast: { title: "Associação Eliminada" },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Associação Eliminada", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Eliminar Associação", description: err.message, variant: "destructive" }); }
     });
   };
 
@@ -1239,7 +1225,7 @@ const withMutationAsync = React.useCallback(
     withMutation({
       mutationFn: async () => {
         const doc = rawDocuments?.find(d => d.id === docId);
-        if (!doc) return;
+        if (!doc) return "Documento não encontrado.";
         const response = await fetch(`/api/documents/${docId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -1251,10 +1237,11 @@ const withMutationAsync = React.useCallback(
         if (data.tags) logDetails = `Tags for document "${doc.name}" updated to: ${data.tags.join(', ') || 'None'}.`;
         if (data.flag !== undefined) logDetails = `Flag for document "${doc.name}" set to ${data.flag || 'None'}.`;
         logAction('Document Updated', logDetails, { documentId: docId, bookId: doc.bookId ?? undefined });
+        return `Documento "${doc.name}" atualizado.`;
       },
       invalidateKeys: ['RAW_DOCUMENTS'],
-      successToast: { title: "Documento Atualizado" },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Documento Atualizado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Atualizar Documento", description: err.message, variant: "destructive" }); }
     });
   };
   
@@ -1265,11 +1252,10 @@ const withMutationAsync = React.useCallback(
   const updateDocumentFlag = async (docId: string, flag: AppDocument['flag'], comment?: string) => await updateDocument(docId, { flag, flagComment: flag ? comment : undefined });
   
   const addPageToBook = async (bookId: string, position: number) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const book = enrichedBooks.find(b => b.id === bookId);
-        if (!book) return;
+        if (!book) throw new Error("Livro não encontrado.");
         const newPageName = `${book.name} - Page ${position} (Added)`;
         const newPageId = `doc_${book.id}_new_${Date.now()}`;
         
@@ -1285,27 +1271,26 @@ const withMutationAsync = React.useCallback(
         if (!response.ok) throw new Error('Falha ao adicionar página');
         
         logAction('Page Added', `New page added to "${book.name}" at position ${position}.`, { bookId, documentId: newPageId });
-        msgAcction = `Nova página adicionada a "${book.name}" na posição ${position}.`;
+        return `Nova página adicionada a "${book.name}" na posição ${position}.`;
       },
       invalidateKeys: ['RAW_DOCUMENTS', 'RAW_BOOKS'],
-      successToast: { title: "Página Adicionada", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Página Adicionada", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Adicionar Página", description: err.message, variant: "destructive" }); }
     });
   }
 
   const deletePageFromBook = async (pageId: string, bookId: string) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const page = rawDocuments?.find(p => p.id === pageId);
-        msgAcction = `A página "${page?.name}" foi excluída.`;
         const response = await fetch(`/api/documents/${pageId}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Falha ao eliminar página');
         logAction('Page Deleted', `Page "${page?.name}" was deleted from book.`, { bookId, documentId: pageId });
+        return `A página "${page?.name}" foi excluída.`;
       },
       invalidateKeys: ['RAW_DOCUMENTS', 'RAW_BOOKS'],
-      successToast: { title: "Página Eliminada", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Página Eliminada", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Eliminar Página", description: err.message, variant: "destructive" }); }
     });
   };
 
@@ -1401,23 +1386,21 @@ const withMutationAsync = React.useCallback(
   }, [statuses, logAction]);
 
   const handleMarkAsShipped = (bookIds: string[]) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         for (const bookId of bookIds) {
           await updateBookStatus(bookId, 'In Transit');
           logAction('Book Shipped', `Client marked book as shipped.`, { bookId });
         }
-        msgAcction = `${bookIds.length} livro(s) marcado(s) como enviado(s).`
+        return `${bookIds.length} livro(s) marcado(s) como enviado(s).`
       },
       invalidateKeys: ['RAW_BOOKS'],
-      successToast: { title: "Envio Marcado", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Envio Marcado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Marcar Envio", description: err.message, variant: "destructive" }); }
     });
   };
 
   const handleConfirmReception = (bookId: string) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const book = rawBooks?.find(b => b.id === bookId);
@@ -1426,19 +1409,18 @@ const withMutationAsync = React.useCallback(
         if (moveResult) {
           await updateBookStatus(bookId, 'Received');
           logAction('Reception Confirmed', `Book "${book.name}" has been marked as received.`, { bookId });
-          msgAcction = `Receção para "${book.name}" confirmada.`
+          return `Receção para "${book.name}" confirmada.`
         } else {
           throw new Error("Falha ao mover a pasta do livro.");
         }
       },
       invalidateKeys: ['RAW_BOOKS'],
-      successToast: { title: "Recepção Confirmada", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Recepção Confirmada", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Confirmar Recepção", description: err.message, variant: "destructive" }); }
     });
   };
   
   const handleSendToStorage = async (bookId: string, payload: { actualPageCount: number }) => {
-    let msgAcction: string;
     setProcessingBookIds(prev => [...prev, bookId]);
     await withMutationAsync({
       mutationFn: async () => {
@@ -1456,11 +1438,11 @@ const withMutationAsync = React.useCallback(
         const currentStatusName = statuses?.find(s => s.id === book.statusId)?.name || 'Unknown';
         const logMessage = findStageKeyFromStatus(currentStatusName) === 'already-received' ? 'Reception & Scan Skipped' : 'Scanning Finished';
         logAction(logMessage, `${payload.actualPageCount} pages created. Book "${book.name}" moved to Storage.`, { bookId });
-        msgAcction = `Livro "${book.name}" movido para Armazenamento com ${payload.actualPageCount} páginas.`
+        return `Livro "${book.name}" movido para Armazenamento com ${payload.actualPageCount} páginas.`
       },
       invalidateKeys: ['RAW_BOOKS', 'RAW_DOCUMENTS'],
-      successToast: { title: "Tarefa Concluída", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); },
+      successToast: { title: "Tarefa Concluída", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Enviar para Armazenamento", description: err.message, variant: "destructive" }); },
       onSettled: () => setProcessingBookIds(prev => prev.filter(id => id !== bookId))
     });
   };
@@ -1500,7 +1482,6 @@ const withMutationAsync = React.useCallback(
 
 
   const handleAssignUser = (bookId: string, userId: string, role: 'scanner' | 'indexer' | 'qc') => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const user = users?.find(u => u.id === userId);
@@ -1528,16 +1509,15 @@ const withMutationAsync = React.useCallback(
         
         await updateBookStatus(bookId, newStatusName, updates);
         logAction('Task Assigned', `Book "${book.name}" assigned to ${user.name}.`, { bookId });
-        msgAcction = `Atribuído a ${user.name} para ${role}.`;
+        return `Atribuído a ${user.name} para ${role}.`;
       },
       invalidateKeys: ['RAW_BOOKS'],
-      successToast: { title: "Livro Atribuído", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Livro Atribuído", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Atribuir", description: err.message, variant: "destructive" }); }
     });
   };
 
   const reassignUser = (bookId: string, newUserId: string, role: 'scanner' | 'indexer' | 'qc') => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const book = rawBooks?.find(b => b.id === bookId);
@@ -1547,11 +1527,11 @@ const withMutationAsync = React.useCallback(
         await updateBook(bookId, { [updateField]: newUserId });
         const oldUser = users.find(u => u.id === book[updateField]);
         logAction('User Reassigned', `Task for book "${book.name}" was reassigned from ${oldUser?.name || 'Unassigned'} to ${newUser.name}.`, { bookId });
-        msgAcction = `${newUser.name} agora é responsável por esta tarefa.`
+        return `${newUser.name} agora é responsável por esta tarefa.`
       },
       invalidateKeys: ['RAW_BOOKS'],
-      successToast: { title: "Utilizador Reatribuído", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Utilizador Reatribuído", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Reatribuir", description: err.message, variant: "destructive" }); }
     });
   };
   
@@ -1569,7 +1549,6 @@ const withMutationAsync = React.useCallback(
   };
 
   const openAppValidateScan = (bookId: string) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
       const book = rawBooks?.find(b => b.id === bookId);
@@ -1589,15 +1568,14 @@ const withMutationAsync = React.useCallback(
         bookId: book.id, 
         bookDirectory: `${scanner.scanner_root_folder}/${book.name}`
       });
-      msgAcction = `App de validação iniciada para "${book.name}".`;
+      return `App de validação iniciada para "${book.name}".`;
       },
-      successToast: { title: "Validação Iniciada", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Validação Iniciada", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Iniciar Validação", description: err.message, variant: "destructive" }); }
     });
   };
 
   const handleStartTask = (bookId: string, role: 'scanner' | 'indexer' | 'qc') => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const book = rawBooks?.find(b => b.id === bookId);
@@ -1613,7 +1591,6 @@ const withMutationAsync = React.useCallback(
         if (role === 'scanner') {
             newStatusName = 'Scanning Started';
             updates = { scanStartTime: getDbSafeDate() };
-            msgAcction = `Digitalização iniciada para "${book.name}".`;
         } else {
             const currentStageKey = findStageKeyFromStatus(currentStatusName);
             if (!currentStageKey) throw new Error("Etapa de workflow atual inválida.");
@@ -1642,65 +1619,64 @@ const withMutationAsync = React.useCallback(
 
             if (role === 'indexer') {
                 updates = { indexingStartTime: getDbSafeDate() };
-                msgAcction = `Indexação iniciada para "${book.name}".`;
                 appProtocol = 'rfs-indexing-app';
                 bookDirectory = `${storage.root_path}/${newStageFolder}/${project.name}/${book.name}`;
             } else if (role === 'qc') {
                 updates = { qcStartTime: getDbSafeDate() };
-                msgAcction = `Verificação iniciada para "${book.name}".`;
                 appProtocol = 'rfs-check-app';
                 bookDirectory = `${storage.root_path}/${newStageFolder}/${project.name}/${scanner.nome}/${book.name}`;
             }
         }
         await updateBookStatus(bookId, newStatusName, updates);
-        logAction(msgAcction, `${msgAcction} processo iniciado para o livro.`, { bookId });
+        const logMessage = `${role.charAt(0).toUpperCase() + role.slice(1)} iniciada para "${book.name}".`;
+        logAction('Task Started', logMessage, { bookId });
         
         if (appProtocol) {
             openLocalApp(appProtocol, { userId: currentUser.id, bookId: book.id, bookDirectory });
         }
+        return logMessage;
       },
       invalidateKeys: ['RAW_BOOKS'],
-      successToast: { title: "Tarefa iniciada", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Tarefa iniciada", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Iniciar Tarefa", description: err.message, variant: "destructive" }); }
     });
   };
   
   const handleCompleteTask = async (bookId: string, stage: string) => {
-    let msgAcction: string = "";
     withMutation({
       mutationFn: async () => {
-      const updateFields: { [key: string]: Partial<RawBook> } = {
-        'Scanning Started': { scanEndTime: getDbSafeDate() },
-        'Indexing Started': { indexingEndTime: getDbSafeDate() },
-        'Checking Started': { qcEndTime: getDbSafeDate() },
-      };
+        const updateFields: { [key: string]: Partial<RawBook> } = {
+          'Scanning Started': { scanEndTime: getDbSafeDate() },
+          'Indexing Started': { indexingEndTime: getDbSafeDate() },
+          'Checking Started': { qcEndTime: getDbSafeDate() },
+        };
 
-      if(stage === 'Scanning Started'){
-        const book = rawBooks?.find(b => b.id === bookId);
-        const apiUrl = process.env.NEXT_PUBLIC_WORKFLOW_API_URL;
-        const localIP = await getLocalIP();
-        const response = await fetch(`${apiUrl}/api/scan/count-tifs`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ bookName: book?.name, scanIp: localIP }),
-        });
-        if (!response.ok) throw new Error(`Falha ao contar TIFFs: ${await response.text()}`);
-        const data = await response.json();
-        await updateBook(bookId, { expectedDocuments: data.tifCount });
-        msgAcction = `Todos os TIFs para "${data.bookName}" foram contados com sucesso. Total: ${data.tifCount}.`;
-      }
+        if(stage === 'Scanning Started'){
+          const book = rawBooks?.find(b => b.id === bookId);
+          const apiUrl = process.env.NEXT_PUBLIC_WORKFLOW_API_URL;
+          const localIP = await getLocalIP();
+          const response = await fetch(`${apiUrl}/api/scan/count-tifs`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ bookName: book?.name, scanIp: localIP }),
+          });
+          if (!response.ok) throw new Error(`Falha ao contar TIFFs: ${await response.text()}`);
+          const data = await response.json();
+          await updateBook(bookId, { expectedDocuments: data.tifCount });
+        }
 
-      const update = updateFields[stage];
-      if (update) {
-        await updateBook(bookId, update);
-        const book = rawBooks?.find(b => b.id === bookId);
-        logAction('Task Completed', `Task "${stage}" completed for book "${book?.name}".`, { bookId });
-      }
-      return msgAcction;
-    },
-    invalidateKeys: ['RAW_BOOKS'],
-    successToast: { title: "Tarefa Completa", description: msgAcction },
-    onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+        const update = updateFields[stage];
+        if (update) {
+          await updateBook(bookId, update);
+          const book = rawBooks?.find(b => b.id === bookId);
+          logAction('Task Completed', `Task "${stage}" completed for book "${book?.name}".`, { bookId });
+          return `Tarefa "${stage}" concluída para o livro "${book?.name}".`;
+        }
+        return `Nenhuma ação de conclusão definida para a etapa "${stage}".`;
+      },
+      invalidateKeys: ['RAW_BOOKS'],
+      successToast: { title: "Tarefa Completa", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Completar Tarefa", description: err.message, variant: "destructive" }); }
     });
   };
 
@@ -1717,12 +1693,13 @@ const withMutationAsync = React.useCallback(
         await updateBook(bookId, update);
         const book = rawBooks?.find(b => b.id === bookId);
         logAction('Task Completion Cancelled', `Task "${stage}" cancelled for book "${book?.name}".`, { bookId });
+        return `A conclusão da tarefa para "${book?.name}" foi cancelada.`;
       }
-    }, invalidateKeys: ['RAW_BOOKS'], successToast: {title: "Tarefa em Espera", description: "A tarefa ficou à espera de ser completada."}, onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }});
+      return `Nenhuma ação de cancelamento definida para a etapa "${stage}".`;
+    }, invalidateKeys: ['RAW_BOOKS'], successToast: {title: "Conclusão da Tarefa Cancelada", description: (data) => String(data) }, onError: (err, vars) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }});
   };
 
   const handleCancelTask = (bookId: string, currentStatus: string) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
       const book = rawBooks?.find(b => b.id === bookId);
@@ -1741,12 +1718,11 @@ const withMutationAsync = React.useCallback(
       
       await updateBookStatus(bookId, update.bookStatus, update.clearFields);
       logAction('Task Cancelled', `${update.logMsg} for book "${book.name}" was cancelled.`, { bookId });
-      msgAcction = `Livro retornado para a fila ${update.bookStatus}.`;
-    }, invalidateKeys: ['RAW_BOOKS'], successToast: {title: 'Tarefa Cancelada', description: msgAcction}, onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }});
+      return `Livro retornado para a fila ${update.bookStatus}.`;
+    }, invalidateKeys: ['RAW_BOOKS'], successToast: {title: 'Tarefa Cancelada', description: (data) => String(data) }, onError: (err, vars) => { toast({ title: "Erro ao Cancelar Tarefa", description: err.message, variant: "destructive" }); }});
   };
   
   const handleAdminStatusOverride = (bookId: string, newStatusName: string, reason: string) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
       const book = rawBooks?.find(b => b.id === bookId);
@@ -1767,8 +1743,8 @@ const withMutationAsync = React.useCallback(
 
       await updateBookStatus(bookId, newStatus.name, updates);
       logAction('Admin Status Override', `Status of "${book.name}" manually changed to "${newStatus.name}". Reason: ${reason}`, { bookId });
-      msgAcction = `Livro agora está no status: ${newStatus.name}`;
-    }, invalidateKeys: ['RAW_BOOKS'], successToast: {title: "Status Sobrescrito", description: msgAcction}, onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }});
+      return `Livro agora está no status: ${newStatus.name}`;
+    }, invalidateKeys: ['RAW_BOOKS'], successToast: {title: "Status Sobrescrito", description: (data) => String(data)}, onError: (err, vars) => { toast({ title: "Erro ao Sobrescrever Status", description: err.message, variant: "destructive" }); }});
   };
 
   const logProcessingEvent = React.useCallback(async (
@@ -1789,7 +1765,6 @@ const withMutationAsync = React.useCallback(
   }, [withMutation]);
 
   const startProcessingBatch = async (bookIds: string[], storageId: string) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         if (!currentUser) throw new Error("Utilizador atual não encontrado.");
@@ -1830,16 +1805,15 @@ const withMutationAsync = React.useCallback(
 
         await logAction('Processing Batch Started', `Batch ${newBatch.id} started with ${bookIds.length} books.`, {});
         await logProcessingEvent(newBatch.id, `Batch ${newBatch.id} started with ${bookIds.length} books.`);
-        msgAcction = `Lote de processamento iniciado com ${bookIds.length} livros.`
+        return `Lote de processamento iniciado com ${bookIds.length} livros.`
       },
       invalidateKeys: ['PROCESSING_BATCHES', 'RAW_BOOKS', 'PROCESSING_BATCH_ITEMS'],
-      successToast: { title: "Lote de Processamento Iniciado", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Lote de Processamento Iniciado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Iniciar Lote", description: err.message, variant: "destructive" }); }
     });
   };
 
   const failureProcessingBatch = async (batchId: string, storageId: string) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const batch = processingBatches?.find(b => b.id === batchId);
@@ -1865,16 +1839,15 @@ const withMutationAsync = React.useCallback(
           storageId: storageId,
           rootPath: storage.root_path,
         });
-        msgAcction = `A tentar reiniciar o lote falhado ${batch.timestampStr}.`
+        return `A tentar reiniciar o lote falhado ${batch.timestampStr}.`
       },
       invalidateKeys: [],
-      successToast: { title: "A Reiniciar Lote...", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "A Reiniciar Lote...", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Reiniciar Lote", description: err.message, variant: "destructive" }); }
     });
   };
 
   const completeProcessingBatch = async (batchId: string) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const batch = processingBatches?.find(b => b.id === batchId);
@@ -1896,16 +1869,15 @@ const withMutationAsync = React.useCallback(
 
         logAction('Processing Batch Completed', `Batch ${batchId} was completed.`, {});
         await logProcessingEvent(batchId, `Batch ${batchId} marked as completed by user.`);
-        msgAcction = `Lote ${batch.timestampStr} marcado como completo.`
+        return `Lote ${batch.timestampStr} marcado como completo.`
       },
       invalidateKeys: ['PROCESSING_BATCHES', 'RAW_BOOKS', 'PROCESSING_BATCH_ITEMS'],
-      successToast: { title: "Lote de Processamento Completo", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Lote de Processamento Completo", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Completar Lote", description: err.message, variant: "destructive" }); }
     });
   };
   
   const failProcessingBatch = async (batchId: string) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         const response = await fetch(`/api/processing-batches/${batchId}`, {
@@ -1916,16 +1888,15 @@ const withMutationAsync = React.useCallback(
         if (!response.ok) throw new Error('Falha ao atualizar lote');
         logAction('Processing Batch mark as Failed', `Batch ${batchId} was failed.`, {});
         await logProcessingEvent(batchId, `Batch ${batchId} marked as Failed by user.`);
-        msgAcction = `Lote ${batchId} marcado como falhado.`
+        return `Lote ${batchId} marcado como falhado.`
       },
       invalidateKeys: ['PROCESSING_BATCHES'],
-      successToast: { title: "Lote Marcado como Falha", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Lote Marcado como Falha", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Marcar Falha", description: err.message, variant: "destructive" }); }
     });
   };
   
   const handleSendBatchToNextStage = async (batchIds: string[]) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
       let allSucceeded = true;
@@ -1972,16 +1943,15 @@ const withMutationAsync = React.useCallback(
       if (failedBooks.length > 0) {
         throw new Error(`Could not move the following books: ${failedBooks.join(', ')}.`);
       }
-      msgAcction = `${batchIds.length} lote(s) movido(s) para o Controle de Qualidade Final.`
+      return `${batchIds.length} lote(s) movido(s) para o Controle de Qualidade Final.`
     }, 
     invalidateKeys: ['PROCESSING_BATCHES', 'PROCESSING_BATCH_ITEMS', 'RAW_BOOKS'],
-    successToast: { title: "Lotes Enviados", description: msgAcction },
-    onError: (err) => { toast({ title: "Alguns Itens Falharam", description: err.message, variant: "destructive" }); }
+    successToast: { title: "Lotes Enviados", description: (data) => String(data) },
+    onError: (err, vars) => { toast({ title: "Alguns Itens Falharam", description: err.message, variant: "destructive" }); }
     });
   };
 
   const setProvisionalDeliveryStatus = async (deliveryItemId: string, bookId: string, status: 'approved' | 'rejected', reason?: string) => {
-    let msgAcction: string;
     withMutation({
       mutationFn: async () => {
         if (!currentUser) throw new Error("Utilizador não autenticado");
@@ -2000,340 +1970,15 @@ const withMutationAsync = React.useCallback(
           if (book?.rejectionReason) await updateBook(bookId, { rejectionReason: null });
            logAction('Approval Marked', `Book "${book?.name}" marked as approved by client.`, { bookId });
         }
-        msgAcction = `Livro ${rawBooks?.find(b => b.id === bookId)?.name} marcado como ${status}.`
+        return `Livro ${rawBooks?.find(b => b.id === bookId)?.name} marcado como ${status}.`
       },
       invalidateKeys: ['DELIVERY_BATCH_ITEMS', 'RAW_BOOKS'],
-      successToast: { title: "Estado de Validação Atualizado", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
+      successToast: { title: "Estado de Validação Atualizado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Atualizar Estado", description: err.message, variant: "destructive" }); }
     });
   };
 
   const finalizeDeliveryBatch = async (deliveryId: string, finalDecision: 'approve_remaining' | 'reject_all') => {
-    withMutation({
-      mutationFn: async () => {
-        if (!currentUser) throw new Error("Utilizador não autenticado");
-        
-        const itemsInBatch = (deliveryBatchItems || []).filter(item => item.deliveryId === deliveryId);
-        const failedMoves: string[] = [];
-
-        for (const item of itemsInBatch) {
-            const book = rawBooks?.find(b => b.id === item.bookId);
-            if (!book || !statuses) continue;
-            const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
-            if (!currentStatusName) continue;
-            
-            let newStatusName = (finalDecision === 'reject_all') ? 'Client Rejected' : (item.status === 'rejected' ? 'Client Rejected' : 'Finalized');
-            
-            if (currentStatusName !== newStatusName) {
-                const moveResult = await moveBookFolder(book.name, currentStatusName, newStatusName);
-                if(moveResult) {
-                    await updateBookStatus(book.id, newStatusName);
-                    await logAction(newStatusName === 'Client Rejected' ? 'Client Rejection' : 'Client Approval', `Batch Finalization: Book status set to ${newStatusName}.`, { bookId: book.id, userId: currentUser.id });
-                } else {
-                    failedMoves.push(book.name);
-                }
-            }
-        }
-
-        if (failedMoves.length > 0) {
-            throw new Error(`Could not move folders for the following books: ${failedMoves.join(', ')}. The batch status was not updated.`);
-        }
-
-        const response = await fetch(`/api/delivery-batches/${deliveryId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'Finalized' }),
-        });
-        if (!response.ok) throw new Error('Falha ao finalizar lote via API.');
-        
-        await logAction('Delivery Batch Finalized', `Batch ${deliveryId} was finalized by ${currentUser.name}. Decision: ${finalDecision}.`, { userId: currentUser.id });
-      },
-      invalidateKeys: ['DELIVERY_BATCHES', 'DELIVERY_BATCH_ITEMS', 'RAW_BOOKS', 'AUDIT_LOGS'],
-      successToast: { title: "Validação Confirmada", description: "Todos os livros no lote foram processados." },
-      onError: (err) => { toast({ title: "Erro na Finalização", description: err.message, variant: "destructive" }); }
-    });
-  };
-  
-   const distributeValidationSample = async (batchId: string, assignments: { itemId: string, userId: string}[]) => {
-    let msgAcction: string;
-     withMutation({
-       mutationFn: async () => {
-        const response = await fetch('/api/delivery-batches/distribute', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ batchId, assignments }),
-        });
-        if (!response.ok) throw new Error('Falha ao distribuir amostra');
-        logAction('Validation Distributed', `${assignments.length} items from batch ${batchId} distributed.`, {});
-        msgAcction = `Foram atribuídas ${assignments.length} tarefas aos operadores.`
-      },
-      invalidateKeys: ['DELIVERY_BATCHES', 'DELIVERY_BATCH_ITEMS'],
-      successToast: { title: "Amostra Distribuída", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
-     });
-   };
-
-  const approveBatch = async (deliveryId: string) => {
-    withMutation({
-      mutationFn: async () => {
-        const itemsToApprove = (deliveryBatchItems || []).filter(item => item.deliveryId === deliveryId && item.status === 'pending');
-        for (const item of itemsToApprove) {
-            await setProvisionalDeliveryStatus(item.id, item.bookId, 'approved');
-        }
-        await finalizeDeliveryBatch(deliveryId, 'approve_remaining');
-      },
-      invalidateKeys: ['DELIVERY_BATCHES', 'DELIVERY_BATCH_ITEMS', 'RAW_BOOKS'],
-      successToast: { title: "Lote Aprovado" },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
-    });
-  };
-
-  const handleFinalize = (bookId: string) => {
-    let msgAcction: string;
-    withMutation({
-      mutationFn: async () => {
-        const book = rawBooks?.find(b => b.id === bookId);
-        if (!book || !book.projectId || !statuses || !projectWorkflows) throw new Error("Dados do livro incompletos.");
-        const workflow = projectWorkflows[book.projectId] || [];
-        const nextStageKey = getNextEnabledStage('finalized', workflow) || 'archive';
-        const newStatus = STAGE_CONFIG[nextStageKey]?.dataStatus || 'Archived';
-        const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
-        if (!currentStatusName) throw new Error("Estado atual desconhecido.");
-
-        const moveResult = await moveBookFolder(book.name, currentStatusName, newStatus);
-        if (!moveResult) throw new Error("Falha ao mover a pasta do livro.");
-        
-        await updateBookStatus(bookId, newStatus);
-        logAction('Book Archived', `Book "${book?.name}" was finalized and moved to ${newStatus}.`, { bookId });
-        msgAcction = `O livro "${book.name}" foi arquivado.`
-      },
-      invalidateKeys: ['RAW_BOOKS'],
-      successToast: { title: "Livro Arquivado", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
-    });
-  };
-  
-  const handleMarkAsCorrected = (bookId: string) => {
-    let msgAcction: string;
-    withMutation({
-      mutationFn: async () => {
-        const book = rawBooks?.find(b => b.id === bookId);
-        if (!book || !book.projectId || !statuses || !projectWorkflows) throw new Error("Dados do livro incompletos.");
-        const workflow = projectWorkflows[book.projectId] || [];
-        const nextStageKey = getNextEnabledStage('client-rejections', workflow) || 'corrected';
-        const newStatus = STAGE_CONFIG[nextStageKey]?.dataStatus || 'Corrected';
-        const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
-        if (!currentStatusName) throw new Error("Estado atual desconhecido.");
-        
-        const moveResult = await moveBookFolder(book.name, currentStatusName, newStatus);
-        if (!moveResult) throw new Error("Falha ao mover pasta do livro.");
-        
-        await updateBookStatus(bookId, newStatus, { rejectionReason: null });
-        logAction('Marked as Corrected', `Book "${book.name}" marked as corrected after client rejection.`, { bookId });
-        msgAcction = `O livro "${book.name}" foi marcado como corrigido.`
-      },
-      invalidateKeys: ['RAW_BOOKS'],
-      successToast: { title: "Livro Corrigido", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
-    });
-  };
-
-  const handleResubmit = (bookId: string, targetStage: string) => {
-    let msgAcction: string;
-    withMutation({
-      mutationFn: async () => {
-        const book = rawBooks?.find(b => b.id === bookId);
-        if (!book || !statuses) throw new Error("Dados do livro ou status inválidos.");
-        const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
-        if (!currentStatusName) throw new Error("Estado atual desconhecido.");
-
-        const moveResult = await moveBookFolder(book.name, currentStatusName, targetStage);
-        if (!moveResult) throw new Error("Falha ao mover a pasta do livro.");
-
-        await updateBookStatus(bookId, targetStage);
-        logAction('Book All Resubmitted', `Book "${book.name}" resubmitted to ${targetStage}.`, { bookId });
-        msgAcction = `O livro "${book.name}" foi reenviado para ${targetStage}.`;
-      },
-      invalidateKeys: ['RAW_BOOKS'],
-      successToast: { title: "Todos os Livros Reenviados", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
-    });
-  };
-
-    const handleResubmitCopyTifs = (bookId: string, targetStage: string) => {
-    let msgAcction: string;
-    withMutation({
-      mutationFn: async () => {
-        const book = rawBooks?.find(b => b.id === bookId);
-        if (!book || !statuses) throw new Error("Dados do livro ou status inválidos.");
-        const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
-        if (!currentStatusName) throw new Error("Estado atual desconhecido.");
-        const moveResult = await copyTifsBookFolder(book.name, currentStatusName, targetStage);
-        if (!moveResult) throw new Error("Falha ao copiar TIFFs do livro.");
-
-        await updateBookStatus(bookId, targetStage);
-        logAction('Book Copy Tifs Resubmitted', `Book "${book.name}" resubmitted to ${targetStage}.`, { bookId });
-        msgAcction = `O livro "${book.name}" foi reenviado para ${targetStage}.`
-      },
-      invalidateKeys: ['RAW_BOOKS'],
-      successToast: { title: "Reenvio de TIFs do Livro", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
-    });
-  };
-
-
-    const handleResubmitMoveTifs = (bookId: string, targetStage: string) => {
-    let msgAcction: string;
-    withMutation({
-      mutationFn: async () => {
-        const book = rawBooks?.find(b => b.id === bookId);
-        if (!book || !statuses) throw new Error("Dados do livro ou status inválidos.");
-        const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
-        if (!currentStatusName) throw new Error("Estado atual desconhecido.");
-        const moveResult = await moveTifsBookFolder(book.name, currentStatusName, targetStage);
-        if (!moveResult) throw new Error("Falha ao mover TIFFs do livro.");
-
-        await updateBookStatus(bookId, targetStage);
-        logAction('Book Move Tifs Resubmitted', `Book "${book.name}" resubmitted to ${targetStage}.`, { bookId });
-        msgAcction = `O livro "${book.name}" foi reenviado para ${targetStage}.`;
-      },
-      invalidateKeys: ['RAW_BOOKS'],
-      successToast: { title: "Reenvio de TIFs do Livro", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
-    });
-  };
-
-
-  const handleCreateDeliveryBatch = async (bookIds: string[]) => {
-    let msgAcction: string;
-    withMutation({
-      mutationFn: async () => {
-        const response = await fetch('/api/delivery-batches', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ bookIds, userId: currentUser?.id }),
-        });
-        if (!response.ok) throw new Error('Falha ao criar lote de entrega');
-        
-        for (const bookId of bookIds) {
-          const book = rawBooks?.find(b => b.id === bookId);
-          if (book) await handleMoveBookToNextStage(book.id, 'Delivery');
-        }
-        
-        logAction('Delivery Batch Created', `Batch created with ${bookIds.length} books and sent to client.`, {});
-        msgAcction = `${bookIds.length} livros adicionados ao lote e enviados.`
-      },
-      invalidateKeys: ['DELIVERY_BATCHES', 'DELIVERY_BATCH_ITEMS', 'RAW_BOOKS'],
-      successToast: { title: "Lote de Entrega Criado e Enviado", description: msgAcction },
-      onError: (err) => { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
-    });
-  };
-
-  const booksAvaiableInStorageLocalIp = React.useCallback(async (currentStageKey: string) => {
-    if ((currentStageKey !== 'to-indexing' && currentStageKey !== 'to-checking') || !storages) {
-        return [];
-    }
-    const localIP = await getLocalIP();        
-    const accessibleStorageIds = storages.filter(s => s.ip === localIP).map(s => String(s.id));
-
-    if (accessibleStorageIds.length === 0) {
-      return [];
-    }
-    const projectsToScan = selectedProjectId ? (rawProjects || []).filter(p => p.id === selectedProjectId) : accessibleProjectsForUser;
-    let availableBooks: EnrichedBook[] = [];
-
-    for (const project of projectsToScan) {
-      const projectWorkflow = projectWorkflows?.[project.id] || [];
-      const currentStageIndexInProjectWorkflow = projectWorkflow.indexOf(currentStageKey);
-      if (currentStageIndexInProjectWorkflow > 0) {
-        const previousStageKey = projectWorkflow[currentStageIndexInProjectWorkflow - 1];
-        const previousStageStatus = STAGE_CONFIG[previousStageKey]?.dataStatus;
-        if (!previousStageStatus) continue;
-        const workflowConfig = STAGE_CONFIG[currentStageKey];
-        const booksAvaiable = enrichedBooks.filter(b => 
-          b.projectId === project.id &&
-          b.status === previousStageStatus &&
-          !b[workflowConfig.assigneeRole! + 'UserId' as keyof EnrichedBook] &&
-          (b.storageId && accessibleStorageIds.includes(String(b.storageId)))
-        );
-        if (booksAvaiable.length > 0) {
-          availableBooks = [...availableBooks, ...booksAvaiable];
-        }
-      }
-    }
-    return availableBooks;
-  }, [enrichedBooks, selectedProjectId, accessibleProjectsForUser, projectWorkflows, storages, toast]);
-
-
-    const handlePullNextTask = React.useCallback(
-      async (currentStageKey: string, userIdToAssign?: string) => {
-        let msgAcction: string;
-        withMutation({
-          mutationFn: async () => {
-            const assigneeId = userIdToAssign || currentUser?.id;
-            if (!assigneeId) throw new Error("Nenhum utilizador especificado para atribuição.");
-
-            const user = users?.find(u => u.id === assigneeId);
-            if (!user) throw new Error("Utilizador atribuído não encontrado.");
-
-            const workflowConfig = STAGE_CONFIG[currentStageKey];
-            if (!workflowConfig || !workflowConfig.assigneeRole) throw new Error("Fase inválida para puxar tarefas.");
-
-            const localIP = await getLocalIP();
-            const accessibleStorageIds = storages
-              .filter(s => s.ip === localIP)
-              .map(s => String(s.id));
-
-            if (accessibleStorageIds.length === 0 && (currentStageKey === 'to-indexing' || currentStageKey === 'to-checking')) {
-              throw new Error("Nenhum armazenamento acessível encontrado para o IP atual. Não é possível puxar tarefas de Indexação ou QC.");
-            }
-
-            const projectsToScan = selectedProjectId ? rawProjects.filter(p => p.id === selectedProjectId) : accessibleProjectsForUser;
-
-            for (const project of projectsToScan) {
-              const projectWorkflow = projectWorkflows[project.id] || [];
-              const currentStageIndexInProjectWorkflow = projectWorkflow.indexOf(currentStageKey);
-
-              if (currentStageIndexInProjectWorkflow > 0) {
-                const previousStageKey = projectWorkflow[currentStageIndexInProjectWorkflow - 1];
-                const previousStageStatus = STAGE_CONFIG[previousStageKey]?.dataStatus;
-                if (!previousStageStatus) continue;
-
-                const bookToAssign = enrichedBooks.find(b =>
-                  b.projectId === project.id &&
-                  b.status === previousStageStatus &&
-                  !b[workflowConfig.assigneeRole + 'UserId' as keyof EnrichedBook] &&
-                  ((currentStageKey !== 'to-indexing' && currentStageKey !== 'to-checking') ||
-                    (b.storageId && accessibleStorageIds.includes(String(b.storageId))))
-                );
-
-                if (bookToAssign) {
-                  handleAssignUser(bookToAssign.id, assigneeId, workflowConfig.assigneeRole);
-                  msgAcction = `"${bookToAssign.name}" foi atribuído a si.`;
-                  return;
-                }
-              }
-            }
-            throw new Error("Não há livros não atribuídos disponíveis na etapa anterior para os seus projetos.");
-          },
-          invalidateKeys: ['RAW_BOOKS'],
-            successToast: {title: "Tarefa Recebida com Sucesso", description: msgAcction},
-            onError: (err) => {
-            toast({
-              title: "Erro ao Receber Tarefa",
-              description: err.message || "Ocorreu um erro ao tentar receber a próxima tarefa.",
-              variant: "destructive"
-            });
-          }
-        });
-      },
-      [
-        currentUser, users, enrichedBooks, selectedProjectId, accessibleProjectsForUser, projectWorkflows, storages, handleAssignUser, toast, withMutation]
-    );
-
-
-  const handleValidationDeliveryBatch = async (deliveryId: string, finalDecision: 'approve_remaining' | 'reject_all') => {
-    let msgAcction: string;
     withMutation({
           mutationFn: async () => {
             if (!currentUser) throw new Error("Utilizador não autenticado");
@@ -2380,13 +2025,281 @@ const withMutationAsync = React.useCallback(
             if (!response.ok) throw new Error('Falha ao finalizar lote via API.');
             
             await logAction('Delivery Batch Finalized', `Batch ${deliveryId} was finalized by ${currentUser.name}. Decision: ${finalDecision}.`, { userId: currentUser.id });
-            msgAcction = `Todos os livros no lote "${batch.id}" foram processados.`;
+            return `Todos os livros no lote "${batch.id}" foram processados.`;
         }, 
         invalidateKeys: ['RAW_BOOKS', 'DELIVERY_BATCHES', 'AUDIT_LOGS'],
-        successToast: { title: "Validação Confirmada", description: msgAcction },
-        onError: (err) => { toast({ title: "Erro na Finalização", description: err.message, variant: "destructive" }); }
+        successToast: { title: "Validação Confirmada", description: (data) => String(data) },
+        onError: (err, vars) => { toast({ title: "Erro na Finalização", description: err.message, variant: "destructive" }); }
       });
   };
+  
+   const distributeValidationSample = async (batchId: string, assignments: { itemId: string, userId: string}[]) => {
+     withMutation({
+       mutationFn: async () => {
+        const response = await fetch('/api/delivery-batches/distribute', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ batchId, assignments }),
+        });
+        if (!response.ok) throw new Error('Falha ao distribuir amostra');
+        logAction('Validation Distributed', `${assignments.length} items from batch ${batchId} distributed.`, {});
+        return `Foram atribuídas ${assignments.length} tarefas aos operadores.`
+      },
+      invalidateKeys: ['DELIVERY_BATCHES', 'DELIVERY_BATCH_ITEMS'],
+      successToast: { title: "Amostra Distribuída", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Distribuir Amostra", description: err.message, variant: "destructive" }); }
+     });
+   };
+
+  const approveBatch = async (deliveryId: string) => {
+    withMutation({
+      mutationFn: async () => {
+        const itemsToApprove = (deliveryBatchItems || []).filter(item => item.deliveryId === deliveryId && item.status === 'pending');
+        for (const item of itemsToApprove) {
+            await setProvisionalDeliveryStatus(item.id, item.bookId, 'approved');
+        }
+        await finalizeDeliveryBatch(deliveryId, 'approve_remaining');
+        return "Lote aprovado com sucesso."
+      },
+      invalidateKeys: ['DELIVERY_BATCHES', 'DELIVERY_BATCH_ITEMS', 'RAW_BOOKS'],
+      successToast: { title: "Lote Aprovado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Aprovar Lote", description: err.message, variant: "destructive" }); }
+    });
+  };
+
+  const handleFinalize = (bookId: string) => {
+    withMutation({
+      mutationFn: async () => {
+        const book = rawBooks?.find(b => b.id === bookId);
+        if (!book || !book.projectId || !statuses || !projectWorkflows) throw new Error("Dados do livro incompletos.");
+        const workflow = projectWorkflows[book.projectId] || [];
+        const nextStageKey = getNextEnabledStage('finalized', workflow) || 'archive';
+        const newStatus = STAGE_CONFIG[nextStageKey]?.dataStatus || 'Archived';
+        const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
+        if (!currentStatusName) throw new Error("Estado atual desconhecido.");
+
+        const moveResult = await moveBookFolder(book.name, currentStatusName, newStatus);
+        if (!moveResult) throw new Error("Falha ao mover a pasta do livro.");
+        
+        await updateBookStatus(bookId, newStatus);
+        logAction('Book Archived', `Book "${book?.name}" was finalized and moved to ${newStatus}.`, { bookId });
+        return `O livro "${book.name}" foi arquivado.`
+      },
+      invalidateKeys: ['RAW_BOOKS'],
+      successToast: { title: "Livro Arquivado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Arquivar", description: err.message, variant: "destructive" }); }
+    });
+  };
+  
+  const handleMarkAsCorrected = (bookId: string) => {
+    withMutation({
+      mutationFn: async () => {
+        const book = rawBooks?.find(b => b.id === bookId);
+        if (!book || !book.projectId || !statuses || !projectWorkflows) throw new Error("Dados do livro incompletos.");
+        const workflow = projectWorkflows[book.projectId] || [];
+        const nextStageKey = getNextEnabledStage('client-rejections', workflow) || 'corrected';
+        const newStatus = STAGE_CONFIG[nextStageKey]?.dataStatus || 'Corrected';
+        const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
+        if (!currentStatusName) throw new Error("Estado atual desconhecido.");
+        
+        const moveResult = await moveBookFolder(book.name, currentStatusName, newStatus);
+        if (!moveResult) throw new Error("Falha ao mover pasta do livro.");
+        
+        await updateBookStatus(bookId, newStatus, { rejectionReason: null });
+        logAction('Marked as Corrected', `Book "${book.name}" marked as corrected after client rejection.`, { bookId });
+        return `O livro "${book.name}" foi marcado como corrigido.`
+      },
+      invalidateKeys: ['RAW_BOOKS'],
+      successToast: { title: "Livro Corrigido", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Corrigir", description: err.message, variant: "destructive" }); }
+    });
+  };
+
+  const handleResubmit = (bookId: string, targetStage: string) => {
+    withMutation({
+      mutationFn: async () => {
+        const book = rawBooks?.find(b => b.id === bookId);
+        if (!book || !statuses) throw new Error("Dados do livro ou status inválidos.");
+        const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
+        if (!currentStatusName) throw new Error("Estado atual desconhecido.");
+
+        const moveResult = await moveBookFolder(book.name, currentStatusName, targetStage);
+        if (!moveResult) throw new Error("Falha ao mover a pasta do livro.");
+
+        await updateBookStatus(bookId, targetStage);
+        logAction('Book All Resubmitted', `Book "${book.name}" resubmitted to ${targetStage}.`, { bookId });
+        return `O livro "${book.name}" foi reenviado para ${targetStage}.`;
+      },
+      invalidateKeys: ['RAW_BOOKS'],
+      successToast: { title: "Todos os Livros Reenviados", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Reenviar", description: err.message, variant: "destructive" }); }
+    });
+  };
+
+    const handleResubmitCopyTifs = (bookId: string, targetStage: string) => {
+    withMutation({
+      mutationFn: async () => {
+        const book = rawBooks?.find(b => b.id === bookId);
+        if (!book || !statuses) throw new Error("Dados do livro ou status inválidos.");
+        const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
+        if (!currentStatusName) throw new Error("Estado atual desconhecido.");
+        const moveResult = await copyTifsBookFolder(book.name, currentStatusName, targetStage);
+        if (!moveResult) throw new Error("Falha ao copiar TIFFs do livro.");
+
+        await updateBookStatus(bookId, targetStage);
+        logAction('Book Copy Tifs Resubmitted', `Book "${book.name}" resubmitted to ${targetStage}.`, { bookId });
+        return `O livro "${book.name}" foi reenviado para ${targetStage}.`;
+      },
+      invalidateKeys: ['RAW_BOOKS'],
+      successToast: { title: "Reenvio de TIFs do Livro", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Reenviar", description: err.message, variant: "destructive" }); }
+    });
+  };
+
+
+    const handleResubmitMoveTifs = (bookId: string, targetStage: string) => {
+    withMutation({
+      mutationFn: async () => {
+        const book = rawBooks?.find(b => b.id === bookId);
+        if (!book || !statuses) throw new Error("Dados do livro ou status inválidos.");
+        const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
+        if (!currentStatusName) throw new Error("Estado atual desconhecido.");
+        const moveResult = await moveTifsBookFolder(book.name, currentStatusName, targetStage);
+        if (!moveResult) throw new Error("Falha ao mover TIFFs do livro.");
+
+        await updateBookStatus(bookId, targetStage);
+        logAction('Book Move Tifs Resubmitted', `Book "${book.name}" resubmitted to ${targetStage}.`, { bookId });
+        return `O livro "${book.name}" foi reenviado para ${targetStage}.`;
+      },
+      invalidateKeys: ['RAW_BOOKS'],
+      successToast: { title: "Reenvio de TIFs do Livro", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Reenviar", description: err.message, variant: "destructive" }); }
+    });
+  };
+
+
+  const handleCreateDeliveryBatch = async (bookIds: string[]) => {
+    withMutation({
+      mutationFn: async () => {
+        const response = await fetch('/api/delivery-batches', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bookIds, userId: currentUser?.id }),
+        });
+        if (!response.ok) throw new Error('Falha ao criar lote de entrega');
+        
+        for (const bookId of bookIds) {
+          const book = rawBooks?.find(b => b.id === bookId);
+          if (book) await handleMoveBookToNextStage(book.id, 'Delivery');
+        }
+        
+        logAction('Delivery Batch Created', `Batch created with ${bookIds.length} books and sent to client.`, {});
+        return `${bookIds.length} livros adicionados ao lote e enviados.`
+      },
+      invalidateKeys: ['DELIVERY_BATCHES', 'DELIVERY_BATCH_ITEMS', 'RAW_BOOKS'],
+      successToast: { title: "Lote de Entrega Criado e Enviado", description: (data) => String(data) },
+      onError: (err, vars) => { toast({ title: "Erro ao Criar Lote", description: err.message, variant: "destructive" }); }
+    });
+  };
+
+  const booksAvaiableInStorageLocalIp = React.useCallback(async (currentStageKey: string) => {
+    if ((currentStageKey !== 'to-indexing' && currentStageKey !== 'to-checking') || !storages) {
+        return [];
+    }
+    const localIP = await getLocalIP();        
+    const accessibleStorageIds = storages.filter(s => s.ip === localIP).map(s => String(s.id));
+
+    if (accessibleStorageIds.length === 0) {
+      return [];
+    }
+    const projectsToScan = selectedProjectId ? (rawProjects || []).filter(p => p.id === selectedProjectId) : accessibleProjectsForUser;
+    let availableBooks: EnrichedBook[] = [];
+
+    for (const project of projectsToScan) {
+      const projectWorkflow = projectWorkflows?.[project.id] || [];
+      const currentStageIndexInProjectWorkflow = projectWorkflow.indexOf(currentStageKey);
+      if (currentStageIndexInProjectWorkflow > 0) {
+        const previousStageKey = projectWorkflow[currentStageIndexInProjectWorkflow - 1];
+        const previousStageStatus = STAGE_CONFIG[previousStageKey]?.dataStatus;
+        if (!previousStageStatus) continue;
+        const workflowConfig = STAGE_CONFIG[currentStageKey];
+        const booksAvaiable = enrichedBooks.filter(b => 
+          b.projectId === project.id &&
+          b.status === previousStageStatus &&
+          !b[workflowConfig.assigneeRole! + 'UserId' as keyof EnrichedBook] &&
+          (b.storageId && accessibleStorageIds.includes(String(b.storageId)))
+        );
+        if (booksAvaiable.length > 0) {
+          availableBooks = [...availableBooks, ...booksAvaiable];
+        }
+      }
+    }
+    return availableBooks;
+  }, [enrichedBooks, selectedProjectId, accessibleProjectsForUser, projectWorkflows, storages, toast]);
+
+
+    const handlePullNextTask = React.useCallback(
+      async (currentStageKey: string, userIdToAssign?: string) => {
+        withMutation({
+          mutationFn: async () => {
+            const assigneeId = userIdToAssign || currentUser?.id;
+            if (!assigneeId) throw new Error("Nenhum utilizador especificado para atribuição.");
+
+            const user = users.find(u => u.id === assigneeId);
+            if (!user) throw new Error("Utilizador atribuído não encontrado.");
+
+            const workflowConfig = STAGE_CONFIG[currentStageKey];
+            if (!workflowConfig || !workflowConfig.assigneeRole) throw new Error("Fase inválida para puxar tarefas.");
+
+            const localIP = await getLocalIP();
+            const accessibleStorageIds = storages
+              .filter(s => s.ip === localIP)
+              .map(s => String(s.id));
+
+            if (accessibleStorageIds.length === 0 && (currentStageKey === 'to-indexing' || currentStageKey === 'to-checking')) {
+              throw new Error("Nenhum armazenamento acessível encontrado para o IP atual. Não é possível puxar tarefas de Indexação ou QC.");
+            }
+
+            const projectsToScan = selectedProjectId ? rawProjects.filter(p => p.id === selectedProjectId) : accessibleProjectsForUser;
+
+            for (const project of projectsToScan) {
+              const projectWorkflow = projectWorkflows[project.id] || [];
+              const currentStageIndexInProjectWorkflow = projectWorkflow.indexOf(currentStageKey);
+
+              if (currentStageIndexInProjectWorkflow > 0) {
+                const previousStageKey = projectWorkflow[currentStageIndexInProjectWorkflow - 1];
+                const previousStageStatus = STAGE_CONFIG[previousStageKey]?.dataStatus;
+                if (!previousStageStatus) continue;
+
+                const bookToAssign = enrichedBooks.find(b =>
+                  b.projectId === project.id &&
+                  b.status === previousStageStatus &&
+                  !b[workflowConfig.assigneeRole + 'UserId' as keyof EnrichedBook] &&
+                  ((currentStageKey !== 'to-indexing' && currentStageKey !== 'to-checking') ||
+                    (b.storageId && accessibleStorageIds.includes(String(b.storageId))))
+                );
+
+                if (bookToAssign) {
+                  handleAssignUser(bookToAssign.id, assigneeId, workflowConfig.assigneeRole);
+                  return `"${bookToAssign.name}" foi atribuído a si.`;
+                }
+              }
+            }
+            throw new Error("Não há livros não atribuídos disponíveis na etapa anterior para os seus projetos.");
+          },
+          invalidateKeys: ['RAW_BOOKS'],
+            successToast: {title: "Tarefa Recebida com Sucesso", description: (data) => String(data)},
+            onError: (err, vars) => {
+            toast({
+              title: "Erro ao Receber Tarefa",
+              description: err.message || "Ocorreu um erro ao tentar receber a próxima tarefa.",
+              variant: "destructive"
+            });
+          }
+        });
+      },
+      [currentUser, users, enrichedBooks, selectedProjectId, accessibleProjectsForUser, projectWorkflows, storages, handleAssignUser, toast, withMutation, rawProjects]
+    );
 
   const scannerUsers = React.useMemo(() => (users || []).filter(user => user.role === 'Scanning'), [users]);
   const indexerUsers = React.useMemo(() => (users || []).filter(user => user.role === 'Indexing'), [users]);
@@ -2471,7 +2384,6 @@ const withMutationAsync = React.useCallback(
     copyTifsBookFolder,
     updateBookStatus,
     loadInitialData,
-    handleValidationDeliveryBatch,
   };
 
   return (
@@ -2488,4 +2400,3 @@ export function useAppContext() {
   }
   return context;
 }
-
