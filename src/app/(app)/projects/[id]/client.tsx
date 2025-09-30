@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import * as React from "react"
@@ -267,7 +268,7 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
   };
   const exportCSV = (data: EnrichedBook[]) => {
     if (data.length === 0) return;
-    const headers = ['id', 'name', 'status', 'progress', 'documentCount', 'expectedDocuments'];
+    const headers = ['id', 'name', 'status', 'progress', 'documentCount', 'totalExpected'];
     const csvContent = [headers.join(','), ...data.map(d => headers.map(h => JSON.stringify(d[h as keyof typeof d])).join(','))].join('\n');
     downloadFile(csvContent, 'project_books_export.csv', 'text/csv;charset=utf-8;');
     toast({ title: "Exportação Concluída", description: `${data.length} livros exportados em formato CSV.` });
@@ -552,7 +553,15 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                         {paginatedBooks.length > 0 ? paginatedBooks.map(book => (
                             <TableRow key={book.id} data-state={selection.includes(book.id) && "selected"}>
                                 <TableCell><Checkbox checked={selection.includes(book.id)} onCheckedChange={(checked) => setSelection(prev => checked ? [...prev, book.id] : prev.filter(id => id !== book.id))} /></TableCell>
-                                <TableCell className="font-medium"><Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link></TableCell>
+                                <TableCell className="font-medium">
+                                    <div className="flex items-center gap-2">
+                                        <span
+                                          className="h-4 w-4 rounded-full border shrink-0"
+                                          style={{ backgroundColor: book.color || '#FFFFFF' }}
+                                        />
+                                        <Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link>
+                                    </div>
+                                </TableCell>
                                 <TableCell><Badge variant="outline">{book.status}</Badge></TableCell>
                                 <TableCell className="text-center">{book.documentCount} / {book.expectedDocuments}</TableCell>
                                 <TableCell><Progress value={book.progress} className="h-2" /></TableCell>

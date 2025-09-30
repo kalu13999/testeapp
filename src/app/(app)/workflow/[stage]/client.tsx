@@ -591,27 +591,6 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     toast({ title: "Exportação Concluída", description: `${data.length} itens exportados em formato XLSX.` });
   }
 
-  const handleDirectorySelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      const firstFile = files[0];
-      const pathParts = (firstFile as any).webkitRelativePath?.split('/') || [];
-      const folderName = pathParts.length > 1 ? pathParts[0] : null;
-      
-      const tifFiles = Array.from(files).filter(file => file.name.toLowerCase().endsWith('.tif'));
-      const fileCount = tifFiles.length;
-
-      if (!folderName) {
-        toast({ title: "Seleção Inválida", description: "Por favor, selecione uma pasta, não um arquivo individual.", variant: "destructive" });
-        setScanState(prev => ({ ...prev, folderName: null, fileCount: null }));
-      } else {
-        setScanState(prev => ({ ...prev, folderName, fileCount }));
-      }
-    } else {
-        setScanState(prev => ({ ...prev, folderName: null, fileCount: null }));
-    }
-  };
-  
   const handleConfirmScanBypass = () => {
     if (scanState.book) {
       handleSendToStorage(scanState.book.id, { actualPageCount: scanState.fileCount ?? 0 });
@@ -994,7 +973,13 @@ const handleMainAction = (book: EnrichedBook) => {
             />
         </TableCell>
         <TableCell className="font-medium">
-            <Link href={`/books/${item.id}`} className="hover:underline">{item.name}</Link>
+            <div className="flex items-center gap-2">
+                <span
+                  className="h-4 w-4 rounded-full border"
+                  style={{ backgroundColor: book.color || '#FFFFFF' }}
+                />
+                <Link href={`/books/${item.id}`} className="hover:underline">{item.name}</Link>
+            </div>
         </TableCell>
         <TableCell>{item.projectName}</TableCell>
         <TableCell className="hidden md:table-cell">{item.isbn}</TableCell>
@@ -1753,13 +1738,13 @@ const handleMainAction = (book: EnrichedBook) => {
 
         <AlertDialogContent>
           <AlertDialogHeader>
-              <AlertDialogTitle>Motivo da Rejeição</AlertDialogTitle>
+              <AlertDialogTitle>Reason for Rejection</AlertDialogTitle>
               <AlertDialogDescription>
-                  Por favor, forneça um motivo para rejeitar o livro "{currentBook?.name}". Isso será enviado para a equipe interna para correção.
+                  Please provide a reason for rejecting the book "{currentBook?.name}". This will be sent to the internal team for correction.
               </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-2">
-              <Label htmlFor="rejection-comment">Comentário</Label>
+              <Label htmlFor="rejection-comment">Comment</Label>
               <Textarea 
                   id="rejection-comment"
                   placeholder="ex.:, Page 5 is blurry, please re-scan."
@@ -1768,9 +1753,9 @@ const handleMainAction = (book: EnrichedBook) => {
               />
           </div>
           <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction onClick={handleRejectSubmit} disabled={!rejectionComment.trim()}>
-                  Enviar Rejeição
+                  Submit Rejection
               </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1857,7 +1842,7 @@ const handleMainAction = (book: EnrichedBook) => {
     <Dialog open={assignState.open} onOpenChange={closeAssignmentDialog}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{assignState.role ? assignmentConfig[assignState.role].title : 'Assign User'} for "{assignState.book?.name}"</DialogTitle>
+          <DialogTitle>{assignState.role ? assignmentConfig[assignState.role].title : 'Assign User'} for "{assignState.bookName}"</DialogTitle>
           <DialogDescription>{assignState.role ? assignmentConfig[assignState.role].description : ''}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
@@ -1866,8 +1851,8 @@ const handleMainAction = (book: EnrichedBook) => {
               <SelectValue placeholder={`Selecione um ${assignState.role}...`} />
             </SelectTrigger>
             <SelectContent>
-              {assignState.role && assignState.book && 
-                getAssignableUsers(assignState.role, assignState.book.projectId).map(user => (
+              {assignState.role && assignState.projectId && 
+                getAssignableUsers(assignState.role, assignState.projectId).map(user => (
                   <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
               ))}
             </SelectContent>
@@ -2032,3 +2017,4 @@ const handleMainAction = (book: EnrichedBook) => {
   )
 }
     
+

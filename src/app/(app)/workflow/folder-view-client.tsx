@@ -30,7 +30,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AppDocument, EnrichedBook, RejectionTag } from "@/context/workflow-context";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage, StageConfigItem} from "@/lib/workflow-config";
+import { STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage, StageConfigItem } from "@/lib/workflow-config";
 import type { LucideIcon } from "lucide-react";
 import {
   DropdownMenu,
@@ -210,8 +210,27 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   const [observationTarget, setObservationTarget] = React.useState<EnrichedBook | null>(null);
 
   
-  const setBookColumns = (bookId: string, cols: number) => {
-    setColumnStates(prev => ({ ...prev, [bookId]: { cols } }));
+  const [openAccordions, setOpenAccordions] = React.useState<string[]>([]);
+  const storageKey = React.useMemo(() => `accordion_state_${stage}`, [stage]);
+
+  React.useEffect(() => {
+    try {
+      const savedState = localStorage.getItem(storageKey);
+      if (savedState) {
+        setOpenAccordions(JSON.parse(savedState));
+      }
+    } catch (error) {
+      console.error(`Failed to parse accordion state for ${stage} from localStorage`, error);
+    }
+  }, [storageKey]);
+
+  const handleAccordionChange = (value: string[]) => {
+    setOpenAccordions(value);
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(value));
+    } catch (error) {
+      console.error(`Failed to save accordion state for ${stage} to localStorage`, error);
+    }
   };
 
   const canViewAll = React.useMemo(() => {
@@ -384,14 +403,13 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     const workflow = projectWorkflows[book.projectId] || [];
     const currentStageKey = findStageKeyFromStatus(book.status);
     if (!currentStageKey) {
-        toast({ title: "Erro de Workflow", description: `Não foi possível encontrar uma etapa de workflow para o status: "${book.status}"`, variant: "destructive" });
+        toast({ title: "Erro de Workflow", description: `Não foi possível encontrar a etapa de workflow para o status: "${book.status}"`, variant: "destructive" });
         return;
     }
     
     const nextStage = getNextEnabledStage(currentStageKey, workflow);
     
     if (!nextStage) {
-      toast({ title: "Fim de Workflow", description: "Esta é a última etapa para este projeto.", variant: "default" });
       handleMoveBookToNextStage(book.id, book.status);
       return;
     }
@@ -621,9 +639,9 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
         </div>
       )
     } else if (config.actionButtonLabel && stage !== 'archive') {
-      const firstSelected = Object.values(groupedByBook).find(g => g.book.id === selection[0])?.book;
-      if (!firstSelected) return null;
-      const actionLabel = getDynamicActionButtonLabel(firstSelected);
+      const firstBook = Object.values(groupedByBook).find(g => g.book.id === selection[0])?.book;
+      if (!firstBook) return null;
+      const actionLabel = getDynamicActionButtonLabel(firstBook);
       const isDisabled = selection.some(bookId => groupedByBook[bookId]?.hasError || actionLabel === "End of Workflow");
       
       if(stage === 'storage') {
@@ -654,6 +672,22 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     return null;
   }
   
+  const getPagesForBook = (bookId: string) => {
+    const getPageNum = (name: string): number => {
+        const match = name.match(/ - Page (\d+)/);
+        return match ? parseInt(match[1], 10) : 9999; 
+    }
+
+    return documents
+        .filter(doc => doc.bookId === bookId)
+        .sort((a, b) => getPageNum(a.name) - getPageNum(b.name));
+  }
+  
+  const gridClasses: { [key: number]: string } = {
+    1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4', 5: 'grid-cols-5', 6: 'grid-cols-6',
+    7: 'grid-cols-7', 8: 'grid-cols-8', 9: 'grid-cols-9', 10: 'grid-cols-10', 11: 'grid-cols-11', 12: 'grid-cols-12'
+  };
+
   const renderActions = (bookGroup: GroupedDocuments[string]) => {
     const { book, hasError } = bookGroup;
     const { id: bookId, name: bookName } = book;
@@ -666,7 +700,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
         </Button>
       );
     }
-    
+
     if (stage === 'storage') {
         const actionLabel = getDynamicActionButtonLabel(book);
         return (canViewAll && (
@@ -833,22 +867,15 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     }
   }
 
-  const getPagesForBook = (bookId: string) => {
-    const getPageNum = (name: string): number => {
-        const match = name.match(/ - Page (\d+)/);
-        return match ? parseInt(match[1], 10) : 9999; 
-    }
 
-    return documents
-        .filter(doc => doc.bookId === bookId)
-        .sort((a, b) => getPageNum(a.name) - getPageNum(b.name));
+  const handleSaveObservation = () => {
+    if (observationTarget && newObservation.trim()) {
+        addBookObservation(observationTarget.id, newObservation.trim());
+        setNewObservation('');
+        setObservationTarget(null);
+    }
   }
   
-  const gridClasses: { [key: number]: string } = {
-    1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4', 5: 'grid-cols-5', 6: 'grid-cols-6',
-    7: 'grid-cols-7', 8: 'grid-cols-8', 9: 'grid-cols-9', 10: 'grid-cols-10', 11: 'grid-cols-11', 12: 'grid-cols-12'
-  };
-
   return (
     <>
      <AlertDialog>
@@ -889,7 +916,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                     <SelectContent>
                         <SelectItem value="all">Todos os Armazenamentos</SelectItem>
                         {storages.map(storage => (
-                            <SelectItem key={storage.id} value={storage.id.toString()}>{storage.nome}</SelectItem>
+                            <SelectItem key={storage.id} value={String(storage.id)}>{storage.nome}</SelectItem>
                         ))}
                     </SelectContent>
                   </Select>
@@ -898,7 +925,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
           </CardHeader>
           <CardContent>
             {Object.keys(groupedByBook).length > 0 ? (
-              <Accordion type="multiple" className="w-full">
+              <Accordion type="multiple" value={openAccordions} onValueChange={handleAccordionChange} className="w-full">
                 {Object.values(groupedByBook).map((bookGroup) => {
                   const { book, pages, hasError, hasWarning, batchInfo } = bookGroup;
                   const isProcessing = processingBookIds.includes(book.id);
@@ -923,7 +950,10 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                         </div>
                         <AccordionTrigger className="flex-1 px-4 py-2">
                             <div className="flex items-center gap-3 text-left">
-                                <FolderSync className="h-5 w-5 text-primary" />
+                                <span
+                                  className="h-4 w-4 rounded-full border shrink-0"
+                                  style={{ backgroundColor: book.color || '#FFFFFF' }}
+                                />
                                 <div>
                                     <p className="font-semibold text-base flex items-center gap-2">
                                       {book.name}
@@ -1173,8 +1203,8 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
             </AlertDialogFooter>
         </AlertDialogContent>
     </AlertDialog>
-
-      <Dialog open={flagDialogState.open} onOpenChange={closeFlagDialog}>
+    
+    <Dialog open={flagDialogState.open} onOpenChange={closeFlagDialog}>
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>Flag Document: "{flagDialogState.docName}"</DialogTitle>
@@ -1202,10 +1232,8 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     <Dialog open={assignmentState.open} onOpenChange={closeAssignmentDialog}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Atribuir Utilizador a "{assignmentState.bookName}"</DialogTitle>
-          <DialogDescription>
-            Atribua esta tarefa a um utilizador. A mesma será remetida para a respetiva lista de pendentes.
-          </DialogDescription>
+          <DialogTitle>{assignmentState.role ? assignmentConfig[assignmentState.role].title : 'Assign User'} for "{assignmentState.bookName}"</DialogTitle>
+          <DialogDescription>{assignmentState.role ? assignmentConfig[assignmentState.role].description : ''}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <Select value={assignmentState.selectedUserId} onValueChange={(val) => setAssignmentState(s => ({...s, selectedUserId: val}))}>
@@ -1331,3 +1359,5 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     </>
   )
 }
+    
+
