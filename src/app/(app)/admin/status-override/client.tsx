@@ -116,7 +116,7 @@ export default function StatusOverrideClient({ allStatuses }: StatusOverrideClie
     setCurrentPage(1);
   };
 
-  /*const sortedAndFilteredBooks = React.useMemo(() => {
+  const sortedAndFilteredBooks = React.useMemo(() => {
     let filtered = books;
     Object.entries(columnFilters).forEach(([columnId, value]) => {
       if (value) {
@@ -152,9 +152,9 @@ export default function StatusOverrideClient({ allStatuses }: StatusOverrideClie
     }
 
     return filtered;
-  }, [books, columnFilters, sorting]);*/
+  }, [books, columnFilters, sorting]);
 
-  const [sortedAndFilteredBooks, setSortedAndFilteredBooks] = React.useState<EnrichedBook[]>([]);
+  /*const [sortedAndFilteredBooks, setSortedAndFilteredBooks] = React.useState<EnrichedBook[]>([]);
 
   React.useEffect(() => {
     let filtered = books;
@@ -196,7 +196,7 @@ export default function StatusOverrideClient({ allStatuses }: StatusOverrideClie
     }
 
     setSortedAndFilteredBooks(filtered);
-  }, [books, columnFilters, sorting]);
+  }, [books, columnFilters, sorting]);*/
 
 
   const selectedBooks = React.useMemo(() => {

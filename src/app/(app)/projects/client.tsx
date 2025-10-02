@@ -133,7 +133,7 @@ export default function ProjectsClient() {
     );
   }
 
-  /*const sortedAndFilteredProjects = React.useMemo(() => {
+  const sortedAndFilteredProjects = React.useMemo(() => {
     let filtered = projects;
 
     Object.entries(columnFilters).forEach(([columnId, value]) => {
@@ -171,10 +171,10 @@ export default function ProjectsClient() {
 
     return filtered;
 
-  }, [projects, columnFilters, sorting]);*/
+  }, [projects, columnFilters, sorting]);
 
 
-  const [sortedAndFilteredProjects, setSortedAndFilteredProjects] = React.useState<EnrichedProject[]>([]);
+  /*const [sortedAndFilteredProjects, setSortedAndFilteredProjects] = React.useState<EnrichedProject[]>([]);
 
   React.useEffect(() => {
     let filtered = projects;
@@ -216,7 +216,7 @@ export default function ProjectsClient() {
     }
 
     setSortedAndFilteredProjects(filtered);
-  }, [projects, columnFilters, sorting]);
+  }, [projects, columnFilters, sorting]);*/
 
   
   const selectedProjects = React.useMemo(() => {

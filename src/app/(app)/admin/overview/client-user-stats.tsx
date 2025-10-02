@@ -170,7 +170,7 @@ export function ClientUserStatsTab() {
     return sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />
   }
 
-  /*const sortedAndFilteredUsers = React.useMemo(() => {
+  const sortedAndFilteredUsers = React.useMemo(() => {
     let filtered = clientUserStats;
     Object.entries(columnFilters).forEach(([columnId, value]) => {
       if (value) {
@@ -192,9 +192,9 @@ export function ClientUserStatsTab() {
       })
     }
     return filtered
-  }, [clientUserStats, columnFilters, sorting])*/
+  }, [clientUserStats, columnFilters, sorting])
   
-  const [sortedAndFilteredUsers, setSortedAndFilteredUsers] = React.useState<ClientUserStat[]>([]);
+  /*const [sortedAndFilteredUsers, setSortedAndFilteredUsers] = React.useState<ClientUserStat[]>([]);
 
   React.useEffect(() => {
     let filtered = clientUserStats;
@@ -222,7 +222,7 @@ export function ClientUserStatsTab() {
     }
 
     setSortedAndFilteredUsers(filtered);
-  }, [clientUserStats, columnFilters, sorting]);
+  }, [clientUserStats, columnFilters, sorting]);*/
 
   
 

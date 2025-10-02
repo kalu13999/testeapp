@@ -128,7 +128,7 @@ export default function UsersClient() {
     );
   }
 
-  /*const sortedAndFilteredUsers = React.useMemo(() => {
+  const sortedAndFilteredUsers = React.useMemo(() => {
     let filtered = users;
     Object.entries(columnFilters).forEach(([columnId, value]) => {
       if (value) {
@@ -165,10 +165,10 @@ export default function UsersClient() {
     }
     return filtered;
 
-  }, [users, columnFilters, sorting]);*/
+  }, [users, columnFilters, sorting]);
 
 
-  const [sortedAndFilteredUsers, setSortedAndFilteredUsers] = React.useState<User[]>([]);
+  /*const [sortedAndFilteredUsers, setSortedAndFilteredUsers] = React.useState<User[]>([]);
 
   React.useEffect(() => {
     let filtered = users;
@@ -210,7 +210,7 @@ export default function UsersClient() {
     }
 
     setSortedAndFilteredUsers(filtered);
-  }, [users, columnFilters, sorting]);
+  }, [users, columnFilters, sorting]);*/
 
   
   const selectedUsers = React.useMemo(() => {

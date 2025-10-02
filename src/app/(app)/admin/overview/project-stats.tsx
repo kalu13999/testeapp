@@ -198,7 +198,7 @@ React.useEffect(() => {
     if (!sort) return <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-0 group-hover:opacity-50" />
     return sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />
   }
-/*
+
   const sortedAndFilteredProjects = React.useMemo(() => {
     let filtered = projectStats;
     Object.entries(columnFilters).forEach(([columnId, value]) => {
@@ -223,36 +223,37 @@ React.useEffect(() => {
       })
     }
     return filtered
-  }, [projectStats, columnFilters, sorting])*/
-  const [sortedAndFilteredProjects, setSortedAndFilteredProjects] = React.useState<ProjectStats[]>([]); // substitua pelo tipo correto
+  }, [projectStats, columnFilters, sorting])
 
-React.useEffect(() => {
-  let filtered = projectStats;
+  /*const [sortedAndFilteredProjects, setSortedAndFilteredProjects] = React.useState<ProjectStats[]>([]); // substitua pelo tipo correto
 
-  Object.entries(columnFilters).forEach(([columnId, value]) => {
-    if (value) {
-      filtered = filtered.filter(project => {
-        const projectValue = project[columnId as keyof typeof project];
-        return String(projectValue).toLowerCase().includes(value.toLowerCase());
+  React.useEffect(() => {
+    let filtered = projectStats;
+
+    Object.entries(columnFilters).forEach(([columnId, value]) => {
+      if (value) {
+        filtered = filtered.filter(project => {
+          const projectValue = project[columnId as keyof typeof project];
+          return String(projectValue).toLowerCase().includes(value.toLowerCase());
+        });
+      }
+    });
+
+    if (sorting.length > 0) {
+      filtered = [...filtered].sort((a, b) => {
+        const s = sorting[0];
+        const valA = a[s.id as keyof typeof a];
+        const valB = b[s.id as keyof typeof b];
+        const result = String(valA).localeCompare(String(valB), undefined, {
+          numeric: true,
+          sensitivity: 'base',
+        });
+        return s.desc ? -result : result;
       });
     }
-  });
 
-  if (sorting.length > 0) {
-    filtered = [...filtered].sort((a, b) => {
-      const s = sorting[0];
-      const valA = a[s.id as keyof typeof a];
-      const valB = b[s.id as keyof typeof b];
-      const result = String(valA).localeCompare(String(valB), undefined, {
-        numeric: true,
-        sensitivity: 'base',
-      });
-      return s.desc ? -result : result;
-    });
-  }
-
-  setSortedAndFilteredProjects(filtered);
-}, [projectStats, columnFilters, sorting]);
+    setSortedAndFilteredProjects(filtered);
+  }, [projectStats, columnFilters, sorting]);*/
 
 
   const filteredDialogItems = React.useMemo(() => {

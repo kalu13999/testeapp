@@ -332,7 +332,7 @@ function SystemOverviewTab() {
     };
 
 
-    type DetailState =
+    /*type DetailState =
     | { open: boolean; type: 'books'; items: EnrichedBook[] }
     | { open: boolean; type: 'activities'; items: EnrichedAuditLog[] };
 
@@ -367,10 +367,10 @@ function SystemOverviewTab() {
     }
 
     setFilteredDialogItems(detailState.items);
-    }, [detailState.items, detailState.type, detailFilter, detailState.open]);
+    }, [detailState.items, detailState.type, detailFilter, detailState.open]);*/
 
 
-    /*const filteredDialogItems = React.useMemo(() => {
+   const filteredDialogItems = React.useMemo(() => {
         if (!detailState.open || !detailFilter) return detailState.items;
         const query = detailFilter.toLowerCase();
         if (detailState.type === 'books') {
@@ -380,7 +380,7 @@ function SystemOverviewTab() {
             return (detailState.items as EnrichedAuditLog[]).filter(log => log.action.toLowerCase().includes(query) || (log.details || '').toLowerCase().includes(query) || log.user.toLowerCase().includes(query));
         }
         return detailState.items;
-    }, [detailState.items, detailState.type, detailFilter, detailState.open]);*/
+    }, [detailState.items, detailState.type, detailFilter, detailState.open]);
 
     return (
       <>

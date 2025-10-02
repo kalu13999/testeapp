@@ -218,7 +218,7 @@ React.useEffect(() => {
     return sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />
   }
 
-  /*const sortedAndFilteredUsers = React.useMemo(() => {
+  const sortedAndFilteredUsers = React.useMemo(() => {
     let filtered = userStats;
     Object.entries(columnFilters).forEach(([columnId, value]) => {
       if (value) {
@@ -240,19 +240,11 @@ React.useEffect(() => {
       })
     }
     return filtered
-  }, [userStats, columnFilters, sorting])*/
+  }, [userStats, columnFilters, sorting])
 
-  const filteredDialogItems = React.useMemo(() => {
-    if (!dialogFilter) return dialogState.items;
-    const query = dialogFilter.toLowerCase();
-    return dialogState.items.filter(u => 
-        u.name.toLowerCase().includes(query) ||
-        u.role.toLowerCase().includes(query) ||
-        u.status.toLowerCase().includes(query)
-    );
-  }, [dialogState.items, dialogFilter]);
 
-  type SortingRule = {
+
+  /*type SortingRule = {
     id: keyof UserStat;
     desc: boolean;
   };
@@ -287,7 +279,17 @@ React.useEffect(() => {
     }
 
     setSortedAndFilteredUsers(filtered);
-  }, [userStats, columnFilters, sorting]);
+  }, [userStats, columnFilters, sorting]);*/
+
+    const filteredDialogItems = React.useMemo(() => {
+    if (!dialogFilter) return dialogState.items;
+    const query = dialogFilter.toLowerCase();
+    return dialogState.items.filter(u => 
+        u.name.toLowerCase().includes(query) ||
+        u.role.toLowerCase().includes(query) ||
+        u.status.toLowerCase().includes(query)
+    );
+  }, [dialogState.items, dialogFilter]);
 
   const downloadFile = (content: string, fileName: string, mimeType: string) => {
       const blob = new Blob([content], { type: mimeType });

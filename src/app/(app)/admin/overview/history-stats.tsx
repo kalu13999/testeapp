@@ -175,7 +175,7 @@ export function HistoryStatsTab() {
     return sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />
   }
 
-  /*const sortedAndFilteredLogs = React.useMemo(() => {
+  const sortedAndFilteredLogs = React.useMemo(() => {
     let filtered = auditLogs;
     Object.entries(columnFilters).forEach(([columnId, value]) => {
       if (value) {
@@ -197,10 +197,10 @@ export function HistoryStatsTab() {
       })
     }
     return filtered
-  }, [auditLogs, columnFilters, sorting])*/
+  }, [auditLogs, columnFilters, sorting])
 
 
-  const [sortedAndFilteredLogs, setSortedAndFilteredLogs] = React.useState<EnrichedAuditLog[]>([]);
+  /*const [sortedAndFilteredLogs, setSortedAndFilteredLogs] = React.useState<EnrichedAuditLog[]>([]);
 
   React.useEffect(() => {
     let filtered = auditLogs;
@@ -228,7 +228,7 @@ export function HistoryStatsTab() {
     }
 
     setSortedAndFilteredLogs(filtered);
-  }, [auditLogs, columnFilters, sorting]);
+  }, [auditLogs, columnFilters, sorting]);*/
 
 
 

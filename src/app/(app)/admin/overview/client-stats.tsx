@@ -190,7 +190,7 @@ React.useEffect(() => {
     return sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />
   }
 
-  /*const sortedAndFilteredClients = React.useMemo(() => {
+  const sortedAndFilteredClients = React.useMemo(() => {
     let filtered = clientStats;
     Object.entries(columnFilters).forEach(([columnId, value]) => {
       if (value) {
@@ -212,9 +212,9 @@ React.useEffect(() => {
       })
     }
     return filtered
-  }, [clientStats, columnFilters, sorting])*/
+  }, [clientStats, columnFilters, sorting])
 
-  const [sortedAndFilteredClients, setSortedAndFilteredClients] = React.useState<ClientStat[]>([]);
+  /*const [sortedAndFilteredClients, setSortedAndFilteredClients] = React.useState<ClientStat[]>([]);
 
   React.useEffect(() => {
     let filtered = clientStats;
@@ -242,7 +242,7 @@ React.useEffect(() => {
     }
 
     setSortedAndFilteredClients(filtered);
-  }, [clientStats, columnFilters, sorting]);
+  }, [clientStats, columnFilters, sorting]);*/
 
   
   const filteredDialogItems = React.useMemo(() => {

@@ -102,7 +102,7 @@ export default function ShipmentsClient() {
     setColumnFilters({});
   };
   
-  /*const sortedAndFilteredBooks = React.useMemo(() => {
+  const sortedAndFilteredBooks = React.useMemo(() => {
     let filtered = books
       .filter(book => book.status === 'Pending Shipment');
       
@@ -142,10 +142,10 @@ export default function ShipmentsClient() {
 
     return filtered;
 
-  }, [books, columnFilters, sorting]);*/
+  }, [books, columnFilters, sorting]);
 
 
-  const [sortedAndFilteredBooks, setSortedAndFilteredBooks] = React.useState<EnrichedBook[]>([]);
+  /*const [sortedAndFilteredBooks, setSortedAndFilteredBooks] = React.useState<EnrichedBook[]>([]);
 
   React.useEffect(() => {
     let filtered = books.filter(book => book.status === 'Pending Shipment');
@@ -188,7 +188,7 @@ export default function ShipmentsClient() {
     }
 
     setSortedAndFilteredBooks(filtered);
-  }, [books, columnFilters, sorting]);
+  }, [books, columnFilters, sorting]);*/
 
 
   const selectedBooks = React.useMemo(() => {

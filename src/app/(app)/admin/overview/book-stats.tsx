@@ -232,39 +232,39 @@ React.useEffect(() => {
   }
 
 
-
+  /*
   const [sortedAndFilteredBooks, setSortedAndFilteredBooks] = React.useState<BookWithStats[]>([]); // substitua pelo tipo correto
 
-React.useEffect(() => {
-  let filtered = bookStats;
+  React.useEffect(() => {
+    let filtered = bookStats;
 
-  Object.entries(columnFilters).forEach(([columnId, value]) => {
-    if (value) {
-      filtered = filtered.filter(book => {
-        const bookValue = book[columnId as keyof typeof book];
-        return String(bookValue).toLowerCase().includes(value.toLowerCase());
+    Object.entries(columnFilters).forEach(([columnId, value]) => {
+      if (value) {
+        filtered = filtered.filter(book => {
+          const bookValue = book[columnId as keyof typeof book];
+          return String(bookValue).toLowerCase().includes(value.toLowerCase());
+        });
+      }
+    });
+
+    if (sorting.length > 0) {
+      const s = sorting[0];
+      filtered = [...filtered].sort((a, b) => {
+        const valA = a[s.id as keyof typeof a];
+        const valB = b[s.id as keyof typeof b];
+        const result = String(valA).localeCompare(String(valB), undefined, {
+          numeric: true,
+          sensitivity: 'base',
+        });
+        return s.desc ? -result : result;
       });
     }
-  });
 
-  if (sorting.length > 0) {
-    const s = sorting[0];
-    filtered = [...filtered].sort((a, b) => {
-      const valA = a[s.id as keyof typeof a];
-      const valB = b[s.id as keyof typeof b];
-      const result = String(valA).localeCompare(String(valB), undefined, {
-        numeric: true,
-        sensitivity: 'base',
-      });
-      return s.desc ? -result : result;
-    });
-  }
-
-  setSortedAndFilteredBooks(filtered);
-}, [bookStats, columnFilters, sorting]);
+    setSortedAndFilteredBooks(filtered);
+  }, [bookStats, columnFilters, sorting]);*/
 
 
-  /*const sortedAndFilteredBooks = React.useMemo(() => {
+  const sortedAndFilteredBooks = React.useMemo(() => {
     let filtered = bookStats;
     Object.entries(columnFilters).forEach(([columnId, value]) => {
       if (value) {
@@ -286,7 +286,7 @@ React.useEffect(() => {
       })
     }
     return filtered
-  }, [bookStats, columnFilters, sorting])*/
+  }, [bookStats, columnFilters, sorting])
 
   const paginatedBooks = sortedAndFilteredBooks.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 

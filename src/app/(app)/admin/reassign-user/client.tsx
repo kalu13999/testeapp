@@ -112,9 +112,31 @@ export default function ReassignUserClient() {
         const qcName = users.find(u => u.id === book.qcUserId)?.name;
         return { ...book, scannerName, indexerName, qcName };
       });
+  }, [books, users]);*/
+
+
+
+  const [assignableBooks, setAssignableBooks] = React.useState<(EnrichedBook & {
+    scannerName?: string;
+    indexerName?: string;
+    qcName?: string;
+  })[]>([]);
+
+  React.useEffect(() => {
+    const enriched = books
+      .filter(book => ASSIGNABLE_STATUSES.includes(book.status))
+      .map(book => {
+        const scannerName = users.find(u => u.id === book.scannerUserId)?.name;
+        const indexerName = users.find(u => u.id === book.indexerUserId)?.name;
+        const qcName = users.find(u => u.id === book.qcUserId)?.name;
+        return { ...book, scannerName, indexerName, qcName };
+      });
+
+    setAssignableBooks(enriched);
   }, [books, users]);
 
-  const sortedAndFilteredBooks = React.useMemo(() => {
+
+    const sortedAndFilteredBooks = React.useMemo(() => {
     let filtered = assignableBooks;
     Object.entries(columnFilters).forEach(([columnId, value]) => {
       if (value) {
@@ -146,29 +168,9 @@ export default function ReassignUserClient() {
     }
 
     return filtered;
-  }, [assignableBooks, columnFilters, sorting]);*/
+  }, [assignableBooks, columnFilters, sorting]);
 
-  const [assignableBooks, setAssignableBooks] = React.useState<(EnrichedBook & {
-    scannerName?: string;
-    indexerName?: string;
-    qcName?: string;
-  })[]>([]);
-
-  React.useEffect(() => {
-    const enriched = books
-      .filter(book => ASSIGNABLE_STATUSES.includes(book.status))
-      .map(book => {
-        const scannerName = users.find(u => u.id === book.scannerUserId)?.name;
-        const indexerName = users.find(u => u.id === book.indexerUserId)?.name;
-        const qcName = users.find(u => u.id === book.qcUserId)?.name;
-        return { ...book, scannerName, indexerName, qcName };
-      });
-
-    setAssignableBooks(enriched);
-  }, [books, users]);
-
-
-  const [sortedAndFilteredBooks, setSortedAndFilteredBooks] = React.useState<typeof assignableBooks>([]);
+  /*const [sortedAndFilteredBooks, setSortedAndFilteredBooks] = React.useState<typeof assignableBooks>([]);
 
   React.useEffect(() => {
     let filtered = assignableBooks;
@@ -208,7 +210,7 @@ export default function ReassignUserClient() {
     }
 
     setSortedAndFilteredBooks(filtered);
-  }, [assignableBooks, columnFilters, sorting]);
+  }, [assignableBooks, columnFilters, sorting]);*/
 
 
   const totalPages = Math.ceil(sortedAndFilteredBooks.length / ITEMS_PER_PAGE);

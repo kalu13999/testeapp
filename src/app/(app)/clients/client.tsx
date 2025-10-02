@@ -121,7 +121,7 @@ export default function ClientsClient() {
     );
   }
 
-  /*const sortedAndFilteredClients = React.useMemo(() => {
+  const sortedAndFilteredClients = React.useMemo(() => {
     let filtered = clients;
 
     Object.entries(columnFilters).forEach(([columnId, value]) => {
@@ -159,10 +159,10 @@ export default function ClientsClient() {
 
     return filtered;
 
-  }, [clients, columnFilters, sorting]);*/
+  }, [clients, columnFilters, sorting]);
 
 
-  const [sortedAndFilteredClients, setSortedAndFilteredClients] = React.useState<Client[]>([]);
+  /*const [sortedAndFilteredClients, setSortedAndFilteredClients] = React.useState<Client[]>([]);
 
   React.useEffect(() => {
     let filtered = clients;
@@ -204,7 +204,7 @@ export default function ClientsClient() {
     }
 
     setSortedAndFilteredClients(filtered);
-  }, [clients, columnFilters, sorting]);
+  }, [clients, columnFilters, sorting]);*/
 
   
   const selectedClients = React.useMemo(() => {
