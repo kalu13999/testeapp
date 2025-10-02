@@ -52,7 +52,7 @@ export function BookStatsTab() {
   
   const [selection, setSelection] = React.useState<string[]>([]);
   const [currentPage, setCurrentPage] = React.useState(1);
-
+/*
   const bookStats = React.useMemo(() => {
     return books.map(book => {
       const errorDocs = documents.filter(d => d.bookId === book.id && d.flag === 'error');
@@ -74,8 +74,58 @@ export function BookStatsTab() {
           finalized: { value: finalizedBooks.length, items: finalizedBooks },
           withErrors: { value: booksWithErrors.length, items: booksWithErrors },
       };
+  }, [books, bookStats]);*/
+
+  type BookWithStats = EnrichedBook & { hasError: boolean };
+
+  const [bookStats, setBookStats] = React.useState<BookWithStats[]>([]);
+
+  React.useEffect(() => {
+    const stats = books.map(book => {
+      const errorDocs = documents.filter(d => d.bookId === book.id && d.flag === 'error');
+      return {
+        ...book,
+        hasError: errorDocs.length > 0,
+      };
+    });
+
+    setBookStats(stats);
+  }, [books, documents]);
+
+  type KpiEntry<T> = {
+    value: number;
+    items: T[];
+  };
+
+  type BookKpiData = {
+    total: KpiEntry<EnrichedBook>;
+    inWorkflow: KpiEntry<EnrichedBook>;
+    finalized: KpiEntry<EnrichedBook>;
+    withErrors: KpiEntry<BookWithStats>;
+  };
+
+  const [kpiData, setKpiData] = React.useState<BookKpiData>({
+    total: { value: 0, items: [] },
+    inWorkflow: { value: 0, items: [] },
+    finalized: { value: 0, items: [] },
+    withErrors: { value: 0, items: [] },
+  });
+
+  React.useEffect(() => {
+    const booksInWorkflow = books.filter(b => !['Pending Shipment', 'Complete', 'Archived', 'Finalized'].includes(b.status));
+    const finalizedBooks = books.filter(b => ['Complete', 'Archived', 'Finalized'].includes(b.status));
+    const booksWithErrors = bookStats.filter(b => b.hasError);
+
+    setKpiData({
+      total: { value: books.length, items: books },
+      inWorkflow: { value: booksInWorkflow.length, items: booksInWorkflow },
+      finalized: { value: finalizedBooks.length, items: finalizedBooks },
+      withErrors: { value: booksWithErrors.length, items: booksWithErrors },
+    });
   }, [books, bookStats]);
 
+
+/*
   const booksByStatusChartData = React.useMemo(() => {
     const statusCounts = books.reduce((acc, book) => {
         const status = book.status || 'Unknown';
@@ -101,7 +151,54 @@ export function BookStatsTab() {
       .sort((a, b) => b.books - a.books)
       .slice(0, 10)
   ), [allProjects]);
-  
+  */
+
+
+  type StatusChartItem = {
+  name: string;
+  value: number;
+};
+
+const [booksByStatusChartData, setBooksByStatusChartData] = React.useState<StatusChartItem[]>([]);
+
+React.useEffect(() => {
+  const statusCounts = books.reduce((acc, book) => {
+    const status = book.status || 'Unknown';
+    acc[status] = (acc[status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const orderedChartData = WORKFLOW_SEQUENCE
+    .map(stageKey => {
+      const statusName = STAGE_CONFIG[stageKey]?.dataStatus;
+      if (statusName && statusCounts[statusName]) {
+        return { name: statusName, value: statusCounts[statusName] };
+      }
+      return null;
+    })
+    .filter((item): item is StatusChartItem => item !== null && item.value > 0);
+
+  setBooksByStatusChartData(orderedChartData);
+}, [books]);
+
+
+type ProjectChartItem = {
+  name: string;
+  books: number;
+};
+
+const [booksByProjectChartData, setBooksByProjectChartData] = React.useState<ProjectChartItem[]>([]);
+
+React.useEffect(() => {
+  const chartData = allProjects
+    .map(p => ({ name: p.name, books: p.books.length }))
+    .sort((a, b) => b.books - a.books)
+    .slice(0, 10);
+
+  setBooksByProjectChartData(chartData);
+}, [allProjects]);
+
+
   const chartConfig = { 
     books: { label: "Books", color: "hsl(var(--chart-1))" },
     value: { label: "Books" }
@@ -134,7 +231,40 @@ export function BookStatsTab() {
     return sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />
   }
 
-  const sortedAndFilteredBooks = React.useMemo(() => {
+
+
+  const [sortedAndFilteredBooks, setSortedAndFilteredBooks] = React.useState<BookWithStats[]>([]); // substitua pelo tipo correto
+
+React.useEffect(() => {
+  let filtered = bookStats;
+
+  Object.entries(columnFilters).forEach(([columnId, value]) => {
+    if (value) {
+      filtered = filtered.filter(book => {
+        const bookValue = book[columnId as keyof typeof book];
+        return String(bookValue).toLowerCase().includes(value.toLowerCase());
+      });
+    }
+  });
+
+  if (sorting.length > 0) {
+    const s = sorting[0];
+    filtered = [...filtered].sort((a, b) => {
+      const valA = a[s.id as keyof typeof a];
+      const valB = b[s.id as keyof typeof b];
+      const result = String(valA).localeCompare(String(valB), undefined, {
+        numeric: true,
+        sensitivity: 'base',
+      });
+      return s.desc ? -result : result;
+    });
+  }
+
+  setSortedAndFilteredBooks(filtered);
+}, [bookStats, columnFilters, sorting]);
+
+
+  /*const sortedAndFilteredBooks = React.useMemo(() => {
     let filtered = bookStats;
     Object.entries(columnFilters).forEach(([columnId, value]) => {
       if (value) {
@@ -156,7 +286,7 @@ export function BookStatsTab() {
       })
     }
     return filtered
-  }, [bookStats, columnFilters, sorting])
+  }, [bookStats, columnFilters, sorting])*/
 
   const paginatedBooks = sortedAndFilteredBooks.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 

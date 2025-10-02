@@ -128,7 +128,7 @@ export default function UsersClient() {
     );
   }
 
-  const sortedAndFilteredUsers = React.useMemo(() => {
+  /*const sortedAndFilteredUsers = React.useMemo(() => {
     let filtered = users;
     Object.entries(columnFilters).forEach(([columnId, value]) => {
       if (value) {
@@ -165,7 +165,53 @@ export default function UsersClient() {
     }
     return filtered;
 
+  }, [users, columnFilters, sorting]);*/
+
+
+  const [sortedAndFilteredUsers, setSortedAndFilteredUsers] = React.useState<User[]>([]);
+
+  React.useEffect(() => {
+    let filtered = users;
+
+    Object.entries(columnFilters).forEach(([columnId, value]) => {
+      if (value) {
+        filtered = filtered.filter(user => {
+          const userValue = user[columnId as keyof User];
+          return String(userValue).toLowerCase().includes(value.toLowerCase());
+        });
+      }
+    });
+
+    if (sorting.length > 0) {
+      filtered = [...filtered].sort((a, b) => {
+        for (const s of sorting) {
+          const key = s.id as keyof User;
+          const valA = a[key];
+          const valB = b[key];
+
+          let result = 0;
+          if (valA === null || valA === undefined) result = -1;
+          else if (valB === null || valB === undefined) result = 1;
+          else if (typeof valA === 'number' && typeof valB === 'number') {
+            result = valA - valB;
+          } else {
+            result = String(valA).localeCompare(String(valB), undefined, {
+              numeric: true,
+              sensitivity: 'base',
+            });
+          }
+
+          if (result !== 0) {
+            return s.desc ? -result : result;
+          }
+        }
+        return 0;
+      });
+    }
+
+    setSortedAndFilteredUsers(filtered);
   }, [users, columnFilters, sorting]);
+
   
   const selectedUsers = React.useMemo(() => {
     return sortedAndFilteredUsers.filter(user => selection.includes(user.id));

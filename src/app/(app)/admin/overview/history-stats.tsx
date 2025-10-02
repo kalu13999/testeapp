@@ -38,7 +38,18 @@ export function HistoryStatsTab() {
   const [dialogFilter, setDialogFilter] = React.useState('');
   const { toast } = useToast();
 
-  const kpiData = React.useMemo(() => {
+
+  type AuditLogKpi = {
+    value: number;
+    items: EnrichedAuditLog[];
+  };
+
+  type AuditKpiData = {
+    total: AuditLogKpi;
+    today: AuditLogKpi;
+    week: AuditLogKpi;
+  };
+  /*const kpiData = React.useMemo(() => {
       const today = new Date().toISOString().slice(0, 10);
       const sevenDaysAgo = subDays(new Date(), 7).toISOString().slice(0, 10);
       const logsToday = auditLogs.filter(log => log.date.startsWith(today));
@@ -48,9 +59,28 @@ export function HistoryStatsTab() {
           today: { value: logsToday.length, items: logsToday },
           week: { value: logsWeek.length, items: logsWeek },
       };
+  }, [auditLogs]);*/
+  const [kpiData, setKpiData] = React.useState<AuditKpiData>({
+    total: { value: 0, items: [] },
+    today: { value: 0, items: [] },
+    week: { value: 0, items: [] },
+  });
+
+  React.useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const sevenDaysAgo = subDays(new Date(), 7).toISOString().slice(0, 10);
+
+    const logsToday = auditLogs.filter(log => log.date.startsWith(today));
+    const logsWeek = auditLogs.filter(log => log.date >= sevenDaysAgo);
+
+    setKpiData({
+      total: { value: auditLogs.length, items: auditLogs },
+      today: { value: logsToday.length, items: logsToday },
+      week: { value: logsWeek.length, items: logsWeek },
+    });
   }, [auditLogs]);
-  
-  const activityByDayChartData = React.useMemo(() => {
+
+  /*const activityByDayChartData = React.useMemo(() => {
     const activityMap: {[key: string]: number} = {};
     const dateRange = Array.from({ length: 14 }, (_, i) => format(subDays(new Date(), i), 'yyyy-MM-dd')).reverse();
     dateRange.forEach(date => activityMap[date] = 0);
@@ -67,7 +97,66 @@ export function HistoryStatsTab() {
         return acc;
     }, {} as {[key: string]: number});
     return Object.entries(typeMap).map(([name, value]) => ({ name, value, fill: `hsl(${Math.random() * 360}, 70%, 50%)` }));
+  }, [auditLogs]);*/
+
+  type ActivityByDayItem = {
+    date: string;
+    count: number;
+  };
+
+  type ActivityByTypeItem = {
+    name: string;
+    value: number;
+    fill: string;
+  };
+
+  const [activityByDayChartData, setActivityByDayChartData] = React.useState<ActivityByDayItem[]>([]);
+
+  React.useEffect(() => {
+    const activityMap: Record<string, number> = {};
+    const dateRange = Array.from({ length: 14 }, (_, i) =>
+      format(subDays(new Date(), i), 'yyyy-MM-dd')
+    ).reverse();
+
+    dateRange.forEach(date => {
+      activityMap[date] = 0;
+    });
+
+    auditLogs.forEach(log => {
+      const date = log.date.slice(0, 10);
+      if (activityMap[date] !== undefined) {
+        activityMap[date]++;
+      }
+    });
+
+    const chartData = Object.entries(activityMap).map(([date, count]) => ({
+      date: format(new Date(date), 'MMM d'),
+      count,
+    }));
+
+    setActivityByDayChartData(chartData);
   }, [auditLogs]);
+
+
+  const [activityByTypeChartData, setActivityByTypeChartData] = React.useState<ActivityByTypeItem[]>([]);
+
+  React.useEffect(() => {
+    const typeMap = auditLogs.reduce((acc, log) => {
+      acc[log.action] = (acc[log.action] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const chartData = Object.entries(typeMap).map(([name, value]) => ({
+      name,
+      value,
+      fill: `hsl(${Math.random() * 360}, 70%, 50%)`,
+    }));
+
+    setActivityByTypeChartData(chartData);
+  }, [auditLogs]);
+
+
+
 
   const chartConfig: ChartConfig = { count: { label: "Actions", color: "hsl(var(--chart-1))" } };
 
@@ -86,7 +175,7 @@ export function HistoryStatsTab() {
     return sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />
   }
 
-  const sortedAndFilteredLogs = React.useMemo(() => {
+  /*const sortedAndFilteredLogs = React.useMemo(() => {
     let filtered = auditLogs;
     Object.entries(columnFilters).forEach(([columnId, value]) => {
       if (value) {
@@ -108,7 +197,40 @@ export function HistoryStatsTab() {
       })
     }
     return filtered
-  }, [auditLogs, columnFilters, sorting])
+  }, [auditLogs, columnFilters, sorting])*/
+
+
+  const [sortedAndFilteredLogs, setSortedAndFilteredLogs] = React.useState<EnrichedAuditLog[]>([]);
+
+  React.useEffect(() => {
+    let filtered = auditLogs;
+
+    Object.entries(columnFilters).forEach(([columnId, value]) => {
+      if (value) {
+        filtered = filtered.filter(log => {
+          const logValue = log[columnId as keyof EnrichedAuditLog];
+          return String(logValue).toLowerCase().includes(value.toLowerCase());
+        });
+      }
+    });
+
+    if (sorting.length > 0) {
+      const s = sorting[0];
+      filtered = [...filtered].sort((a, b) => {
+        const valA = a[s.id as keyof EnrichedAuditLog];
+        const valB = b[s.id as keyof EnrichedAuditLog];
+        const result = String(valA).localeCompare(String(valB), undefined, {
+          numeric: true,
+          sensitivity: 'base',
+        });
+        return s.desc ? -result : result;
+      });
+    }
+
+    setSortedAndFilteredLogs(filtered);
+  }, [auditLogs, columnFilters, sorting]);
+
+
 
   const filteredDialogItems = React.useMemo(() => {
     if (!dialogFilter) return dialogState.items;

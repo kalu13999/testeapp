@@ -133,7 +133,7 @@ export default function ProjectsClient() {
     );
   }
 
-  const sortedAndFilteredProjects = React.useMemo(() => {
+  /*const sortedAndFilteredProjects = React.useMemo(() => {
     let filtered = projects;
 
     Object.entries(columnFilters).forEach(([columnId, value]) => {
@@ -171,7 +171,53 @@ export default function ProjectsClient() {
 
     return filtered;
 
+  }, [projects, columnFilters, sorting]);*/
+
+
+  const [sortedAndFilteredProjects, setSortedAndFilteredProjects] = React.useState<EnrichedProject[]>([]);
+
+  React.useEffect(() => {
+    let filtered = projects;
+
+    Object.entries(columnFilters).forEach(([columnId, value]) => {
+      if (value) {
+        filtered = filtered.filter(project => {
+          const projectValue = project[columnId as keyof EnrichedProject];
+          return String(projectValue).toLowerCase().includes(value.toLowerCase());
+        });
+      }
+    });
+
+    if (sorting.length > 0) {
+      filtered = [...filtered].sort((a, b) => {
+        for (const s of sorting) {
+          const key = s.id as keyof EnrichedProject;
+          const valA = a[key];
+          const valB = b[key];
+
+          let result = 0;
+          if (valA === null || valA === undefined) result = -1;
+          else if (valB === null || valB === undefined) result = 1;
+          else if (typeof valA === 'number' && typeof valB === 'number') {
+            result = valA - valB;
+          } else {
+            result = String(valA).localeCompare(String(valB), undefined, {
+              numeric: true,
+              sensitivity: 'base',
+            });
+          }
+
+          if (result !== 0) {
+            return s.desc ? -result : result;
+          }
+        }
+        return 0;
+      });
+    }
+
+    setSortedAndFilteredProjects(filtered);
   }, [projects, columnFilters, sorting]);
+
   
   const selectedProjects = React.useMemo(() => {
     return sortedAndFilteredProjects.filter(project => selection.includes(project.id));

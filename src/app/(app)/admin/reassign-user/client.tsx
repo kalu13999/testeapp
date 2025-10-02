@@ -103,7 +103,7 @@ export default function ReassignUserClient() {
     setCurrentPage(1);
   };
   
-  const assignableBooks = React.useMemo(() => {
+  /*const assignableBooks = React.useMemo(() => {
     return books
       .filter(book => ASSIGNABLE_STATUSES.includes(book.status))
       .map(book => {
@@ -146,7 +146,70 @@ export default function ReassignUserClient() {
     }
 
     return filtered;
+  }, [assignableBooks, columnFilters, sorting]);*/
+
+  const [assignableBooks, setAssignableBooks] = React.useState<(EnrichedBook & {
+    scannerName?: string;
+    indexerName?: string;
+    qcName?: string;
+  })[]>([]);
+
+  React.useEffect(() => {
+    const enriched = books
+      .filter(book => ASSIGNABLE_STATUSES.includes(book.status))
+      .map(book => {
+        const scannerName = users.find(u => u.id === book.scannerUserId)?.name;
+        const indexerName = users.find(u => u.id === book.indexerUserId)?.name;
+        const qcName = users.find(u => u.id === book.qcUserId)?.name;
+        return { ...book, scannerName, indexerName, qcName };
+      });
+
+    setAssignableBooks(enriched);
+  }, [books, users]);
+
+
+  const [sortedAndFilteredBooks, setSortedAndFilteredBooks] = React.useState<typeof assignableBooks>([]);
+
+  React.useEffect(() => {
+    let filtered = assignableBooks;
+
+    Object.entries(columnFilters).forEach(([columnId, value]) => {
+      if (value) {
+        filtered = filtered.filter(book => {
+          const bookValue = book[columnId as keyof typeof book];
+          return String(bookValue).toLowerCase().includes(value.toLowerCase());
+        });
+      }
+    });
+
+    if (sorting.length > 0) {
+      filtered = [...filtered].sort((a, b) => {
+        for (const s of sorting) {
+          const key = s.id as keyof typeof a;
+          const valA = a[key];
+          const valB = b[key];
+
+          let result = 0;
+          if (valA === null || valA === undefined) result = -1;
+          else if (valB === null || valB === undefined) result = 1;
+          else if (typeof valA === 'number' && typeof valB === 'number') {
+            result = valA - valB;
+          } else {
+            result = String(valA).localeCompare(String(valB), undefined, {
+              numeric: true,
+              sensitivity: 'base',
+            });
+          }
+
+          if (result !== 0) return s.desc ? -result : result;
+        }
+        return 0;
+      });
+    }
+
+    setSortedAndFilteredBooks(filtered);
   }, [assignableBooks, columnFilters, sorting]);
+
 
   const totalPages = Math.ceil(sortedAndFilteredBooks.length / ITEMS_PER_PAGE);
   const paginatedBooks = sortedAndFilteredBooks.slice(

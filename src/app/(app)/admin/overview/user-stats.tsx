@@ -25,6 +25,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import type { User as UserData } from "@/lib/data";
+import { TypeOf } from "zod";
 
 const getInitials = (name: string) => {
     if (!name) return ""
@@ -53,7 +54,7 @@ export function OperationalUserStatsTab() {
 
   const operationalUsers = React.useMemo(() => users.filter(u => u.role !== 'System' && u.role !== 'Client'), [users]);
 
-  const userStats = React.useMemo((): UserStat[] => {
+  /*const userStats = React.useMemo((): UserStat[] => {
     return operationalUsers.map(user => {
       const userLogs = auditLogs.filter(log => log.userId === user.id)
       const scannedCount = userLogs.filter(log => log.action === 'Scanning Finished').length
@@ -72,9 +73,34 @@ export function OperationalUserStatsTab() {
         checkedCount
       }
     })
-  }, [operationalUsers, auditLogs])
-  
-  const kpiData = React.useMemo(() => {
+  }, [operationalUsers, auditLogs])*/
+  const [userStats, setUserStats] = React.useState<UserStat[]>([]);
+
+React.useEffect(() => {
+  const stats = operationalUsers.map(user => {
+    const userLogs = auditLogs.filter(log => log.userId === user.id);
+    const scannedCount = userLogs.filter(log => log.action === 'Scanning Finished').length;
+    const indexedCount = userLogs.filter(log => log.action === 'Assigned for QC').length;
+    const checkedCount = userLogs.filter(log => log.action === 'Initial QC Complete').length;
+
+    return {
+      id: user.id,
+      name: user.name,
+      avatar: user.avatar,
+      role: user.role,
+      status: user.status,
+      totalActions: userLogs.length,
+      scannedCount,
+      indexedCount,
+      checkedCount,
+    };
+  });
+
+  setUserStats(stats);
+}, [operationalUsers, auditLogs]);
+
+
+  /*const kpiData = React.useMemo(() => {
     const mostActive = userStats.sort((a,b) => b.totalActions - a.totalActions)[0];
     return {
         totalUsers: { value: operationalUsers.length, items: operationalUsers },
@@ -94,7 +120,84 @@ export function OperationalUserStatsTab() {
   
   const actionsPerUserChartData = React.useMemo(() => (
     userStats.map(u => ({ name: u.name, actions: u.totalActions })).sort((a,b) => b.actions - a.actions).slice(0, 10)
-  ), [userStats]);
+  ), [userStats]);*/
+
+  type KpiData = {
+  totalUsers: { value: number; items: UserData[] };
+  activeUsers: { value: number; items: UserData[] };
+  disabledUsers: { value: number; items: UserData[] };
+  mostActiveUser: { value: string; actions: number };
+    };
+
+    type RoleChartItem = {
+      name: string;
+      value: number;
+      fill: string;
+    };
+
+    type ActionChartItem = {
+      name: string;
+      actions: number;
+    };
+
+  const [kpiData, setKpiData] = React.useState<KpiData>({
+    totalUsers: { value: 0, items: [] },
+    activeUsers: { value: 0, items: [] },
+    disabledUsers: { value: 0, items: [] },
+    mostActiveUser: { value: 'N/A', actions: 0 },
+  });
+
+  React.useEffect(() => {
+    const mostActive = [...userStats].sort((a, b) => b.totalActions - a.totalActions)[0];
+
+    setKpiData({
+      totalUsers: { value: operationalUsers.length, items: operationalUsers },
+      activeUsers: {
+        value: operationalUsers.filter(u => u.status === 'active').length,
+        items: operationalUsers.filter(u => u.status === 'active'),
+      },
+      disabledUsers: {
+        value: operationalUsers.filter(u => u.status === 'disabled').length,
+        items: operationalUsers.filter(u => u.status === 'disabled'),
+      },
+      mostActiveUser: {
+        value: mostActive?.name || 'N/A',
+        actions: mostActive?.totalActions || 0,
+      },
+    });
+  }, [operationalUsers, userStats]);
+
+  const [usersByRoleChartData, setUsersByRoleChartData] = React.useState<RoleChartItem[]>([]);
+
+  React.useEffect(() => {
+    const byRole = operationalUsers.reduce((acc, user) => {
+      acc[user.role] = (acc[user.role] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const chartData = Object.entries(byRole).map(([name, value]) => ({
+      name,
+      value,
+      fill: `hsl(${Math.random() * 360}, 70%, 50%)`,
+    }));
+
+    setUsersByRoleChartData(chartData);
+  }, [operationalUsers]);
+
+
+  const [actionsPerUserChartData, setActionsPerUserChartData] = React.useState<ActionChartItem[]>([]);
+
+  React.useEffect(() => {
+    const chartData = userStats
+      .map(u => ({ name: u.name, actions: u.totalActions }))
+      .sort((a, b) => b.actions - a.actions)
+      .slice(0, 10);
+
+    setActionsPerUserChartData(chartData);
+  }, [userStats]);
+
+
+
   
   const chartConfig: ChartConfig = {
     actions: { label: "Actions", color: "hsl(var(--chart-1))" },
@@ -115,7 +218,7 @@ export function OperationalUserStatsTab() {
     return sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />
   }
 
-  const sortedAndFilteredUsers = React.useMemo(() => {
+  /*const sortedAndFilteredUsers = React.useMemo(() => {
     let filtered = userStats;
     Object.entries(columnFilters).forEach(([columnId, value]) => {
       if (value) {
@@ -137,7 +240,7 @@ export function OperationalUserStatsTab() {
       })
     }
     return filtered
-  }, [userStats, columnFilters, sorting])
+  }, [userStats, columnFilters, sorting])*/
 
   const filteredDialogItems = React.useMemo(() => {
     if (!dialogFilter) return dialogState.items;
@@ -148,6 +251,43 @@ export function OperationalUserStatsTab() {
         u.status.toLowerCase().includes(query)
     );
   }, [dialogState.items, dialogFilter]);
+
+  type SortingRule = {
+    id: keyof UserStat;
+    desc: boolean;
+  };
+
+  type ColumnFilters = Record<string, string>;
+
+  const [sortedAndFilteredUsers, setSortedAndFilteredUsers] = React.useState<UserStat[]>([]);
+
+  React.useEffect(() => {
+    let filtered = userStats;
+
+    Object.entries(columnFilters).forEach(([columnId, value]) => {
+      if (value) {
+        filtered = filtered.filter(user => {
+          const userValue = user[columnId as keyof UserStat];
+          return String(userValue).toLowerCase().includes(value.toLowerCase());
+        });
+      }
+    });
+
+    if (sorting.length > 0) {
+      const s = sorting[0];
+      filtered = [...filtered].sort((a, b) => {
+        const valA = a[s.id as keyof UserStat];
+        const valB = b[s.id as keyof UserStat];
+        const result = String(valA).localeCompare(String(valB), undefined, {
+          numeric: true,
+          sensitivity: 'base',
+        });
+        return s.desc ? -result : result;
+      });
+    }
+
+    setSortedAndFilteredUsers(filtered);
+  }, [userStats, columnFilters, sorting]);
 
   const downloadFile = (content: string, fileName: string, mimeType: string) => {
       const blob = new Blob([content], { type: mimeType });

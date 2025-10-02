@@ -44,7 +44,7 @@ export function ProjectStatsTab() {
   const [dialogState, setDialogState] = React.useState<{ open: boolean, title: string, items: EnrichedProject[] }>({ open: false, title: '', items: [] });
   const [dialogFilter, setDialogFilter] = React.useState('');
   const { toast } = useToast();
-
+/*
   const projectStats = React.useMemo(() => {
     return allProjects.map(project => {
       const errorDocs = new Set(documents.filter(d => d.projectId === project.id && d.flag === 'error').map(d => d.bookId));
@@ -77,10 +77,110 @@ export function ProjectStatsTab() {
       books: p.books.length,
     })).sort((a,b) => b.books - a.books).slice(0, 10) // Top 10 projects
   ), [allProjects]);
-  
+  */
+
+  type ProjectStats = EnrichedProject & {
+  finalizedBooksCount: number;
+  errorBooksCount: number;
+  timeline: string;
+};
+
+const [projectStats, setProjectStats] = React.useState<ProjectStats[]>([]); // substitua ProjectStatsType pelo tipo correto
+
+React.useEffect(() => {
+  const stats = allProjects.map(project => {
+    const errorDocs = new Set(
+      documents
+        .filter(d => d.projectId === project.id && d.flag === 'error')
+        .map(d => d.bookId)
+    );
+
+    const finalizedBooks = project.books.filter(b => b.status === 'Finalized').length;
+
+    return {
+      ...project,
+      errorBooksCount: errorDocs.size,
+      finalizedBooksCount: finalizedBooks,
+      timeline: `${format(new Date(project.startDate), "LLL d, y")} to ${format(new Date(project.endDate), "LLL d, y")}`,
+    };
+  });
+
+  setProjectStats(stats);
+}, [allProjects, documents]);
+
   const chartConfig: ChartConfig = {
     books: { label: "Books", color: "hsl(var(--chart-1))" },
   };
+
+type KpiEntry = {
+  value: number;
+  items: EnrichedProject[];
+};
+
+type KpiData = {
+  total: KpiEntry;
+  inProgress: KpiEntry;
+  onHold: KpiEntry;
+  complete: KpiEntry;
+};
+
+const [kpiData, setKpiData] = React.useState<KpiData>({
+  total: { value: 0, items: [] },
+  inProgress: { value: 0, items: [] },
+  onHold: { value: 0, items: [] },
+  complete: { value: 0, items: [] },
+});
+
+React.useEffect(() => {
+  const inProgressItems = allProjects.filter(p => p.status === 'In Progress');
+  const onHoldItems = allProjects.filter(p => p.status === 'On Hold');
+  const completeItems = allProjects.filter(p => p.status === 'Complete');
+
+  setKpiData({
+    total: { value: allProjects.length, items: allProjects },
+    inProgress: { value: inProgressItems.length, items: inProgressItems },
+    onHold: { value: onHoldItems.length, items: onHoldItems },
+    complete: { value: completeItems.length, items: completeItems },
+  });
+}, [allProjects]);
+
+type ChartDataItem = {
+  name: string;
+  value: number;
+  fill: string;
+};
+const [projectsByStatusChartData, setProjectsByStatusChartData] = React.useState<ChartDataItem[]>([]);
+
+
+React.useEffect(() => {
+  setProjectsByStatusChartData([
+    { name: 'In Progress', value: kpiData.inProgress.value, fill: "hsl(var(--chart-2))" },
+    { name: 'On Hold', value: kpiData.onHold.value, fill: "hsl(var(--chart-3))" },
+    { name: 'Complete', value: kpiData.complete.value, fill: "hsl(var(--chart-1))" },
+  ]);
+}, [kpiData]);
+
+
+type BooksPerProjectChartItem = {
+  name: string;
+  books: number;
+};
+
+const [booksPerProjectChartData, setBooksPerProjectChartData] = React.useState<BooksPerProjectChartItem[]>([]);
+
+React.useEffect(() => {
+  const chartData = allProjects
+    .map(p => ({
+      name: p.name,
+      books: p.books.length,
+    }))
+    .sort((a, b) => b.books - a.books)
+    .slice(0, 10);
+
+  setBooksPerProjectChartData(chartData);
+}, [allProjects]);
+
+
 
   const handleSort = (columnId: string) => {
     setSorting(currentSorting => {
@@ -91,12 +191,14 @@ export function ProjectStatsTab() {
     })
   }
 
+  
+
   const getSortIndicator = (columnId: string) => {
     const sort = sorting.find(s => s.id === columnId)
     if (!sort) return <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-0 group-hover:opacity-50" />
     return sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />
   }
-
+/*
   const sortedAndFilteredProjects = React.useMemo(() => {
     let filtered = projectStats;
     Object.entries(columnFilters).forEach(([columnId, value]) => {
@@ -107,6 +209,8 @@ export function ProjectStatsTab() {
         })
       }
     })
+
+
 
     if (sorting.length > 0) {
       filtered.sort((a, b) => {
@@ -119,7 +223,37 @@ export function ProjectStatsTab() {
       })
     }
     return filtered
-  }, [projectStats, columnFilters, sorting])
+  }, [projectStats, columnFilters, sorting])*/
+  const [sortedAndFilteredProjects, setSortedAndFilteredProjects] = React.useState<ProjectStats[]>([]); // substitua pelo tipo correto
+
+React.useEffect(() => {
+  let filtered = projectStats;
+
+  Object.entries(columnFilters).forEach(([columnId, value]) => {
+    if (value) {
+      filtered = filtered.filter(project => {
+        const projectValue = project[columnId as keyof typeof project];
+        return String(projectValue).toLowerCase().includes(value.toLowerCase());
+      });
+    }
+  });
+
+  if (sorting.length > 0) {
+    filtered = [...filtered].sort((a, b) => {
+      const s = sorting[0];
+      const valA = a[s.id as keyof typeof a];
+      const valB = b[s.id as keyof typeof b];
+      const result = String(valA).localeCompare(String(valB), undefined, {
+        numeric: true,
+        sensitivity: 'base',
+      });
+      return s.desc ? -result : result;
+    });
+  }
+
+  setSortedAndFilteredProjects(filtered);
+}, [projectStats, columnFilters, sorting]);
+
 
   const filteredDialogItems = React.useMemo(() => {
     if (!dialogFilter) return dialogState.items;

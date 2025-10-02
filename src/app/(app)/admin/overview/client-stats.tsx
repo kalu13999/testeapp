@@ -42,7 +42,7 @@ export function ClientStatsTab() {
   const [dialogFilter, setDialogFilter] = React.useState('');
   const { toast } = useToast();
 
-  const clientStats = React.useMemo((): ClientStat[] => {
+  /*const clientStats = React.useMemo((): ClientStat[] => {
     return clients.map(client => {
       const projectsForClient = allProjects.filter(p => p.clientId === client.id)
       const activeProjects = projectsForClient.filter(p => p.status === 'In Progress').length
@@ -64,21 +64,111 @@ export function ClientStatsTab() {
         avgBudget: avgBudget.toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
       }
     })
-  }, [allProjects, clients])
+  }, [allProjects, clients])*/
+  const [clientStats, setClientStats] = React.useState<ClientStat[]>([]);
 
+React.useEffect(() => {
+  const stats = clients.map(client => {
+    const projectsForClient = allProjects.filter(p => p.clientId === client.id);
+    const activeProjects = projectsForClient.filter(p => p.status === 'In Progress').length;
+    const onHoldProjects = projectsForClient.filter(p => p.status === 'On Hold').length;
+    const totalBooks = projectsForClient.reduce((sum, p) => sum + p.books.length, 0);
+    const finalizedBooks = projectsForClient.reduce(
+      (sum, p) => sum + p.books.filter(b => b.status === 'Finalized').length,
+      0
+    );
+    const totalBudget = projectsForClient.reduce((sum, p) => sum + Number(p.budget), 0);
+    const avgBudget = projectsForClient.length > 0 ? totalBudget / projectsForClient.length : 0;
+
+    return {
+      id: client.id,
+      name: client.name,
+      totalProjects: projectsForClient.length,
+      activeProjects,
+      onHoldProjects,
+      totalBooks,
+      finalizedBooks,
+      totalBudget,
+      avgBudget: avgBudget.toLocaleString('en-US', {
+        style: 'currency',
+        currency: 'USD',
+      }),
+    };
+  });
+
+  setClientStats(stats);
+}, [clients, allProjects]);
+/*
   const kpiData = React.useMemo(() => ({
     totalClients: clients.length,
     totalBudget: allProjects.reduce((sum, p) => sum + Number(p.budget), 0),
     avgProjects: clients.length > 0 ? (allProjects.length / clients.length).toFixed(1) : 0,
-  }), [clients, allProjects]);
+  }), [clients, allProjects]);*/
 
-  const projectsPerClientChartData = React.useMemo(() => (
+  type KpiData = {
+    totalClients: number;
+    totalBudget: number;
+    avgProjects: string | number;
+  };
+
+  const [kpiData, setKpiData] = React.useState<KpiData>({
+    totalClients: 0,
+    totalBudget: 0,
+    avgProjects: 0,
+  });
+
+  React.useEffect(() => {
+    const totalClients = clients.length;
+    const totalBudget = allProjects.reduce((sum, p) => sum + Number(p.budget), 0);
+    const avgProjects = totalClients > 0 ? (allProjects.length / totalClients).toFixed(1) : 0;
+
+    setKpiData({
+      totalClients,
+      totalBudget,
+      avgProjects,
+    });
+  }, [clients, allProjects]);
+
+  /*const projectsPerClientChartData = React.useMemo(() => (
     clientStats.map(c => ({ name: c.name, projects: c.totalProjects })).sort((a,b) => b.projects - a.projects).slice(0, 10)
   ), [clientStats]);
 
   const budgetPerClientChartData = React.useMemo(() => (
     clientStats.map(c => ({ name: c.name, budget: c.totalBudget })).sort((a,b) => b.budget - a.budget).slice(0, 10)
-  ), [clientStats]);
+  ), [clientStats]);*/
+
+  type ProjectsPerClientChartItem = {
+  name: string;
+  projects: number;
+  };
+
+  type BudgetPerClientChartItem = {
+    name: string;
+    budget: number;
+  };
+
+  const [projectsPerClientChartData, setProjectsPerClientChartData] = React.useState<ProjectsPerClientChartItem[]>([]);
+
+  React.useEffect(() => {
+    const chartData = clientStats
+      .map(c => ({ name: c.name, projects: c.totalProjects }))
+      .sort((a, b) => b.projects - a.projects)
+      .slice(0, 10);
+
+    setProjectsPerClientChartData(chartData);
+  }, [clientStats]);
+
+  const [budgetPerClientChartData, setBudgetPerClientChartData] = React.useState<BudgetPerClientChartItem[]>([]);
+
+  React.useEffect(() => {
+    const chartData = clientStats
+      .map(c => ({ name: c.name, budget: c.totalBudget }))
+      .sort((a, b) => b.budget - a.budget)
+      .slice(0, 10);
+
+    setBudgetPerClientChartData(chartData);
+  }, [clientStats]);
+
 
   const chartConfig: ChartConfig = {
     projects: { label: "Projects", color: "hsl(var(--chart-1))" },
@@ -100,7 +190,7 @@ export function ClientStatsTab() {
     return sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />
   }
 
-  const sortedAndFilteredClients = React.useMemo(() => {
+  /*const sortedAndFilteredClients = React.useMemo(() => {
     let filtered = clientStats;
     Object.entries(columnFilters).forEach(([columnId, value]) => {
       if (value) {
@@ -122,7 +212,38 @@ export function ClientStatsTab() {
       })
     }
     return filtered
-  }, [clientStats, columnFilters, sorting])
+  }, [clientStats, columnFilters, sorting])*/
+
+  const [sortedAndFilteredClients, setSortedAndFilteredClients] = React.useState<ClientStat[]>([]);
+
+  React.useEffect(() => {
+    let filtered = clientStats;
+
+    Object.entries(columnFilters).forEach(([columnId, value]) => {
+      if (value) {
+        filtered = filtered.filter(client => {
+          const clientValue = client[columnId as keyof ClientStat];
+          return String(clientValue).toLowerCase().includes(value.toLowerCase());
+        });
+      }
+    });
+
+    if (sorting.length > 0) {
+      const s = sorting[0];
+      filtered = [...filtered].sort((a, b) => {
+        const valA = a[s.id as keyof ClientStat];
+        const valB = b[s.id as keyof ClientStat];
+        const result = String(valA).localeCompare(String(valB), undefined, {
+          numeric: true,
+          sensitivity: 'base',
+        });
+        return s.desc ? -result : result;
+      });
+    }
+
+    setSortedAndFilteredClients(filtered);
+  }, [clientStats, columnFilters, sorting]);
+
   
   const filteredDialogItems = React.useMemo(() => {
     if (!dialogFilter) return dialogState.items;

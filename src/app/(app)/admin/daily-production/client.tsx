@@ -97,7 +97,20 @@ export default function DailyProductionClient() {
   const [dialogState, setDialogState] = React.useState<{ open: boolean, title: string, items: CompletedTask[] }>({ open: false, title: '', items: [] });
   const [dialogFilter, setDialogFilter] = React.useState('');
 
-  const allCompletedTasks = React.useMemo((): CompletedTask[] => {
+
+  type CompletedTask = {
+    id: string;
+    bookId: string;
+    bookName: string;
+    projectId: string;
+    projectName: string;
+    pageCount: number;
+    taskType: 'Digitalização' | 'Indexação' | 'Controlo de Qualidade';
+    completedAt: Date;
+    userId: string;
+    userName: string;
+  };
+  /*const allCompletedTasks = React.useMemo((): CompletedTask[] => {
     const tasks: CompletedTask[] = [];
     allProjects.flatMap(p => p.books).forEach(book => {
       if (book.scanEndTime && book.scannerUserId) {
@@ -126,9 +139,65 @@ export default function DailyProductionClient() {
       }
     });
     return tasks;
+  }, [allProjects, users]);*/
+
+  const [allCompletedTasks, setAllCompletedTasks] = React.useState<CompletedTask[]>([]);
+
+  React.useEffect(() => {
+    const tasks: CompletedTask[] = [];
+
+    allProjects.flatMap(p => p.books).forEach(book => {
+      if (book.scanEndTime && book.scannerUserId) {
+        tasks.push({
+          id: `${book.id}-scan`,
+          bookId: book.id,
+          bookName: book.name,
+          projectId: book.projectId,
+          projectName: book.projectName,
+          pageCount: book.expectedDocuments,
+          taskType: 'Digitalização',
+          completedAt: new Date(book.scanEndTime),
+          userId: book.scannerUserId,
+          userName: users.find(u => u.id === book.scannerUserId)?.name || 'Unknown',
+        });
+      }
+
+      if (book.indexingEndTime && book.indexerUserId) {
+        tasks.push({
+          id: `${book.id}-index`,
+          bookId: book.id,
+          bookName: book.name,
+          projectId: book.projectId,
+          projectName: book.projectName,
+          pageCount: book.expectedDocuments,
+          taskType: 'Indexação',
+          completedAt: new Date(book.indexingEndTime),
+          userId: book.indexerUserId,
+          userName: users.find(u => u.id === book.indexerUserId)?.name || 'Unknown',
+        });
+      }
+
+      if (book.qcEndTime && book.qcUserId) {
+        tasks.push({
+          id: `${book.id}-qc`,
+          bookId: book.id,
+          bookName: book.name,
+          projectId: book.projectId,
+          projectName: book.projectName,
+          pageCount: book.expectedDocuments,
+          taskType: 'Controlo de Qualidade',
+          completedAt: new Date(book.qcEndTime),
+          userId: book.qcUserId,
+          userName: users.find(u => u.id === book.qcUserId)?.name || 'Unknown',
+        });
+      }
+    });
+
+    setAllCompletedTasks(tasks);
   }, [allProjects, users]);
 
-  const globallyFilteredTasks = React.useMemo(() => {
+
+  /*const globallyFilteredTasks = React.useMemo(() => {
     let tasks = allCompletedTasks;
     if (dateRange?.from) {
       const from = startOfDay(dateRange.from);
@@ -139,9 +208,38 @@ export default function DailyProductionClient() {
     if (userFilter !== 'all') tasks = tasks.filter(task => task.userId === userFilter);
     if (projectFilter !== 'all') tasks = tasks.filter(task => task.projectId === projectFilter);
     return tasks;
+  }, [allCompletedTasks, dateRange, taskTypeFilter, userFilter, projectFilter]);*/
+
+  const [globallyFilteredTasks, setGloballyFilteredTasks] = React.useState<CompletedTask[]>([]);
+
+  React.useEffect(() => {
+    let tasks = allCompletedTasks;
+
+    if (dateRange?.from) {
+      const from = startOfDay(dateRange.from);
+      const to = endOfDay(dateRange.to || dateRange.from);
+      tasks = tasks.filter(task =>
+        isWithinInterval(task.completedAt, { start: from, end: to })
+      );
+    }
+
+    if (taskTypeFilter !== 'all') {
+      tasks = tasks.filter(task => task.taskType === taskTypeFilter);
+    }
+
+    if (userFilter !== 'all') {
+      tasks = tasks.filter(task => task.userId === userFilter);
+    }
+
+    if (projectFilter !== 'all') {
+      tasks = tasks.filter(task => task.projectId === projectFilter);
+    }
+
+    setGloballyFilteredTasks(tasks);
   }, [allCompletedTasks, dateRange, taskTypeFilter, userFilter, projectFilter]);
 
-  const summaryData = React.useMemo((): SummaryData[] => {
+
+  /*const summaryData = React.useMemo((): SummaryData[] => {
     if (groupBy.length === 0) return [];
     const keyMap = { user: 'userName', project: 'projectName', date: 'completedAt', task: 'taskType' };
 
@@ -177,11 +275,84 @@ export default function DailyProductionClient() {
     }
 
     return result;
+  }, [globallyFilteredTasks, groupBy, summaryColumnFilters, summarySorting]);*/
+
+  type SummaryData = {
+    name: string;
+    taskCount: number;
+    pageCount: number;
+    tasks: CompletedTask[];
+  };
+
+  const [summaryData, setSummaryData] = React.useState<SummaryData[]>([]);
+
+  React.useEffect(() => {
+    if (groupBy.length === 0) {
+      setSummaryData([]);
+      return;
+    }
+
+    const keyMap = {
+      user: 'userName',
+      project: 'projectName',
+      date: 'completedAt',
+      task: 'taskType',
+    } as const;
+
+    const grouped = globallyFilteredTasks.reduce((acc, task) => {
+      const compositeKey = groupBy.map(groupKey => {
+        const taskKey = keyMap[groupKey];
+        const value = task[taskKey as keyof CompletedTask];
+        if (taskKey === 'completedAt' && value instanceof Date) {
+          return format(value, 'yyyy-MM-dd');
+        }
+        return String(value);
+      }).join(' - ');
+
+      if (!acc[compositeKey]) {
+        acc[compositeKey] = {
+          name: compositeKey,
+          taskCount: 0,
+          pageCount: 0,
+          tasks: [],
+        };
+      }
+
+      acc[compositeKey].taskCount += 1;
+      acc[compositeKey].pageCount += task.pageCount || 0;
+      acc[compositeKey].tasks.push(task);
+
+      return acc;
+    }, {} as Record<string, SummaryData>);
+
+    let result = Object.values(grouped);
+
+    if (summaryColumnFilters.name) {
+      const query = summaryColumnFilters.name.toLowerCase();
+      result = result.filter(item => item.name.toLowerCase().includes(query));
+    }
+
+    if (summarySorting.length > 0) {
+      const s = summarySorting[0];
+      result.sort((a, b) => {
+        const valA = a[s.id as keyof SummaryData];
+        const valB = b[s.id as keyof SummaryData];
+        const sortResult =
+          typeof valA === 'number' && typeof valB === 'number'
+            ? valA - valB
+            : String(valA).localeCompare(String(valB));
+        return s.desc ? -sortResult : sortResult;
+      });
+    }
+
+    setSummaryData(result);
   }, [globallyFilteredTasks, groupBy, summaryColumnFilters, summarySorting]);
+
+
   
   const paginatedSummaryData = summaryData.slice((summaryCurrentPage - 1) * summaryItemsPerPage, summaryCurrentPage * summaryItemsPerPage);
 
-  const tasksForDetailedView = React.useMemo(() => {
+  /*const tasksForDetailedView = React.useMemo(() => {
     let tasks = globallyFilteredTasks;
     const summaryFilterNames = new Set(summaryData.map(d => d.name));
     const keyMap = { user: 'userName', project: 'projectName', date: 'completedAt', task: 'taskType' };
@@ -214,7 +385,65 @@ export default function DailyProductionClient() {
       });
     }
     return tasks;
+  }, [globallyFilteredTasks, detailedColumnFilters, detailedSorting, summaryData, groupBy]);*/
+
+  const [tasksForDetailedView, setTasksForDetailedView] = React.useState<CompletedTask[]>([]);
+
+  React.useEffect(() => {
+    let tasks = globallyFilteredTasks;
+    const summaryFilterNames = new Set(summaryData.map(d => d.name));
+    const keyMap = {
+      user: 'userName',
+      project: 'projectName',
+      date: 'completedAt',
+      task: 'taskType',
+    } as const;
+
+    if (groupBy.length > 0) {
+      tasks = tasks.filter(task => {
+        const compositeKey = groupBy.map(groupKey => {
+          const taskKey = keyMap[groupKey];
+          const value = task[taskKey as keyof CompletedTask];
+          if (taskKey === 'completedAt' && value instanceof Date) {
+            return format(value, 'yyyy-MM-dd');
+          }
+          return String(value);
+        }).join(' - ');
+        return summaryFilterNames.has(compositeKey);
+      });
+    }
+
+    Object.entries(detailedColumnFilters).forEach(([columnId, value]) => {
+      if (value) {
+        tasks = tasks.filter(task =>
+          String(task[columnId as keyof CompletedTask])
+            .toLowerCase()
+            .includes(value.toLowerCase())
+        );
+      }
+    });
+
+    if (detailedSorting.length > 0) {
+      const s = detailedSorting[0];
+      tasks = [...tasks].sort((a, b) => {
+        const valA = a[s.id as keyof CompletedTask];
+        const valB = b[s.id as keyof CompletedTask];
+        let result: number;
+        if (valA instanceof Date && valB instanceof Date) {
+          result = valA.getTime() - valB.getTime();
+        } else {
+          result = String(valA).localeCompare(String(valB), undefined, {
+            numeric: true,
+            sensitivity: 'base',
+          });
+        }
+        return s.desc ? -result : result;
+      });
+    }
+
+    setTasksForDetailedView(tasks);
   }, [globallyFilteredTasks, detailedColumnFilters, detailedSorting, summaryData, groupBy]);
+
   
   const paginatedDetailedTasks = tasksForDetailedView.slice((detailedCurrentPage - 1) * detailedItemsPerPage, detailedCurrentPage * detailedItemsPerPage);
   
@@ -224,7 +453,7 @@ export default function DailyProductionClient() {
     setDetailedSelection([]);
   }, [dateRange, taskTypeFilter, userFilter, projectFilter, detailedColumnFilters, detailedSorting, summaryColumnFilters]);
 
-  const stats = React.useMemo(() => {
+  /*const stats = React.useMemo(() => {
     if (globallyFilteredTasks.length === 0) return { totalTasks: 0, totalPages: 0, dailyAvgTasks: 0, dailyAvgPages: 0, bestDayTasks: { date: 'N/A', count: 0, items: [] }, bestDayPages: { date: 'N/A', count: 0, items: [] }, topOperator: { name: 'N/A', taskCount: 0, pageCount: 0, items: [] } };
 
     const tasksByDay = globallyFilteredTasks.reduce((acc, task) => {
@@ -259,9 +488,110 @@ export default function DailyProductionClient() {
       bestDayPages: { date: bestDayPagesEntry[0], count: bestDayPagesEntry[1].pageCount, items: bestDayPagesEntry[1].items },
       topOperator: { name: topOperatorEntry[0], taskCount: topOperatorEntry[1].taskCount, pageCount: topOperatorEntry[1].pageCount, items: topOperatorEntry[1].items }
     };
+  }, [globallyFilteredTasks, dateRange]);*/
+
+  type Stats = {
+    totalTasks: number;
+    totalPages: number;
+    dailyAvgTasks: string;
+    dailyAvgPages: string;
+    bestDayTasks: { date: string; count: number; items: CompletedTask[] };
+    bestDayPages: { date: string; count: number; items: CompletedTask[] };
+    topOperator: { name: string; taskCount: number; pageCount: number; items: CompletedTask[] };
+  };
+
+  const [stats, setStats] = React.useState<Stats>({
+    totalTasks: 0,
+    totalPages: 0,
+    dailyAvgTasks: '0',
+    dailyAvgPages: '0',
+    bestDayTasks: { date: 'N/A', count: 0, items: [] },
+    bestDayPages: { date: 'N/A', count: 0, items: [] },
+    topOperator: { name: 'N/A', taskCount: 0, pageCount: 0, items: [] },
+  });
+
+  React.useEffect(() => {
+    if (globallyFilteredTasks.length === 0) {
+      setStats({
+        totalTasks: 0,
+        totalPages: 0,
+        dailyAvgTasks: '0',
+        dailyAvgPages: '0',
+        bestDayTasks: { date: 'N/A', count: 0, items: [] },
+        bestDayPages: { date: 'N/A', count: 0, items: [] },
+        topOperator: { name: 'N/A', taskCount: 0, pageCount: 0, items: [] },
+      });
+      return;
+    }
+
+    const tasksByDay = globallyFilteredTasks.reduce((acc, task) => {
+      const day = format(task.completedAt, 'yyyy-MM-dd');
+      if (!acc[day]) acc[day] = { taskCount: 0, pageCount: 0, items: [] };
+      acc[day].taskCount += 1;
+      acc[day].pageCount += task.pageCount || 0;
+      acc[day].items.push(task);
+      return acc;
+    }, {} as Record<string, { taskCount: number; pageCount: number; items: CompletedTask[] }>);
+
+    const numDays =
+      dateRange?.from && dateRange.to
+        ? Math.abs(new Date(dateRange.to).getTime() - new Date(dateRange.from).getTime()) / (1000 * 3600 * 24) + 1
+        : 1;
+
+    const totalPages = globallyFilteredTasks.reduce((sum, task) => sum + (task.pageCount || 0), 0);
+
+    const bestDayTasksEntry =
+      Object.entries(tasksByDay).sort((a, b) => b[1].taskCount - a[1].taskCount)[0] || [
+        'N/A',
+        { taskCount: 0, items: [] },
+      ];
+
+    const bestDayPagesEntry =
+      Object.entries(tasksByDay).sort((a, b) => b[1].pageCount - a[1].pageCount)[0] || [
+        'N/A',
+        { pageCount: 0, items: [] },
+      ];
+
+    const tasksByUser = globallyFilteredTasks.reduce((acc, task) => {
+      if (!acc[task.userName]) acc[task.userName] = { taskCount: 0, pageCount: 0, items: [] };
+      acc[task.userName].taskCount += 1;
+      acc[task.userName].pageCount += task.pageCount || 0;
+      acc[task.userName].items.push(task);
+      return acc;
+    }, {} as Record<string, { taskCount: number; pageCount: number; items: CompletedTask[] }>);
+
+    const topOperatorEntry =
+      Object.entries(tasksByUser).sort((a, b) => b[1].pageCount - a[1].pageCount)[0] || [
+        'N/A',
+        { taskCount: 0, pageCount: 0, items: [] },
+      ];
+
+    setStats({
+      totalTasks: globallyFilteredTasks.length,
+      totalPages,
+      dailyAvgTasks: (globallyFilteredTasks.length / numDays).toFixed(1),
+      dailyAvgPages: (totalPages / numDays).toFixed(1),
+      bestDayTasks: {
+        date: bestDayTasksEntry[0],
+        count: bestDayTasksEntry[1].taskCount,
+        items: bestDayTasksEntry[1].items,
+      },
+      bestDayPages: {
+        date: bestDayPagesEntry[0],
+        count: bestDayPagesEntry[1].pageCount,
+        items: bestDayPagesEntry[1].items,
+      },
+      topOperator: {
+        name: topOperatorEntry[0],
+        taskCount: topOperatorEntry[1].taskCount,
+        pageCount: topOperatorEntry[1].pageCount,
+        items: topOperatorEntry[1].items,
+      },
+    });
   }, [globallyFilteredTasks, dateRange]);
 
-  const chartData = React.useMemo(() => {
+
+  /*const chartData = React.useMemo(() => {
     if (!summaryData) return { byDay: [], byUser: [], byType: [] };
     const chartSource = summaryData.slice(0,10);
     return { 
@@ -269,7 +599,47 @@ export default function DailyProductionClient() {
         byUser: chartSource, 
         byType: chartSource.map(d => ({ name: d.name, value: d.pageCount, fill: `hsl(${Math.random() * 360}, 70%, 50%)`, items: d.tasks }))
     };
+  }, [summaryData]);*/
+
+  type ChartData = {
+      byDay: { date: string; count: number; items: CompletedTask[] }[];
+      byUser: SummaryData[];
+      byType: { name: string; value: number; fill: string; items: CompletedTask[] }[];
+    };
+
+    const [chartData, setChartData] = React.useState<ChartData>({
+    byDay: [],
+    byUser: [],
+    byType: [],
+  });
+
+  React.useEffect(() => {
+    if (!summaryData) {
+      setChartData({ byDay: [], byUser: [], byType: [] });
+      return;
+    }
+
+    const chartSource = summaryData.slice(0, 10);
+
+    const byDay = chartSource.map(d => ({
+      date: d.name,
+      count: d.pageCount,
+      items: d.tasks,
+    }));
+
+    const byUser = chartSource;
+
+    const byType = chartSource.map(d => ({
+      name: d.name,
+      value: d.pageCount,
+      fill: `hsl(${Math.random() * 360}, 70%, 50%)`,
+      items: d.tasks,
+    }));
+
+    setChartData({ byDay, byUser, byType });
   }, [summaryData]);
+
+
   
   const chartConfig = { count: { label: "Pages" }, value: { label: "Pages" } } satisfies ChartConfig;
 

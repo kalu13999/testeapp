@@ -64,6 +64,20 @@ type ChartData = {
     count: number;
 }
 
+type DailyChartItem = {
+  date: string;
+  fullDate: string;
+  Shipped: number;
+  Received: number;
+  Scanned: number;
+  Checked: number;
+  Processed: number;
+  Delivered: number;
+  Finalized: number;
+  Archived: number;
+};
+
+
 function SystemOverviewTab() {
   const { allProjects, auditLogs } = useAppContext();
     const [chartType, setChartType] = React.useState<'bar' | 'line' | 'area'>('bar');
@@ -75,7 +89,15 @@ function SystemOverviewTab() {
     }>({ open: false, title: '', items: [], type: null });
     const [detailFilter, setDetailFilter] = React.useState('');
 
-    const dashboardData = useMemo(() => {
+    type DashboardData = {
+    kpiData: KpiData[];
+    chartData: ChartData[];
+    dailyChartData: DailyChartItem[];
+    booksByStage: Record<string, EnrichedBook[]>;
+    allRelevantAuditLogs: EnrichedAuditLog[];
+    };
+
+    /*const dashboardData = useMemo(() => {
         const books = allProjects.flatMap(p => p.books);
         
         const pendingClientActionBooks = books.filter(book => book.status === 'Pending Validation');
@@ -147,7 +169,117 @@ function SystemOverviewTab() {
         });
 
         return { kpiData, chartData, dailyChartData, booksByStage, allRelevantAuditLogs: auditLogs };
+    }, [allProjects, auditLogs]);*/
+
+
+    const [dashboardData, setDashboardData] = React.useState<DashboardData>({
+    kpiData: [],
+    chartData: [],
+    dailyChartData: [],
+    booksByStage: {},
+    allRelevantAuditLogs: [],
+    });
+
+    React.useEffect(() => {
+    const books = allProjects.flatMap(p => p.books);
+
+    const pendingClientActionBooks = books.filter(book => book.status === 'Pending Validation');
+    const booksInWorkflowBooks = books.filter(b => !['Archived', 'Pending Shipment', 'Finalized', 'Complete'].includes(b.status));
+    const finalizedBooks = books.filter(b => b.status === 'Finalized');
+    const slaWarningProjects = allProjects.filter(p => p.status === 'In Progress' && new Date(p.endDate) < new Date());
+    const slaWarningBooks = slaWarningProjects.flatMap(p => p.books.filter(book => book.status === 'In Progress'));
+    const today = new Date().toISOString().slice(0, 10);
+    const actionsTodayLogs = auditLogs.filter(d => d.date.startsWith(today));
+
+    const kpiData: KpiData[] = [
+        { title: "Livros no Fluxo de Trabalho", value: booksInWorkflowBooks.length.toLocaleString(), icon: BookCopy, description: "Todos os livros ativos em processamento", items: booksInWorkflowBooks, type: 'books' },
+        { title: "Livros Finalizados", value: finalizedBooks.length.toLocaleString(), icon: CheckCircle2, description: "Livros que foram aprovados", items: finalizedBooks, type: 'books' },
+        { title: "Ação do Cliente Pendente", value: pendingClientActionBooks.length.toLocaleString(), icon: UserCheck, description: "Lotes a aguardar aprovação do cliente", items: pendingClientActionBooks, type: 'books' },
+        { title: "Avisos de SLA", value: slaWarningProjects.length.toLocaleString(), icon: AlertTriangle, description: "Projetos além do prazo", items: slaWarningBooks, type: 'books' },
+        { title: "Ações Hoje", value: actionsTodayLogs.length.toLocaleString(), icon: Activity, description: "Qualquer ação realizada hoje", items: actionsTodayLogs, type: 'activities' },
+    ];
+
+    const orderedStageNames = [
+        'In Transit', 'Received', 'To Scan', 'Scanning Started', 'Storage', 'To Indexing', 'Indexing Started', 'To Checking', 'Checking Started', 'Ready for Processing', 'In Processing', 'Processed', 'Final Quality Control', 'Delivery', 'Pending Validation', 'Client Rejected', 'Corrected', 'Finalized'
+    ];
+
+    const booksByStage: Record<string, EnrichedBook[]> = {};
+    books.forEach(book => {
+        const stageName = book.status;
+        if (stageName && orderedStageNames.includes(stageName)) {
+        if (!booksByStage[stageName]) booksByStage[stageName] = [];
+        booksByStage[stageName].push(book);
+        }
+    });
+
+    const chartData: ChartData[] = orderedStageNames.map(name => ({
+        name,
+        count: booksByStage[name]?.length || 0,
+    }));
+
+    const dailyActivity: Record<string, Record<string, number>> = {};
+    const sevenDaysAgo = subDays(new Date(), 6);
+
+    const actionsToTrack: Record<string, string> = {
+        'Book Shipped': 'Shipped',
+        'Reception Confirmed': 'Received',
+        'Scanning Finished': 'Scanned',
+        'Initial QC Complete': 'Checked',
+        'Processing Completed': 'Processed',
+        'Client Approval': 'Finalized',
+        'Book Archived': 'Archived',
+    };
+
+    const actionKeys = Object.keys(actionsToTrack);
+
+    auditLogs
+        .filter(log => new Date(log.date) >= sevenDaysAgo && actionKeys.includes(log.action))
+        .forEach(log => {
+        const date = log.date.slice(0, 10);
+        const actionName = actionsToTrack[log.action];
+        if (!dailyActivity[date]) dailyActivity[date] = {};
+        if (!dailyActivity[date][actionName]) dailyActivity[date][actionName] = 0;
+        dailyActivity[date][actionName]++;
+        });
+
+    auditLogs
+        .filter(log => new Date(log.date) >= sevenDaysAgo && log.action === 'Workflow Step' && log.details?.includes('to Delivery'))
+        .forEach(log => {
+        const date = log.date.slice(0, 10);
+        if (!dailyActivity[date]) dailyActivity[date] = {};
+        if (!dailyActivity[date]['Delivered']) dailyActivity[date]['Delivered'] = 0;
+        dailyActivity[date]['Delivered']++;
+        });
+
+    const dateRange = Array.from({ length: 7 }, (_, i) =>
+        format(subDays(new Date(), i), 'yyyy-MM-dd')
+    ).reverse();
+
+    const dailyChartData: DailyChartItem[] = dateRange.map(dateStr => {
+        const dayData = dailyActivity[dateStr] || {};
+        return {
+        date: format(new Date(dateStr), 'MMM d'),
+        fullDate: dateStr,
+        Shipped: dayData.Shipped || 0,
+        Received: dayData.Received || 0,
+        Scanned: dayData.Scanned || 0,
+        Checked: dayData.Checked || 0,
+        Processed: dayData.Processed || 0,
+        Delivered: dayData.Delivered || 0,
+        Finalized: dayData.Finalized || 0,
+        Archived: dayData.Archived || 0,
+        };
+    });
+
+    setDashboardData({
+        kpiData,
+        chartData,
+        dailyChartData,
+        booksByStage,
+        allRelevantAuditLogs: auditLogs,
+    });
     }, [allProjects, auditLogs]);
+
 
     const { kpiData, chartData, dailyChartData, booksByStage, allRelevantAuditLogs } = dashboardData;
     
@@ -199,7 +331,46 @@ function SystemOverviewTab() {
         setDetailState({ open: true, title: `Activity for ${format(new Date(fullDate), 'MMMM d, yyyy')}`, items: activitiesForDay, type: 'activities' });
     };
 
-    const filteredDialogItems = React.useMemo(() => {
+
+    type DetailState =
+    | { open: boolean; type: 'books'; items: EnrichedBook[] }
+    | { open: boolean; type: 'activities'; items: EnrichedAuditLog[] };
+
+    const [filteredDialogItems, setFilteredDialogItems] = React.useState<(EnrichedBook | EnrichedAuditLog)[]>([]);
+
+    React.useEffect(() => {
+    if (!detailState.open || !detailFilter) {
+        setFilteredDialogItems(detailState.items);
+        return;
+    }
+
+    const query = detailFilter.toLowerCase();
+
+    if (detailState.type === 'books') {
+        const filtered = (detailState.items as EnrichedBook[]).filter(book =>
+        book.name.toLowerCase().includes(query) ||
+        book.projectName.toLowerCase().includes(query) ||
+        book.clientName.toLowerCase().includes(query)
+        );
+        setFilteredDialogItems(filtered);
+        return;
+    }
+
+    if (detailState.type === 'activities') {
+        const filtered = (detailState.items as EnrichedAuditLog[]).filter(log =>
+        log.action.toLowerCase().includes(query) ||
+        (log.details || '').toLowerCase().includes(query) ||
+        log.user.toLowerCase().includes(query)
+        );
+        setFilteredDialogItems(filtered);
+        return;
+    }
+
+    setFilteredDialogItems(detailState.items);
+    }, [detailState.items, detailState.type, detailFilter, detailState.open]);
+
+
+    /*const filteredDialogItems = React.useMemo(() => {
         if (!detailState.open || !detailFilter) return detailState.items;
         const query = detailFilter.toLowerCase();
         if (detailState.type === 'books') {
@@ -209,7 +380,7 @@ function SystemOverviewTab() {
             return (detailState.items as EnrichedAuditLog[]).filter(log => log.action.toLowerCase().includes(query) || (log.details || '').toLowerCase().includes(query) || log.user.toLowerCase().includes(query));
         }
         return detailState.items;
-    }, [detailState.items, detailState.type, detailFilter, detailState.open]);
+    }, [detailState.items, detailState.type, detailFilter, detailState.open]);*/
 
     return (
       <>

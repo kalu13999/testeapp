@@ -74,7 +74,7 @@ export default function MyValidationsClient() {
     return userPermissions.includes('*') || userPermissions.includes('/client/view-all-validations');
   }, [currentUser, permissions]);
 
- const batchesToValidate = React.useMemo(() => {
+ /*const batchesToValidate = React.useMemo(() => {
     if (!currentUser) return [];
 
     const validatingBatchIds = new Set(deliveryBatches.filter(b => b.status === 'Validating').map(b => b.id));
@@ -122,7 +122,97 @@ export default function MyValidationsClient() {
         .map(([batchId, data]) => ({ batchId, ...data }))
         .sort((a,b) => new Date(b.creationDate).getTime() - new Date(a.creationDate).getTime());
   
-  }, [currentUser, deliveryBatches, deliveryBatchItems, books, users, canViewAll, selectedProjectId, permissions]);
+  }, [currentUser, deliveryBatches, deliveryBatchItems, books, users, canViewAll, selectedProjectId, permissions]);*/
+
+  type ValidationTask = {
+    item: { id: string; deliveryId: string };
+    book: EnrichedBook;
+    assigneeName: string;
+    batchDate: string;
+    itemStatus: string;
+  };
+
+  type BatchToValidate = {
+    batchId: string;
+    creationDate: string;
+    books: ValidationTask[];
+  };
+
+  const [batchesToValidate, setBatchesToValidate] = React.useState<BatchToValidate[]>([]);
+
+  React.useEffect(() => {
+    if (!currentUser) {
+      setBatchesToValidate([]);
+      return;
+    }
+
+    const validatingBatchIds = new Set(
+      deliveryBatches.filter(b => b.status === 'Validating').map(b => b.id)
+    );
+
+    let relevantItems = deliveryBatchItems.filter(item =>
+      validatingBatchIds.has(item.deliveryId)
+    );
+
+    if (!canViewAll) {
+      relevantItems = relevantItems.filter(item => item.user_id === currentUser.id);
+    } else if (currentUser.clientId) {
+      const clientBookIds = new Set(
+        books.filter(b => b.clientId === currentUser.clientId).map(b => b.id)
+      );
+      relevantItems = relevantItems.filter(item => clientBookIds.has(item.bookId));
+    }
+
+    if (selectedProjectId) {
+      const projectBookIds = new Set(
+        books.filter(b => b.projectId === selectedProjectId).map(b => b.id)
+      );
+      relevantItems = relevantItems.filter(item => projectBookIds.has(item.bookId));
+    }
+
+    const tasks: ValidationTask[] = relevantItems.flatMap(item => {
+      const book = books.find(b => b.id === item.bookId);
+      const batch = deliveryBatches.find(b => b.id === item.deliveryId);
+      const assignee = users.find(u => u.id === item.user_id);
+      if (!book || !batch) return [];
+      return [{
+        item: { id: item.id, deliveryId: item.deliveryId },
+        book,
+        assigneeName: assignee?.name || 'Unassigned',
+        batchDate: batch.creationDate,
+        itemStatus: item.status,
+      }];
+    });
+
+    const batchesMap = new Map<string, { creationDate: string; books: ValidationTask[] }>();
+    tasks.forEach(task => {
+      const batchId = task.item.deliveryId;
+      if (!batchesMap.has(batchId)) {
+        batchesMap.set(batchId, { creationDate: task.batchDate, books: [] });
+      }
+      batchesMap.get(batchId)!.books.push(task);
+    });
+
+    const sortedBatches = Array.from(batchesMap.entries())
+      .map(([batchId, data]) => ({ batchId, ...data }))
+      .sort(
+        (a, b) =>
+          new Date(b.creationDate).getTime() - new Date(a.creationDate).getTime()
+      );
+
+    setBatchesToValidate(sortedBatches);
+  }, [
+    currentUser,
+    deliveryBatches,
+    deliveryBatchItems,
+    books,
+    users,
+    canViewAll,
+    selectedProjectId,
+    permissions,
+  ]);
+
+
 
   const handleApprove = (item: ValidationTask) => {
     setProvisionalDeliveryStatus(item.item.id, item.book.id, 'approved');

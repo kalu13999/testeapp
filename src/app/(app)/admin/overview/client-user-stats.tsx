@@ -50,7 +50,7 @@ export function ClientUserStatsTab() {
 
   const clientUsers = React.useMemo(() => users.filter(u => u.clientId !== null), [users]);
   
-  const clientUserStats = React.useMemo((): ClientUserStat[] => {
+  /*const clientUserStats = React.useMemo((): ClientUserStat[] => {
     return clientUsers.map(user => {
       const clientName = clients.find(c => c.id === user.clientId)?.name || 'N/A';
       return {
@@ -62,9 +62,28 @@ export function ClientUserStatsTab() {
         lastLogin: user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never',
       }
     })
+  }, [clientUsers, clients]);*/
+
+  const [clientUserStats, setClientUserStats] = React.useState<ClientUserStat[]>([]);
+
+  React.useEffect(() => {
+    const stats = clientUsers.map(user => {
+      const clientName = clients.find(c => c.id === user.clientId)?.name || 'N/A';
+      return {
+        id: user.id,
+        name: user.name,
+        avatar: user.avatar,
+        clientName,
+        status: user.status,
+        lastLogin: user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never',
+      };
+    });
+
+    setClientUserStats(stats);
   }, [clientUsers, clients]);
+
   
-  const kpiData = React.useMemo(() => {
+  /*const kpiData = React.useMemo(() => {
     return {
         totalUsers: { value: clientUsers.length, items: clientUsers },
         activeUsers: { value: clientUsers.filter(u => u.status === 'active').length, items: clientUsers.filter(u => u.status === 'active') },
@@ -80,7 +99,61 @@ export function ClientUserStatsTab() {
         return acc;
     }, {} as {[key: string]: number});
     return Object.entries(byClient).map(([name, value]) => ({ name, value, fill: `hsl(${Math.random() * 360}, 70%, 50%)` }));
+  }, [clientUsers, clients]);*/
+
+  type KpiData = {
+    totalUsers: { value: number; items: UserData[] };
+    activeUsers: { value: number; items:  UserData[] };
+    disabledUsers: { value: number; items:  UserData[] };
+    clientsWithUsers: { value: number };
+  };
+
+  type ChartItem = {
+    name: string;
+    value: number;
+    fill: string;
+  };
+
+  const [kpiData, setKpiData] = React.useState<KpiData>({
+    totalUsers: { value: 0, items: [] },
+    activeUsers: { value: 0, items: [] },
+    disabledUsers: { value: 0, items: [] },
+    clientsWithUsers: { value: 0 },
+  });
+
+  React.useEffect(() => {
+    const active = clientUsers.filter(u => u.status === 'active');
+    const disabled = clientUsers.filter(u => u.status === 'disabled');
+    const uniqueClientIds = new Set(clientUsers.map(u => u.clientId));
+
+    setKpiData({
+      totalUsers: { value: clientUsers.length, items: clientUsers },
+      activeUsers: { value: active.length, items: active },
+      disabledUsers: { value: disabled.length, items: disabled },
+      clientsWithUsers: { value: uniqueClientIds.size },
+    });
+  }, [clientUsers]);
+
+  const [usersByClientChartData, setUsersByClientChartData] = React.useState<ChartItem[]>([]);
+
+  React.useEffect(() => {
+    const byClient = clientUsers.reduce((acc, user) => {
+      const clientName = clients.find(c => c.id === user.clientId)?.name || 'Unknown';
+      acc[clientName] = (acc[clientName] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const chartData = Object.entries(byClient).map(([name, value]) => ({
+      name,
+      value,
+      fill: `hsl(${Math.random() * 360}, 70%, 50%)`,
+    }));
+
+    setUsersByClientChartData(chartData);
   }, [clientUsers, clients]);
+
+
+
 
   const handleSort = (columnId: string) => {
     setSorting(currentSorting => {
@@ -97,7 +170,7 @@ export function ClientUserStatsTab() {
     return sort.desc ? <ArrowDown className="h-4 w-4 shrink-0" /> : <ArrowUp className="h-4 w-4 shrink-0" />
   }
 
-  const sortedAndFilteredUsers = React.useMemo(() => {
+  /*const sortedAndFilteredUsers = React.useMemo(() => {
     let filtered = clientUserStats;
     Object.entries(columnFilters).forEach(([columnId, value]) => {
       if (value) {
@@ -119,7 +192,39 @@ export function ClientUserStatsTab() {
       })
     }
     return filtered
-  }, [clientUserStats, columnFilters, sorting])
+  }, [clientUserStats, columnFilters, sorting])*/
+  
+  const [sortedAndFilteredUsers, setSortedAndFilteredUsers] = React.useState<ClientUserStat[]>([]);
+
+  React.useEffect(() => {
+    let filtered = clientUserStats;
+
+    Object.entries(columnFilters).forEach(([columnId, value]) => {
+      if (value) {
+        filtered = filtered.filter(user => {
+          const userValue = user[columnId as keyof ClientUserStat];
+          return String(userValue).toLowerCase().includes(value.toLowerCase());
+        });
+      }
+    });
+
+    if (sorting.length > 0) {
+      const s = sorting[0];
+      filtered = [...filtered].sort((a, b) => {
+        const valA = a[s.id as keyof ClientUserStat];
+        const valB = b[s.id as keyof ClientUserStat];
+        const result = String(valA).localeCompare(String(valB), undefined, {
+          numeric: true,
+          sensitivity: 'base',
+        });
+        return s.desc ? -result : result;
+      });
+    }
+
+    setSortedAndFilteredUsers(filtered);
+  }, [clientUserStats, columnFilters, sorting]);
+
+  
 
   const filteredDialogItems = React.useMemo(() => {
     if (!dialogFilter) return dialogState.items;

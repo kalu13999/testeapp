@@ -102,7 +102,7 @@ export default function ShipmentsClient() {
     setColumnFilters({});
   };
   
-  const sortedAndFilteredBooks = React.useMemo(() => {
+  /*const sortedAndFilteredBooks = React.useMemo(() => {
     let filtered = books
       .filter(book => book.status === 'Pending Shipment');
       
@@ -142,7 +142,54 @@ export default function ShipmentsClient() {
 
     return filtered;
 
+  }, [books, columnFilters, sorting]);*/
+
+
+  const [sortedAndFilteredBooks, setSortedAndFilteredBooks] = React.useState<EnrichedBook[]>([]);
+
+  React.useEffect(() => {
+    let filtered = books.filter(book => book.status === 'Pending Shipment');
+
+    Object.entries(columnFilters).forEach(([columnId, value]) => {
+      if (value) {
+        filtered = filtered.filter(book => {
+          const bookValue = book[columnId as keyof EnrichedBook] ?? (columnId === 'priority' ? 'Medium' : '');
+          return String(bookValue).toLowerCase().includes(value.toLowerCase());
+        });
+      }
+    });
+
+    if (sorting.length > 0) {
+      filtered = [...filtered].sort((a, b) => {
+        for (const s of sorting) {
+          const key = s.id as keyof EnrichedBook;
+          const valA = a[key] ?? (key === 'priority' ? 'Medium' : '');
+          const valB = b[key] ?? (key === 'priority' ? 'Medium' : '');
+
+          let result = 0;
+          if (key === 'priority') {
+            const order = { High: 0, Medium: 1, Low: 2 };
+            result = order[valA as keyof typeof order] - order[valB as keyof typeof order];
+          } else if (typeof valA === 'number' && typeof valB === 'number') {
+            result = valA - valB;
+          } else {
+            result = String(valA).localeCompare(String(valB), undefined, {
+              numeric: true,
+              sensitivity: 'base',
+            });
+          }
+
+          if (result !== 0) {
+            return s.desc ? -result : result;
+          }
+        }
+        return 0;
+      });
+    }
+
+    setSortedAndFilteredBooks(filtered);
   }, [books, columnFilters, sorting]);
+
 
   const selectedBooks = React.useMemo(() => {
     return sortedAndFilteredBooks.filter(book => selection.includes(book.id));

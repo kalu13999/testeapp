@@ -46,7 +46,7 @@ export default function ValidationMonitoringClient() {
   //const { handleValidationDeliveryBatch } = useClientValidationContext();
   const [confirmationState, setConfirmationState] = React.useState({ open: false, batchId: '', finalDecision: '' as 'approve_remaining' | 'reject_all', title: '', description: '' });
 
-  const batchesToMonitor = React.useMemo(() => {
+  /*const batchesToMonitor = React.useMemo(() => {
     return deliveryBatches
         .filter(batch => batch.status === 'Validating')
         .map(batch => {
@@ -87,6 +87,68 @@ export default function ValidationMonitoringClient() {
         .filter(batch => batch.books.length > 0)
         .sort((a,b) => new Date(b.creationDate).getTime() - new Date(a.creationDate).getTime());
 
+  }, [deliveryBatches, deliveryBatchItems, books, currentUser, users]);*/
+
+  type BatchToMonitor = {
+    batchId: string;
+    creationDate: string;
+    books: (EnrichedBook & { itemStatus: string; assigneeName: string })[];
+    stats: {
+      total: number;
+      approved: number;
+      rejected: number;
+      pending: number;
+      progress: number;
+    };
+  };
+
+  const [batchesToMonitor, setBatchesToMonitor] = React.useState<BatchToMonitor[]>([]);
+
+  React.useEffect(() => {
+    const monitored = deliveryBatches
+      .filter(batch => batch.status === 'Validating')
+      .map(batch => {
+        const itemsInBatch = deliveryBatchItems.filter(item => item.deliveryId === batch.id);
+        const bookIdsInBatch = new Set(itemsInBatch.map(item => item.bookId));
+
+        let booksInBatch = books.filter(book => bookIdsInBatch.has(book.id));
+
+        if (currentUser?.clientId) {
+          booksInBatch = booksInBatch.filter(book => book.clientId === currentUser.clientId);
+        }
+
+        const totalItems = itemsInBatch.length;
+        const approvedCount = itemsInBatch.filter(i => i.status === 'approved').length;
+        const rejectedCount = itemsInBatch.filter(i => i.status === 'rejected').length;
+        const pendingCount = totalItems - approvedCount - rejectedCount;
+
+        const booksWithAssignee = booksInBatch.map(book => {
+          const item = itemsInBatch.find(i => i.bookId === book.id);
+          const assignee = users.find(u => u.id === item?.user_id);
+          return {
+            ...book,
+            itemStatus: item?.status || 'pending',
+            assigneeName: assignee?.name || 'Unassigned',
+          };
+        });
+
+        return {
+          batchId: batch.id,
+          creationDate: batch.creationDate,
+          books: booksWithAssignee,
+          stats: {
+            total: totalItems,
+            approved: approvedCount,
+            rejected: rejectedCount,
+            pending: pendingCount,
+            progress: totalItems > 0 ? ((approvedCount + rejectedCount) / totalItems) * 100 : 0,
+          },
+        };
+      })
+      .filter(batch => batch.books.length > 0)
+      .sort((a, b) => new Date(b.creationDate).getTime() - new Date(a.creationDate).getTime());
+
+    setBatchesToMonitor(monitored);
   }, [deliveryBatches, deliveryBatchItems, books, currentUser, users]);
 
   const openConfirmationDialog = (batchId: string, finalDecision: 'approve_remaining' | 'reject_all') => {

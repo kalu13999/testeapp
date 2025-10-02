@@ -116,7 +116,7 @@ export default function StatusOverrideClient({ allStatuses }: StatusOverrideClie
     setCurrentPage(1);
   };
 
-  const sortedAndFilteredBooks = React.useMemo(() => {
+  /*const sortedAndFilteredBooks = React.useMemo(() => {
     let filtered = books;
     Object.entries(columnFilters).forEach(([columnId, value]) => {
       if (value) {
@@ -152,7 +152,52 @@ export default function StatusOverrideClient({ allStatuses }: StatusOverrideClie
     }
 
     return filtered;
+  }, [books, columnFilters, sorting]);*/
+
+  const [sortedAndFilteredBooks, setSortedAndFilteredBooks] = React.useState<EnrichedBook[]>([]);
+
+  React.useEffect(() => {
+    let filtered = books;
+
+    Object.entries(columnFilters).forEach(([columnId, value]) => {
+      if (value) {
+        filtered = filtered.filter(book => {
+          const bookValue = book[columnId as keyof EnrichedBook];
+          return String(bookValue).toLowerCase().includes(value.toLowerCase());
+        });
+      }
+    });
+
+    if (sorting.length > 0) {
+      filtered = [...filtered].sort((a, b) => {
+        for (const s of sorting) {
+          const key = s.id as keyof EnrichedBook;
+          const valA = a[key];
+          const valB = b[key];
+
+          let result = 0;
+          if (valA === null || valA === undefined) result = -1;
+          else if (valB === null || valB === undefined) result = 1;
+          else if (typeof valA === 'number' && typeof valB === 'number') {
+            result = valA - valB;
+          } else {
+            result = String(valA).localeCompare(String(valB), undefined, {
+              numeric: true,
+              sensitivity: 'base',
+            });
+          }
+
+          if (result !== 0) {
+            return s.desc ? -result : result;
+          }
+        }
+        return 0;
+      });
+    }
+
+    setSortedAndFilteredBooks(filtered);
   }, [books, columnFilters, sorting]);
+
 
   const selectedBooks = React.useMemo(() => {
     return sortedAndFilteredBooks.filter(book => selection.includes(book.id));
