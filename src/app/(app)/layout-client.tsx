@@ -35,11 +35,11 @@ const InvalidWorkflowPage = () => (
 
 
 export const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
-  const { isMutating, currentUser, permissions, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loading, addNavigationHistoryItem, loadInitialData, projectWorkflows } = useAppContext();
+  const { isChecking, setIsChecking, isMutating, currentUser, permissions, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loading, addNavigationHistoryItem, loadInitialData, loadInitialDataBook, projectWorkflows } = useAppContext();
   const router = useRouter();
   const isInitialLoad = useRef(true);
   const { toast } = useToast();
-  const [isChecking, setIsChecking] = React.useState(true);
+
   const [isAllowed, setIsAllowed] = React.useState(false);
   const [isWorkflowPageValid, setIsWorkflowPageValid] = React.useState(true);
   const previousUserIdRef = useRef<string | null | undefined>(null);
@@ -77,15 +77,42 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
       }
     };
   }, [isMutating, loading, loadInitialData]);*/
-  useEffect(() => {
+  /*useEffect(() => {
     if (isInitialLoad.current) {
-      isInitialLoad.current = false; // Ignorar a primeira execução
+      isInitialLoad.current = false; // Ignorar a primeira execução faz no login
       return;
     }
     
-    loadInitialData();
+    loadInitialDataBook();
 
-  }, [pathname, loadInitialData]);
+  }, [pathname, loadInitialDataBook]);*/
+
+  useEffect(() => {
+  if (isInitialLoad.current) {
+    isInitialLoad.current = false; // Ignorar a primeira execução (login)
+    return;
+  }
+
+  // páginas que NÃO devem carregar os dados
+  const excludedPaths = [
+    "/workflow/already-received",
+    "/workflow/storage",
+    "/workflow/to-scan",
+    "/workflow/scanning-started",
+    "/workflow/to-indexing",
+    "/workflow/indexing-started",
+    "/workflow/to-checking",
+    "/workflow/checking-started",
+  ];
+
+  const isExcludedBookPage = pathname.startsWith("/books/");
+  const isExcludedDocPage = pathname.startsWith("/documents/");
+  console.log(pathname)
+  if (!excludedPaths.includes(pathname) && !isExcludedBookPage && !isExcludedDocPage) {
+    console.log("A Carregar...")
+    loadInitialData();
+  }
+}, [pathname, loadInitialData]);
 
   useEffect(() => {
 
@@ -277,6 +304,9 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
             <div className="hidden sm:flex flex-1 items-center gap-2">
               <RecentPagesNav />
             </div> 
+            <div className="hidden sm:block text-sm font-medium">
+              {currentUser?.name || ""}
+            </div>
             <div className="flex items-center gap-4">
               <UserNav user={currentUser} />
             </div>

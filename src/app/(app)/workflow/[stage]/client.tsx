@@ -1008,10 +1008,30 @@ const handleMainAction = (book: EnrichedBook) => {
         {canViewAll && config.assigneeRole && (
           <TableCell>{item.assigneeName}</TableCell>
         )}
+        {(stage !== 'confirm-reception' && stage !== 'already-received' && stage !== 'pending-shipment' && stage !== 'pending-deliveries') && (
+          <>
+         <TableCell>{item.scannerDeviceName}</TableCell>
+          <TableCell>{item.storageName}</TableCell>
+          </>
+        )}
         {startTimeKey && endTimeKey && (
           <>
-          <TableCell className="hidden md:table-cell">{item[startTimeKey] ? format(new Date(item[startTimeKey]!), "yyyy-MM-dd HH:mm") : ""}</TableCell>
-          <TableCell className="hidden md:table-cell">{item[endTimeKey] ? format(new Date(item[endTimeKey]!), "yyyy-MM-dd HH:mm") : ""}</TableCell>
+            <TableCell className="hidden md:table-cell">
+              {item[startTimeKey] ? (
+                <div className="flex flex-col">
+                  <span>{format(new Date(item[startTimeKey]!), "HH:mm")}</span>
+                  <span>{format(new Date(item[startTimeKey]!), "yyyy-MM-dd")}</span>
+                </div>
+              ) : ""}
+            </TableCell>
+            <TableCell className="hidden md:table-cell">
+              {item[endTimeKey] ? (
+                <div className="flex flex-col">
+                  <span>{format(new Date(item[endTimeKey]!), "HH:mm")}</span>
+                  <span>{format(new Date(item[endTimeKey]!), "yyyy-MM-dd")}</span>
+                </div>
+              ) : ""}
+            </TableCell>
           </>
         )}
         <TableCell>
@@ -1577,7 +1597,7 @@ const handleMainAction = (book: EnrichedBook) => {
                       </TableHead>
                       <TableHead>
                         <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('name', e.shiftKey)}>
-                            Nome do Livro {getSortIndicator('name')}
+                            Nome {getSortIndicator('name')}
                         </div>
                       </TableHead>
                       <TableHead>
@@ -1586,22 +1606,37 @@ const handleMainAction = (book: EnrichedBook) => {
                         </div>
                       </TableHead>
                       <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('isbn', e.shiftKey)}>Cota {getSortIndicator('isbn')}</div></TableHead>
-                      <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('expectedDocuments', e.shiftKey)}>Documentos {getSortIndicator('expectedDocuments')}</div></TableHead>
+                      <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('expectedDocuments', e.shiftKey)}>Paginas {getSortIndicator('expectedDocuments')}</div></TableHead>
                       {canViewAll && config.assigneeRole && (
-                         <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('assigneeName', e.shiftKey)}>Atribuído a {getSortIndicator('assigneeName')}</div></TableHead>
+                         <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('assigneeName', e.shiftKey)}>Atribuído{getSortIndicator('assigneeName')}</div></TableHead>
                       )}
                  
+
+                        {(stage !== 'confirm-reception' && stage !== 'already-received' && stage !== 'pending-shipment' && stage !== 'pending-deliveries') && (
+                          <>
+                              <TableHead>
+                                <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('scannerDeviceName', e.shiftKey)}>
+                                    Scanner {getSortIndicator('scannerDeviceName')}
+                                </div>
+                              </TableHead>
+                              <TableHead>
+                                  <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('storageName', e.shiftKey)}>
+                                    Proc. {getSortIndicator('storageName')}
+                                </div>
+                              </TableHead>
+                          </>
+                      )}
                       {(config.assigneeRole === 'scanner' || config.assigneeRole === 'indexer' || config.assigneeRole === 'qc') && (
                           <>
                               <TableHead>
                                   <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort(`${config.assigneeRole!}StartTime`, e.shiftKey)}>
-                                      <span className="inline-block w-[10ch] text-left">Início</span>
+                                      <span className="inline-block w-[8ch] text-left">Início</span>
                                       {getSortIndicator(`${config.assigneeRole!}StartTime`)}
                                   </div>
                               </TableHead>
                               <TableHead>
                                   <div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort(`${config.assigneeRole!}EndTime`, e.shiftKey)}>
-                                      <span className="inline-block w-[10ch] text-left">Fim</span>
+                                      <span className="inline-block w-[8ch] text-left">Fim</span>
                                       {getSortIndicator(`${config.assigneeRole!}EndTime`)}
                                   </div>
                               </TableHead>
@@ -1617,7 +1652,7 @@ const handleMainAction = (book: EnrichedBook) => {
                     <TableHead />
                     <TableHead>
                         <Input
-                            placeholder="Filtrar nome..."
+                            placeholder="Filtrar..."
                             value={columnFilters['name'] || ''}
                             onChange={(e) => handleColumnFilterChange('name', e.target.value)}
                             className="h-8"
@@ -1625,7 +1660,7 @@ const handleMainAction = (book: EnrichedBook) => {
                     </TableHead>
                     <TableHead>
                         <Input
-                            placeholder="Filtrar projeto..."
+                            placeholder="Filtrar..."
                             value={columnFilters['projectName'] || ''}
                             onChange={(e) => handleColumnFilterChange('projectName', e.target.value)}
                             className="h-8"
@@ -1633,7 +1668,7 @@ const handleMainAction = (book: EnrichedBook) => {
                     </TableHead>
                     <TableHead className="hidden md:table-cell">
                         <Input
-                            placeholder="Filtrar cota..."
+                            placeholder="Filtrar..."
                             value={columnFilters['isbn'] || ''}
                             onChange={(e) => handleColumnFilterChange('isbn', e.target.value)}
                             className="h-8"
@@ -1641,7 +1676,7 @@ const handleMainAction = (book: EnrichedBook) => {
                     </TableHead>
                     <TableHead className="hidden md:table-cell">
                         <Input
-                            placeholder="Filtrar Documentos..."
+                            placeholder="Filtrar..."
                             value={columnFilters['expectedDocuments'] || ''}
                             onChange={(e) => handleColumnFilterChange('expectedDocuments', e.target.value)}
                             className="h-8"
@@ -1650,20 +1685,40 @@ const handleMainAction = (book: EnrichedBook) => {
                      {canViewAll && config.assigneeRole && (
                        <TableHead>
                             <Input
-                                placeholder="Filtrar utilizador..."
+                                placeholder="Filtrar..."
                                 value={columnFilters['assigneeName'] || ''}
                                 onChange={(e) => handleColumnFilterChange('assigneeName', e.target.value)}
                                 className="h-8"
                             />
                        </TableHead>
                      )}
+                      {(stage !== 'confirm-reception' && stage !== 'already-received' && stage !== 'pending-shipment' && stage !== 'pending-deliveries') && (
+                          <>
+                            <TableHead>
+                                <Input
+                                    placeholder="Filtrar..."
+                                    value={columnFilters['scannerDeviceName'] || ''}
+                                    onChange={(e) => handleColumnFilterChange('scannerDeviceName', e.target.value)}
+                                    className="h-8"
+                                />
+                            </TableHead>
+                            <TableHead>
+                                <Input
+                                    placeholder="Filtrar..."
+                                    value={columnFilters['storageName'] || ''}
+                                    onChange={(e) => handleColumnFilterChange('storageName', e.target.value)}
+                                    className="h-8"
+                                />
+                            </TableHead>
+                          </>
+                      )}
                      {(config.assigneeRole === 'scanner' || config.assigneeRole === 'indexer' || config.assigneeRole === 'qc') && (
                         <>
                             <TableHead>
-                                <Input placeholder="Filtrar início..." value={columnFilters[`${config.assigneeRole!}StartTime`] || ''} onChange={e => handleColumnFilterChange(`${config.assigneeRole!}StartTime`, e.target.value)} className="h-8" />
+                                <Input placeholder="Filtrar..." value={columnFilters[`${config.assigneeRole!}StartTime`] || ''} onChange={e => handleColumnFilterChange(`${config.assigneeRole!}StartTime`, e.target.value)} className="h-8" />
                             </TableHead>
                             <TableHead>
-                                <Input placeholder="Filtrar fim..." value={columnFilters[`${config.assigneeRole!}EndTime`] || ''} onChange={e => handleColumnFilterChange(`${config.assigneeRole!}EndTime`, e.target.value)} className="h-8" />
+                                <Input placeholder="Filtrar..." value={columnFilters[`${config.assigneeRole!}EndTime`] || ''} onChange={e => handleColumnFilterChange(`${config.assigneeRole!}EndTime`, e.target.value)} className="h-8" />
                             </TableHead>
                         </>
                     )}

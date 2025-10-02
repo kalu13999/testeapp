@@ -33,10 +33,16 @@ export type EnrichedAuditLog = AuditLog & { user: string; };
 export type NavigationHistoryItem = { href: string, label: string };
 
 type AppContextType = {
+
+  isChecking: boolean;
+  setIsChecking: React.Dispatch<React.SetStateAction<boolean>>;
   // Loading state
   loading: boolean;
   isMutating: boolean;
   setIsMutating: React.Dispatch<React.SetStateAction<boolean>>;
+
+
+
   processingBookIds: string[];
   
   // Auth state
@@ -83,6 +89,7 @@ type AppContextType = {
 
 
   loadInitialData: () => Promise<void>;
+  loadInitialDataBook: () => Promise<void>;
   
   // Client Actions
   addClient: (clientData: Omit<Client, 'id'>) => Promise<void>;
@@ -196,6 +203,7 @@ const openLocalApp = (protocol: string, data: Record<string, string>) => {
 
 export function AppProvider({ children }: { children: React.ReactNode; }) {
   const [loading, setLoading] = React.useState(true);
+  const [isChecking, setIsChecking] = React.useState(true);
   const [isMutating, setIsMutating] = React.useState(false);
   const [processingBookIds, setProcessingBookIds] = React.useState<string[]>([]);
   const [currentUser, setCurrentUser] = React.useState<User | null>(null);
@@ -239,24 +247,52 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const loadInitialData = React.useCallback(async () => {
     try {
         setLoading(true);
+        
         const [
-            clientsData, usersData, projectsData, booksData, 
+            usersData, permissionsData, rolesData,
+        ] = await Promise.all([
+            dataApi.getUsers(), dataApi.getPermissions(), dataApi.getRoles(),
+        ]);
+
+        setUsers(usersData);
+        setPermissions(permissionsData);
+        setRoles(rolesData);
+
+        const storedUserId = localStorage.getItem('flowvault_userid');
+        if (storedUserId) {
+            const user = usersData.find(u => u.id === storedUserId);
+            if (user) {
+              setCurrentUser(user);
+              const storedHistory = localStorage.getItem(`nav_history_${user.id}`);
+              if(storedHistory) {
+                setNavigationHistory(JSON.parse(storedHistory));
+              }
+            }else{
+              setIsChecking(false)
+            }
+        }else
+        {
+          setIsChecking(false)
+        }
+       
+      if (storedUserId) {
+
+        const [
+            clientsData, projectsData, booksData, 
             docsData, auditData, batchesData, batchItemsData, logsData,
-            permissionsData, rolesData, workflowsData, rejectionData, statusesData,
+            workflowsData, rejectionData, statusesData,
             storagesData, scannersData, transferLogsData, projectStoragesData,
             deliveryBatchesData, deliveryBatchItemsData, bookObservationsData,
         ] = await Promise.all([
-            dataApi.getClients(), dataApi.getUsers(), dataApi.getRawProjects(),
+            dataApi.getClients(), dataApi.getRawProjects(),
             dataApi.getRawBooks(), dataApi.getRawDocuments(), dataApi.getAuditLogs(),
             dataApi.getProcessingBatches(), dataApi.getProcessingBatchItems(), dataApi.getProcessingLogs(),
-            dataApi.getPermissions(), dataApi.getRoles(),
             dataApi.getProjectWorkflows(), dataApi.getRejectionTags(), dataApi.getDocumentStatuses(),
             dataApi.getStorages(), dataApi.getScanners(), dataApi.getTransferLogs(), dataApi.getProjectStorages(),
             dataApi.getDeliveryBatches(), dataApi.getDeliveryBatchItems(), dataApi.getBookObservations(),
         ]);
 
-        setClients(clientsData);
-        setUsers(usersData);
+        setClients(clientsData);        
         setRawProjects(projectsData);
         setRawBooks(booksData);
         setStatuses(statusesData);
@@ -277,10 +313,31 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         setProcessingLogs(logsData);
         setDeliveryBatches(deliveryBatchesData);
         setDeliveryBatchItems(deliveryBatchItemsData);
-        setPermissions(permissionsData);
-        setRoles(rolesData);
         setProjectWorkflows(workflowsData);
         setRejectionTags(rejectionData);
+
+      }
+    } catch (error) {
+        console.error("Failed to load initial data", error);
+        toast({title: "Erro ao Carregar Dados", description: "Não foi possível conectar ao servidor. Por favor, verifique a sua conexão e atualize.", variant: "destructive"});
+    } finally {
+        setLoading(false);
+    }
+  }, [toast]);
+
+  const loadInitialDataBook = React.useCallback(async () => {
+    try {
+        setLoading(true);
+        
+        const [
+            usersData, permissionsData, rolesData,
+        ] = await Promise.all([
+            dataApi.getUsers(), dataApi.getPermissions(), dataApi.getRoles(),
+        ]);
+
+        setUsers(usersData);
+        setPermissions(permissionsData);
+        setRoles(rolesData);
 
         const storedUserId = localStorage.getItem('flowvault_userid');
         if (storedUserId) {
@@ -291,8 +348,27 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
               if(storedHistory) {
                 setNavigationHistory(JSON.parse(storedHistory));
               }
+            }else{
+              setIsChecking(false)
             }
+        }else
+        {
+          setIsChecking(false)
         }
+       
+      if (storedUserId) {
+
+        const [
+            booksData,
+        ] = await Promise.all([
+            dataApi.getRawBooks()
+               ]);
+
+
+        setRawBooks(booksData);
+
+
+      }
     } catch (error) {
         console.error("Failed to load initial data", error);
         toast({title: "Erro ao Carregar Dados", description: "Não foi possível conectar ao servidor. Por favor, verifique a sua conexão e atualize.", variant: "destructive"});
@@ -300,7 +376,6 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         setLoading(false);
     }
   }, [toast]);
-
 
   React.useEffect(() => {
     loadInitialData();
@@ -397,7 +472,7 @@ const loadData = async () => {
       } else {
         setNavigationHistory([]);
       }
-
+      loadInitialData();
       await regLastLogin(user);
       
       return user;
@@ -1480,83 +1555,135 @@ const addBookObservation = async (bookId: string, observation: string) => {
       console.log(`[moveTifsBookFolder] Successfully moved only TIFFs for ${bookName}.`);
       //tkoast({ title: "TIFFs Moved", description: `TIFF files for "${bookName}" successfully moved from ${fromStatusName} to ${toStatusName}.` });
       return true;
-  } catch (error: any) {
-      if (error.code === "ECONNREFUSED" || (error.message?.toLowerCase().includes("fetch") && error.message?.toLowerCase().includes("failed"))) {
-        const msgerr = "API externa não está acessível (contacte um administrador)."
-        toast({ title: "Erro ao Mover TIFFs", description: `Não foi possível mover os TIFFs para "${bookName}". Verifique os logs.\n${msgerr}`, variant: "destructive" });
-        logAction('System Alert', `Error moving TIFFs for book "${bookName}". Reason: ${error.message}. ${msgerr}`, { userId: 'u_system' });
-      } else {
-        toast({ title: "Erro ao Mover TIFFs", description: `Não foi possível mover os TIFFs para "${bookName}". Verifique os logs.`, variant: "destructive" });
-        logAction('System Alert', `Error moving TIFFs for book "${bookName}". Reason: ${error.message}`, { userId: 'u_system' });
-      }
-      console.error("[moveTifsBookFolder] Network or fetch error:", error);
-      return false;
-  }
-}, [statuses, toast, logAction]);
+    } catch (error: any) {
+        if (error.code === "ECONNREFUSED" || (error.message?.toLowerCase().includes("fetch") && error.message?.toLowerCase().includes("failed"))) {
+          const msgerr = "API externa não está acessível (contacte um administrador)."
+          toast({ title: "Erro ao Mover TIFFs", description: `Não foi possível mover os TIFFs para "${bookName}". Verifique os logs.\n${msgerr}`, variant: "destructive" });
+          logAction('System Alert', `Error moving TIFFs for book "${bookName}". Reason: ${error.message}. ${msgerr}`, { userId: 'u_system' });
+        } else {
+          toast({ title: "Erro ao Mover TIFFs", description: `Não foi possível mover os TIFFs para "${bookName}". Verifique os logs.`, variant: "destructive" });
+          logAction('System Alert', `Error moving TIFFs for book "${bookName}". Reason: ${error.message}`, { userId: 'u_system' });
+        }
+        console.error("[moveTifsBookFolder] Network or fetch error:", error);
+        return false;
+    }
+  }, [statuses, toast, logAction]);
 
 
-const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatusName: string, toStatusName: string): Promise<boolean> => {
-  console.log(`[copyTifsBookFolder] Attempting to copy only TIFFs for book: ${bookName} from ${fromStatusName} to ${toStatusName}`);
-  
-  const fromStatus = statuses.find(s => s.name === fromStatusName);
-  const toStatus = statuses.find(s => s.name === toStatusName);
-  
-  if (!fromStatus) {
-      toast({ title: "Erro de Configuração do Fluxo de Trabalho", description: `Estado de origem "${fromStatusName}" não encontrado.`, variant: "destructive" });
-      console.error(`[copyTifsBookFolder] Source status "${fromStatusName}" not found.`);
-      return false;
-  }
-   if (!toStatus) {
-      toast({ title: "Erro de Configuração do Fluxo de Trabalho", description: `Estado de destino "${toStatusName}" não encontrado.`, variant: "destructive" });
-      console.error(`[copyTifsBookFolder] Destination status "${toStatusName}" not found.`);
-      return false;
-  }
+  const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatusName: string, toStatusName: string): Promise<boolean> => {
+    console.log(`[copyTifsBookFolder] Attempting to copy only TIFFs for book: ${bookName} from ${fromStatusName} to ${toStatusName}`);
+    
+    const fromStatus = statuses.find(s => s.name === fromStatusName);
+    const toStatus = statuses.find(s => s.name === toStatusName);
+    
+    if (!fromStatus) {
+        toast({ title: "Erro de Configuração do Fluxo de Trabalho", description: `Estado de origem "${fromStatusName}" não encontrado.`, variant: "destructive" });
+        console.error(`[copyTifsBookFolder] Source status "${fromStatusName}" not found.`);
+        return false;
+    }
+    if (!toStatus) {
+        toast({ title: "Erro de Configuração do Fluxo de Trabalho", description: `Estado de destino "${toStatusName}" não encontrado.`, variant: "destructive" });
+        console.error(`[copyTifsBookFolder] Destination status "${toStatusName}" not found.`);
+        return false;
+    }
 
-  if (!fromStatus.folderName || !toStatus.folderName) {
-      console.log(`[copyTifsBookFolder] Logical copy from ${fromStatusName} to ${toStatusName}. No physical TIFF copy needed.`);
-      return true; 
-  }
-  
-  const apiUrl = process.env.NEXT_PUBLIC_WORKFLOW_API_URL;
-  if (!apiUrl) {
-    console.warn("[copyTifsBookFolder] WORKFLOW API URL not configured. Physical TIFF copy will be skipped.");
-    return true;
-  }
-  
-  try {
-      console.log(`[copyTifsBookFolder] Calling API to copy only TIFFs for "${bookName}".`);
-      const response = await fetch(`${apiUrl}/api/workflow/copy-tifs`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ bookName, fromStatus: fromStatusName, toStatus: toStatusName }),
-      });
-
-      if (!response.ok) {
-          const errorData = await response.json();
-          const errorMessage = errorData.error || `Falha ao copiar TIFFs. API respondeu com estado ${response.status}`;
-          console.error(`[copyTifsBookFolder] API Error: ${errorMessage}`);
-          logAction('System Alert', `Failed to copy TIFFs for book "${bookName}" from ${fromStatusName} to ${toStatusName}. Reason: ${errorMessage}`, { userId: 'u_system' });
-          toast({ title: "Erro ao Copiar TIFFs", description: errorMessage, variant: "destructive", duration: 10000 });
-          return false;
-      }
-      console.log(`[copyTifsBookFolder] Successfully copied only TIFFs for ${bookName}.`);
+    if (!fromStatus.folderName || !toStatus.folderName) {
+        console.log(`[copyTifsBookFolder] Logical copy from ${fromStatusName} to ${toStatusName}. No physical TIFF copy needed.`);
+        return true; 
+    }
+    
+    const apiUrl = process.env.NEXT_PUBLIC_WORKFLOW_API_URL;
+    if (!apiUrl) {
+      console.warn("[copyTifsBookFolder] WORKFLOW API URL not configured. Physical TIFF copy will be skipped.");
       return true;
-  } catch (error: any) {
-    if (error.code === "ECONNREFUSED" || (error.message?.toLowerCase().includes("fetch") && error.message?.toLowerCase().includes("failed"))) {
-        const msgerr = "API externa não está acessível (contacte um administrador)."
-        toast({ title: "Erro ao Copiar TIFFs", description: `Não foi possível copiar os TIFFs para "${bookName}". Verifique os logs.\n${msgerr}`, variant: "destructive" });
-        logAction('System Alert', `Error copying TIFFs for book "${bookName}". Reason: ${error.message}. ${msgerr}`, { userId: 'u_system' });
-    }else{
-        toast({ title: "Erro ao Copiar TIFFs", description: `Não foi possível copiar os TIFFs para "${bookName}". Verifique os logs.`, variant: "destructive" });
-        logAction('System Alert', `Error copying TIFFs for book "${bookName}". Reason: ${error.message}`, { userId: 'u_system' });
-    }      
-    console.error("[copyTifsBookFolder] Network or fetch error:", error);
-    return false;
-  }
-}, [statuses, toast, logAction]);
+    }
+    
+    try {
+        console.log(`[copyTifsBookFolder] Calling API to copy only TIFFs for "${bookName}".`);
+        const response = await fetch(`${apiUrl}/api/workflow/copy-tifs`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bookName, fromStatus: fromStatusName, toStatus: toStatusName }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            const errorMessage = errorData.error || `Falha ao copiar TIFFs. API respondeu com estado ${response.status}`;
+            console.error(`[copyTifsBookFolder] API Error: ${errorMessage}`);
+            logAction('System Alert', `Failed to copy TIFFs for book "${bookName}" from ${fromStatusName} to ${toStatusName}. Reason: ${errorMessage}`, { userId: 'u_system' });
+            toast({ title: "Erro ao Copiar TIFFs", description: errorMessage, variant: "destructive", duration: 10000 });
+            return false;
+        }
+        console.log(`[copyTifsBookFolder] Successfully copied only TIFFs for ${bookName}.`);
+        return true;
+    } catch (error: any) {
+      if (error.code === "ECONNREFUSED" || (error.message?.toLowerCase().includes("fetch") && error.message?.toLowerCase().includes("failed"))) {
+          const msgerr = "API externa não está acessível (contacte um administrador)."
+          toast({ title: "Erro ao Copiar TIFFs", description: `Não foi possível copiar os TIFFs para "${bookName}". Verifique os logs.\n${msgerr}`, variant: "destructive" });
+          logAction('System Alert', `Error copying TIFFs for book "${bookName}". Reason: ${error.message}. ${msgerr}`, { userId: 'u_system' });
+      }else{
+          toast({ title: "Erro ao Copiar TIFFs", description: `Não foi possível copiar os TIFFs para "${bookName}". Verifique os logs.`, variant: "destructive" });
+          logAction('System Alert', `Error copying TIFFs for book "${bookName}". Reason: ${error.message}`, { userId: 'u_system' });
+      }      
+      console.error("[copyTifsBookFolder] Network or fetch error:", error);
+      return false;
+    }
+  }, [statuses, toast, logAction]);
 
 
 
+  const booksMapRef = React.useRef<Record<string, RawBook>>({});
+
+  React.useEffect(() => {
+    booksMapRef.current = Object.fromEntries(rawBooks.map(b => [b.id, b]));
+  }, [rawBooks]);
+
+  const handleMarkAsShipped = (bookIds: string[]) => {
+    withMutation(async () => {
+      const failedBooks: string[] = [];
+      const updatedBooks: EnrichedBook[] = [];
+
+      for (const bookId of bookIds) {
+        try {
+          const updatedBook = await updateBookStatus(bookId, 'In Transit');
+
+          // Atualiza apenas o livro no lookup
+          booksMapRef.current[bookId] = updatedBook;
+          updatedBooks.push(updatedBook);
+
+          logAction(
+            'Book Shipped',
+            `Client marked book "${updatedBook?.name}" as shipped.`,
+            { bookId: updatedBook.id }
+          );
+        } catch (error) {
+          failedBooks.push(bookId);
+
+          toast({
+            title: "Erro",
+            description: `Não foi possível marcar o livro ${bookId} como enviado.`,
+            variant: "destructive"
+          });
+        }
+      }
+
+      // Atualiza o estado global apenas **uma vez**, evitando N re-renders
+      setRawBooks(Object.values(booksMapRef.current));
+
+      // Toast final resumido
+      const successCount = bookIds.length - failedBooks.length;
+      if (failedBooks.length === 0) {
+        toast({ title: `${successCount} Livro(s) Marcado(s) como Enviado(s)` });
+      } else {
+        toast({
+          title: `${successCount} Livro(s) Marcado(s) e ${failedBooks.length} Livro(s) Não Marcado(s)`,
+          description: failedBooks.join(', '),
+          variant: 'destructive'
+        });
+      }
+    });
+  };
+/*
   const handleMarkAsShipped = (bookIds: string[]) => {
     withMutation(async () => {
       for (const bookId of bookIds) {
@@ -1570,7 +1697,7 @@ const copyTifsBookFolder = React.useCallback(async (bookName: string, fromStatus
       }
       toast({ title: `${bookIds.length} Livro(s) Marcado(s) como Enviado(s)` });
     });
-  };
+  };*/
 
   const handleConfirmReception = (bookId: string) => {
     withMutation(async () => {
@@ -2879,7 +3006,7 @@ const openAppValidateScan = (bookId: string) => {
 
 
   const value: AppContextType = { 
-    loading, isMutating, processingBookIds, setIsMutating,
+    isChecking, setIsChecking, loading, isMutating, processingBookIds, setIsMutating,
     currentUser, login, logout, changePassword,
     navigationHistory, addNavigationHistoryItem,
     clients, users, scannerUsers, indexerUsers, qcUsers,
@@ -2941,6 +3068,7 @@ const openAppValidateScan = (bookId: string) => {
     setAuditLogs,
     setProcessingBatchItems,
     loadInitialData,
+    loadInitialDataBook,
   };
 
   return (

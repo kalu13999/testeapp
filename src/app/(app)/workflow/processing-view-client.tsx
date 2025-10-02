@@ -172,6 +172,11 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
                 const StatusIcon = getStatusInfo(batch.status).icon;
                 const statusColor = getStatusInfo(batch.status).color;
                 const statusAnimation = getStatusInfo(batch.status).className;
+
+                const totalExpectedDocuments = batch.items.reduce((total, item) => {
+                  const book = books.find(b => b.id === item.bookId);
+                  return total + (book?.expectedDocuments || 0);
+                }, 0);
                 return (
                   <AccordionItem value={batch.id} key={batch.id}>
                     <div className="flex items-center justify-between hover:bg-muted/50 rounded-md">
@@ -181,6 +186,7 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
                           <div>
                               <p className="font-semibold text-base">{batch.timestampStr}</p>
                               <p className="text-sm text-muted-foreground">{batch.items.length} livro(s) neste lote</p>
+                              <p className="text-sm text-muted-foreground">{totalExpectedDocuments} documento(s) neste lote</p>
                               <p className="text-xs text-muted-foreground">Armazenamento: {batch.storageName}</p>
                           </div>
                         </div>
