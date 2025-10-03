@@ -4,7 +4,7 @@ import { getConnection, releaseConnection } from '@/lib/db';
 import type { PoolConnection } from 'mysql2/promise';
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
-    const { id } = params;
+    const { id } = await params;
     let connection: PoolConnection | null = null;
     try {
         const { status } = await request.json();

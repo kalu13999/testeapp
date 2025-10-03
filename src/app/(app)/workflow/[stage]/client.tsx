@@ -209,6 +209,19 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
 
   const [availableBooks, setAvailableBooks] = React.useState<EnrichedBook[]>([]);
 
+  const [isMutating, setIsMutating] = React.useState(false);
+  const withMutation = async <T,>(action: () => Promise<T>): Promise<T | undefined> => {
+    setIsMutating(true);
+    try {
+        const result = await action();
+        return result;
+    } catch (error: any) {
+        console.error("A mutation failed:", error);
+        toast({ title: "Operação Falhou", description: error.message, variant: "destructive" });
+    } finally {
+        setIsMutating(false);
+    }
+  };
 
   const [flagDialogState, setFlagDialogState] = React.useState<{
     open: boolean;
@@ -807,6 +820,7 @@ const handleMainAction = (book: EnrichedBook) => {
       toast({ title: "Erro", description: "ID do projeto não encontrado para este livro.", variant: "destructive" });
       return;
   }
+  console.log("handleMainAction");
   
   const workflow = projectWorkflows[book.projectId] || [];
   const currentStageKey = findStageKeyFromStatus(book.status);

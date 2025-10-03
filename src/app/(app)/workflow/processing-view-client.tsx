@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { useAppContext } from "@/context/workflow-context";
-import { Loader2, CheckCircle, XCircle, Clock, Book, FileText, Timer, BookOpen, RefreshCw } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, PauseCircle, Clock, Book, FileText, Timer, BookOpen, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
@@ -67,7 +67,7 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
     processingBatchItems,
     processingLogs,
     completeProcessingBatch,
-    failProcessingBatch,
+    statusProcessingBatch,
     failureProcessingBatch,
     selectedProjectId,
     storages,
@@ -120,8 +120,8 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
     if (confirmationState.status === "Complete") {
       completeProcessingBatch(confirmationState.batch.id);
     } 
-    else if (confirmationState.status === "Failed") {
-      failProcessingBatch(confirmationState.batch.id);
+    else if (confirmationState.status === "Failed" || confirmationState.status === "Pause" || confirmationState.status === "In Progress") {
+      statusProcessingBatch(confirmationState.batch.id, confirmationState.status);
     }
     else if (confirmationState.status === "Open Protocol") {
         if(!confirmationState.batch.storageId) {
@@ -134,11 +134,12 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
     closeConfirmationDialog();
   }
   
-  const getStatusInfo = (status: 'In Progress' | 'Complete' | 'Failed') => {
+  const getStatusInfo = (status: 'In Progress' | 'Complete' | 'Failed' | 'Pause') => {
       switch (status) {
           case 'In Progress': return { icon: Loader2, color: 'text-primary', className: 'animate-spin' };
           case 'Complete': return { icon: CheckCircle, color: 'text-green-600' };
           case 'Failed': return { icon: XCircle, color: 'text-destructive' };
+          case 'Pause': return { icon: PauseCircle, color: 'text-yellow-500' };
           default: return { icon: Clock, color: 'text-muted-foreground' };
       }
   }
@@ -199,12 +200,23 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
                          <Progress value={batch.progress || 0} />
                       </div>
                       <div className="px-4">
+
+                         {batch.status === 'Pause' && (
+                           <Button size="sm" onClick={() => openConfirmationDialog(batch, "In Progress")}>
+                             Continuar
+                           </Button>
+                        )}
+                        {batch.status === 'In Progress' && (
+                           <Button size="sm" variant="secondary" onClick={() => openConfirmationDialog(batch, "Pause")}>
+                             Pausar
+                           </Button>
+                        )}
                         {batch.status === 'In Progress' && (
                            <Button size="sm" variant="destructive" onClick={() => openConfirmationDialog(batch, "Failed")}>
                              Marcar Falha
                            </Button>
                         )}
-                        {batch.status === 'In Progress' &&  currentUser?.role === 'Admin' && (
+                        {batch.status === 'Failed' &&  currentUser?.role === 'Admin' && (
                            <Button size="sm" onClick={() => openConfirmationDialog(batch, "Complete")}>
                              Marcar Completo
                            </Button>
@@ -294,6 +306,8 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
             <DialogTitle>
               {confirmationState.status === 'Failed' && 'Marcar lote como falha?'}
               {confirmationState.status === 'Complete' && 'Forçar concluir processamento do lote?'}
+              {confirmationState.status === 'Pause' && 'Pausar processamento do lote?'}
+              {confirmationState.status === 'In Progress' && 'Continuar processamento do lote?'}
               {confirmationState.status === 'Open Protocol' && 'Abrir protocolo?'}
             </DialogTitle>
             <DialogDescription>
@@ -302,7 +316,10 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
                 Atenção: verifique se não está em processamento antes de confirmar.`}
               {confirmationState.status === 'Complete' &&
                 `Isto marcará o lote inteiro de "${confirmationState.batch?.timestampStr}" como completo e moverá todos os livros associados para a próxima etapa. Esta ação não pode ser desfeita.`}
-
+              {confirmationState.status === 'Pause' &&
+                `Isto vai pausar o processamento do lote de "${confirmationState.batch?.timestampStr}".`}
+              {confirmationState.status === 'In Progress' &&
+                `Isto vai retomar o processamento do lote de "${confirmationState.batch?.timestampStr}".`}
               {confirmationState.status === 'Open Protocol' &&
                 `Isto abrirá o protocolo de falha para o lote de "${confirmationState.batch?.timestampStr}". Use isto para investigar e resolver problemas antes de tentar novamente.`}
             </DialogDescription>

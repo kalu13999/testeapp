@@ -155,7 +155,7 @@ type AppContextType = {
   startProcessingBatch: (bookIds: string[], storageId: string) => void;
   failureProcessingBatch: (batchId: string, storageId: string) => void;
   completeProcessingBatch: (batchId: string) => void;
-  failProcessingBatch: (batchId: string) => void;
+  statusProcessingBatch: (batchId: string, newStatus:string) => void;
   handleSendBatchToNextStage: (batchIds: string[]) => Promise<void>;
   setProvisionalDeliveryStatus: (deliveryItemId: string, bookId: string, status: 'approved' | 'rejected', reason?: string) => Promise<void>;
   approveBatch: (deliveryId: string) => void;
@@ -232,7 +232,7 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const [navigationHistory, setNavigationHistory] = React.useState<NavigationHistoryItem[]>([]);
   const { toast } = useToast();
   
-  const withMutation = async <T,>(action: () => Promise<T>): Promise<T | undefined> => {
+const withMutation = async <T,>(action: () => Promise<T>): Promise<T | undefined> => {
     setIsMutating(true);
     try {
         const result = await action();
@@ -244,6 +244,9 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
         setIsMutating(false);
     }
   };
+
+
+
   const loadInitialData = React.useCallback(async () => {
     try {
         setLoading(true);
@@ -1454,7 +1457,7 @@ const addBookObservation = async (bookId: string, observation: string) => {
 
 
   const updateDocument = async (docId: string, data: Partial<AppDocument>) => {
-    return await withMutation(async () => {
+    await withMutation(async () => {
       const doc = rawDocuments.find(d => d.id === docId);
       if (!doc) return;
       try {
@@ -2066,7 +2069,7 @@ const openAppValidateScan = (bookId: string) => {
     withMutation(async () => {
         const book = rawBooks.find(b => b.id === bookId);
         if (!book || !book.projectId || !currentUser) return;
-
+      
         if (role === 'scanner') {
             const updatedBook = await updateBookStatus(bookId, 'Scanning Started', { scanStartTime: getDbSafeDate() });
             setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
@@ -2455,7 +2458,7 @@ const openAppValidateScan = (bookId: string) => {
       }
     });
   };
-  const failProcessingBatch = async (batchId: string) => {
+  const statusProcessingBatch = async (batchId: string, newStatus: string) => {
     await withMutation(async () => {
       const batch = processingBatches.find(b => b.id === batchId);
       if (!batch) return;
@@ -2467,19 +2470,19 @@ const openAppValidateScan = (bookId: string) => {
         const response = await fetch(`/api/processing-batches/${batchId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'Failed', endTime: getDbSafeDate()}),
+          body: JSON.stringify({ status: newStatus, endTime: getDbSafeDate()}),
         });
         if (!response.ok) throw new Error('Falha ao atualizar lote');
         const updatedBatch = await response.json();
         setProcessingBatches(prev => prev.map(b => b.id === batchId ? updatedBatch : b));
 
 
-        logAction('Processing Batch mark as Failed', `Batch ${batchId} was completed.`, {});
-        await logProcessingEvent(batchId, `Batch ${batchId} marked as Failed by user.`);
-        toast({ title: "Lote de Processamento Completo" });
+        logAction(`Processing Batch mark as ${newStatus}.`, `Batch ${batch.timestampStr} mark as ${newStatus} by ${currentUser}.`, {});
+        await logProcessingEvent(batchId, `Batch ${batchId} with name ${batch.timestampStr} marked as ${newStatus} by ${currentUser}.`);
+        toast({ title: `Marcado ${newStatus} no lote ${batch.timestampStr}` });
       } catch(error) {
         console.error(error);
-        toast({ title: "Erro", description: `Não foi possível completar o lote ${batchId}.`, variant: "destructive" });
+        toast({ title: "Erro", description: `Não foi possível marcar ${newStatus} o lote ${batch.timestampStr}.`, variant: "destructive" });
       }
     });
   };
@@ -2809,8 +2812,6 @@ const openAppValidateScan = (bookId: string) => {
   };
 
   const booksAvaiableInStorageLocalIp = React.useCallback(async (currentStageKey: string) => {
-    return await withMutation(async () => {   // <- return aqui
-   
       if (currentStageKey !== 'to-indexing' && currentStageKey !== 'to-checking') {
             return [];
       }
@@ -2865,7 +2866,6 @@ const openAppValidateScan = (bookId: string) => {
       });
   
       return [];
-    });
   }, [enrichedBooks, selectedProjectId, accessibleProjectsForUser, projectWorkflows, storages, toast]);
 
 
@@ -3154,7 +3154,7 @@ const openAppValidateScan = (bookId: string) => {
     approveBatch,
     handleFinalize, handleMarkAsCorrected, handleResubmit, handleResubmitCopyTifs, handleResubmitMoveTifs,
     addPageToBook, deletePageFromBook,
-    updateDocumentFlag, startProcessingBatch, failureProcessingBatch, completeProcessingBatch, failProcessingBatch, handleSendBatchToNextStage,
+    updateDocumentFlag, startProcessingBatch, failureProcessingBatch, completeProcessingBatch, statusProcessingBatch, handleSendBatchToNextStage,
     handleAssignUser, reassignUser, handleStartTask, handleCancelTask,
     openAppValidateScan,
     handleAdminStatusOverride, handleCreateDeliveryBatch, finalizeDeliveryBatch,

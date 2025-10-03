@@ -88,10 +88,11 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
   }, [pathname, loadInitialDataBook]);*/
 
   useEffect(() => {
-  //if (isInitialLoad.current) {
-    //isInitialLoad.current = false; // Ignorar a primeira execução (login)
-    //return;
-  //}
+  if (isInitialLoad.current) {
+    isInitialLoad.current = false; // Ignorar a primeira execução (login)
+    return;
+  }
+
 
   // páginas que NÃO devem carregar os dados
   const excludedPaths = [
@@ -103,6 +104,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
     "/workflow/indexing-started",
     "/workflow/to-checking",
     "/workflow/checking-started",
+    "/profile",
   ];
 
   const isExcludedBookPage = pathname.startsWith("/books/");

@@ -25,7 +25,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
-    const { id } = params;
+    const { id } = await params;
     let connection: PoolConnection | null = null;
     try {
         const projectData = await request.json();

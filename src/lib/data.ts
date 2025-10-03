@@ -138,7 +138,7 @@ export interface ProcessingBatch {
   id: string;
   startTime: string;
   endTime: string | null;
-  status: 'In Progress' | 'Complete' | 'Failed';
+  status: 'In Progress' | 'Complete' | 'Failed' | 'Pause';
   progress: number;
   timestampStr: string;
   info: string | null;
