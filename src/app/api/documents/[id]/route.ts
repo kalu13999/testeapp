@@ -21,7 +21,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
         console.warn(`Could not parse tags for document ${id}: ${doc.tags}`);
         doc.tags = [];
       }
-    } else if (!doc.tags || (typeof doc.tags === 'string' && doc.tags.trim() === '')) {
+    } else if (doc && !doc.tags || (doc && typeof doc.tags === 'string' && doc.tags.trim() === '')) {
       doc.tags = [];
     }
     return NextResponse.json(doc);
@@ -83,7 +83,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
           } catch(e) {
             doc.tags = [];
           }
-        } else {
+        } else if (doc) {
             doc.tags = [];
         }
         return NextResponse.json(doc);

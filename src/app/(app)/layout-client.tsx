@@ -35,7 +35,7 @@ const InvalidWorkflowPage = () => (
 
 
 export const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
-  const { isChecking, setIsChecking, isMutating, currentUser, permissions, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loading, addNavigationHistoryItem, loadInitialData, loadInitialDataBook, projectWorkflows } = useAppContext();
+  const { isChecking, setIsChecking, isMutating, currentUser, permissions, accessibleProjectsForUser, selectedProjectId, setSelectedProjectId, loading, addNavigationHistoryItem, loadInitialData, projectWorkflows } = useAppContext();
   const router = useRouter();
   const isInitialLoad = useRef(true);
   const { toast } = useToast();
