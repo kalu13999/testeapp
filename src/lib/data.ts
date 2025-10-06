@@ -325,7 +325,7 @@ export const getDeliveryBatches = () => fetchData<DeliveryBatch[]>('/delivery-ba
 export const getDeliveryBatchItems = () => fetchData<DeliveryBatchItem[]>('/delivery-batch-items');
 
 // Enriched data fetching functions
-export async function getEnrichedProjects(): Promise<EnrichedProject[]> {
+/*export async function getEnrichedProjects(): Promise<EnrichedProject[]> {
     const [projects, clients, books, documents, statuses, transferLogs, storages, scanners] = await Promise.all([
       getRawProjects(),
       getClients(),
@@ -389,20 +389,24 @@ export async function getEnrichedProjects(): Promise<EnrichedProject[]> {
         books: projectBooks,
       };
     });
-}
-  
+}*/
+export const getEnrichedProjects = () => fetchData<EnrichedProject[]>('/projects?enriched=true');
+export const getEnrichedBooks = () => fetchData<EnrichedBook[]>('/books?enriched=true');
+
 export async function getEnrichedProjectById(id: string): Promise<EnrichedProject | null> {
     const projects = await getEnrichedProjects();
     return projects.find(p => p.id === id) || null;
 }
 
 export async function getEnrichedBookById(id: string): Promise<EnrichedBook | null> {
-    const projects = await getEnrichedProjects();
+    /*const projects = await getEnrichedProjects();
     for (const project of projects) {
         const book = project.books.find(b => b.id === id);
         if (book) return book;
     }
-    return null;
+    return null;*/
+    const books = await getEnrichedBooks();
+    return books.find(b => b.id === id) || null;
 }
 
 export async function getPagesByBookId(bookId: string): Promise<Document[]> {

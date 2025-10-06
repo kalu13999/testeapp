@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 import { getConnection, releaseConnection } from '@/lib/db';
 import type { PoolConnection, RowDataPacket } from 'mysql2/promise';
 
-export async function GET() {
+/*export async function GET() {
   let connection: PoolConnection | null = null;
   try {
     connection = await getConnection();
@@ -22,6 +22,50 @@ export async function GET() {
       }
       return doc;
     });
+    return NextResponse.json(documents);
+  } catch (error) {
+    console.error("Error fetching documents:", error);
+    return NextResponse.json({ error: 'Failed to fetch documents' }, { status: 500 });
+  } finally {
+    if (connection) {
+      releaseConnection(connection);
+    }
+  }
+}*/
+export async function GET() {
+  let connection: PoolConnection | null = null;
+  try {
+    connection = await getConnection();
+    const [rows] = await connection.execute<RowDataPacket[]>(`
+      SELECT 
+          d.*,
+          c.name as clientName,
+          ds.name as status
+      FROM 
+          documents d
+      LEFT JOIN 
+          clients c ON d.clientId = c.id
+      LEFT JOIN 
+          books b ON d.bookId = b.id
+      LEFT JOIN
+          document_statuses ds ON b.statusId = ds.id
+    `);
+
+    const documents = rows.map(doc => {
+      let parsedTags: string[] = [];
+      if (doc.tags && typeof doc.tags === 'string' && doc.tags.trim() !== '') {
+        try {
+          parsedTags = JSON.parse(doc.tags);
+        } catch (e) {
+          console.warn(`Could not parse tags for document ${doc.id}: ${doc.tags}`);
+          parsedTags = [];
+        }
+      } else if (doc.tags && Array.isArray(doc.tags)) {
+        parsedTags = doc.tags;
+      }
+      return { ...doc, tags: parsedTags };
+    });
+
     return NextResponse.json(documents);
   } catch (error) {
     console.error("Error fetching documents:", error);

@@ -162,7 +162,6 @@ export function MainNav() {
                    <CollapsibleTrigger className="flex w-full items-center justify-start px-2 mb-1 cursor-pointer">
                       <h3 className={cn("text-xs font-semibold uppercase tracking-wider font-headline text-muted-foreground",
                         menu.colorVariant === 'client' && 'text-green-600 dark:text-green-500',
-                        menu.colorVariant === 'accent' && 'text-amber-600 dark:text-amber-500',
                         !menu.colorVariant && 'text-primary'
                       )}>
                         {menu.title}

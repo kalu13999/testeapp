@@ -1,15 +1,91 @@
 
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { getConnection, releaseConnection } from '@/lib/db';
 import type { PoolConnection } from 'mysql2/promise';
 import type { RawBook } from '@/lib/data';
 
-export async function GET() {
+/*export async function GET() {
   let connection: PoolConnection | null = null;
   try {
     connection = await getConnection();
     const [rows] = await connection.execute('SELECT * FROM books');
     return NextResponse.json(rows);
+  } catch (error) {
+    console.error("Error fetching books:", error);
+    return NextResponse.json({ error: 'Failed to fetch books' }, { status: 500 });
+  } finally {
+    if (connection) {
+      releaseConnection(connection);
+    }
+  }
+}*/
+
+
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const enriched = searchParams.get('enriched') === 'true';
+
+  let connection: PoolConnection | null = null;
+  try {
+    connection = await getConnection();
+    
+    if (enriched) {
+      // This is the new, more complex query to fetch enriched book data
+      const [rows] = await connection.execute(`
+        SELECT
+            b.*,
+            ds.name AS status,
+            p.name AS projectName,
+            p.clientId,
+            c.name AS clientName,
+            (SELECT COUNT(*) FROM documents d WHERE d.bookId = b.id) AS documentCount,
+            lt.storage_id as storageId,
+            st.nome as storageName,
+            sc.nome as scannerDeviceName
+        FROM
+            books b
+        LEFT JOIN
+            document_statuses ds ON b.statusId = ds.id
+        LEFT JOIN
+            projects p ON b.projectId = p.id
+        LEFT JOIN
+            clients c ON p.clientId = c.id
+        LEFT JOIN 
+            (
+                SELECT 
+                    lt_inner.*
+                FROM 
+                    log_transferencias lt_inner
+                INNER JOIN (
+                    SELECT 
+                        bookId, 
+                        MAX(data_fim) AS max_data_fim
+                    FROM 
+                        log_transferencias
+                    WHERE status = 'sucesso'
+                    GROUP BY 
+                        bookId
+                ) lt_max ON lt_inner.bookId = lt_max.bookId AND lt_inner.data_fim = lt_max.max_data_fim
+            ) lt ON b.id = lt.bookId
+        LEFT JOIN 
+            storages st ON lt.storage_id = st.id
+        LEFT JOIN 
+            scanners sc ON lt.scanner_id = sc.id;
+      `);
+      
+      // Calculate progress in JavaScript as it's simpler here
+      const enrichedBooks = (rows as any[]).map(book => ({
+        ...book,
+        progress: book.expectedDocuments > 0 ? Math.min(100, (book.documentCount / book.expectedDocuments) * 100) : 0,
+      }));
+      
+      return NextResponse.json(enrichedBooks);
+
+    } else {
+      // Original simple query
+      const [rows] = await connection.execute('SELECT * FROM books');
+      return NextResponse.json(rows);
+    }
   } catch (error) {
     console.error("Error fetching books:", error);
     return NextResponse.json({ error: 'Failed to fetch books' }, { status: 500 });

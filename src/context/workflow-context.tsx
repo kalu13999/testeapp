@@ -79,7 +79,7 @@ type AppContextType = {
   storages: Storage[];
   scanners: Scanner[];
   statuses: DocumentStatus[];
-  rawBooks: RawBook[];
+  //rawBooks: RawBook[];
   
   // Global Project Filter
   allProjects: EnrichedProject[];
@@ -179,7 +179,7 @@ type AppContextType = {
   updateBookStatus: (bookId: string, newStatusName: string, additionalUpdates?: Partial<EnrichedBook>) => Promise<any>;
   //
   handleValidationDeliveryBatch: (deliveryId: string, finalDecision: 'approve_remaining' | 'reject_all') => Promise<void>;
-  setRawBooks: React.Dispatch<React.SetStateAction<RawBook[]>>;
+  setEnrichedBooks: React.Dispatch<React.SetStateAction<EnrichedBook[]>>;
   setDeliveryBatches: React.Dispatch<React.SetStateAction<DeliveryBatch[]>>;
   setDeliveryBatchItems: React.Dispatch<React.SetStateAction<DeliveryBatchItem[]>>;
   setAuditLogs: React.Dispatch<React.SetStateAction<EnrichedAuditLog[]>>;
@@ -209,9 +209,16 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const [currentUser, setCurrentUser] = React.useState<User | null>(null);
   const [clients, setClients] = React.useState<Client[]>([]);
   const [users, setUsers] = React.useState<User[]>([]);
-  const [rawProjects, setRawProjects] = React.useState<Project[]>([]);
-  const [rawBooks, setRawBooks] = React.useState<RawBook[]>([]);
+  // States to hold ENRICHED data directly
+  const [allEnrichedProjects, setAllEnrichedProjects] = React.useState<EnrichedProject[]>([]);
+  const [enrichedBooks, setEnrichedBooks] = React.useState<EnrichedBook[]>([]);
+  const [documents, setDocuments] = React.useState<AppDocument[]>([]);
+
+
+  //const [rawProjects, setAllEnrichedProjects] = React.useState<Project[]>([]);
+  //const [rawBooks, setEnrichedBooks] = React.useState<RawBook[]>([]);
   const [rawDocuments, setRawDocuments] = React.useState<RawDocument[]>([]);
+
   const [auditLogs, setAuditLogs] = React.useState<EnrichedAuditLog[]>([]);
  const [bookObservations, setBookObservations] = React.useState<BookObservation[]>([]);
   const [processingBatches, setProcessingBatches] = React.useState<ProcessingBatch[]>([]);
@@ -287,8 +294,8 @@ const withMutation = async <T,>(action: () => Promise<T>): Promise<T | undefined
             storagesData, scannersData, transferLogsData, projectStoragesData,
             deliveryBatchesData, deliveryBatchItemsData, bookObservationsData,
         ] = await Promise.all([
-            dataApi.getClients(), dataApi.getRawProjects(),
-            dataApi.getRawBooks(), dataApi.getRawDocuments(), dataApi.getAuditLogs(),
+            dataApi.getClients(), dataApi.getEnrichedProjects(),
+            dataApi.getEnrichedBooks(), dataApi.getRawDocuments(), dataApi.getAuditLogs(),
             dataApi.getProcessingBatches(), dataApi.getProcessingBatchItems(), dataApi.getProcessingLogs(),
             dataApi.getProjectWorkflows(), dataApi.getRejectionTags(), dataApi.getDocumentStatuses(),
             dataApi.getStorages(), dataApi.getScanners(), dataApi.getTransferLogs(), dataApi.getProjectStorages(),
@@ -296,8 +303,8 @@ const withMutation = async <T,>(action: () => Promise<T>): Promise<T | undefined
         ]);
 
         setClients(clientsData);        
-        setRawProjects(projectsData);
-        setRawBooks(booksData);
+        setAllEnrichedProjects(projectsData);
+        setEnrichedBooks(booksData);
         setStatuses(statusesData);
         setRawDocuments(docsData);
         setStorages(storagesData);
@@ -364,11 +371,11 @@ const withMutation = async <T,>(action: () => Promise<T>): Promise<T | undefined
         const [
             booksData,
         ] = await Promise.all([
-            dataApi.getRawBooks()
+            dataApi.getEnrichedBooks()
                ]);
 
 
-        setRawBooks(booksData);
+        setEnrichedBooks(booksData);
 
 
       }
@@ -407,8 +414,8 @@ const loadData = async () => {
 
         setClients(clientsData);
         setUsers(usersData);
-        setRawProjects(projectsData);
-        setRawBooks(booksData);
+        setAllEnrichedProjects(projectsData);
+        setEnrichedBooks(booksData);
         setStatuses(statusesData);
         setRawDocuments(docsData);
         setStorages(storagesData);
@@ -591,188 +598,7 @@ const loadData = async () => {
   }, [currentUser, users]);
 
   
-  const documents: AppDocument[] = React.useMemo(() => {
-    return rawDocuments.map(doc => {
-        const book = rawBooks.find(b => b.id === doc.bookId);
-        const bookStatus = statuses.find(s => s.id === book?.statusId)?.name || 'Unknown';
-        let parsedTags: string[] = [];
-        if (doc.tags && typeof doc.tags === 'string' && (doc.tags as string).trim() !== '') {
-            try {
-                parsedTags = JSON.parse(doc.tags);
-            } catch (e) {
-                parsedTags = [];
-            }
-        } else if (doc.tags && Array.isArray(doc.tags)) {
-            parsedTags = doc.tags;
-        }
-        return {
-            ...doc,
-            client: clients.find(c => c.id === doc.clientId)?.name || 'Unknown',
-            status: bookStatus,
-            tags: parsedTags,
-        };
-    });
-  }, [rawDocuments]);/*, rawBooks, statuses, clients]);
 
-  /*const [documents, setDocuments] = React.useState<AppDocument[]>([]);
-
-  React.useEffect(() => {
-    const enrichedDocs = rawDocuments.map(doc => {
-      const book = rawBooks.find(b => b.id === doc.bookId);
-      const bookStatus = statuses.find(s => s.id === book?.statusId)?.name || 'Unknown';
-
-      let parsedTags: string[] = [];
-      if (doc.tags && typeof doc.tags === 'string' && (doc.tags as string).trim() !== '') {
-        try {
-          parsedTags = JSON.parse(doc.tags);
-        } catch (e) {
-          parsedTags = [];
-        }
-      } else if (doc.tags && Array.isArray(doc.tags)) {
-        parsedTags = doc.tags;
-      }
-
-      return {
-        ...doc,
-        client: clients.find(c => c.id === doc.clientId)?.name || 'Unknown',
-        status: bookStatus,
-        tags: parsedTags,
-      };
-    });
-
-    setDocuments(enrichedDocs);
-  }, [rawDocuments, rawBooks, statuses, clients]);*/
-
-
-  
-  const allEnrichedProjects: EnrichedProject[] = React.useMemo(() => {
-    const storageMap = new Map(storages.map(s => [s.id, s.nome]));
-    const scannerDeviceMap = new Map(scanners.map(s => [s.id, s.nome]));
-    const bookInfoMap = new Map<string, { storageName?: string, storageId?: string, scannerDeviceName?: string }>();
-
-    transferLogs.forEach(log => {
-      if (log.bookId && log.status === 'sucesso') {
-          const currentInfo = bookInfoMap.get(log.bookId) || {};
-          if (storageMap.has(Number(log.storage_id))) {
-              currentInfo.storageName = storageMap.get(Number(log.storage_id))!;
-              currentInfo.storageId = log.storage_id;
-          }
-           if (scannerDeviceMap.has(Number(log.scanner_id))) {
-              currentInfo.scannerDeviceName = scannerDeviceMap.get(Number(log.scanner_id))!;
-          }
-          bookInfoMap.set(log.bookId, currentInfo);
-      }
-    });
-  
-    return rawProjects.map(project => {
-        const client = clients.find(c => c.id === project.clientId);
-        
-        const projectBooks = rawBooks.filter(b => b.projectId === project.id).map(book => {
-            const bookDocuments = rawDocuments.filter(d => d.bookId === book.id);
-            const bookProgress = book.expectedDocuments > 0 ? (bookDocuments.length / book.expectedDocuments) * 100 : 0;
-            const extraInfo = bookInfoMap.get(book.id);
-            return {
-                ...book,
-                status: statuses.find(s => s.id === book.statusId)?.name || 'Unknown',
-                clientId: project.clientId,
-                projectName: project.name,
-                clientName: client?.name || 'Unknown Client',
-                documentCount: bookDocuments.length,
-                progress: Math.min(100, bookProgress),
-                storageName: extraInfo?.storageName,
-                storageId: extraInfo?.storageId,
-                scannerDeviceName: extraInfo?.scannerDeviceName,
-            };
-        });
-
-      const totalExpected = projectBooks.reduce((sum, book) => sum + book.expectedDocuments, 0);
-      const documentCount = projectBooks.reduce((sum, book) => sum + book.documentCount, 0);
-      const progress = totalExpected > 0 ? (documentCount / totalExpected) * 100 : 0;
-  
-      return {
-        ...project,
-        clientName: client?.name || 'Unknown Client',
-        documentCount,
-        totalExpected,
-        progress: Math.min(100, progress),
-        books: projectBooks,
-      };
-    });
-  }, [rawProjects, clients, rawBooks, rawDocuments, statuses, storages, transferLogs, users, scanners]);
-
-  /*const [allEnrichedProjects, setAllEnrichedProjects] = React.useState<EnrichedProject[]>([]);
-
-React.useEffect(() => {
-  const storageMap = new Map(storages.map(s => [s.id, s.nome]));
-  const scannerDeviceMap = new Map(scanners.map(s => [s.id, s.nome]));
-  const bookInfoMap = new Map<string, { storageName?: string, storageId?: string, scannerDeviceName?: string }>();
-
-  transferLogs.forEach(log => {
-    if (log.bookId && log.status === 'sucesso') {
-      const currentInfo = bookInfoMap.get(log.bookId) || {};
-      if (storageMap.has(Number(log.storage_id))) {
-        currentInfo.storageName = storageMap.get(Number(log.storage_id))!;
-        currentInfo.storageId = log.storage_id;
-      }
-      if (scannerDeviceMap.has(Number(log.scanner_id))) {
-        currentInfo.scannerDeviceName = scannerDeviceMap.get(Number(log.scanner_id))!;
-      }
-      bookInfoMap.set(log.bookId, currentInfo);
-    }
-  });
-
-  const enriched = rawProjects.map(project => {
-    const client = clients.find(c => c.id === project.clientId);
-
-    const projectBooks = rawBooks
-      .filter(b => b.projectId === project.id)
-      .map(book => {
-        const bookDocuments = rawDocuments.filter(d => d.bookId === book.id);
-        const bookProgress = book.expectedDocuments > 0
-          ? (bookDocuments.length / book.expectedDocuments) * 100
-          : 0;
-        const extraInfo = bookInfoMap.get(book.id);
-        return {
-          ...book,
-          status: statuses.find(s => s.id === book.statusId)?.name || 'Unknown',
-          clientId: project.clientId,
-          projectName: project.name,
-          clientName: client?.name || 'Unknown Client',
-          documentCount: bookDocuments.length,
-          progress: Math.min(100, bookProgress),
-          storageName: extraInfo?.storageName,
-          storageId: extraInfo?.storageId,
-          scannerDeviceName: extraInfo?.scannerDeviceName,
-        };
-      });
-
-    const totalExpected = projectBooks.reduce((sum, book) => sum + book.expectedDocuments, 0);
-    const documentCount = projectBooks.reduce((sum, book) => sum + book.documentCount, 0);
-    const progress = totalExpected > 0 ? (documentCount / totalExpected) * 100 : 0;
-
-    return {
-      ...project,
-      clientName: client?.name || 'Unknown Client',
-      documentCount,
-      totalExpected,
-      progress: Math.min(100, progress),
-      books: projectBooks,
-    };
-  });
-
-  setAllEnrichedProjects(enriched);
-}, [rawProjects, clients, rawBooks, rawDocuments, statuses, storages, transferLogs, users, scanners]);*/
-  
-  const enrichedBooks: EnrichedBook[] = React.useMemo(() => {
-      return allEnrichedProjects.flatMap(p => p.books);
-  }, [allEnrichedProjects]);
-
-  /*const [enrichedBooks, setEnrichedBooks] = React.useState<EnrichedBook[]>([]);
-
-  React.useEffect(() => {
-    const allBooks = allEnrichedProjects.flatMap(p => p.books);
-    setEnrichedBooks(allBooks);
-  }, [allEnrichedProjects]);*/
 
   const accessibleProjectsForUser = React.useMemo(() => {
     if (!currentUser) return [];
@@ -852,11 +678,11 @@ React.useEffect(() => {
               throw new Error('Falha ao eliminar cliente');
           }
           
-          const associatedProjectIds = rawProjects.filter(p => p.clientId === clientId).map(p => p.id);
+          const associatedProjectIds = allEnrichedProjects.filter(p => p.clientId === clientId).map(p => p.id);
           
           setClients(prev => prev.filter(c => c.id !== clientId));
-          setRawProjects(prev => prev.filter(p => p.clientId !== clientId));
-          setRawBooks(prev => prev.filter(b => !associatedProjectIds.includes(b.projectId)));
+          setAllEnrichedProjects(prev => prev.filter(p => p.clientId !== clientId));
+          setEnrichedBooks(prev => prev.filter(b => !associatedProjectIds.includes(b.projectId)));
           setRawDocuments(prev => prev.filter(d => d.clientId !== clientId));
           setRejectionTags(prev => prev.filter(t => t.clientId !== clientId));
 
@@ -986,7 +812,7 @@ React.useEffect(() => {
           });
           if (!response.ok) throw new Error('Falha ao criar o projeto');
           const newProject = await response.json();
-          setRawProjects(prev => [...prev, newProject]);
+          setAllEnrichedProjects(prev => [...prev, newProject]);
           setProjectWorkflows(prev => ({ ...prev, [newProject.id]: WORKFLOW_SEQUENCE }));
           logAction('Project Created', `New project "${newProject.name}" added.`, {});
           toast({ title: "Projeto Adicionado", description: `O projeto "${newProject.name}" foi criado.` });
@@ -1000,7 +826,7 @@ React.useEffect(() => {
   const updateProject = async (projectId: string, projectData: Partial<Omit<Project, 'id'>>) => {
     await withMutation(async () => {
       try {
-          const originalProject = rawProjects.find(p => p.id === projectId);
+          const originalProject = allEnrichedProjects.find(p => p.id === projectId);
           const updatedProjectData = { ...originalProject, ...projectData };
           const response = await fetch(`/api/projects/${projectId}`, {
               method: 'PUT',
@@ -1009,7 +835,7 @@ React.useEffect(() => {
           });
           if (!response.ok) throw new Error('Falha ao atualizar o projeto');
           const updatedProject = await response.json();
-          setRawProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...updatedProject } : p));
+          setAllEnrichedProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...updatedProject } : p));
           logAction('Project Updated', `Details for project "${updatedProject.name}" updated.`, {});
           toast({ title: "Projeto Atualizado" });
       } catch (error) {
@@ -1021,13 +847,13 @@ React.useEffect(() => {
 
   const deleteProject = async (projectId: string) => {
     await withMutation(async () => {
-        const projectToDelete = rawProjects.find(p => p.id === projectId);
+        const projectToDelete = allEnrichedProjects.find(p => p.id === projectId);
         try {
             const response = await fetch(`/api/projects/${projectId}`, { method: 'DELETE' });
             if (!response.ok) throw new Error('Falha ao eliminar projeto');
             if (selectedProjectId === projectId) setSelectedProjectId(null);
-            setRawProjects(prev => prev.filter(p => p.id !== projectId));
-            setRawBooks(prev => prev.filter(b => b.projectId !== projectId));
+            setAllEnrichedProjects(prev => prev.filter(p => p.id !== projectId));
+            setEnrichedBooks(prev => prev.filter(b => b.projectId !== projectId));
             setRawDocuments(prev => prev.filter(d => d.projectId !== projectId));
             setProjectWorkflows(prev => {
                 const newWorkflows = { ...prev };
@@ -1055,7 +881,7 @@ React.useEffect(() => {
             });
             if (!response.ok) throw new Error('Falha ao criar livro');
             const newRawBook = await response.json();
-            setRawBooks(prev => [...prev, newRawBook]);
+            setEnrichedBooks(prev => [...prev, newRawBook]);
             logAction('Book Added', `Book "${newRawBook.name}" was added to project.`, { bookId: newRawBook.id });
             toast({ title: "Livro Adicionado", description: `O livro "${newRawBook.name}" foi adicionado.` });
         } catch (error) {
@@ -1075,7 +901,7 @@ React.useEffect(() => {
             });
             if (!response.ok) throw new Error('Falha ao atualizar livro');
             const updatedRawBook = await response.json();
-            setRawBooks(prev => prev.map(b => b.id === bookId ? updatedRawBook : b));
+            setEnrichedBooks(prev => prev.map(b => b.id === bookId ? updatedRawBook : b));
             logAction('Book Updated', `Details for book "${updatedRawBook.name}" were updated.`, { bookId });
             toast({ title: "Livro Atualizado" });
         } catch (error) {
@@ -1087,11 +913,11 @@ React.useEffect(() => {
 
   const deleteBook = async (bookId: string) => {
       await withMutation(async () => {
-        const bookToDelete = rawBooks.find(b => b.id === bookId);
+        const bookToDelete = enrichedBooks.find(b => b.id === bookId);
         try {
             const response = await fetch(`/api/books/${bookId}`, { method: 'DELETE' });
             if (!response.ok) throw new Error('Falha ao eliminar livro');
-            setRawBooks(prev => prev.filter(b => b.id !== bookId));
+            setEnrichedBooks(prev => prev.filter(b => b.id !== bookId));
             setRawDocuments(prev => prev.filter(d => d.bookId !== bookId));
             logAction('Book Deleted', `Book "${bookToDelete?.name}" and its pages were deleted.`, { bookId });
             toast({ title: "Livro Eliminado", variant: "destructive" });
@@ -1112,7 +938,7 @@ React.useEffect(() => {
             });
             if (!response.ok) throw new Error('Falha ao importar livros');
             const createdBooks = await response.json();
-            setRawBooks(prev => [...prev, ...createdBooks]);
+            setEnrichedBooks(prev => [...prev, ...createdBooks]);
             logAction('Books Imported', `${createdBooks.length} books imported for project.`, {});
             toast({title: "Importação Bem-Sucedida", description: `${createdBooks.length} livros foram adicionados ao projeto.`});
         } catch (error) {
@@ -1126,7 +952,7 @@ const addBookObservation = async (bookId: string, observation: string) => {
     if (!currentUser) return;
     await withMutation(async () => {
         try {
-            const book = rawBooks.find(b => b.id === bookId);
+            const book = enrichedBooks.find(b => b.id === bookId);
             const bookStatus = statuses.find(s => s.id === book?.statusId)?.name;
 
             const response = await fetch('/api/book-observations', {
@@ -1516,7 +1342,7 @@ const addBookObservation = async (bookId: string, observation: string) => {
             bookPages.splice(position - 1, 0, createdPage);
             return [...otherPages, ...bookPages];
           });
-          setRawBooks(prev => prev.map(b => b.id === bookId ? { ...b, expectedDocuments: (b.expectedDocuments || 0) + 1 } : b));
+          setEnrichedBooks(prev => prev.map(b => b.id === bookId ? { ...b, expectedDocuments: (b.expectedDocuments || 0) + 1 } : b));
           logAction('Page Added', `New page added to "${book.name}" at position ${position}.`, { bookId, documentId: newPageId });
           toast({ title: "Página Adicionada" });
       } catch (error) {
@@ -1533,7 +1359,7 @@ const addBookObservation = async (bookId: string, observation: string) => {
             const response = await fetch(`/api/documents/${pageId}`, { method: 'DELETE' });
             if (!response.ok) throw new Error('Falha ao eliminar página');
             setRawDocuments(prev => prev.filter(p => p.id !== pageId));
-            setRawBooks(prev => prev.map(b => b.id === bookId ? {...b, expectedDocuments: (b.expectedDocuments || 1) - 1 } : b));
+            setEnrichedBooks(prev => prev.map(b => b.id === bookId ? {...b, expectedDocuments: (b.expectedDocuments || 1) - 1 } : b));
             logAction('Page Deleted', `Page "${page?.name}" was deleted from book.`, { bookId, documentId: pageId });
             toast({ title: "Página Eliminada", variant: "destructive" });
         } catch (error) {
@@ -1739,11 +1565,11 @@ const addBookObservation = async (bookId: string, observation: string) => {
 
 
 
-  const booksMapRef = React.useRef<Record<string, RawBook>>({});
+  const booksMapRef = React.useRef<Record<string, EnrichedBook>>({});
 
   React.useEffect(() => {
-    booksMapRef.current = Object.fromEntries(rawBooks.map(b => [b.id, b]));
-  }, [rawBooks]);
+    booksMapRef.current = Object.fromEntries(enrichedBooks.map(b => [b.id, b]));
+  }, [enrichedBooks]);
 
   const handleMarkAsShipped = (bookIds: string[]) => {
     withMutation(async () => {
@@ -1775,7 +1601,7 @@ const addBookObservation = async (bookId: string, observation: string) => {
       }
 
       // Atualiza o estado global apenas **uma vez**, evitando N re-renders
-      setRawBooks(Object.values(booksMapRef.current));
+      setEnrichedBooks(Object.values(booksMapRef.current));
 
       // Toast final resumido
       const successCount = bookIds.length - failedBooks.length;
@@ -1796,7 +1622,7 @@ const addBookObservation = async (bookId: string, observation: string) => {
       for (const bookId of bookIds) {
         try {
           const updatedBook = await updateBookStatus(bookId, 'In Transit');
-          setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
+          setEnrichedBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
           logAction('Book Shipped', `Client marked book "${updatedBook?.name}" as shipped.`, { bookId });
         } catch (error) {
            toast({ title: "Erro", description: `Não foi possível marcar o livro ${bookId} como enviado.`, variant: "destructive" });
@@ -1808,7 +1634,7 @@ const addBookObservation = async (bookId: string, observation: string) => {
 
   const handleConfirmReception = (bookId: string) => {
     withMutation(async () => {
-      const book = rawBooks.find(b => b.id === bookId);
+      const book = enrichedBooks.find(b => b.id === bookId);
       if (!book) return;
 
       const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
@@ -1819,7 +1645,7 @@ const addBookObservation = async (bookId: string, observation: string) => {
       if (moveResult !== true) return;
 
       const updatedBook = await updateBookStatus(bookId, newStatusName);
-      setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
+      setEnrichedBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
       logAction('Reception Confirmed', `Book "${updatedBook.name}" has been marked as received.`, { bookId });
       toast({ title: "Recepção Confirmada" });
     });
@@ -1829,9 +1655,9 @@ const addBookObservation = async (bookId: string, observation: string) => {
     setProcessingBookIds(prev => [...prev, bookId]);
     await withMutation(async () => {
       try {
-        const book = rawBooks.find(b => b.id === bookId);
+        const book = enrichedBooks.find(b => b.id === bookId);
         if (!book) throw new Error("Book not found");
-        const project = rawProjects.find(p => p.id === book.projectId);
+        const project = allEnrichedProjects.find(p => p.id === book.projectId);
         if (!project) throw new Error("Project not found");
 
         const response = await fetch(`/api/books/${bookId}/complete-scan`, {
@@ -1852,7 +1678,7 @@ const addBookObservation = async (bookId: string, observation: string) => {
         
         const { book: updatedRawBook, documents: newRawDocuments } = await response.json();
         
-        setRawBooks(prevBooks => prevBooks.map(b => b.id === bookId ? updatedRawBook : b));
+        setEnrichedBooks(prevBooks => prevBooks.map(b => b.id === bookId ? updatedRawBook : b));
         setRawDocuments(prevDocs => [...prevDocs, ...newRawDocuments]);
         
         const currentStatusName = statuses.find(s => s.id === book.statusId)?.name || 'Unknown';
@@ -1871,7 +1697,7 @@ const addBookObservation = async (bookId: string, observation: string) => {
 
   const handleMoveBookToNextStage = React.useCallback(async (bookId: string, currentStatus: string): Promise<boolean> => {
     console.log(`[handleMoveBookToNextStage] Starting for book ${bookId} from status ${currentStatus}`);
-    const book = rawBooks.find(b => b.id === bookId);
+    const book = enrichedBooks.find(b => b.id === bookId);
     if (!book || !book.projectId) {
       console.error(`[handleMoveBookToNextStage] Book or projectId not found for bookId ${bookId}`);
       return false;
@@ -1904,17 +1730,17 @@ const addBookObservation = async (bookId: string, observation: string) => {
     }
 
     const updatedBook = await updateBookStatus(bookId, newStatusName);
-    setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
+    setEnrichedBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
     logAction('Workflow Step', `Book "${book.name}" moved from ${currentStatus} to ${newStatusName}.`, { bookId });
     console.log(`[handleMoveBookToNextStage] Successfully moved book ${bookId} to ${newStatusName}`);
     return true;
-  }, [rawBooks, projectWorkflows, statuses, toast, logAction, updateBookStatus, moveBookFolder]);
+  }, [enrichedBooks, projectWorkflows, statuses, toast, logAction, updateBookStatus, moveBookFolder]);
 
 
   const handleAssignUser = async (bookId: string, userId: string, role: 'scanner' | 'indexer' | 'qc') => {
     withMutation(async () => {
       const user = users.find(u => u.id === userId);
-      const book = rawBooks.find(b => b.id === bookId);
+      const book = enrichedBooks.find(b => b.id === bookId);
       if (!user || !book || !book.projectId) return;
 
       const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
@@ -1937,7 +1763,7 @@ const addBookObservation = async (bookId: string, observation: string) => {
       else if (role === 'qc') { updates.qcUserId = userId; logMsg = 'Assigned for QC'; }
       
       const updatedBook = await updateBookStatus(bookId, newStatusName, updates);
-      setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
+      setEnrichedBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
       
       logAction(logMsg, `Book "${book.name}" assigned to ${user.name}.`, { bookId });
       toast({ title: "Livro Atribuído", description: `Atribuído a ${user.name} para ${role}.` });
@@ -1946,7 +1772,7 @@ const addBookObservation = async (bookId: string, observation: string) => {
 
   const reassignUser = (bookId: string, newUserId: string, role: 'scanner' | 'indexer' | 'qc') => {
     withMutation(async () => {
-      const book = rawBooks.find(b => b.id === bookId);
+      const book = enrichedBooks.find(b => b.id === bookId);
       const newUser = users.find(u => u.id === newUserId);
       if (!book || !newUser) return;
       const updateField: 'scannerUserId' | 'indexerUserId' | 'qcUserId' = `${role}UserId`;
@@ -1975,7 +1801,7 @@ const getLocalIP = async (): Promise<string> => {
 const openAppValidateScan = (bookId: string) => {
   
   withMutation(async () => {
-    const book = rawBooks.find(b => b.id === bookId);
+    const book = enrichedBooks.find(b => b.id === bookId);
     if (!book || !book.projectId || !currentUser) return;
 
     // Faz o pedido à API getip
@@ -2067,12 +1893,12 @@ const openAppValidateScan = (bookId: string) => {
 
   const handleStartTask = (bookId: string, role: 'scanner' | 'indexer' | 'qc') => {
     withMutation(async () => {
-        const book = rawBooks.find(b => b.id === bookId);
+        const book = enrichedBooks.find(b => b.id === bookId);
         if (!book || !book.projectId || !currentUser) return;
       
         if (role === 'scanner') {
             const updatedBook = await updateBookStatus(bookId, 'Scanning Started', { scanStartTime: getDbSafeDate() });
-            setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
+            setEnrichedBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
             logAction('Scanning Started', `Scanning process initiated for book.`, { bookId });
             toast({ title: "Digitalização Iniciada" });
             return;
@@ -2113,7 +1939,7 @@ const openAppValidateScan = (bookId: string) => {
             return;
         }
 
-        const project = rawProjects.find(p => p.id === book.projectId);
+        const project = allEnrichedProjects.find(p => p.id === book.projectId);
         if (!project) {
             toast({ title: "Projeto Não Encontrado", description: `Não foi possível encontrar o projeto para o livro "${book.name}".`, variant: "destructive" });
             return;
@@ -2142,7 +1968,7 @@ const openAppValidateScan = (bookId: string) => {
         }
 
         const updatedBook = await updateBookStatus(bookId, newStatusName, updates);
-        setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
+        setEnrichedBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
 
         logAction(logMsg, `${logMsg} processo iniciado para o livro.`, { bookId });
         toast({ title: logMsg });
@@ -2161,7 +1987,7 @@ const openAppValidateScan = (bookId: string) => {
         'Checking Started': { qcEndTime: getDbSafeDate() },
       };
 
-      const book = rawBooks.find(b => b.id === bookId);
+      const book = enrichedBooks.find(b => b.id === bookId);
       let msgfinal = ""
       if(stage === 'Scanning Started'){
         try {
@@ -2209,7 +2035,7 @@ const openAppValidateScan = (bookId: string) => {
       const update = updateFields[stage];
       if (update) {
         await updateBook(bookId, update);
-        const book = rawBooks.find(b => b.id === bookId);
+        const book = enrichedBooks.find(b => b.id === bookId);
         logAction('Task Completed', `Task "${stage}" completed for book "${book?.name}".`, { bookId });
         if(msgfinal === ""){
           toast({ title: 'Tarefa Completa' });
@@ -2234,7 +2060,7 @@ const openAppValidateScan = (bookId: string) => {
       if (update) {
         await updateBook(bookId, update);
   
-        const book = rawBooks.find(b => b.id === bookId);
+        const book = enrichedBooks.find(b => b.id === bookId);
         logAction(
           'Task Completion Cancelled',
           `Task "${stage}" cancelled for book "${book?.name}".`,
@@ -2248,7 +2074,7 @@ const openAppValidateScan = (bookId: string) => {
 
   const handleCancelTask = (bookId: string, currentStatus: string) => {
     withMutation(async () => {
-      const book = rawBooks.find(b => b.id === bookId);
+      const book = enrichedBooks.find(b => b.id === bookId);
       if (!book) return;
       
       const updates: { [key: string]: { bookStatus: string, logMsg: string, clearFields: Partial<RawBook> } } = {
@@ -2264,7 +2090,7 @@ const openAppValidateScan = (bookId: string) => {
       if (moveResult !== true) return;
       
       const updatedBook = await updateBookStatus(bookId, update.bookStatus, update.clearFields);
-      setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
+      setEnrichedBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
 
       logAction('Task Cancelled', `${update.logMsg} for book "${book.name}" was cancelled.`, { bookId });
       toast({ title: 'Tarefa Cancelada', description: `Livro retornado para a fila ${update.bookStatus}.`, variant: 'destructive' });
@@ -2273,7 +2099,7 @@ const openAppValidateScan = (bookId: string) => {
   
   const handleAdminStatusOverride = (bookId: string, newStatusName: string, reason: string) => {
     withMutation(async () => {
-      const book = rawBooks.find(b => b.id === bookId);
+      const book = enrichedBooks.find(b => b.id === bookId);
       const newStatus = statuses.find(s => s.name === newStatusName);
       if (!book || !newStatus) return;
       const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
@@ -2289,7 +2115,7 @@ const openAppValidateScan = (bookId: string) => {
       if (moveResult !== true) return;
 
       const updatedBook = await updateBookStatus(bookId, newStatus.name, updates);
-      setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
+      setEnrichedBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
       logAction('Admin Status Override', `Status of "${book.name}" manually changed to "${newStatus.name}". Reason: ${reason}`, { bookId });
       toast({ title: "Status Sobrescrito", description: `Livro agora está no status: ${newStatus.name}` });
     });
@@ -2324,7 +2150,7 @@ const openAppValidateScan = (bookId: string) => {
         const fromStatusName = 'Ready for Processing';
         const toStatusName = 'In Processing';
         for (const bookId of bookIds) {
-          const book = rawBooks.find(b => b.id === bookId);
+          const book = enrichedBooks.find(b => b.id === bookId);
           if (book) {
             const moveResult = await moveBookFolder(book.name, fromStatusName, toStatusName);
             if (!moveResult) {
@@ -2344,7 +2170,7 @@ const openAppValidateScan = (bookId: string) => {
         setProcessingBatches(prev => [newBatch, ...prev]);
         const statusId = statuses.find(s => s.name === 'In Processing')?.id;
         if(statusId) {
-            setRawBooks(prev => prev.map(b => bookIds.includes(b.id) ? { ...b, statusId } : b));
+            setEnrichedBooks(prev => prev.map(b => bookIds.includes(b.id) ? { ...b, statusId } : b));
         }
         
         logAction('Processing Batch Started', `Batch ${newBatch.id} started with ${bookIds.length} books.`, {});
@@ -2357,7 +2183,7 @@ const openAppValidateScan = (bookId: string) => {
           return;
         }
 
-        const firstBook = rawBooks.find(b => b.id === bookIds[0]);
+        const firstBook = enrichedBooks.find(b => b.id === bookIds[0]);
         if (!firstBook) {
             toast({ title: "Erro", description: "Não foi possível encontrar o livro para determinar o ID do projeto.", variant: "destructive" });
             return;
@@ -2402,7 +2228,7 @@ const openAppValidateScan = (bookId: string) => {
             toast({ title: "Erro", description: "Não foi possível encontrar itens para este lote.", variant: "destructive" });
             return;
         }
-        const book = rawBooks.find(b => b.id === firstItemInBatch.bookId);
+        const book = enrichedBooks.find(b => b.id === firstItemInBatch.bookId);
         if (!book) {
             toast({ title: "Erro", description: `Não foi possível encontrar o livro com ID ${firstItemInBatch.bookId}.`, variant: "destructive" });
             return;
@@ -2512,7 +2338,7 @@ const openAppValidateScan = (bookId: string) => {
 
                 if (!moveResult) {
                     allSucceeded = false;
-                    const book = rawBooks.find(b => b.id === item.bookId);
+                    const book = enrichedBooks.find(b => b.id === item.bookId);
                     if (book) {
                         failedBooks.push(book.name);
                         logAction('Final QC Failed', `Book "${book.name}" failed to move to Final QC.`, { bookId: item.bookId });
@@ -2561,9 +2387,9 @@ const openAppValidateScan = (bookId: string) => {
         
         if (status === 'rejected') {
           await updateBook(bookId, { rejectionReason: reason });
-          logAction('Rejection Marked', `Book "${rawBooks.find(b => b.id === bookId)?.name}" marked as rejected. Reason: ${reason}`, { bookId });
+          logAction('Rejection Marked', `Book "${enrichedBooks.find(b => b.id === bookId)?.name}" marked as rejected. Reason: ${reason}`, { bookId });
         } else if (status === 'approved') {
-          const book = rawBooks.find(b => b.id === bookId);
+          const book = enrichedBooks.find(b => b.id === bookId);
           if (book?.rejectionReason) {
             await updateBook(bookId, { rejectionReason: null });
           }
@@ -2589,7 +2415,7 @@ const openAppValidateScan = (bookId: string) => {
 
         try {
             for (const item of itemsInBatch) {
-                const book = rawBooks.find(b => b.id === item.bookId);
+                const book = enrichedBooks.find(b => b.id === item.bookId);
                 if (!book) continue;
 
                 const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
@@ -2622,13 +2448,13 @@ const openAppValidateScan = (bookId: string) => {
             const [
                 booksData, batchesData, itemsData, auditData
             ] = await Promise.all([
-                dataApi.getRawBooks(),
+                dataApi.getEnrichedBooks(),
                 dataApi.getDeliveryBatches(),
                 dataApi.getDeliveryBatchItems(),
                 dataApi.getAuditLogs(),
             ]);
             
-            setRawBooks(booksData);
+            setEnrichedBooks(booksData);
             setDeliveryBatches(batchesData);
             setDeliveryBatchItems(itemsData);
             const enrichedAuditLogs = auditData.map(log => ({ ...log, user: users.find(u => u.id === log.userId)?.name || 'Unknown' })).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -2679,7 +2505,7 @@ const openAppValidateScan = (bookId: string) => {
 
   const handleFinalize = (bookId: string) => {
     withMutation(async () => {
-      const book = rawBooks.find(b => b.id === bookId);
+      const book = enrichedBooks.find(b => b.id === bookId);
       if (!book || !book.projectId) return;
       const workflow = projectWorkflows[book.projectId] || [];
       const nextStageKey = getNextEnabledStage('finalized', workflow) || 'archive';
@@ -2691,7 +2517,7 @@ const openAppValidateScan = (bookId: string) => {
       if (moveResult !== true) return;
 
       const updatedBook = await updateBookStatus(bookId, newStatus);
-      setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
+      setEnrichedBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
       logAction('Book Archived', `Book "${book?.name}" was finalized and moved to ${newStatus}.`, { bookId });
       toast({ title: "Livro Arquivado" });
     });
@@ -2699,7 +2525,7 @@ const openAppValidateScan = (bookId: string) => {
   
   const handleMarkAsCorrected = (bookId: string) => {
     withMutation(async () => {
-      const book = rawBooks.find(b => b.id === bookId);
+      const book = enrichedBooks.find(b => b.id === bookId);
       if (!book || !book.projectId) return;
       const workflow = projectWorkflows[book.projectId] || [];
       const nextStageKey = getNextEnabledStage('client-rejections', workflow) || 'corrected';
@@ -2711,7 +2537,7 @@ const openAppValidateScan = (bookId: string) => {
       if (moveResult !== true) return;
       
       const updatedBook = await updateBookStatus(bookId, newStatus, { rejectionReason: null });
-      setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
+      setEnrichedBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
       logAction('Marked as Corrected', `Book "${book.name}" marked as corrected after client rejection.`, { bookId });
       toast({ title: "Livro Corrigido" });
     });
@@ -2719,7 +2545,7 @@ const openAppValidateScan = (bookId: string) => {
 
   const handleResubmit = (bookId: string, targetStage: string) => {
     withMutation(async () => {
-      const book = rawBooks.find(b => b.id === bookId);
+      const book = enrichedBooks.find(b => b.id === bookId);
       if (!book) return;
       const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
       if (!currentStatusName) return;
@@ -2728,7 +2554,7 @@ const openAppValidateScan = (bookId: string) => {
       if (moveResult !== true) return;
 
       const updatedBook = await updateBookStatus(bookId, targetStage);
-      setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
+      setEnrichedBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
       logAction('Book All Resubmitted', `Book "${book.name}" resubmitted to ${targetStage}.`, { bookId });
       toast({ title: "Todos os Livros Reenviados" });
     });
@@ -2736,7 +2562,7 @@ const openAppValidateScan = (bookId: string) => {
 
     const handleResubmitCopyTifs = (bookId: string, targetStage: string) => {
     withMutation(async () => {
-      const book = rawBooks.find(b => b.id === bookId);
+      const book = enrichedBooks.find(b => b.id === bookId);
       if (!book) return;
       const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
       if (!currentStatusName) return;
@@ -2745,7 +2571,7 @@ const openAppValidateScan = (bookId: string) => {
       if (moveResult !== true) return;
 
       const updatedBook = await updateBookStatus(bookId, targetStage);
-      setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
+      setEnrichedBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
       logAction('Book Copy Tifs Resubmitted', `Book "${book.name}" resubmitted to ${targetStage}.`, { bookId });
       toast({ title: "Reenvio de TIFs do Livro", description: `Livro "${book.name}" reenviado para ${targetStage}.` });
     });
@@ -2754,7 +2580,7 @@ const openAppValidateScan = (bookId: string) => {
 
     const handleResubmitMoveTifs = (bookId: string, targetStage: string) => {
     withMutation(async () => {
-      const book = rawBooks.find(b => b.id === bookId);
+      const book = enrichedBooks.find(b => b.id === bookId);
       if (!book) return;
       const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
       if (!currentStatusName) return;
@@ -2763,7 +2589,7 @@ const openAppValidateScan = (bookId: string) => {
       if (moveResult !== true) return;
 
       const updatedBook = await updateBookStatus(bookId, targetStage);
-      setRawBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
+      setEnrichedBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
       logAction('Book Move Tifs Resubmitted', `Book "${book.name}" resubmitted to ${targetStage}.`, { bookId });
       toast({ title: "Reenvio de TIFs do Livro", description: `Livro "${book.name}" reenviado para ${targetStage}.` });
     });
@@ -2796,7 +2622,7 @@ const openAppValidateScan = (bookId: string) => {
         
         // Move all books to the next stage
         for (const bookId of bookIds) {
-          const book = rawBooks.find(b => b.id === bookId);
+          const book = enrichedBooks.find(b => b.id === bookId);
           if (book) {
               await handleMoveBookToNextStage(book.id, 'Delivery');
           }
@@ -2826,7 +2652,7 @@ const openAppValidateScan = (bookId: string) => {
         return [];
       }
   
-      const projectsToScan = selectedProjectId ? rawProjects.filter(p => p.id === selectedProjectId) : accessibleProjectsForUser;
+      const projectsToScan = selectedProjectId ? allEnrichedProjects.filter(p => p.id === selectedProjectId) : accessibleProjectsForUser;
       let availableBooks: EnrichedBook[] = [];
   
       for (const project of projectsToScan) {
@@ -2902,7 +2728,7 @@ const openAppValidateScan = (bookId: string) => {
         // --- INÍCIO DA LÓGICA MODIFICADA ---
 
         // 1. Determinar a lista de projetos a verificar
-        const projectsToScan = selectedProjectId ? rawProjects.filter(p => p.id === selectedProjectId) : accessibleProjectsForUser;
+        const projectsToScan = selectedProjectId ? allEnrichedProjects.filter(p => p.id === selectedProjectId) : accessibleProjectsForUser;
 
         for (const project of projectsToScan) {
             const projectWorkflow = projectWorkflows[project.id] || [];
@@ -3034,7 +2860,7 @@ const openAppValidateScan = (bookId: string) => {
               const failedMoves: string[] = [];
       
               for (const item of itemsInBatch) {
-                  const book = rawBooks.find(b => b.id === item.bookId);
+                  const book = enrichedBooks.find(b => b.id === item.bookId);
                   if (!book) continue;
       
                   const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
@@ -3056,7 +2882,7 @@ const openAppValidateScan = (bookId: string) => {
                       const moveResult = await moveBookFolder(book.name, currentStatusName, newStatusName);
                       if(moveResult) {
                           const updatedBook = await updateBookStatus(book.id, newStatusName);
-                          setRawBooks(prev => prev.map(b => b.id === book.id ? updatedBook : b));
+                          setEnrichedBooks(prev => prev.map(b => b.id === book.id ? updatedBook : b));
                           await logAction(
                               newStatusName === 'Client Rejected' ? 'Client Rejection' : 'Client Approval',
                               `Batch Finalization: Book status set to ${newStatusName}.`,
@@ -3128,7 +2954,7 @@ const openAppValidateScan = (bookId: string) => {
     rejectionTags,
     storages,
     scanners,
-    rawBooks,
+    //rawBooks,
     statuses,
     allProjects: allEnrichedProjects,
     accessibleProjectsForUser,
@@ -3166,7 +2992,7 @@ const openAppValidateScan = (bookId: string) => {
     moveTifsBookFolder,
     copyTifsBookFolder,
     updateBookStatus,
-    setRawBooks,
+    setEnrichedBooks,
     setDeliveryBatches,
     setDeliveryBatchItems,
     setAuditLogs,

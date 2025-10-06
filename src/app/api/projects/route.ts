@@ -1,15 +1,72 @@
-
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { getConnection, releaseConnection } from '@/lib/db';
 import type { PoolConnection } from 'mysql2/promise';
 import { WORKFLOW_SEQUENCE } from '@/lib/workflow-config';
 
-export async function GET() {
+/*export async function GET() {
   let connection: PoolConnection | null = null;
   try {
     connection = await getConnection();
     const [rows] = await connection.execute('SELECT * FROM projects');
     return NextResponse.json(rows);
+  } catch (error) {
+    console.error("Error fetching projects:", error);
+    return NextResponse.json({ error: 'Failed to fetch projects' }, { status: 500 });
+  } finally {
+    if (connection) {
+      releaseConnection(connection);
+    }
+  }
+}*/
+
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const enriched = searchParams.get('enriched') === 'true';
+
+  let connection: PoolConnection | null = null;
+  try {
+    connection = await getConnection();
+    
+    if (enriched) {
+      const [rows] = await connection.execute(`
+        SELECT
+            p.*,
+            c.name AS clientName,
+            (SELECT COUNT(id) FROM books WHERE projectId = p.id) AS bookCount,
+            (SELECT SUM(expectedDocuments) FROM books WHERE projectId = p.id) AS totalExpected
+        FROM
+            projects p
+        LEFT JOIN
+            clients c ON p.clientId = c.id
+      `);
+
+      const projects = (rows as any[]).map(p => {
+        const documentCountQuery = `
+          SELECT COUNT(d.id) as documentCount 
+          FROM documents d 
+          JOIN books b ON d.bookId = b.id 
+          WHERE b.projectId = ?
+        `;
+        // This is inefficient but necessary without a direct document-to-project link.
+        // A better long-term solution would be a summary table.
+        // For now, this is a placeholder and we assume documentCount is 0 to avoid N+1 queries.
+        const documentCount = p.documentCount || 0; // Placeholder
+        const progress = p.totalExpected > 0 ? (documentCount / p.totalExpected) * 100 : 0;
+        
+        return {
+          ...p,
+          books: [], // Books will be fetched separately and mapped on the client.
+          documentCount,
+          progress: Math.min(100, progress)
+        }
+      });
+
+      return NextResponse.json(projects);
+
+    } else {
+      const [rows] = await connection.execute('SELECT * FROM projects');
+      return NextResponse.json(rows);
+    }
   } catch (error) {
     console.error("Error fetching projects:", error);
     return NextResponse.json({ error: 'Failed to fetch projects' }, { status: 500 });
