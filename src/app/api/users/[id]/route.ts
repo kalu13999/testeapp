@@ -4,23 +4,27 @@ import { getConnection, releaseConnection } from '@/lib/db';
 import type { PoolConnection, RowDataPacket } from 'mysql2/promise';
 import { User } from '@/lib/data';
 
+async function getEnrichedUser(connection: PoolConnection, userId: string) {
+    const [rows] = await connection.execute<RowDataPacket[]>('SELECT * FROM users WHERE id = ?', [userId]);
+    if (rows.length === 0) {
+        return null;
+    }
+    const user = rows[0] as User;
+    const [projectRows] = await connection.execute<RowDataPacket[]>('SELECT projectId FROM user_projects WHERE userId = ?', [userId]);
+    user.projectIds = projectRows.map(p => p.projectId);
+    return user;
+}
+
+
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   const { id } = params;
   let connection: PoolConnection | null = null;
   try {
     connection = await getConnection();
-    const [rows] = await connection.execute<RowDataPacket[]>('SELECT * FROM users WHERE id = ?', [id]);
-    if (Array.isArray(rows) && rows.length === 0) {
+    const user = await getEnrichedUser(connection, id);
+    if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
-    
-    const user = Array.isArray(rows) ? rows[0] : null;
-
-    if (user) {
-        const [projectRows] = await connection.execute<RowDataPacket[]>('SELECT projectId FROM user_projects WHERE userId = ?', [id]);
-        (user as User).projectIds = projectRows.map((p: any) => p.projectId);
-    }
-
     return NextResponse.json(user);
   } catch (error) {
     console.error(`Error fetching user ${id}:`, error);
@@ -54,7 +58,6 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     if (info !== undefined) updateFields.info = info;
     if (lastLogin !== undefined) updateFields.lastLogin = lastLogin;
     
-    // Explicitly handle clientId based on role
     if (role !== undefined) {
       updateFields.clientId = ['Client', 'Client Manager', 'Client Operator'].includes(role) ? clientId : null;
     }
@@ -67,7 +70,6 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       await connection.execute(query, values);
     }
 
-    // Always update project associations, but clear them for client roles
     if (projectIds !== undefined) {
       await connection.execute('DELETE FROM user_projects WHERE userId = ?', [id]);
       if (Array.isArray(projectIds) && projectIds.length > 0 && role && !['Admin', 'Client', 'Client Manager', 'Client Operator'].includes(role)) {
@@ -78,12 +80,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     
     await connection.commit();
 
-    const [rows] = await connection.execute('SELECT * FROM users WHERE id = ?', [id]);
-    const finalUser = Array.isArray(rows) ? rows[0] as User : null;
-    if (finalUser) {
-        const [projectRows] = await connection.execute('SELECT projectId FROM user_projects WHERE userId = ?', [id]) as RowDataPacket[][];
-        finalUser.projectIds = projectRows.map(p => p.projectId);
-    }
+    const finalUser = await getEnrichedUser(connection, id);
 
     releaseConnection(connection);
     return NextResponse.json(finalUser);
@@ -109,10 +106,10 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         connection = await getConnection();
         await connection.execute('UPDATE users SET status = ? WHERE id = ?', [status, id]);
         
-        const [rows] = await connection.execute('SELECT * FROM users WHERE id = ?', [id]);
+        const updatedUser = await getEnrichedUser(connection, id);
         
         releaseConnection(connection);
-        return NextResponse.json(Array.isArray(rows) ? rows[0] : null);
+        return NextResponse.json(updatedUser);
     } catch (error) {
         console.error(`Error updating user status for ${id}:`, error);
         return NextResponse.json({ error: 'Failed to update user status' }, { status: 500 });
@@ -127,11 +124,16 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
   let connection: PoolConnection | null = null;
   try {
     connection = await getConnection();
+    await connection.beginTransaction();
+
+    await connection.execute('DELETE FROM user_projects WHERE userId = ?', [id]);
     await connection.execute('DELETE FROM users WHERE id = ?', [id]);
-    
+
+    await connection.commit();
     releaseConnection(connection);
     return new Response(null, { status: 204 });
   } catch (error) {
+    if (connection) await connection.rollback();
     console.error(`Error deleting user ${id}:`, error);
     return NextResponse.json({ error: 'Failed to delete user' }, { status: 500 });
   } finally {

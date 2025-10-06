@@ -4,6 +4,18 @@ import { getConnection, releaseConnection } from '@/lib/db';
 import type { PoolConnection, RowDataPacket } from 'mysql2/promise';
 import type { User } from '@/lib/data';
 
+async function getEnrichedUser(connection: PoolConnection, userId: string) {
+    const [rows] = await connection.execute<RowDataPacket[]>('SELECT * FROM users WHERE id = ?', [userId]);
+    if (rows.length === 0) {
+        return null;
+    }
+    const user = rows[0] as User;
+    const [projectRows] = await connection.execute<RowDataPacket[]>('SELECT projectId FROM user_projects WHERE userId = ?', [userId]);
+    user.projectIds = projectRows.map(p => p.projectId);
+    return user;
+}
+
+
 export async function GET() {
   let connection: PoolConnection | null = null;
   try {
@@ -55,8 +67,7 @@ export async function POST(request: Request) {
     const newUser = {
       id: newUserId,
       username,
-      // In a real app, hash the password here.
-      password: password || 'password', // Default password if not provided
+      password: password || 'password',
       name,
       email: email || null,
       role,
@@ -78,18 +89,13 @@ export async function POST(request: Request) {
     await connection.execute(userInsertQuery, Object.values(newUser));
 
     if (projectIds && Array.isArray(projectIds) && projectIds.length > 0 && !['Admin', 'Client', 'Client Manager', 'Client Operator'].includes(role)) {
-      const projectValues = projectIds.map(projectId => [newUserId, projectId]);
+      const projectValues = projectIds.map((projectId: string) => [newUserId, projectId]);
       await connection.query('INSERT INTO user_projects (userId, projectId) VALUES ?', [projectValues]);
     }
     
     await connection.commit();
     
-    // Fetch the newly created user to return it, including their project IDs
-    const [rows] = await connection.execute('SELECT * FROM users WHERE id = ?', [newUserId]);
-    const finalUser = Array.isArray(rows) ? rows[0] as User : null;
-    if (finalUser) {
-        finalUser.projectIds = projectIds || [];
-    }
+    const finalUser = await getEnrichedUser(connection, newUserId);
     
     releaseConnection(connection);
     return NextResponse.json(finalUser, { status: 201 });
