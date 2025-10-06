@@ -252,9 +252,85 @@ const withMutation = async <T,>(action: () => Promise<T>): Promise<T | undefined
     }
   };
 
+  const loadInitialData = React.useCallback(async (isSilent = false) => {
+    if (!isSilent) {
+        setLoading(true);
+    }
+    try {
+        const [
+            usersData, permissionsData, rolesData, clientsData, projectsData, booksData, 
+            docsData, auditData, batchesData, batchItemsData, logsData,
+            workflowsData, rejectionData, statusesData,
+            storagesData, scannersData, transferLogsData, projectStoragesData,
+            deliveryBatchesData, deliveryBatchItemsData, bookObservationsData,
+        ] = await Promise.all([
+            dataApi.getUsers(), dataApi.getPermissions(), dataApi.getRoles(), dataApi.getClients(),
+            dataApi.getEnrichedProjects(), dataApi.getEnrichedBooks(), dataApi.getRawDocuments(), 
+            dataApi.getAuditLogs(), dataApi.getProcessingBatches(), dataApi.getProcessingBatchItems(),
+            dataApi.getProcessingLogs(), dataApi.getProjectWorkflows(), dataApi.getRejectionTags(),
+            dataApi.getDocumentStatuses(), dataApi.getStorages(), dataApi.getScanners(),
+            dataApi.getTransferLogs(), dataApi.getProjectStorages(), dataApi.getDeliveryBatches(),
+            dataApi.getDeliveryBatchItems(), dataApi.getBookObservations(),
+        ]);
 
+        setUsers(usersData);
+        setPermissions(permissionsData);
+        setRoles(rolesData);
+        setClients(clientsData);
+        setEnrichedBooks(booksData);
+        setStatuses(statusesData);
+        setRawDocuments(docsData);
+        setStorages(storagesData);
+        setScanners(scannersData);
+        setTransferLogs(transferLogsData);
+        setProjectStorages(projectStoragesData);
+        setBookObservations(bookObservationsData);
 
-  const loadInitialData = React.useCallback(async () => {
+        const enrichedAuditLogs = auditData
+            .map(log => ({ ...log, user: usersData.find(u => u.id === log.userId)?.name || 'Unknown' }))
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setAuditLogs(enrichedAuditLogs);
+
+        setProcessingBatches(batchesData);
+        setProcessingBatchItems(batchItemsData);
+        setProcessingLogs(logsData);
+        setDeliveryBatches(deliveryBatchesData);
+        setDeliveryBatchItems(deliveryBatchItemsData);
+        setProjectWorkflows(workflowsData);
+        setRejectionTags(rejectionData);
+
+        const projectsWithBooks = projectsData.map(p => ({
+          ...p,
+          books: booksData.filter(b => b.projectId === p.id)
+        }));
+        setAllEnrichedProjects(projectsWithBooks);
+
+        const storedUserId = localStorage.getItem('flowvault_userid');
+        if (storedUserId) {
+            const user = usersData.find(u => u.id === storedUserId);
+            if (user) {
+              setCurrentUser(user);
+              const storedHistory = localStorage.getItem(`nav_history_${user.id}`);
+              if(storedHistory) {
+                setNavigationHistory(JSON.parse(storedHistory));
+              }
+            } else {
+              setIsChecking(false);
+            }
+        } else {
+          setIsChecking(false);
+        }
+    } catch (error) {
+        console.error("Failed to load initial data", error);
+        toast({title: "Erro ao Carregar Dados", description: "Não foi possível conectar ao servidor. Por favor, verifique a sua conexão e atualize.", variant: "destructive"});
+    } finally {
+        if (!isSilent) {
+            setLoading(false);
+        }
+    }
+  }, [toast]);
+
+  const loadInitialData_OLD = React.useCallback(async () => {
     try {
         setLoading(true);
         
@@ -597,10 +673,191 @@ const loadData = async () => {
     }
   }, [currentUser, users]);
 
+    /*const documents: AppDocument[] = React.useMemo(() => {
+    return rawDocuments.map(doc => {
+        const book = rawBooks.find(b => b.id === doc.bookId);
+        const bookStatus = statuses.find(s => s.id === book?.statusId)?.name || 'Unknown';
+        let parsedTags: string[] = [];
+        if (doc.tags && typeof doc.tags === 'string' && (doc.tags as string).trim() !== '') {
+            try {
+                parsedTags = JSON.parse(doc.tags);
+            } catch (e) {
+                parsedTags = [];
+            }
+        } else if (doc.tags && Array.isArray(doc.tags)) {
+            parsedTags = doc.tags;
+        }
+        return {
+            ...doc,
+            client: clients.find(c => c.id === doc.clientId)?.name || 'Unknown',
+            status: bookStatus,
+            tags: parsedTags,
+        };
+    });
+  }, [rawDocuments, rawBooks, statuses, clients]);*/
+
+  /*const [documents, setDocuments] = React.useState<AppDocument[]>([]);
+
+  React.useEffect(() => {
+    const enrichedDocs = rawDocuments.map(doc => {
+      const book = rawBooks.find(b => b.id === doc.bookId);
+      const bookStatus = statuses.find(s => s.id === book?.statusId)?.name || 'Unknown';
+
+      let parsedTags: string[] = [];
+      if (doc.tags && typeof doc.tags === 'string' && (doc.tags as string).trim() !== '') {
+        try {
+          parsedTags = JSON.parse(doc.tags);
+        } catch (e) {
+          parsedTags = [];
+        }
+      } else if (doc.tags && Array.isArray(doc.tags)) {
+        parsedTags = doc.tags;
+      }
+
+      return {
+        ...doc,
+        client: clients.find(c => c.id === doc.clientId)?.name || 'Unknown',
+        status: bookStatus,
+        tags: parsedTags,
+      };
+    });
+
+    setDocuments(enrichedDocs);
+  }, [rawDocuments, rawBooks, statuses, clients]);*/
+
+
+  /*
+  const allEnrichedProjects: EnrichedProject[] = React.useMemo(() => {
+    const storageMap = new Map(storages.map(s => [s.id, s.nome]));
+    const scannerDeviceMap = new Map(scanners.map(s => [s.id, s.nome]));
+    const bookInfoMap = new Map<string, { storageName?: string, storageId?: string, scannerDeviceName?: string }>();
+
+    transferLogs.forEach(log => {
+      if (log.bookId && log.status === 'sucesso') {
+          const currentInfo = bookInfoMap.get(log.bookId) || {};
+          if (storageMap.has(Number(log.storage_id))) {
+              currentInfo.storageName = storageMap.get(Number(log.storage_id))!;
+              currentInfo.storageId = log.storage_id;
+          }
+           if (scannerDeviceMap.has(Number(log.scanner_id))) {
+              currentInfo.scannerDeviceName = scannerDeviceMap.get(Number(log.scanner_id))!;
+          }
+          bookInfoMap.set(log.bookId, currentInfo);
+      }
+    });
   
+    return rawProjects.map(project => {
+        const client = clients.find(c => c.id === project.clientId);
+        
+        const projectBooks = rawBooks.filter(b => b.projectId === project.id).map(book => {
+            const bookDocuments = rawDocuments.filter(d => d.bookId === book.id);
+            const bookProgress = book.expectedDocuments > 0 ? (bookDocuments.length / book.expectedDocuments) * 100 : 0;
+            const extraInfo = bookInfoMap.get(book.id);
+            return {
+                ...book,
+                status: statuses.find(s => s.id === book.statusId)?.name || 'Unknown',
+                clientId: project.clientId,
+                projectName: project.name,
+                clientName: client?.name || 'Unknown Client',
+                documentCount: bookDocuments.length,
+                progress: Math.min(100, bookProgress),
+                storageName: extraInfo?.storageName,
+                storageId: extraInfo?.storageId,
+                scannerDeviceName: extraInfo?.scannerDeviceName,
+            };
+        });
+
+      const totalExpected = projectBooks.reduce((sum, book) => sum + book.expectedDocuments, 0);
+      const documentCount = projectBooks.reduce((sum, book) => sum + book.documentCount, 0);
+      const progress = totalExpected > 0 ? (documentCount / totalExpected) * 100 : 0;
+  
+      return {
+        ...project,
+        clientName: client?.name || 'Unknown Client',
+        documentCount,
+        totalExpected,
+        progress: Math.min(100, progress),
+        books: projectBooks,
+      };
+    });
+  }, [rawProjects, clients, rawBooks, rawDocuments, statuses, storages, transferLogs, users, scanners]);*/
+
+  /*const [allEnrichedProjects, setAllEnrichedProjects] = React.useState<EnrichedProject[]>([]);
+
+React.useEffect(() => {
+  const storageMap = new Map(storages.map(s => [s.id, s.nome]));
+  const scannerDeviceMap = new Map(scanners.map(s => [s.id, s.nome]));
+  const bookInfoMap = new Map<string, { storageName?: string, storageId?: string, scannerDeviceName?: string }>();
+
+  transferLogs.forEach(log => {
+    if (log.bookId && log.status === 'sucesso') {
+      const currentInfo = bookInfoMap.get(log.bookId) || {};
+      if (storageMap.has(Number(log.storage_id))) {
+        currentInfo.storageName = storageMap.get(Number(log.storage_id))!;
+        currentInfo.storageId = log.storage_id;
+      }
+      if (scannerDeviceMap.has(Number(log.scanner_id))) {
+        currentInfo.scannerDeviceName = scannerDeviceMap.get(Number(log.scanner_id))!;
+      }
+      bookInfoMap.set(log.bookId, currentInfo);
+    }
+  });
+
+  const enriched = rawProjects.map(project => {
+    const client = clients.find(c => c.id === project.clientId);
+
+    const projectBooks = rawBooks
+      .filter(b => b.projectId === project.id)
+      .map(book => {
+        const bookDocuments = rawDocuments.filter(d => d.bookId === book.id);
+        const bookProgress = book.expectedDocuments > 0
+          ? (bookDocuments.length / book.expectedDocuments) * 100
+          : 0;
+        const extraInfo = bookInfoMap.get(book.id);
+        return {
+          ...book,
+          status: statuses.find(s => s.id === book.statusId)?.name || 'Unknown',
+          clientId: project.clientId,
+          projectName: project.name,
+          clientName: client?.name || 'Unknown Client',
+          documentCount: bookDocuments.length,
+          progress: Math.min(100, bookProgress),
+          storageName: extraInfo?.storageName,
+          storageId: extraInfo?.storageId,
+          scannerDeviceName: extraInfo?.scannerDeviceName,
+        };
+      });
+
+    const totalExpected = projectBooks.reduce((sum, book) => sum + book.expectedDocuments, 0);
+    const documentCount = projectBooks.reduce((sum, book) => sum + book.documentCount, 0);
+    const progress = totalExpected > 0 ? (documentCount / totalExpected) * 100 : 0;
+
+    return {
+      ...project,
+      clientName: client?.name || 'Unknown Client',
+      documentCount,
+      totalExpected,
+      progress: Math.min(100, progress),
+      books: projectBooks,
+    };
+  });
+
+  setAllEnrichedProjects(enriched);
+}, [rawProjects, clients, rawBooks, rawDocuments, statuses, storages, transferLogs, users, scanners]);*/
+  
+  /*const enrichedBooks: EnrichedBook[] = React.useMemo(() => {
+      return allEnrichedProjects.flatMap(p => p.books);
+  }, [allEnrichedProjects]);*/
+
+  /*const [enrichedBooks, setEnrichedBooks] = React.useState<EnrichedBook[]>([]);
+
+  React.useEffect(() => {
+    const allBooks = allEnrichedProjects.flatMap(p => p.books);
+    setEnrichedBooks(allBooks);
+  }, [allEnrichedProjects]);*/
 
 
-  const accessibleProjectsForUser = React.useMemo(() => {
+  /*const accessibleProjectsForUser = React.useMemo(() => {
     if (!currentUser) return [];
     
     // Any user with a clientId (Client, Client Manager, Client Operator) sees projects for that client.
@@ -616,7 +873,44 @@ const loadData = async () => {
     
     // Admins or operators with no specific project assignments see all projects.
     return allEnrichedProjects;
+  }, [allEnrichedProjects, currentUser]);*/
+
+  const accessibleProjectsForUser = React.useMemo(() => {
+    if (!currentUser) return [];
+    if (currentUser.clientId) {
+      return allEnrichedProjects.filter(p => p.clientId === currentUser.clientId);
+    }
+    if (OPERATOR_ROLES.includes(currentUser.role) && currentUser.projectIds?.length) {
+      const operatorProjectIds = new Set(currentUser.projectIds);
+      return allEnrichedProjects.filter(p => operatorProjectIds.has(p.id));
+    }
+    return allEnrichedProjects;
   }, [allEnrichedProjects, currentUser]);
+  
+  const booksForContext = React.useMemo(() => {
+    const bookList = selectedProjectId
+      ? enrichedBooks.filter(book => book.projectId === selectedProjectId)
+      : enrichedBooks.filter(book => accessibleProjectsForUser.some(p => p.id === book.projectId));
+    return bookList;
+  }, [enrichedBooks, selectedProjectId, accessibleProjectsForUser]);
+  
+  const documentsForContext = React.useMemo(() => {
+    const bookIdsInScope = new Set(booksForContext.map(b => b.id));
+    return rawDocuments
+      .filter(d => d.bookId && bookIdsInScope.has(d.bookId))
+      .map(doc => {
+        const book = booksForContext.find(b => b.id === doc.bookId);
+        return {
+          ...doc,
+          client: book?.clientName || 'Unknown',
+          status: book?.status || 'Unknown',
+        }
+      });
+  }, [rawDocuments, booksForContext]);
+
+   const scannerUsers = React.useMemo(() => users.filter(user => user.role === 'Scanning'), [users]);
+  const indexerUsers = React.useMemo(() => users.filter(user => user.role === 'Indexing'), [users]);
+  const qcUsers = React.useMemo(() => users.filter(user => user.role === 'QC Specialist'), [users]);
 
 
   const addClient = async (clientData: Omit<Client, 'id'>) => {
@@ -2914,25 +3208,25 @@ const openAppValidateScan = (bookId: string) => {
           });
         };
 
-  const scannerUsers = React.useMemo(() => users.filter(user => user.role === 'Scanning'), [users]);
+  /*const scannerUsers = React.useMemo(() => users.filter(user => user.role === 'Scanning'), [users]);
   const indexerUsers = React.useMemo(() => users.filter(user => user.role === 'Indexing'), [users]);
-  const qcUsers = React.useMemo(() => users.filter(user => user.role === 'QC Specialist'), [users]);
+  const qcUsers = React.useMemo(() => users.filter(user => user.role === 'QC Specialist'), [users]);*/
 
   const projectsForContext = React.useMemo(() => {
     if (!selectedProjectId) return accessibleProjectsForUser;
     return allEnrichedProjects.filter(p => p.id === selectedProjectId);
   }, [allEnrichedProjects, accessibleProjectsForUser, selectedProjectId]);
   
-  const booksForContext = React.useMemo(() => {
+  /*const booksForContext = React.useMemo(() => {
     if (!selectedProjectId) return enrichedBooks.filter(book => accessibleProjectsForUser.some(p => p.id === book.projectId));
     const project = allEnrichedProjects.find(p => p.id === selectedProjectId);
     return project ? project.books : [];
-  }, [allEnrichedProjects, enrichedBooks, accessibleProjectsForUser, selectedProjectId]);
+  }, [allEnrichedProjects, enrichedBooks, accessibleProjectsForUser, selectedProjectId]);*/
 
-  const documentsForContext = React.useMemo(() => {
+  /*const documentsForContext = React.useMemo(() => {
     const bookIdsInScope = new Set(booksForContext.map(b => b.id));
     return documents.filter(d => d.bookId && bookIdsInScope.has(d.bookId));
-  }, [documents, booksForContext]);
+  }, [documents, booksForContext]);*/
 
 
   const value: AppContextType = { 

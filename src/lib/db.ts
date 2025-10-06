@@ -21,14 +21,29 @@ const dbConfig = {
     keepAliveInitialDelay: 0 // manda o primeiro ping imediatamente
   };
 
-const pool = mysql.createPool(dbConfig);
+let pool = mysql.createPool(dbConfig);
 
-export async function getConnection() {
+/*export async function getConnection() {
   try {
     const connection = await pool.getConnection();
     return connection;
   } catch (error) {
     console.error('Database connection error:', error);
+    throw error;
+  }
+}*/
+
+export async function getConnection(): Promise<PoolConnection> {
+  try {
+    return await pool.getConnection();
+  } catch (error: any) {
+    if (error.message?.includes('connection is in closed state')) {
+      console.warn('Pool fechado. Recriando...');
+      pool = mysql.createPool(dbConfig);
+      return await pool.getConnection();
+    }
+
+    console.error('Erro ao obter conexão:', error);
     throw error;
   }
 }
