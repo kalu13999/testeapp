@@ -1,9 +1,9 @@
 
 import * as React from 'react';
 import { useToast } from "@/hooks/use-toast";
-import type { AppDocument, EnrichedBook, RejectionTag, User } from '@/lib/data';
+import type { EnrichedBook, RejectionTag, User } from '@/lib/data';
 import { STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage } from '@/lib/workflow-config';
-
+import type { AppDocument} from "@/context/workflow-context";
 type SharedState = {
   currentUser: User | null;
   users: User[];
@@ -11,18 +11,19 @@ type SharedState = {
   rejectionTags: RejectionTag[];
   projectWorkflows: { [key: string]: string[] };
   statuses: { id: string; name: string }[];
+  documents: AppDocument[];
   deliveryBatchItems: { id: string; deliveryId: string; bookId: string; status: string; }[];
   setRawBooks: React.Dispatch<React.SetStateAction<EnrichedBook[]>>;
   setDeliveryBatchItems: React.Dispatch<React.SetStateAction<{ id: string; deliveryId: string; bookId: string; status: string; }[]>>;
   updateBookStatus: (bookId: string, newStatusName: string, additionalUpdates?: Partial<EnrichedBook>) => Promise<any>;
   updateBook: (bookId: string, bookData: Partial<Omit<EnrichedBook, 'id' | 'projectId' | 'statusId'>>) => Promise<void>;
   updateDocument: (docId: string, data: Partial<AppDocument>) => Promise<void>;
-  logAction: (action: string, details: string, ids: { bookId?: string; documentId?: string; userId?: string; }) => Promise<void>;
+  logAction: (action: string, details: string, ids: { bookId?: string | null; documentId?: string; userId?: string; }) => Promise<void>;
 };
 
 export const useDeliveryActions = (sharedState: SharedState) => {
   const { 
-    currentUser, rawBooks, rejectionTags,
+    currentUser, rawBooks, rejectionTags, documents,
     setRawBooks, setDeliveryBatchItems, updateBookStatus, 
     updateBook, updateDocument, logAction 
   } = sharedState;

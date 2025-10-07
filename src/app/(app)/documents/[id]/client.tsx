@@ -19,7 +19,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
-
+import { EnrichedBook } from '@/lib/data';
 interface DocumentDetailClientProps {
   docId: string;
 }
@@ -141,7 +141,7 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
   
   const [isObservationModalOpen, setIsObservationModalOpen] = React.useState(false);
   const [newObservation, setNewObservation] = React.useState('');
-  const [observationTarget, setObservationTarget] = React.useState<EnrichedBook | null>(null);
+  const [observationTarget, setObservationTarget] = React.useState<EnrichedBook | null | undefined>(null);
 
   const handleSaveObservation = () => {
     if (observationTarget && newObservation.trim()) {

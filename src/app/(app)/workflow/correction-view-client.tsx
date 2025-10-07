@@ -290,7 +290,7 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
                                                 data-ai-hint="document page"
                                                 width={400}
                                                 height={550}
-                                                className="aspect-[4/5.5] object-cover w-full h-full"
+                                                className="aspect-[4/5.5] object-contain w-full h-full"
                                                 unoptimized
                                             />
                                              <TooltipProvider>
