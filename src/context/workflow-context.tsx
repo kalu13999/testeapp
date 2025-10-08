@@ -126,7 +126,7 @@ type AppContextType = {
   updateRejectionTag: (tagId: string, tagData: Partial<Omit<RejectionTag, 'id' | 'clientId'>>) => Promise<void>;
   deleteRejectionTag: (tagId: string) => Promise<void>;
   tagPageForRejection: (pageId: string, tags: string[]) => Promise<void>;
-
+  handleClientAction: (bookId: string, action: 'approve' | 'reject', reason?: string) => Promise<void>;
   // Storage, Scanner & Project-Storage Actions
   addStorage: (storageData: StorageFormValues) => Promise<void>;
   updateStorage: (storageId: string, storageData: StorageFormValues) => Promise<void>;
@@ -1602,6 +1602,27 @@ const addBookObservation = async (bookId: string, observation: string) => {
     });
   };
   
+
+    const handleClientAction = async (bookId: string, action: 'approve' | 'reject', reason?: string) => {
+    const book = enrichedBooks.find(b => b.id === bookId);
+    if (!book) return;
+
+    if (action === 'reject') {
+      const updatedBook = await updateBookStatus(bookId, 'Client Rejected', { rejectionReason: reason });
+      setEnrichedBooks(prev => prev.map(b => b.id === bookId ? { ...b, ...updatedBook } : b));
+      logAction('Client Rejection', `Book "${book.name}" rejected. Reason: ${reason}`, { bookId });
+      toast({ title: `Book "${book.name}" Rejected`, variant: "destructive" });
+    } else { // approve
+      if (book.rejectionReason) {
+        await updateBook(bookId, { rejectionReason: null });
+      }
+      const updatedBook = await updateBookStatus(bookId, 'Finalized');
+      setEnrichedBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
+      logAction('Client Approval', `Book "${book.name}" approved by client.`, { bookId });
+      toast({ title: `Book "${book.name}" Approved` });
+    }
+  };
+
   const tagPageForRejection = async (pageId: string, tags: string[]) => {
       await updateDocument(pageId, { tags });
       const doc = documents.find(d => d.id === pageId);
@@ -3262,6 +3283,7 @@ const openAppValidateScan = (bookId: string) => {
     addBook, updateBook, deleteBook, importBooks, addBookObservation,
     addRejectionTag, updateRejectionTag, deleteRejectionTag,
     tagPageForRejection,
+    handleClientAction,
     addStorage, updateStorage, deleteStorage,
     addScanner, updateScanner, deleteScanner,
     addProjectStorage, updateProjectStorage, deleteProjectStorage,

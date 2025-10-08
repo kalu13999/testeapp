@@ -175,7 +175,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     books, documents, handleMoveBookToNextStage, 
     currentUser, users, permissions,
     handleStartTask, handleAssignUser,handleCancelTask,
-    openAppValidateScan,
+    openAppValidateScan, handleClientAction,
     selectedProjectId, projectWorkflows, handleConfirmReception, getNextEnabledStage,
     handleSendToStorage, processingBookIds,
     handleFinalize, handleMarkAsCorrected, handleResubmit,
@@ -1208,7 +1208,7 @@ const handleMainAction = (book: EnrichedBook) => {
 
   const handleRejectSubmit = () => {
     if (!currentBook) return;
-    //handleClientAction(currentBook.id, 'reject', rejectionComment);
+    handleClientAction(currentBook.id, 'reject', rejectionComment);
     setRejectionComment("");
     setCurrentBook(null);
   }

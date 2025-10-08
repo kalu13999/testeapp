@@ -98,10 +98,21 @@ type BadgeVariant = "default" | "destructive" | "secondary" | "outline";
 type AssignmentRole = 'scanner' | 'indexer' | 'qc';
 
 const assignmentConfig: { [key in AssignmentRole]: { title: string, description: string, permission: string } } = {
-    scanner: { title: "Assign Scanner", description: "Select a scanner operator to process this book.", permission: '/workflow/to-scan' },
-    indexer: { title: "Assign Indexer", description: "Select an indexer to process this book.", permission: '/workflow/to-indexing' },
-    qc: { title: "Assign for QC", description: "Select a QC specialist to review this book.", permission: '/workflow/to-checking' }
-};
+       scanner: { 
+        title: "Atribuir Scanner", 
+        description: "Selecione um operador de scanner para processar este livro.", 
+        permission: '/workflow/to-scan' 
+    },
+    indexer: { 
+        title: "Atribuir Indexador", 
+        description: "Selecione um indexador para processar este livro.", 
+        permission: '/workflow/to-indexing' 
+    },
+    qc: { 
+        title: "Atribuir para QC", 
+        description: "Selecione um especialista de Controlo de Qualidade para rever este livro.", 
+        permission: '/workflow/to-checking' 
+    }};
 
 const getBadgeVariant = (status: string): BadgeVariant => {
     switch (status) {
@@ -144,6 +155,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   const { 
     documents, 
     books, 
+    handleClientAction,
     handleMoveBookToNextStage,
     handleFinalize,
     handleMarkAsCorrected,
@@ -215,6 +227,15 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
 
   const [openAccordions, setOpenAccordions] = React.useState<string[]>([]);
   const storageKey = React.useMemo(() => `accordion_state_${stage}`, [stage]);
+
+
+  const [currentPageByBook, setCurrentPageByBook] = React.useState<Record<string, number>>({});
+  const itemsPerPage = 52;
+
+
+  const [bookPage, setBookPage] = React.useState(1);
+  const booksPerPage = 50;
+
 
   React.useEffect(() => {
     try {
@@ -289,6 +310,9 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     }, {});
   }, [books, documents, config.dataStatus, selectedProjectId, currentUser, bookToBatchMap, selectedBatchId, stage, selectedStorageId, storages]);
   
+
+
+
   const availableBatches = React.useMemo(() => {
     if (stage !== 'final-quality-control') return [];
     
@@ -307,13 +331,27 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     return Array.from(batchIdToBooks.entries()).map(([id, data]) => ({ id, ...data }));
   }, [books, config.dataStatus, bookToBatchMap, stage]);
   
+
+  const bookGroups = Object.values(groupedByBook);
+  const totalBookPages = Math.ceil(bookGroups.length / booksPerPage);
+
+  const paginatedBookGroups = bookGroups.slice(
+    (bookPage - 1) * booksPerPage,
+    bookPage * booksPerPage
+  );
+
+  const allVisibleBookIds = paginatedBookGroups.map(bg => bg.book.id);
+  const allVisibleSelected = allVisibleBookIds.every(id => selection.includes(id));
+  const someVisibleSelected = allVisibleBookIds.some(id => selection.includes(id));
+
+
   React.useEffect(() => {
     setSelection([]);
   }, [selectedProjectId, selectedBatchId, selectedStorageId]);
 
   const handleRejectSubmit = () => {
     if (!currentBook) return;
-    //handleClientAction(currentBook.id, 'reject', rejectionComment);
+    handleClientAction(currentBook.id, 'reject', rejectionComment);
     setRejectionComment("");
     setCurrentBook(null);
   }
@@ -517,7 +555,17 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
       }
     });
   };
-  
+
+  const handlePageChange = (bookId: string, newPage: number) => {
+  setCurrentPageByBook(prev => ({
+    ...prev,
+    [bookId]: newPage
+    }));
+  };
+
+
+
+
   const handleBulkResubmit = (targetStage: string) => {
     const stageKey = findStageKeyFromStatus(targetStage);
     if (!stageKey) {
@@ -549,6 +597,9 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
         selection.forEach(bookId => handleResubmitMoveTifs(bookId, targetStage));
         setSelection([]);
       }
+    
+    
+    
     });
   }
   
@@ -929,230 +980,310 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
           </CardHeader>
           <CardContent>
             {Object.keys(groupedByBook).length > 0 ? (
-              <Accordion type="multiple" value={openAccordions} onValueChange={handleAccordionChange} className="w-full">
-                {Object.values(groupedByBook).map((bookGroup) => {
-                  const { book, pages, hasError, hasWarning, batchInfo } = bookGroup;
-                  const isProcessing = processingBookIds.includes(book.id);
-                  const pageCount = pages.length;
-                  const bookCols = columnStates[book.id]?.cols || 8;
+              <>
+                <div className="flex items-center justify-between pb-4">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                        checked={
+                          allVisibleSelected
+                            ? true
+                            : someVisibleSelected
+                            ? "indeterminate"
+                            : false
+                        }
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelection((prev) =>
+                              Array.from(new Set([...prev, ...allVisibleBookIds]))
+                            );
+                          } else {
+                            setSelection((prev) =>
+                              prev.filter((id) => !allVisibleBookIds.includes(id))
+                            );
+                          }
+                        }}
+                        aria-label="Selecionar todos os livros desta página"
+                      />
+                    <span className="text-sm text-muted-foreground">Selecionar todos os livros desta página</span>
+                  </div>
+                </div>
+                <Accordion type="multiple" value={openAccordions} onValueChange={handleAccordionChange} className="w-full">
+                  {paginatedBookGroups.map((bookGroup) => {
+                    const { book, pages, hasError, hasWarning, batchInfo } = bookGroup;
+                    const isProcessing = processingBookIds.includes(book.id);
+                    const pageCount = pages.length;
+                    const bookCols = columnStates[book.id]?.cols || 8;
 
-                  return (
-                  <AccordionItem value={book.id} key={book.id}>
-                    <div className="flex items-center justify-between hover:bg-muted/50 rounded-md">
-                        <div className="pl-4">
-                            <Checkbox
-                                checked={selection.includes(book.id)}
-                                onCheckedChange={(checked) => {
-                                    setSelection(prev =>
-                                        checked
-                                            ? [...prev, book.id]
-                                            : prev.filter(id => id !== book.id)
-                                    );
-                                }}
-                                aria-label={`Selecionar livro ${book.name}`}
-                            />
-                        </div>
-                        <AccordionTrigger className="flex-1 px-4 py-2">
-                            <div className="flex items-center gap-3 text-left">
-                                <span
-                                  className="h-4 w-4 rounded-full border shrink-0"
-                                  style={{ backgroundColor: book.color || '#FFFFFF' }}
-                                />
-                                <div>
-                                    <p className="font-semibold text-base flex items-center gap-2">
-                                      {book.name}
-                                      {hasError && <ShieldAlert className="h-4 w-4 text-destructive" />}
-                                      {hasWarning && !hasError && <AlertTriangle className="h-4 w-4 text-orange-500" />}
-                                    </p>
-                                    <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-                                      {book.projectName} - 
-                                      {isProcessing ? 
-                                        <span className="flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin"/> Loading pages...</span> 
-                                        : <span>{pageCount} pages</span>
-                                      }
-                                      {stage === 'storage' && book.storageName && <span className="text-xs text-muted-foreground/80 hidden md:inline-block"> (Storage: {book.storageName})</span>}
-                                      {batchInfo && <span className="text-xs text-muted-foreground/80 hidden md:inline-block"> (Batch: {batchInfo.timestampStr.replace('Process started on ', '').replace(/ (AM|PM)$/, '')})</span>}
-                                    </p>
-                                </div>
-                            </div>
-                        </AccordionTrigger>
-                        <div className="px-4">
-                          {renderActions(bookGroup)}
-                        </div>
-                    </div>
-                    <AccordionContent>
-                      <div className="p-4 space-y-4">
-                          <Card>
-                            <CardHeader className="flex flex-row items-center gap-2 pb-2">
-                              <div className="flex flex-col md:flex-row md:items-center md:justify-between w-full gap-2">
-                                <div className="flex items-center gap-2">
-                                  <Info className="h-4 w-4" />
-                                  <CardTitle className="text-base">Detalhes do Livro</CardTitle>
-                                </div>
-                                <Button 
-                                  onClick={() => setObservationTarget(book)} 
-                                  className="w-full md:w-auto"
-                                >
-                                  <MessageSquarePlus className="mr-2 h-4 w-4" /> Adicionar Observação
-                                </Button>
-                              </div>
-                            </CardHeader>
-                            <CardContent className="text-sm space-y-4">
-                                <DetailItem label="Livro" value={<Link href={`/books/${book.id}`} className="text-primary hover:underline">{book.name}</Link>} />
-                                {batchInfo && <DetailItem label="Lote" value={<Link href={`/processing-batches/${batchInfo.id}`} className="text-primary hover:underline">{batchInfo.timestampStr.replace('Process started on ', '').replace(/ (AM|PM)$/, '')}</Link>} />}
-                                <DetailItem label="Projeto" value={book.projectName} />
-                                <DetailItem label="Cliente" value={book.clientName} />
-                                <Separator />
-                                <DetailItem label="Autor" value={book.author || '—'} />
-                                <DetailItem label="ISBN" value={book.isbn || '—'} />
-                                <DetailItem label="Ano de Publicação" value={book.publicationYear || '—'} />
-                                <Separator />
-                                <DetailItem label="Prioridade" value={book.priority || '—'} />
-                                {book.info && (
-                                <>
-                                <Separator />
-                                <div className="pt-2 grid grid-cols-1 gap-2">
-                                    <p className="text-muted-foreground">Informação Adicional</p>
-                                    <p className="font-medium whitespace-pre-wrap">{book.info}</p>
-                                </div>
-                                </>
-                                )}
-                            </CardContent>
-                          </Card>
-                          {stage === 'client-rejections' && (
-                            <Card className="bg-destructive/10 border-destructive/50">
-                                <CardHeader className="pb-2">
-                                    <CardTitle className="flex items-center gap-2 text-base text-destructive font-semibold">
-                                        <MessageSquareWarning className="h-5 w-5" /> Motivo de Rejeição do Cliente
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <p className="text-sm text-destructive-foreground/90">{book.rejectionReason || "Nenhum motivo fornecido."}</p>
-                                </CardContent>
-                            </Card>
-                          )}
+                    const allPages = getPagesForBook(book.id);
+                    const currentPage = currentPageByBook[book.id] || 1;
+                    const startIdx = (currentPage - 1) * itemsPerPage;
+                    const paginatedPages = allPages.slice(startIdx, startIdx + itemsPerPage);
+                    const totalPages = Math.ceil(allPages.length / itemsPerPage);
 
-                          <div className="flex items-center justify-end gap-4">
-                            <Label htmlFor={`columns-slider-${book.id}`} className="text-sm whitespace-nowrap">Tamanho da Miniatura:</Label>
-                            <Slider
-                                id={`columns-slider-${book.id}`}
-                                min={1}
-                                max={12}
-                                step={1}
-                                value={[bookCols]}
-                                onValueChange={(value) => setBookColumns(book.id, value[0])}
-                                className="w-full max-w-[200px]"
-                            />
-                            <Badge variant="outline" className="w-16 justify-center">{bookCols} {bookCols > 1 ? 'cols' : 'col'}</Badge>
+                    return (
+                    <AccordionItem value={book.id} key={book.id}>
+                      <div className="flex items-center justify-between hover:bg-muted/50 rounded-md">
+                          <div className="pl-4">
+                              <Checkbox
+                                  checked={selection.includes(book.id)}
+                                  onCheckedChange={(checked) => {
+                                      setSelection(prev =>
+                                          checked
+                                              ? [...prev, book.id]
+                                              : prev.filter(id => id !== book.id)
+                                      );
+                                  }}
+                                  aria-label={`Selecionar livro ${book.name}`}
+                              />
                           </div>
-
-                          <div className={`grid gap-4 ${gridClasses[bookCols] || 'grid-cols-8'}`}>
-                            {isProcessing && pages.length === 0 ? (
-                              Array.from({ length: 8 }).map((_, i) => (
-                                <Skeleton key={i} className="aspect-[4/5.5] w-full h-full" />
-                              ))
-                            ) : (
-                              getPagesForBook(book.id).map(page => (
-                                <div key={page.id} className="relative group">
-                                  <Link href={`/documents/${page.id}`} className="block">
-                                      <Card className="overflow-hidden hover:shadow-lg transition-shadow relative border-2 border-transparent group-hover:border-primary">
-                                          <CardContent className="p-0">
-                                              <Image
-                                                  src={page.imageUrl || "https://placehold.co/400x550.png"}
-                                                  alt={`Preview of ${page.name}`}
-                                                  data-ai-hint="document page"
-                                                  width={400}
-                                                  height={550}
-                                                  className="aspect-[4/5.5] object-contain w-full h-full"
-                                                  //className="object-contain w-full h-full"
-                                                  unoptimized
-                                                  //fill
-                                              />
-                                              <TooltipProvider>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <div className="absolute inset-0">
-                                                            {page.flag === 'error' && <div className="absolute inset-0 bg-destructive/20 border-2 border-destructive"></div>}
-                                                            {page.flag === 'warning' && <div className="absolute inset-0 bg-orange-500/20 border-2 border-orange-500"></div>}
-                                                        </div>
-                                                    </TooltipTrigger>
-                                                    {page.flagComment && <TooltipContent><p>{page.flagComment}</p></TooltipContent>}
-                                                </Tooltip>
-                                            </TooltipProvider>
-                                          </CardContent>
-                                          <CardFooter className="p-2 flex-col items-start gap-1">
-                                              <p className="text-xs font-medium whitespace-pre-wrap">{page.name}</p>
-
-                                              {page.flag && page.flagComment && (
-                                                <TooltipProvider>
-                                                  <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                      <div className="flex items-start gap-1.5 text-xs w-full text-muted-foreground">
-                                                        {page.flag === 'error' && <ShieldAlert className="h-3 w-3 mt-0.5 flex-shrink-0 text-destructive"/>}
-                                                        {page.flag === 'warning' && <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0 text-orange-500"/>}
-                                                        {page.flag === 'info' && <Info className="h-3 w-3 mt-0.5 flex-shrink-0 text-primary"/>}
-                                                        <p className="whitespace-pre-wrap break-words">{page.flagComment}</p>
-                                                      </div>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent><p>{page.flagComment}</p></TooltipContent>
-                                                  </Tooltip>
-                                                </TooltipProvider>
-                                              )}
-
-                                              {page.tags && page.tags.length > 0 && (
-                                                <div className="flex flex-wrap gap-1 pt-1">
-                                                  {page.tags.map(tag => (
-                                                    <Badge key={tag} variant={stage === 'pending-deliveries' ? 'outline' : 'destructive'} className="text-xs">
-                                                        {tag}
-                                                    </Badge>
-                                                  ))}
-                                                </div>
-                                              )}
-                                          </CardFooter>
-                                      </Card>
-                                  </Link>
-                                  <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    {stage === 'pending-deliveries' && (
-                                        <Button variant="secondary" size="icon" className="h-7 w-7" onClick={() => openTaggingDialog(page)}>
-                                            <Tag className="h-4 w-4" />
-                                        </Button>
-                                    )}
-                                      <DropdownMenu>
-                                          <DropdownMenuTrigger asChild>
-                                              <Button variant="secondary" size="icon" className="h-7 w-7">
-                                                  <MoreHorizontal className="h-4 w-4" />
-                                              </Button>
-                                          </DropdownMenuTrigger>
-                                          <DropdownMenuContent align="end">
-                                              <DropdownMenuItem onClick={() => openFlagDialog(page, 'error')}>
-                                                  <ShieldAlert className="mr-2 h-4 w-4 text-destructive" /> Mark Error
-                                              </DropdownMenuItem>
-                                              <DropdownMenuItem onClick={() => openFlagDialog(page, 'warning')}>
-                                                  <AlertTriangle className="mr-2 h-4 w-4 text-orange-500" /> Mark Warning
-                                              </DropdownMenuItem>
-                                              <DropdownMenuItem onClick={() => openFlagDialog(page, 'info')}>
-                                                  <Info className="mr-2 h-4 w-4 text-primary" /> Mark Info
-                                              </DropdownMenuItem>
-                                              {page.flag && (
-                                                <>
-                                                  <DropdownMenuSeparator />
-                                                  <DropdownMenuItem onClick={() => updateDocumentFlag(page.id, null)}>
-                                                      Clear Flag
-                                                  </DropdownMenuItem>
-                                                </>
-                                              )}
-                                          </DropdownMenuContent>
-                                      </DropdownMenu>
+                          <AccordionTrigger className="flex-1 px-4 py-2">
+                              <div className="flex items-center gap-3 text-left">
+                                  <span
+                                    className="h-4 w-4 rounded-full border shrink-0"
+                                    style={{ backgroundColor: book.color || '#FFFFFF' }}
+                                  />
+                                  <div>
+                                      <p className="font-semibold text-base flex items-center gap-2">
+                                        {book.name}
+                                        {hasError && <ShieldAlert className="h-4 w-4 text-destructive" />}
+                                        {hasWarning && !hasError && <AlertTriangle className="h-4 w-4 text-orange-500" />}
+                                      </p>
+                                      <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                                        {book.projectName} - 
+                                        {isProcessing ? 
+                                          <span className="flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin"/> Loading pages...</span> 
+                                          : <span>{pageCount} pages</span>
+                                        }
+                                        {stage === 'storage' && book.storageName && <span className="text-xs text-muted-foreground/80 hidden md:inline-block"> (Storage: {book.storageName})</span>}
+                                        {batchInfo && <span className="text-xs text-muted-foreground/80 hidden md:inline-block"> (Batch: {batchInfo.timestampStr.replace('Process started on ', '').replace(/ (AM|PM)$/, '')})</span>}
+                                      </p>
                                   </div>
-                                </div>
-                            ))
-                            )}
+                              </div>
+                          </AccordionTrigger>
+                          <div className="px-4">
+                            {renderActions(bookGroup)}
                           </div>
                       </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                )})}
-              </Accordion>
+                      <AccordionContent>
+                        <div className="p-4 space-y-4">
+                            <Card>
+                              <CardHeader className="flex flex-row items-center gap-2 pb-2">
+                                <div className="flex flex-col md:flex-row md:items-center md:justify-between w-full gap-2">
+                                  <div className="flex items-center gap-2">
+                                    <Info className="h-4 w-4" />
+                                    <CardTitle className="text-base">Detalhes do Livro</CardTitle>
+                                  </div>
+                                  <Button 
+                                    onClick={() => setObservationTarget(book)} 
+                                    className="w-full md:w-auto"
+                                  >
+                                    <MessageSquarePlus className="mr-2 h-4 w-4" /> Adicionar Observação
+                                  </Button>
+                                </div>
+                              </CardHeader>
+                              <CardContent className="text-sm space-y-4">
+                                  <DetailItem label="Livro" value={<Link href={`/books/${book.id}`} className="text-primary hover:underline">{book.name}</Link>} />
+                                  {batchInfo && <DetailItem label="Lote" value={<Link href={`/processing-batches/${batchInfo.id}`} className="text-primary hover:underline">{batchInfo.timestampStr.replace('Process started on ', '').replace(/ (AM|PM)$/, '')}</Link>} />}
+                                  <DetailItem label="Projeto" value={book.projectName} />
+                                  <DetailItem label="Cliente" value={book.clientName} />
+                                  <Separator />
+                                  <DetailItem label="Autor" value={book.author || '—'} />
+                                  <DetailItem label="ISBN" value={book.isbn || '—'} />
+                                  <DetailItem label="Ano de Publicação" value={book.publicationYear || '—'} />
+                                  <Separator />
+                                  <DetailItem label="Prioridade" value={book.priority || '—'} />
+                                  {book.info && (
+                                  <>
+                                  <Separator />
+                                  <div className="pt-2 grid grid-cols-1 gap-2">
+                                      <p className="text-muted-foreground">Informação Adicional</p>
+                                      <p className="font-medium whitespace-pre-wrap">{book.info}</p>
+                                  </div>
+                                  </>
+                                  )}
+                              </CardContent>
+                            </Card>
+                            {stage === 'client-rejections' && (
+                              <Card className="bg-destructive/10 border-destructive/50">
+                                  <CardHeader className="pb-2">
+                                      <CardTitle className="flex items-center gap-2 text-base text-destructive font-semibold">
+                                          <MessageSquareWarning className="h-5 w-5" /> Motivo de Rejeição do Cliente
+                                      </CardTitle>
+                                  </CardHeader>
+                                  <CardContent>
+                                      <p className="text-sm text-destructive-foreground/90">{book.rejectionReason || "Nenhum motivo fornecido."}</p>
+                                  </CardContent>
+                              </Card>
+                            )}
+
+                            <div className="flex items-center justify-end gap-4">
+                              <Label htmlFor={`columns-slider-${book.id}`} className="text-sm whitespace-nowrap">Tamanho da Miniatura:</Label>
+                              <Slider
+                                  id={`columns-slider-${book.id}`}
+                                  min={1}
+                                  max={12}
+                                  step={1}
+                                  value={[bookCols]}
+                                  onValueChange={(value) => setBookColumns(book.id, value[0])}
+                                  className="w-full max-w-[200px]"
+                              />
+                              <Badge variant="outline" className="w-16 justify-center">{bookCols} {bookCols > 1 ? 'cols' : 'col'}</Badge>
+                            </div>
+
+                            <div className={`grid gap-4 ${gridClasses[bookCols] || 'grid-cols-8'}`}>
+                              {isProcessing && pages.length === 0 ? (
+                                Array.from({ length: 8 }).map((_, i) => (
+                                  <Skeleton key={i} className="aspect-[4/5.5] w-full h-full" />
+                                ))
+                              ) : (
+                                paginatedPages.map(page => (
+                                  <div key={page.id} className="relative group">
+                                    <Link href={`/documents/${page.id}`} className="block">
+                                        <Card className="overflow-hidden hover:shadow-lg transition-shadow relative border-2 border-transparent group-hover:border-primary">
+                                            <CardContent className="p-0">
+                                                <Image
+                                                    src={page.imageUrl || "https://placehold.co/400x550.png"}
+                                                    alt={`Preview of ${page.name}`}
+                                                    data-ai-hint="document page"
+                                                    width={400}
+                                                    height={550}
+                                                    className="aspect-[4/5.5] object-contain w-full h-full"
+                                                    //className="object-contain w-full h-full"
+                                                    unoptimized
+                                                    //fill
+                                                />
+                                                <TooltipProvider>
+                                                  <Tooltip>
+                                                      <TooltipTrigger asChild>
+                                                          <div className="absolute inset-0">
+                                                              {page.flag === 'error' && <div className="absolute inset-0 bg-destructive/20 border-2 border-destructive"></div>}
+                                                              {page.flag === 'warning' && <div className="absolute inset-0 bg-orange-500/20 border-2 border-orange-500"></div>}
+                                                          </div>
+                                                      </TooltipTrigger>
+                                                      {page.flagComment && <TooltipContent><p>{page.flagComment}</p></TooltipContent>}
+                                                  </Tooltip>
+                                              </TooltipProvider>
+                                            </CardContent>
+                                            <CardFooter className="p-2 flex-col items-start gap-1">
+                                                <p className="text-xs font-medium whitespace-pre-wrap">{page.name}</p>
+
+                                                {page.flag && page.flagComment && (
+                                                  <TooltipProvider>
+                                                    <Tooltip>
+                                                      <TooltipTrigger asChild>
+                                                        <div className="flex items-start gap-1.5 text-xs w-full text-muted-foreground">
+                                                          {page.flag === 'error' && <ShieldAlert className="h-3 w-3 mt-0.5 flex-shrink-0 text-destructive"/>}
+                                                          {page.flag === 'warning' && <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0 text-orange-500"/>}
+                                                          {page.flag === 'info' && <Info className="h-3 w-3 mt-0.5 flex-shrink-0 text-primary"/>}
+                                                          <p className="whitespace-pre-wrap break-words">{page.flagComment}</p>
+                                                        </div>
+                                                      </TooltipTrigger>
+                                                      <TooltipContent><p>{page.flagComment}</p></TooltipContent>
+                                                    </Tooltip>
+                                                  </TooltipProvider>
+                                                )}
+
+                                                {page.tags && page.tags.length > 0 && (
+                                                  <div className="flex flex-wrap gap-1 pt-1">
+                                                    {page.tags.map(tag => (
+                                                      <Badge key={tag} variant={stage === 'pending-deliveries' ? 'outline' : 'destructive'} className="text-xs">
+                                                          {tag}
+                                                      </Badge>
+                                                    ))}
+                                                  </div>
+                                                )}
+                                            </CardFooter>
+                                        </Card>
+                                    </Link>
+                                    <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      {stage === 'pending-deliveries' && (
+                                          <Button variant="secondary" size="icon" className="h-7 w-7" onClick={() => openTaggingDialog(page)}>
+                                              <Tag className="h-4 w-4" />
+                                          </Button>
+                                      )}
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="secondary" size="icon" className="h-7 w-7">
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onClick={() => openFlagDialog(page, 'error')}>
+                                                    <ShieldAlert className="mr-2 h-4 w-4 text-destructive" /> Mark Error
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => openFlagDialog(page, 'warning')}>
+                                                    <AlertTriangle className="mr-2 h-4 w-4 text-orange-500" /> Mark Warning
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => openFlagDialog(page, 'info')}>
+                                                    <Info className="mr-2 h-4 w-4 text-primary" /> Mark Info
+                                                </DropdownMenuItem>
+                                                {page.flag && (
+                                                  <>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem onClick={() => updateDocumentFlag(page.id, null)}>
+                                                        Clear Flag
+                                                    </DropdownMenuItem>
+                                                  </>
+                                                )}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
+                                  </div>
+                              ))
+                              )}
+                            </div>
+                            {totalPages > 1 && (
+                              <div className="flex justify-center items-center gap-4 pt-4">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={currentPage === 1}
+                                  onClick={() => handlePageChange(book.id, currentPage - 1)}
+                                >
+                                  Anterior
+                                </Button>
+                                <span className="text-sm text-muted-foreground">
+                                  Página {currentPage} de {totalPages}
+                                </span>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={currentPage === totalPages}
+                                  onClick={() => handlePageChange(book.id, currentPage + 1)}
+                                >
+                                  Próxima
+                                </Button>
+                              </div>
+                            )}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  )})}
+                </Accordion>
+                {totalBookPages > 1 && (
+                  <div className="flex justify-center items-center gap-4 pt-6">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={bookPage === 1}
+                      onClick={() => setBookPage(bookPage - 1)}
+                    >
+                      Anterior
+                    </Button>
+                    <span className="text-sm text-muted-foreground">
+                      Página {bookPage} de {totalBookPages}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={bookPage === totalBookPages}
+                      onClick={() => setBookPage(bookPage + 1)}
+                    >
+                      Próxima
+                    </Button>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="text-center py-10 text-muted-foreground flex flex-col items-center gap-4">
                   <BookOpen className="h-12 w-12"/>
