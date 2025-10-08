@@ -76,6 +76,11 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
 
   const [confirmationState, setConfirmationState] = React.useState<{ open: boolean; batch: (ProcessingBatch & { storageId?: string }) | null, status: string }>({ open: false, batch: null, status: '' });
   const [selectedStorageId, setSelectedStorageId] = React.useState<string>('all');
+  const [selectedProcBatchesStatus, setSelectedProcBatchesStatus] = React.useState<string>('In Progress');
+
+  const statuses = processingBatches.map(b => b.status);
+  const uniqueStatuses = [...new Set(statuses)];
+  const filteredStatuses = uniqueStatuses.filter(s => s !== "Complete");
 
   const batchesForDisplay = React.useMemo(() => {
     let batches = processingBatches
@@ -103,8 +108,14 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
         }
       }
 
+      if (selectedProcBatchesStatus !== 'all') {
+         if (selectedProcBatchesStatus) {
+            batches = batches.filter(batch => batch.status === selectedProcBatchesStatus);
+        }
+      }
+
     return batches.sort((a,b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
-  }, [processingBatches, processingBatchItems, selectedProjectId, books, selectedStorageId, storages]);
+  }, [processingBatches, processingBatchItems, selectedProjectId, books, selectedStorageId, storages, selectedProcBatchesStatus]);
 
   const openConfirmationDialog = (batch: ProcessingBatch & { storageId?: string }, status: string) => {
     setConfirmationState({ open: true, batch, status });
@@ -150,19 +161,40 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
         <CardHeader>
           <CardTitle className="font-headline">{config.title}</CardTitle>
           <CardDescription>{config.description}</CardDescription>
-            <div className="pt-4">
-              <Label htmlFor="storage-select">Filtrar por Local de Armazenamento</Label>
-               <Select value={selectedStorageId} onValueChange={setSelectedStorageId}>
+            <div className="flex gap-4 pt-4">
+              <div className="flex flex-col">
+                <Label htmlFor="storage-select" className="mb-2">Filtrar por Local de Armazenamento</Label>
+                <Select value={selectedStorageId} onValueChange={setSelectedStorageId}>
                   <SelectTrigger id="storage-select" className="w-[300px]">
-                      <SelectValue placeholder="Selecionar um armazenamento..." />
+                    <SelectValue placeholder="Selecionar um armazenamento..." />
                   </SelectTrigger>
                   <SelectContent>
-                      <SelectItem value="all">Todos os Armazenamentos</SelectItem>
-                      {storages.map(storage => (
-                          <SelectItem key={storage.id} value={String(storage.id)}>{storage.nome}</SelectItem>
-                      ))}
+                    <SelectItem value="all">Todos os Armazenamentos</SelectItem>
+                    {storages.map(storage => (
+                      <SelectItem key={storage.id} value={String(storage.id)}>
+                        {storage.nome}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
-              </Select>
+                </Select>
+              </div>
+
+              <div className="flex flex-col">
+                <Label htmlFor="status-select" className="mb-2">Filtrar por Estado de Processamento</Label>
+                <Select value={selectedProcBatchesStatus} onValueChange={setSelectedProcBatchesStatus}>
+                  <SelectTrigger id="status-select" className="w-[300px]">
+                    <SelectValue placeholder="Selecionar um estado..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os Estados</SelectItem>
+                    {filteredStatuses.map(status => (
+                      <SelectItem key={status} value={status}>
+                        {status}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
         </CardHeader>
         <CardContent>

@@ -41,7 +41,11 @@ type AppContextType = {
   isMutating: boolean;
   setIsMutating: React.Dispatch<React.SetStateAction<boolean>>;
 
+  progressMutation: boolean;
+  setProgressMutation: React.Dispatch<React.SetStateAction<boolean>>;
 
+  progress: number;
+  setProgress: React.Dispatch<React.SetStateAction<number>>;
 
   processingBookIds: string[];
   
@@ -205,6 +209,8 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const [loading, setLoading] = React.useState(true);
   const [isChecking, setIsChecking] = React.useState(true);
   const [isMutating, setIsMutating] = React.useState(false);
+  const [progressMutation, setProgressMutation] = React.useState(false);
+  const [progress, setProgress] = React.useState<number>(0);
   const [processingBookIds, setProcessingBookIds] = React.useState<string[]>([]);
   const [currentUser, setCurrentUser] = React.useState<User | null>(null);
   const [clients, setClients] = React.useState<Client[]>([]);
@@ -238,7 +244,51 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
   const [navigationHistory, setNavigationHistory] = React.useState<NavigationHistoryItem[]>([]);
   const { toast } = useToast();
-  
+  type MutationProgressOptions = {
+    total: number;
+    onProgress?: (current: number, total: number) => void;
+  };
+
+  const withProgressMutation = async <T,>(
+    items: string[],
+    action: (item: string, index: number) => Promise<T>,
+    options: MutationProgressOptions
+  ): Promise<{ results: T[]; errors: { item: string; error: any }[] }> => {
+    const { total, onProgress } = options;
+
+    const results: T[] = [];
+    const errors: { item: string; error: any }[] = [];
+
+    setProgressMutation(true);
+
+    try {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        try {
+          const result = await action(item, i);
+          results.push(result);
+        } catch (error) {
+          errors.push({ item, error });
+        }
+
+        if (onProgress) {
+          onProgress(i + 1, total);
+        }
+      }
+
+      return { results, errors };
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive",
+      });
+      return { results, errors };
+    } finally {
+      setProgressMutation(false);
+    }
+  };
+
 const withMutation = async <T,>(action: () => Promise<T>): Promise<T | undefined> => {
     setIsMutating(true);
     try {
@@ -3252,6 +3302,7 @@ const openAppValidateScan = (bookId: string) => {
 
   const value: AppContextType = { 
     isChecking, setIsChecking, loading, isMutating, processingBookIds, setIsMutating,
+    progress, setProgress, progressMutation, setProgressMutation,
     currentUser, login, logout, changePassword,
     navigationHistory, addNavigationHistoryItem,
     clients, users, scannerUsers, indexerUsers, qcUsers,
