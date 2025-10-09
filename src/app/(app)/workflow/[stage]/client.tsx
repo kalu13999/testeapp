@@ -1208,7 +1208,7 @@ const handleMainAction = (book: EnrichedBook) => {
 
   const handleRejectSubmit = () => {
     if (!currentBook) return;
-    handleClientAction(currentBook.id, 'reject', rejectionComment);
+    //handleClientAction(currentBook.id, 'reject', rejectionComment);
     setRejectionComment("");
     setCurrentBook(null);
   }

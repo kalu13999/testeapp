@@ -322,7 +322,7 @@ export default function ValidationMonitoringClient() {
 
                         </div>
                         <AccordionContent className="p-4 space-y-4">
-                            <div className="flex justify-end gap-2 px-4">
+                            <div className="flex justify-start gap-2 px-4">
                             <Button
                               size="sm"
                               variant="destructive"

@@ -351,7 +351,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
 
   const handleRejectSubmit = () => {
     if (!currentBook) return;
-    handleClientAction(currentBook.id, 'reject', rejectionComment);
+    //handleClientAction(currentBook.id, 'reject', rejectionComment);
     setRejectionComment("");
     setCurrentBook(null);
   }
