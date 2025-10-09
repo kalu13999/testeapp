@@ -20,6 +20,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { MonitorCheck, ThumbsDown, ThumbsUp, Check, X, User } from "lucide-react";
@@ -45,8 +54,20 @@ export default function ValidationMonitoringClient() {
   const { deliveryBatches, deliveryBatchItems, books, currentUser, users, handleValidationDeliveryBatch } = useAppContext();
   //const { handleValidationDeliveryBatch } = useClientValidationContext();
   const [confirmationState, setConfirmationState] = React.useState({ open: false, batchId: '', finalDecision: '' as 'approve_remaining' | 'reject_all', title: '', description: '' });
-
-  /*const batchesToMonitor = React.useMemo(() => {
+  type BatchToMonitor = {
+    batchId: string;
+    creationDate: string;
+    books: (EnrichedBook & { itemStatus: 'pending' | 'approved' | 'rejected'; assigneeName: string })[];
+    stats: {
+      totalDoc: number;
+      total: number;
+      approved: number;
+      rejected: number;
+      pending: number;
+      progress: number;
+    };
+  };
+  const batchesToMonitor = React.useMemo<BatchToMonitor[]>(() => {
     return deliveryBatches
         .filter(batch => batch.status === 'Validating')
         .map(batch => {
@@ -70,39 +91,30 @@ export default function ValidationMonitoringClient() {
                 const assignee = users.find(u => u.id === item?.user_id);
                 return { ...book, itemStatus: item?.status || 'pending', assigneeName: assignee?.name || 'Unassigned' };
             });
+            const totalDocs = booksWithAssignee.reduce((sum, book) => sum + (book.documentCount || 0), 0);
 
             return {
                 batchId: batch.id,
                 creationDate: batch.creationDate,
                 books: booksWithAssignee,
                 stats: {
+                    totalDoc: totalDocs,
                     total: totalItems,
                     approved: approvedCount,
                     rejected: rejectedCount,
                     pending: pendingCount,
                     progress: totalItems > 0 ? ((approvedCount + rejectedCount) / totalItems) * 100 : 0
                 }
-            }
+            } as BatchToMonitor;
         })
         .filter(batch => batch.books.length > 0)
         .sort((a,b) => new Date(b.creationDate).getTime() - new Date(a.creationDate).getTime());
 
-  }, [deliveryBatches, deliveryBatchItems, books, currentUser, users]);*/
+  }, [deliveryBatches, deliveryBatchItems, books, currentUser, users]);
 
-  type BatchToMonitor = {
-    batchId: string;
-    creationDate: string;
-    books: (EnrichedBook & { itemStatus: string; assigneeName: string })[];
-    stats: {
-      total: number;
-      approved: number;
-      rejected: number;
-      pending: number;
-      progress: number;
-    };
-  };
 
-  const [batchesToMonitor, setBatchesToMonitor] = React.useState<BatchToMonitor[]>([]);
+
+  /*const [batchesToMonitor, setBatchesToMonitor] = React.useState<BatchToMonitor[]>([]);
 
   React.useEffect(() => {
     const monitored = deliveryBatches
@@ -150,7 +162,7 @@ export default function ValidationMonitoringClient() {
 
     setBatchesToMonitor(monitored);
   }, [deliveryBatches, deliveryBatchItems, books, currentUser, users]);
-
+*/
   const openConfirmationDialog = (batchId: string, finalDecision: 'approve_remaining' | 'reject_all') => {
     const title = finalDecision === 'approve_remaining' ? "Approve Batch and Remaining Items?" : "Reject Entire Batch?";
     const description = finalDecision === 'approve_remaining' 
@@ -170,6 +182,93 @@ export default function ValidationMonitoringClient() {
     }
     closeConfirmationDialog();
   }
+  const [pagesByBatch, setPagesByBatch] = React.useState<{ [key: string]: number }>({});
+
+  // Configuração da paginação
+  const booksPerPage = 30;
+
+    // Função para alterar a página de um batch
+  function setCurrentPage(batchId: string, page: number) {
+    setPagesByBatch(prev => ({ ...prev, [batchId]: page }));
+  }
+
+  // Componente PaginationNav reutilizado com props
+  const PaginationNav = ({ currentPage, totalPages, onPageChange }: {
+      currentPage: number;
+      totalPages: number;
+      onPageChange: (page: number) => void;
+    }) => {
+    if (totalPages <= 1) return null;
+    const pageNumbers = [];
+    const maxPagesToShow = 5;
+
+    if (totalPages <= maxPagesToShow) {
+      for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i);
+      }
+    } else {
+      pageNumbers.push(1);
+      if (currentPage > 3) pageNumbers.push(-1);
+      let start = Math.max(2, currentPage - 1);
+      let end = Math.min(totalPages - 1, currentPage + 1);
+      if (currentPage <= 2) end = 3;
+      if (currentPage >= totalPages - 1) start = totalPages - 2;
+      for (let i = start; i <= end; i++) {
+        pageNumbers.push(i);
+      }
+      if (currentPage < totalPages - 2) pageNumbers.push(-1);
+      pageNumbers.push(totalPages);
+    }
+
+    return (
+      <Pagination>
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious
+              href="#"
+              onClick={e => {
+                e.preventDefault();
+                onPageChange(Math.max(1, currentPage - 1));
+              }}
+              className={currentPage === 1 ? 'pointer-events-none opacity-50' : undefined}
+            />
+          </PaginationItem>
+
+          {pageNumbers.map((num, i) =>
+            num === -1 ? (
+              <PaginationItem key={`ellipsis-${i}`}>
+                <PaginationEllipsis />
+              </PaginationItem>
+            ) : (
+              <PaginationItem key={num}>
+                <PaginationLink
+                  href="#"
+                  isActive={currentPage === num}
+                  onClick={e => {
+                    e.preventDefault();
+                    onPageChange(num);
+                  }}
+                >
+                  {num}
+                </PaginationLink>
+              </PaginationItem>
+            )
+          )}
+
+          <PaginationItem>
+            <PaginationNext
+              href="#"
+              onClick={e => {
+                e.preventDefault();
+                onPageChange(Math.min(totalPages, currentPage + 1));
+              }}
+              className={currentPage === totalPages ? 'pointer-events-none opacity-50' : undefined}
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    );
+  };
 
   return (
     <>
@@ -178,81 +277,124 @@ export default function ValidationMonitoringClient() {
           <CardTitle className="font-headline">Controlo e Acompanhamento de Validação</CardTitle>
           <CardDescription>Acompanhe o progresso dos lotes de entrega atualmente em validação.</CardDescription>
         </CardHeader>
-        <CardContent>
-          {batchesToMonitor.length > 0 ? (
-            <Accordion type="multiple" className="w-full">
-              {batchesToMonitor.map(({ batchId, creationDate, books: booksInBatch, stats }) => (
-                <AccordionItem value={batchId} key={batchId}>
-                   <div className="flex items-center justify-between hover:bg-muted/50 rounded-md">
-                    <AccordionTrigger className="flex-1 px-4 py-2">
-                        <div className="flex items-center gap-3 text-left">
-                            <MonitorCheck className="h-5 w-5 text-primary" />
-                            <div>
+            <CardContent>
+              {batchesToMonitor.length > 0 ? (
+                <Accordion type="multiple" className="w-full">
+                  {batchesToMonitor.map(({ batchId, creationDate, books: booksInBatch, stats }) => {
+                    const currentPage = pagesByBatch[batchId] || 1;
+                    const totalPages = Math.ceil(booksInBatch.length / booksPerPage);
+
+                    // Paginar os livros
+                    const paginatedBooks = booksInBatch.slice(
+                      (currentPage - 1) * booksPerPage,
+                      currentPage * booksPerPage
+                    );
+
+                    return (
+                      <AccordionItem value={batchId} key={batchId}>
+                        <div className="flex items-center justify-between hover:bg-muted/50 rounded-md">
+                          <AccordionTrigger className="flex-1 px-4 py-2">
+                            <div className="flex items-center gap-3 text-left">
+                              <MonitorCheck className="h-5 w-5 text-primary" />
+                              <div>
                                 <p className="font-semibold text-base">
                                   Lote de Entrega - {new Date(creationDate).toLocaleDateString()}
                                 </p>
                                 <p className="text-sm text-muted-foreground">{stats.total} livro(s) neste lote</p>
+                                <p className="text-sm text-muted-foreground">{stats.totalDoc} documento(s) neste lote</p>
+                           
+                              </div>
                             </div>
+                          </AccordionTrigger>
+                          <div className="px-4 w-2/3 mx-auto">
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-sm font-medium">Progresso da Validação</span>
+                              <span className="text-sm text-muted-foreground">{stats.progress.toFixed(0)}%</span>
+                            </div>
+                            <Progress value={stats.progress} />
+                            <div className="text-xs text-muted-foreground flex justify-between mt-1">
+                              <span className="text-green-600">{stats.approved} aprovado</span>
+                              <span className="text-destructive">{stats.rejected} rejeitado</span>
+                              <span>{stats.pending} pendente</span>
+                            </div>
+                          </div>
+
+
                         </div>
-                    </AccordionTrigger>
-                     <div className="px-4 w-1/3">
-                        <div className="flex justify-between items-center mb-1">
-                            <span className="text-sm font-medium">Progresso da Validação</span>
-                            <span className="text-sm text-muted-foreground">{stats.progress.toFixed(0)}%</span>
-                        </div>
-                         <Progress value={stats.progress} />
-                         <div className="text-xs text-muted-foreground flex justify-between mt-1">
-                            <span className="text-green-600">{stats.approved} aprovado</span>
-                            <span className="text-destructive">{stats.rejected} rejeitado</span>
-                            <span>{stats.pending} pendente</span>
-                         </div>
-                      </div>
-                    <div className="flex justify-end gap-2 px-4">
-                        <Button size="sm" variant="destructive" onClick={() => openConfirmationDialog(batchId, 'reject_all')}>
-                            <ThumbsDown className="mr-2 h-4 w-4" /> Rejeitar Todos
-                        </Button>
-                        <Button size="sm" onClick={() => openConfirmationDialog(batchId, 'approve_remaining')}>
-                            <ThumbsUp className="mr-2 h-4 w-4" /> Aprovar Restantes
-                        </Button>
-                    </div>
-                  </div>
-                  <AccordionContent className="p-4 space-y-4">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Livro</TableHead>
-                          <TableHead>Projeto</TableHead>
-                          <TableHead>Atribuído a</TableHead>
-                          <TableHead>Estado</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {booksInBatch.map(book => (
-                          <TableRow 
-                            key={book.id}
-                            className={cn(
-                              book.itemStatus === 'approved' && 'bg-green-500/10',
-                              book.itemStatus === 'rejected' && 'bg-red-500/10'
-                            )}
-                          >
-                            <TableCell className="font-medium"><Link href={`/books/${book.id}`} className="hover:underline">{book.name}</Link></TableCell>
-                            <TableCell>{book.projectName}</TableCell>
-                            <TableCell>{book.assigneeName}</TableCell>
-                            <TableCell><StatusBadge status={book.itemStatus as any} /></TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          ) : (
-            <div className="text-center py-10 text-muted-foreground">
-              <p>Nenhum lote de entrega está atualmente em validação.</p>
-            </div>
-          )}
-        </CardContent>
+                        <AccordionContent className="p-4 space-y-4">
+                            <div className="flex justify-end gap-2 px-4">
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => openConfirmationDialog(batchId, 'reject_all')}
+                            >
+                              <ThumbsDown className="mr-2 h-4 w-4" /> Rejeitar Todos
+                            </Button>
+                            <Button size="sm" onClick={() => openConfirmationDialog(batchId, 'approve_remaining')}>
+                              <ThumbsUp className="mr-2 h-4 w-4" /> Aprovar Restantes
+                            </Button>
+                          </div>
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Livro</TableHead>
+                                <TableHead>Projeto</TableHead>
+                                <TableHead>Atribuído a</TableHead>
+                                <TableHead>Estado</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {paginatedBooks.map(book => (
+                                <TableRow
+                                  key={book.id}
+                                  className={cn(
+                                    book.itemStatus === 'approved' && 'bg-green-500/10',
+                                    book.itemStatus === 'rejected' && 'bg-red-500/10'
+                                  )}
+                                >
+                                  <TableCell className="font-medium">
+                                    <Link href={`/books/${book.id}`} className="hover:underline">
+                                      {book.name}
+                                    </Link>
+                                  </TableCell>
+                                  <TableCell>{book.projectName}</TableCell>
+                                  <TableCell>{book.assigneeName}</TableCell>
+                                  <TableCell>
+                                    <StatusBadge status={book.itemStatus} />
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                           <div className="flex justify-end gap-2 px-4">
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => openConfirmationDialog(batchId, 'reject_all')}
+                            >
+                              <ThumbsDown className="mr-2 h-4 w-4" /> Rejeitar Todos
+                            </Button>
+                            <Button size="sm" onClick={() => openConfirmationDialog(batchId, 'approve_remaining')}>
+                              <ThumbsUp className="mr-2 h-4 w-4" /> Aprovar Restantes
+                            </Button>
+                          </div>
+                          {/* Paginação */}
+                          <PaginationNav
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={page => setCurrentPage(batchId, page)}
+                          />
+                        </AccordionContent>
+                      </AccordionItem>
+                    );
+                  })}
+                </Accordion>
+              ) : (
+                <div className="text-center py-10 text-muted-foreground">
+                  <p>Nenhum lote de entrega está atualmente em validação.</p>
+                </div>
+              )}
+            </CardContent>
       </Card>
       
       <AlertDialog open={confirmationState.open} onOpenChange={closeConfirmationDialog}>

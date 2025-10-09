@@ -13,6 +13,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { FileClock, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, ThumbsDown, ThumbsUp, Check, type LucideIcon } from "lucide-react";
@@ -261,6 +270,94 @@ export default function MyValidationsClient() {
     return documents.filter(doc => doc.bookId === bookId).sort((a, b) => getPageNum(a.name) - getPageNum(b.name));
   }
 
+  const [pagesByBatch, setPagesByBatch] = React.useState<{ [key: string]: number }>({});
+  
+  // Configuração da paginação
+  const booksPerPage = 30;
+
+    // Função para alterar a página de um batch
+  function setCurrentPage(batchId: string, page: number) {
+    setPagesByBatch(prev => ({ ...prev, [batchId]: page }));
+  }
+
+  // Componente PaginationNav reutilizado com props
+  const PaginationNav = ({ currentPage, totalPages, onPageChange }: {
+      currentPage: number;
+      totalPages: number;
+      onPageChange: (page: number) => void;
+    }) => {
+    if (totalPages <= 1) return null;
+    const pageNumbers = [];
+    const maxPagesToShow = 5;
+
+    if (totalPages <= maxPagesToShow) {
+      for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i);
+      }
+    } else {
+      pageNumbers.push(1);
+      if (currentPage > 3) pageNumbers.push(-1);
+      let start = Math.max(2, currentPage - 1);
+      let end = Math.min(totalPages - 1, currentPage + 1);
+      if (currentPage <= 2) end = 3;
+      if (currentPage >= totalPages - 1) start = totalPages - 2;
+      for (let i = start; i <= end; i++) {
+        pageNumbers.push(i);
+      }
+      if (currentPage < totalPages - 2) pageNumbers.push(-1);
+      pageNumbers.push(totalPages);
+    }
+
+    return (
+      <Pagination>
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious
+              href="#"
+              onClick={e => {
+                e.preventDefault();
+                onPageChange(Math.max(1, currentPage - 1));
+              }}
+              className={currentPage === 1 ? 'pointer-events-none opacity-50' : undefined}
+            />
+          </PaginationItem>
+
+          {pageNumbers.map((num, i) =>
+            num === -1 ? (
+              <PaginationItem key={`ellipsis-${i}`}>
+                <PaginationEllipsis />
+              </PaginationItem>
+            ) : (
+              <PaginationItem key={num}>
+                <PaginationLink
+                  href="#"
+                  isActive={currentPage === num}
+                  onClick={e => {
+                    e.preventDefault();
+                    onPageChange(num);
+                  }}
+                >
+                  {num}
+                </PaginationLink>
+              </PaginationItem>
+            )
+          )}
+
+          <PaginationItem>
+            <PaginationNext
+              href="#"
+              onClick={e => {
+                e.preventDefault();
+                onPageChange(Math.min(totalPages, currentPage + 1));
+              }}
+              className={currentPage === totalPages ? 'pointer-events-none opacity-50' : undefined}
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    );
+  };
+
   return (
     <>
       <Card>
@@ -271,7 +368,19 @@ export default function MyValidationsClient() {
         <CardContent>
           {batchesToValidate.length > 0 ? (
             <Accordion type="multiple" className="w-full">
-              {batchesToValidate.map(({ batchId, creationDate, books: booksInBatch }) => (
+              {batchesToValidate.map(({ batchId, creationDate, books: booksInBatch }) => {
+                    const currentPage = pagesByBatch[batchId] || 1;
+                    const totalPages = Math.ceil(booksInBatch.length / booksPerPage);
+
+                    // Paginar os livros
+                    const paginatedBooks = booksInBatch.slice(
+                      (currentPage - 1) * booksPerPage,
+                      currentPage * booksPerPage
+                    );
+
+                    const totalDocs = booksInBatch.reduce((sum, task) => sum + (task.book.documentCount || 0), 0);
+
+                    return (
                 <AccordionItem value={batchId} key={batchId}>
                    <div className="flex items-center justify-between hover:bg-muted/50 rounded-md">
                     <AccordionTrigger className="flex-1 px-4 py-2">
@@ -282,13 +391,15 @@ export default function MyValidationsClient() {
                                   Lote de Entrega - {new Date(creationDate).toLocaleDateString()}
                                 </p>
                                 <p className="text-sm text-muted-foreground">{booksInBatch.length} livro(s) neste lote</p>
+                                <p className="text-sm text-muted-foreground">{totalDocs} documento(s) neste lote</p>
+                           
                             </div>
                         </div>
                     </AccordionTrigger>
                   </div>
                   <AccordionContent className="p-4 space-y-4">
                      <Accordion type="multiple" className="w-full">
-                        {booksInBatch.map(task => {
+                        {paginatedBooks.map(task => {
                             const { book } = task;
                             const pages = getPagesForBook(book.id);
                             const bookCols = columnStates[book.id]?.cols || 8;
@@ -308,7 +419,10 @@ export default function MyValidationsClient() {
                                                 </div>
                                             </div>
                                         </AccordionTrigger>
-                                        <div className="flex justify-end gap-2 px-4">
+                                        
+                                    </div>
+                                    <AccordionContent className="p-4 space-y-4">
+                                        <div className="flex justify-start gap-2 px-4">
                                             <Button size="sm" variant="destructive" onClick={() => setRejectionDialog({ open: true, bookId: book.id, deliveryItemId: task.item.id, bookName: book.name })}>
                                                 <ThumbsDown className="mr-2 h-4 w-4" /> Rejeitar
                                             </Button>
@@ -316,8 +430,6 @@ export default function MyValidationsClient() {
                                                 <ThumbsUp className="mr-2 h-4 w-4" /> Aprovar
                                             </Button>
                                         </div>
-                                    </div>
-                                    <AccordionContent className="p-4 space-y-4">
                                         <div className="flex items-center justify-end gap-4">
                                             <Label htmlFor={`columns-slider-${book.id}`} className="text-sm whitespace-nowrap">Tamanho da miniatura:</Label>
                                             <Slider id={`columns-slider-${book.id}`} min={1} max={12} step={1} value={[bookCols]} onValueChange={(val) => setBookColumns(book.id, val[0])} className="w-full max-w-[200px]" />
@@ -350,14 +462,30 @@ export default function MyValidationsClient() {
                                                 </div>
                                             ))}
                                         </div>
+                                        <div className="flex justify-end gap-2 px-4">
+                                            <Button size="sm" variant="destructive" onClick={() => setRejectionDialog({ open: true, bookId: book.id, deliveryItemId: task.item.id, bookName: book.name })}>
+                                                <ThumbsDown className="mr-2 h-4 w-4" /> Rejeitar
+                                            </Button>
+                                            <Button size="sm" onClick={() => handleApprove(task)}>
+                                                <ThumbsUp className="mr-2 h-4 w-4" /> Aprovar
+                                            </Button>
+                                        </div>
                                     </AccordionContent>
                                 </AccordionItem>
+                                
                             )
                         })}
                      </Accordion>
+                  {/* Paginação */}
+                  <PaginationNav
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={page => setCurrentPage(batchId, page)}
+                  />
                   </AccordionContent>
                 </AccordionItem>
-              ))}
+                         );
+                  })}
             </Accordion>
           ) : (
             <div className="text-center py-10 text-muted-foreground flex flex-col items-center gap-4">

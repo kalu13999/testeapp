@@ -290,7 +290,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
       booksInStage = booksInStage.filter(book => bookToBatchMap.get(book.id)?.id === selectedBatchId);
     }
     
-    if (stage === 'storage' && selectedStorageId !== 'all') {
+    if ((stage === 'storage' || stage === 'final-quality-control') && selectedStorageId !== 'all') {
       const selectedStorageName = storages.find(s => s.id.toString() === selectedStorageId)?.nome;
       if (selectedStorageName) {
         booksInStage = booksInStage.filter(book => book.storageName === selectedStorageName);
@@ -944,21 +944,40 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                 {renderBulkActions()}
             </div>
              {stage === 'final-quality-control' && (
-                <div className="pt-4">
-                  <Label htmlFor="batch-select">Filtrar por Lote de Processamento</Label>
-                  <Select value={selectedBatchId} onValueChange={setSelectedBatchId}>
-                    <SelectTrigger id="batch-select" className="w-[300px]">
+                <div className="flex gap-4 pt-4">
+                  <div className="flex flex-col">
+                    <Label htmlFor="storage-select" className="mb-2">Filtrar por Localização de Armazenamento</Label>
+                    <Select value={selectedStorageId} onValueChange={setSelectedStorageId}>
+                      <SelectTrigger id="storage-select" className="w-[300px]">
+                        <SelectValue placeholder="Selecionar um armazenamento..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os Armazenamentos</SelectItem>
+                        {storages.map(storage => (
+                          <SelectItem key={storage.id} value={String(storage.id)}>
+                            {storage.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex flex-col">
+                    <Label htmlFor="batch-select" className="mb-2">Filtrar por Lote de Processamento</Label>
+                    <Select value={selectedBatchId} onValueChange={setSelectedBatchId}>
+                      <SelectTrigger id="batch-select" className="w-[300px]">
                         <SelectValue placeholder="Selecionar um lote..." />
-                    </SelectTrigger>
-                    <SelectContent>
+                      </SelectTrigger>
+                      <SelectContent>
                         <SelectItem value="all">Todos os Lotes</SelectItem>
                         {availableBatches.map(batch => (
-                            <SelectItem key={batch.id} value={batch.id}>
-                                {batch.timestamp.replace('Process started on ', '')}
-                            </SelectItem>
+                          <SelectItem key={batch.id} value={batch.id}>
+                            {batch.timestamp.replace('Process started on ', '')}
+                          </SelectItem>
                         ))}
-                    </SelectContent>
-                  </Select>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               )}
               {stage === 'storage' && (
