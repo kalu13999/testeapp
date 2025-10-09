@@ -238,7 +238,7 @@ export default function ProfileClient() {
         );
     }
     
-    if (!currentUser) return <div className="flex items-center justify-center h-full"><p>Loading user profile...</p></div>;
+    if (!currentUser) return <div className="flex items-center justify-center h-full"><p>A carregar perfil do utilizador...</p></div>;
     const userPermissions = permissions[currentUser.role] || [];
     const hasSettingsPermission = userPermissions.includes('*') || userPermissions.includes('/settings');
     

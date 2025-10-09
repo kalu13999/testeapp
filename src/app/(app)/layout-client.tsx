@@ -262,7 +262,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
                     <FileLock2 className="h-8 w-8 text-primary-foreground" />
                 </div>
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                <p className="text-muted-foreground">Loading user session...</p>
+                <p className="text-muted-foreground">A preparar o ambiente do utilizador...</p>
             </div>
         </div>
     );
@@ -276,7 +276,7 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
                     <FileLock2 className="h-8 w-8 text-primary-foreground" />
                 </div>
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                <p className="text-muted-foreground">Loading application data...</p>
+                <p className="text-muted-foreground">A obter dados da aplicação...</p>
             </div>
         </div>
     );

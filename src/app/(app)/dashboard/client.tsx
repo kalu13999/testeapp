@@ -581,7 +581,7 @@ export default function DashboardClient() {
     const { currentUser, selectedProjectId, projects } = useAppContext();
 
     if (!currentUser) {
-        return <p>Loading user data...</p>;
+        return <p>A preparar o ambiente do utilizador...</p>;
     }
 
     const renderDashboard = () => {
