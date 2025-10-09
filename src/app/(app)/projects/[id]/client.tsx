@@ -342,7 +342,10 @@ export default function ProjectDetailClient({ projectId }: ProjectDetailClientPr
                     <DetailItem label="Budget" value={`$${project.budget.toLocaleString()}`} />
                     <DetailItem label="Timeline" value={`${format(new Date(project.startDate), "LLL d, yyyy")} to ${format(new Date(project.endDate), "LLL d, yyyy")}`} />
                     <div className="col-span-full">
-                        <DetailItem label="Visão Geral do Progresso" value={`${project.documentCount.toLocaleString()} / ${project.totalExpected.toLocaleString()} páginas`} />
+                        <DetailItem
+                          label="Visão Geral do Progresso"
+                          value={`${(project.documentCount ?? 0).toLocaleString()} / ${(project.totalExpected ?? 0).toLocaleString()} páginas`}
+                        />
                         <Progress value={project.progress} className="mt-2 h-2" />
                     </div>
                 </div>
