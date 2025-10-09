@@ -90,7 +90,8 @@ export default function ValidationMonitoringClient() {
                 const item = itemsInBatch.find(i => i.bookId === book.id);
                 const assignee = users.find(u => u.id === item?.user_id);
                 return { ...book, itemStatus: item?.status || 'pending', assigneeName: assignee?.name || 'Unassigned' };
-            });
+              }).sort((a, b) => a.assigneeName.localeCompare(b.assigneeName));
+            
             const totalDocs = booksWithAssignee.reduce((sum, book) => sum + (book.documentCount || 0), 0);
 
             return {
