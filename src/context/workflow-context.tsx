@@ -587,7 +587,7 @@ const loadData = async () => {
   }, [toast]);*/
 
 
-  const login = async (username: string, password: string): Promise<User | null> => {
+  /*const login = async (username: string, password: string): Promise<User | null> => {
 
     const user = users.find(u => (u.username || '').toLowerCase() === (username || '').toLowerCase() && u.password === password);
     if (user) {
@@ -616,7 +616,66 @@ const loadData = async () => {
       return user;
     }
     return null;
+  };*/
+
+    const login = async (username: string, password: string): Promise<User | null> => {
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+
+      const user = await response.json();
+
+      if (!response.ok) {
+        toast({
+          title: "Login falhou",
+          description: user?.error || "Erro ao autenticar",
+          variant: "destructive",
+        });
+        return null;
+      }
+
+      if (user.status === 'disabled') {
+        toast({
+          title: "Conta desativada",
+          description: "Por favor contacte um administrador.",
+          variant: "destructive",
+        });
+        return null;
+      }
+
+      setSelectedProjectId(null);
+      setCurrentUser(user);
+      localStorage.setItem('flowvault_userid', user.id);
+
+      if (localStorage.getItem('flowvault_projectid')) {
+        localStorage.removeItem('flowvault_projectid');
+      }
+
+      const storedHistory = localStorage.getItem(`nav_history_${user.id}`);
+      if (storedHistory) {
+        setNavigationHistory(JSON.parse(storedHistory));
+      } else {
+        setNavigationHistory([]);
+      }
+
+      if (!loading) {
+        loadInitialData();
+      }
+
+      await regLastLogin(user);
+
+      return user;
+
+    } catch (err: any) {
+      console.error("Erro de login:", err);
+      toast({ title: "Erro de login", description: err.message, variant: "destructive" });
+      return null;
+    }
   };
+
 
   const logout = () => {
     setCurrentUser(null);

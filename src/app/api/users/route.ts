@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getConnection, releaseConnection } from '@/lib/db';
 import type { PoolConnection, RowDataPacket } from 'mysql2/promise';
 import type { User } from '@/lib/data';
+import bcrypt from 'bcrypt';
 
 async function getEnrichedUser(connection: PoolConnection, userId: string) {
     const [rows] = await connection.execute<RowDataPacket[]>('SELECT * FROM users WHERE id = ?', [userId]);
@@ -63,11 +64,13 @@ export async function POST(request: Request) {
     connection = await getConnection();
     await connection.beginTransaction();
 
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const newUserId = `u_${Date.now()}`;
     const newUser = {
       id: newUserId,
       username,
-      password: password || 'password',
+      password: hashedPassword,
       name,
       email: email || null,
       role,

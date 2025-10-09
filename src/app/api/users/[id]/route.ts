@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { getConnection, releaseConnection } from '@/lib/db';
 import type { PoolConnection, RowDataPacket } from 'mysql2/promise';
 import { User } from '@/lib/data';
-
+import bcrypt from 'bcrypt'
 async function getEnrichedUser(connection: PoolConnection, userId: string) {
     const [rows] = await connection.execute<RowDataPacket[]>('SELECT * FROM users WHERE id = ?', [userId]);
     if (rows.length === 0) {
@@ -50,7 +50,13 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     if (name !== undefined) updateFields.name = name;
     if (email !== undefined) updateFields.email = email;
     if (username !== undefined) updateFields.username = username;
-    if (password) updateFields.password = password;
+    //if (password) updateFields.password = password;
+
+    if (password){
+      const hashedPassword = await bcrypt.hash(password, 10);
+      updateFields.password = hashedPassword;
+    }
+    
     if (role !== undefined) updateFields.role = role;
     if (phone !== undefined) updateFields.phone = phone;
     if (jobTitle !== undefined) updateFields.jobTitle = jobTitle;
