@@ -165,12 +165,14 @@ export default function ValidationMonitoringClient() {
   }, [deliveryBatches, deliveryBatchItems, books, currentUser, users]);
 */
   const openConfirmationDialog = (batchId: string, finalDecision: 'approve_remaining' | 'reject_all') => {
-    const title = finalDecision === 'approve_remaining' ? "Approve Batch and Remaining Items?" : "Reject Entire Batch?";
-    const description = finalDecision === 'approve_remaining' 
-      ? "This will finalize all decisions. Any pending or unassigned books will be approved. This action cannot be undone."
-      : "This will reject ALL books in this batch, regardless of individual approvals. This action cannot be undone."
-
-    setConfirmationState({ open: true, batchId, finalDecision, title, description });
+    const title = finalDecision === 'approve_remaining'
+      ? "Aprovar lote e itens pendentes?"
+      : "Rejeitar lote inteiro?";
+    
+    const description = finalDecision === 'approve_remaining'
+      ? "Esta ação irá finalizar todas as decisões. Todos os livros pendentes ou por atribuir serão aprovados. Esta ação é irreversível."
+      : "Esta ação irá rejeitar TODOS os livros deste lote, independentemente de aprovações individuais. Esta ação é irreversível.";
+      setConfirmationState({ open: true, batchId, finalDecision, title, description });
   }
   
   const closeConfirmationDialog = () => {
