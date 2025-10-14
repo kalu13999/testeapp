@@ -1,5 +1,6 @@
 import BatchDetailClient from "./client";
 
-export default function BatchDetailPage({ params }: { params: { id: string } }) {
-    return <BatchDetailClient batchId={params.id} />;
+export default async function BatchDetailPage({ params }: { params: { id: string } }) {
+    const { id } = await params;
+    return <BatchDetailClient batchId={id} />;
 }

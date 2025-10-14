@@ -6,10 +6,20 @@ export async function GET() {
   let connection: PoolConnection | null = null;
   try {
     connection = await getConnection();
-    const [rows] = await connection.execute('SELECT * FROM audit_logs ORDER BY date DESC');
+
+    // Join entre audit_logs e users
+    const [rows] = await connection.execute(`
+      SELECT 
+        al.*, 
+        u.name AS user 
+      FROM audit_logs al
+      LEFT JOIN users u ON al.userId = u.id
+      ORDER BY al.date DESC
+    `);
+
     return NextResponse.json(rows);
   } catch (error) {
-    console.error("Error fetching audit_logs:", error);
+    console.error("Error fetching enriched audit_logs:", error);
     return NextResponse.json({ error: 'Failed to fetch audit_logs' }, { status: 500 });
   } finally {
     if (connection) {

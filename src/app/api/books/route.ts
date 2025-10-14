@@ -127,16 +127,7 @@ export async function GET(request: NextRequest) {
     }
   }
 }
-
-export async function POST(request: Request) {
-  const body = await request.json();
-  let connection: PoolConnection | null = null;
-
-  try {
-    connection = await getConnection();
-    await connection.beginTransaction();
-
-    if (body.books && Array.isArray(body.books) && body.projectId) {
+    /*if (body.books && Array.isArray(body.books) && body.projectId) {
       const { projectId, books } = body;
 
       const bookInsertQuery = `
@@ -174,8 +165,55 @@ export async function POST(request: Request) {
       
       releaseConnection(connection);
       return NextResponse.json(enrichedBooks.filter(b => b !== null), { status: 201 });
-    }
+    }*/
+export async function POST(request: Request) {
+  const body = await request.json();
+  let connection: PoolConnection | null = null;
 
+  try {
+    connection = await getConnection();
+    await connection.beginTransaction();
+
+
+    if (body.books && Array.isArray(body.books) && body.projectId) {
+      const { projectId, books } = body;
+      const success: any[] = [];
+      const failed: { book: any; error: string }[] = [];
+
+      for (const b of books) {
+        try {
+          const id = `book_imp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+          const query = `
+            INSERT INTO books (
+              id, name, statusId, expectedDocuments, projectId, priority, info, author, isbn, publicationYear, color
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `;
+          await connection.execute(query, [
+            id,
+            b.name,
+            "ds_1",
+            b.expectedDocuments,
+            projectId,
+            b.priority || "Média",
+            b.info || "",
+            b.author || null,
+            b.isbn || null,
+            b.publicationYear || null,
+            b.color || "#FFFFFF",
+          ]);
+
+          success.push({ ...b, id });
+        } catch (err: any) {
+          console.error("Erro inserindo livro:", err);
+          failed.push({ book: b, error: err.message || "Erro ao inserir livro" });
+        }
+      }
+
+      await connection.commit();
+      releaseConnection(connection);
+
+      return NextResponse.json({ success, failed }, { status: 201 });
+    }
     if (body.book && body.projectId) {
       const { projectId, book } = body;
       const newId = `book_${Date.now()}`;

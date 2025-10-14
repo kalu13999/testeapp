@@ -22,7 +22,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { ListPlus, PlayCircle, BookOpen, ChevronsUpDown, ArrowUp, ArrowDown, Send, X, PlusCircle, Download } from "lucide-react"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+
+import { ListPlus, PlayCircle, BookOpen, ChevronsUpDown, ArrowUp, ArrowDown, Send, X, PlusCircle, CheckSquare, BarChart, ListOrdered, Database, Warehouse, FileText } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import type { EnrichedBook } from "@/lib/data"
 import { Input } from "@/components/ui/input"
@@ -42,7 +50,28 @@ interface DeliveryBatchCreationClientProps {
     dataStatus?: string;
   };
 }
-
+const KpiCard = ({
+  title,
+  value,
+  icon: Icon,
+  description,
+}: {
+  title: string;
+  value: string | number;
+  icon: React.ElementType;
+  description: string;
+}) => (
+  <Card>
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardTitle className="text-sm font-medium">{title}</CardTitle>
+      <Icon className="h-4 w-4 text-muted-foreground" />
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold">{value}</div>
+      <p className="text-xs text-muted-foreground">{description}</p>
+    </CardContent>
+  </Card>
+);
 export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCreationClientProps) {
   const { books, handleCreateDeliveryBatch, selectedProjectId, processingBatchItems, processingBatches } = useAppContext();
   const [selection, setSelection] = React.useState<string[]>([]);
@@ -53,6 +82,12 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
   ]);
   const [isBatchPanelOpen, setIsBatchPanelOpen] = React.useState(true);
   
+
+  const [confirmationState, setConfirmationState] = React.useState({ open: false, title: '', description: '', onConfirm: () => {} });
+
+  const openConfirmationDialog = ({ title, description, onConfirm}: Omit<typeof confirmationState, 'open'>) => {
+    setConfirmationState({ open: true, title, description, onConfirm });
+  }
   const bookToBatchMap = React.useMemo(() => {
     const map = new Map<string, { id: string; timestampStr: string }>();
     processingBatchItems.forEach(item => {
@@ -145,7 +180,7 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
     );
   }
 
-  const handleStartProcess = () => {
+  const handleStartDelivery = () => {
     handleCreateDeliveryBatch(selection);
     setSelection([]);
     setMultiSelection([]);
@@ -178,26 +213,97 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
         <Card>
           <CardHeader>
             <div className="flex justify-between items-start">
-                <div>
-                    <CardTitle>{config.title}</CardTitle>
-                    <CardDescription>{config.description}</CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setIsBatchPanelOpen(p => !p)}>
-                        Batch Panel
-                        <Badge variant="destructive" className="ml-2">{selection.length}</Badge>
-                    </Button>
-                    <Button 
-                        variant="secondary" 
-                        size="sm" 
-                        disabled={multiSelection.length === 0}
-                        onClick={handleAddMultiple}
-                    >
-                        <ListPlus className="mr-2 h-4 w-4" />
-                        Add to Batch
-                    </Button>
-                </div>
+              <div>
+                <CardTitle>{config.title}</CardTitle>
+                <CardDescription>{config.description}</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setIsBatchPanelOpen(p => !p)}>
+                  Batch Panel
+                  <Badge variant="destructive" className="ml-2">{selection.length}</Badge>
+                </Button>
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  disabled={multiSelection.length === 0}
+                  onClick={handleAddMultiple}
+                >
+                  <ListPlus className="mr-2 h-4 w-4" />
+                  Add to Batch
+                </Button>
+              </div>
             </div>
+
+            {/* Coloquei esta div abaixo do flex principal */}
+            {availableBooks.length > 0 && (
+              <div className="pt-4">
+                {/* Tabela de distribuição por storage */}
+                <h4 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground">
+                  <Warehouse className="h-4 w-4" /> Distribuição por Armazenamento
+                </h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="text-left border-b">
+                        <th className="py-2 px-3 font-medium text-muted-foreground">Armazenamento</th>
+                        <th className="py-2 px-3 font-medium text-muted-foreground">Livros</th>
+                        <th className="py-2 px-3 font-medium text-muted-foreground">Páginas</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        const storageStats = availableBooks.reduce((acc, book) => {
+                          const name = book.storageName || "Sem Local";
+                          if (!acc[name]) acc[name] = { books: 0, pages: 0 };
+                          acc[name].books += 1;
+                          acc[name].pages += book.expectedDocuments || 0;
+                          return acc;
+                        }, {} as Record<string, { books: number; pages: number }>);
+
+                        return Object.entries(storageStats)
+                          .sort((a, b) => b[1].pages - a[1].pages)
+                          .map(([storageName, stats]) => (
+                            <tr
+                              key={storageName}
+                              className="border-b last:border-0 hover:bg-muted/40 transition-colors"
+                            >
+                              <td className="py-2 px-3 font-medium">{storageName}</td>
+                              <td className="py-2 px-3">{stats.books}</td>
+                              <td className="py-2 px-3">{stats.pages.toLocaleString()}</td>
+                            </tr>
+                          ));
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Resumo dos selecionados */}
+                <div className="pt-4 border-t">
+                  <h4 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground mb-2">
+                    <CheckSquare className="h-4 w-4" /> Resumo da Seleção
+                  </h4>
+                  {multiSelection.length > 0 ? (
+                    <div className="grid gap-2 text-sm">
+                      <p>
+                        <strong>{multiSelection.length}</strong> livro(s) selecionado(s) de um total de <strong>{availableBooks.length}</strong>.
+                      </p>
+                      <p>
+                        Total de páginas nos selecionados:{" "}
+                        <strong>
+                          {availableBooks
+                            .filter((b) => multiSelection.includes(b.id))
+                            .reduce((sum, b) => sum + (b.expectedDocuments || 0), 0)
+                            .toLocaleString()}
+                        </strong>
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">
+                      Selecione livros para ativar a seleção.
+                    </p>
+                  )}
+                </div>
+              </div>)}
           </CardHeader>
           <CardContent>
             <Table>
@@ -211,7 +317,7 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
                       />
                   </TableHead>
                   <TableHead className="w-[120px]">Action</TableHead>
-                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name')}>Nome do Livro {getSortIndicator('name')}</div></TableHead>
+                  <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('name')}>Nome {getSortIndicator('name')}</div></TableHead>
                   <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('projectName')}>Projeto {getSortIndicator('projectName')}</div></TableHead>
                   <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('batchInfo')}>Lote de Processamento {getSortIndicator('batchInfo')}</div></TableHead>
                   <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={() => handleSort('scannerDeviceName')}>Scanner {getSortIndicator('scannerDeviceName')}</div></TableHead>
@@ -303,6 +409,7 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
       </div>
 
       <AnimatePresence>
+        
         {isBatchPanelOpen && (
             <motion.div
                 className="lg:col-span-1 sticky top-20"
@@ -311,6 +418,67 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
                 exit={{ opacity: 0, width: 0 }}
                 transition={{ duration: 0.3 }}
             >
+                                  {/* Estatísticas gerais e resumo dos selecionados */}
+            <Accordion type="single" collapsible className="w-full pt-2 mb-6">
+              <AccordionItem value="stats">
+                <AccordionTrigger className="text-base px-6 font-semibold rounded-lg border bg-card text-card-foreground shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <BarChart className="h-5 w-5" />
+                    Estatísticas Gerais
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="pt-4 px-6 border-x border-b rounded-b-lg bg-card space-y-6">
+                                      
+                    
+                    {/* KPIs principais - um por linha */}
+                    <div className="flex flex-col gap-4">
+                      <KpiCard
+                        title="Total de Livros Disponíveis"
+                        value={availableBooks.length}
+                        icon={BookOpen}
+                        description="Livros listados de acordo com os filtros atuais."
+                      />
+
+                      <KpiCard
+                        title="Total de Páginas"
+                        value={availableBooks
+                          .reduce((sum, b) => sum + (b.expectedDocuments || 0), 0)
+                          .toLocaleString()}
+                        icon={FileText}
+                        description="Soma de páginas em todos os livros disponíveis."
+                      />
+
+                      <KpiCard
+                        title="Armazenamentos Envolvidos"
+                        value={
+                          new Set(
+                            availableBooks
+                              .map((b) => b.storageName)
+                              .filter((n) => n && n !== "N/A")
+                          ).size
+                        }
+                        icon={Database}
+                        description="Total de locais de armazenamento representados."
+                      />
+
+                      <KpiCard
+                        title="Média de Páginas por Livro"
+                        value={(() => {
+                          const totalBooks = availableBooks.length || 1;
+                          const totalPages = availableBooks.reduce(
+                            (sum, b) => sum + (b.expectedDocuments || 0),
+                            0
+                          );
+                          return Math.round(totalPages / totalBooks);
+                        })()}
+                        icon={ListOrdered}
+                        description="Média de páginas entre os livros listados."
+                      />
+                    </div>
+
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
                 {selection.length > 0 ? (
                     <Card className="bg-secondary/50">
                         <CardHeader>
@@ -339,25 +507,47 @@ export default function DeliveryBatchCreationClient({ config }: DeliveryBatchCre
                             </div>
                         </CardContent>
                         <CardFooter className="flex-col gap-2">
-                            <Button className="w-full" onClick={handleStartProcess}>
+                            <Button className="w-full" onClick={() => openConfirmationDialog({
+                                title: `Iniciar Entregas`,
+                                description: `Tem a certeza que queres marcar os livros selecionados como entregues?`,
+                                onConfirm: () => { handleStartDelivery() }
+                                                            })}>
                                 <Send className="mr-2 h-4 w-4" />
-                                Create Delivery Batch
+                                Efetuar Entrega
                             </Button>
                              <Button variant="outline" className="w-full" onClick={clearSelection}>
-                                Clear Selection
+                                Limpar Seleção
                             </Button>
                         </CardFooter>
                     </Card>
                 ) : (
                     <div className="text-center py-10 text-muted-foreground flex flex-col items-center gap-4 border-2 border-dashed rounded-lg">
                         <BookOpen className="h-12 w-12"/>
-                        <h3 className="font-semibold">No Books Selected</h3>
-                        <p className="text-sm">Add books from the table to create a new delivery batch.</p>
+                        <h3 className="font-semibold">Nenhum livro foi adicionado ao lote</h3>
+                        <p className="text-sm">Adiciona livros da tabela para criar um novo lote para entrga.</p>
+              
                     </div>
                 )}
             </motion.div>
         )}
       </AnimatePresence>
+               <>
+          <AlertDialog open={confirmationState.open} onOpenChange={(open) => !open && setConfirmationState(prev => ({...prev, open: false}))}>
+              <AlertDialogContent>
+                  <AlertDialogHeader>
+                      <AlertDialogTitle>{confirmationState.title}</AlertDialogTitle>
+                      <AlertDialogDescription>{confirmationState.description}</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                      <AlertDialogCancel onClick={() => setConfirmationState(prev => ({...prev, open: false}))}>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => {
+                          confirmationState.onConfirm();
+                          setConfirmationState({ open: false, title: '', description: '', onConfirm: () => {} });
+                      }}>Confirmar</AlertDialogAction>
+                  </AlertDialogFooter>
+              </AlertDialogContent>
+          </AlertDialog>
+         </>
     </div>
   )
 }

@@ -12,8 +12,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { useAppContext } from "@/context/workflow-context";
-import { Loader2, CheckCircle, XCircle, PauseCircle, Clock, Book, FileText, Timer, BookOpen, RefreshCw } from "lucide-react";
+import { useAppContext, AppDocument } from "@/context/workflow-context";
+import { Loader2, CheckCircle, XCircle, PauseCircle, Clock, Book, FileText, Timer, BookOpen, RefreshCw, BarChart, ListOrdered, Database, Warehouse  } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import type { ProcessingBatch } from "@/lib/data";
+import type { ProcessingBatch, EnrichedBook } from "@/lib/data";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 
@@ -60,9 +60,42 @@ const DetailItem = ({ label, value, icon: Icon }: { label: string; value: React.
   </div>
 );
 
+type GroupedDocuments = {
+  [bookId: string]: {
+    book: EnrichedBook;
+    pages: AppDocument[];
+    hasError: boolean;
+    hasWarning: boolean;
+    batchInfo?: { id: string, timestampStr: string };
+  };
+};
+
+const KpiCard = ({
+  title,
+  value,
+  icon: Icon,
+  description,
+}: {
+  title: string;
+  value: string | number;
+  icon: React.ElementType;
+  description: string;
+}) => (
+  <Card>
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardTitle className="text-sm font-medium">{title}</CardTitle>
+      <Icon className="h-4 w-4 text-muted-foreground" />
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold">{value}</div>
+      <p className="text-xs text-muted-foreground">{description}</p>
+    </CardContent>
+  </Card>
+);
 export default function ProcessingViewClient({ config }: ProcessingViewClientProps) {
   const {
     books,
+    documents,
     processingBatches,
     processingBatchItems,
     processingLogs,
@@ -154,7 +187,37 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
           default: return { icon: Clock, color: 'text-muted-foreground' };
       }
   }
+  const groupedByBook: GroupedDocuments = React.useMemo(() => {
+  // Mapa para acessar o batchInfo por bookId
+    const bookToBatchMap = new Map<string, { id: string; timestampStr: string }>();
+    batchesForDisplay.forEach(batch => {
+      batch.items.forEach(item => {
+        bookToBatchMap.set(item.bookId, { id: batch.id, timestampStr: new Date(batch.startTime).toLocaleString() });
+      });
+    });
 
+    const booksInBatches: EnrichedBook[] = [];
+    batchesForDisplay.forEach(batch => {
+      batch.items.forEach(item => {
+        const book = books.find(b => b.id === item.bookId);
+        if (book && !booksInBatches.some(b => b.id === book.id)) {
+          booksInBatches.push(book);
+        }
+      });
+    });
+
+    return booksInBatches.reduce<GroupedDocuments>((acc, book) => {
+      const pages = documents.filter(doc => doc.bookId === book.id);
+      acc[book.id] = {
+        book,
+        pages,
+        hasError: pages.some(p => p.flag === 'error'),
+        hasWarning: pages.some(p => p.flag === 'warning'),
+        batchInfo: bookToBatchMap.get(book.id)
+      };
+      return acc;
+    }, {});
+  }, [batchesForDisplay, books, documents]);
   return (
     <>
       <Card>
@@ -196,7 +259,120 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
                 </Select>
               </div>
             </div>
-        </CardHeader>
+            <Accordion type="single" collapsible className="w-full pt-4">
+              <AccordionItem value="stats">
+                <AccordionTrigger className="text-base px-6 font-semibold rounded-lg border bg-card text-card-foreground shadow-sm">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-base px-6 font-semibold rounded-lg border bg-card text-card-foreground shadow-sm">
+                    <div className="flex items-center gap-2"><BarChart className="h-5 w-5" /> Estatísticas</div>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="pt-4 px-6 border-x border-b rounded-b-lg bg-card space-y-6">
+                  {/* KPIs principais */}
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <KpiCard
+                      title="Total de Livros"
+                      value={Object.keys(groupedByBook).length}
+                      icon={BookOpen}
+                      description={`Livros disponíveis nesta fase.`}
+                    />
+                    <KpiCard
+                      title="Total de Páginas"
+                      value={Object.values(groupedByBook)
+                        .reduce((sum, group) => sum + group.pages.length, 0)
+                        .toLocaleString()}
+                      icon={FileText}
+                      description={`Soma total de páginas entre todos os livros.`}
+                    />
+                    
+                      <KpiCard
+                        title="Armazenamentos com Livros"
+                        value={
+                          new Set(
+                            Object.values(groupedByBook)
+                              .map((g) => g.book.storageName)
+                              .filter(Boolean)
+                          ).size
+                        }
+                        icon={Database}
+                        description={`Quantidade de locais de armazenamento com livros associados.`}
+                      />
+                  
+                    <KpiCard
+                      title="Páginas por Livro (média)"
+                      value={(() => {
+                        const totalBooks = Object.keys(groupedByBook).length || 1;
+                        const totalPages = Object.values(groupedByBook).reduce(
+                          (sum, g) => sum + g.pages.length,
+                          0
+                        );
+                        return Math.round(totalPages / totalBooks);
+                      })()}
+                      icon={ListOrdered}
+                      description={`Média de páginas por livro nesta fase.`}
+                    />
+                  </div>
+
+                  {/* Tabela de distribuição por storage */}
+                
+                  <div className="pt-2 space-y-3">
+                    <h4 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground">
+                      <Warehouse className="h-4 w-4" /> Distribuição por Armazenamento
+                    </h4>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm border-collapse">
+                        <thead>
+                          <tr className="text-left border-b">
+                            <th className="py-2 px-3 font-medium text-muted-foreground">
+                              Armazenamento
+                            </th>
+                            <th className="py-2 px-3 font-medium text-muted-foreground">
+                              Livros
+                            </th>
+                            <th className="py-2 px-3 font-medium text-muted-foreground">
+                              Páginas
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(() => {
+                            const storageStats = Object.values(groupedByBook).reduce(
+                              (acc, group) => {
+                                const name = group.book.storageName || "Sem Local";
+                                if (!acc[name]) acc[name] = { books: 0, pages: 0 };
+                                acc[name].books += 1;
+                                acc[name].pages += group.pages.length;
+                                return acc;
+                              },
+                              {} as Record<string, { books: number; pages: number }>
+                            );
+
+                            return Object.entries(storageStats)
+                              .sort((a, b) => b[1].pages - a[1].pages)
+                              .map(([storageName, stats]) => (
+                                <tr
+                                  key={storageName}
+                                  className="border-b last:border-0 hover:bg-muted/40 transition-colors"
+                                >
+                                  <td className="py-2 px-3 font-medium">
+                                    {storageName}
+                                  </td>
+                                  <td className="py-2 px-3">{stats.books}</td>
+                                  <td className="py-2 px-3">
+                                    {stats.pages.toLocaleString()}
+                                  </td>
+                                </tr>
+                              ));
+                          })()}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+              
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+            
+          </CardHeader>
         <CardContent>
           {batchesForDisplay.length > 0 ? (
             <Accordion type="multiple" className="w-full">

@@ -30,7 +30,7 @@ const enrichBook = (
 };
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
-    const bookId = params.id;
+    const bookId = await params.id;
     let connection: PoolConnection | null = null;
     try {
         const { actualPageCount, bookName, clientId, projectId } = await request.json();
@@ -49,7 +49,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
         }
 
         const documentsToInsert = [];
-        const documentIds = [];
+        const documentIds: string[] = [];
         if (actualPageCount > 0) {
           for (let i = 1; i <= actualPageCount; i++) {
               const docId = `doc_${Date.now()}_${Math.random().toString(36).substring(2, 9)}_${i}`;

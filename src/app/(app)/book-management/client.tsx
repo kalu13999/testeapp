@@ -50,7 +50,7 @@ import {
 } from "@/components/ui/alert-dialog"
 
 import type { EnrichedBook, RawBook } from "@/lib/data"
-import type { BookImport } from "@/context/workflow-context"
+import type { BookImport, FailedBook, ImportBooksError  } from "@/context/workflow-context"
 import { BookForm } from "./book-form"
 import { useAppContext } from "@/context/workflow-context"
 import { Textarea } from "@/components/ui/textarea"
@@ -60,13 +60,14 @@ import { useToast } from "@/hooks/use-toast"
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
 import { Checkbox } from "@/components/ui/checkbox";
 
-const ITEMS_PER_PAGE = 100;
+const ITEMS_PER_PAGE = 50;
 
 export default function BookManagementClient() {
-  const { books, addBook, updateBook, deleteBook, importBooks, selectedProjectId } = useAppContext();
+  const { books, addBook, updateBook, deleteBook, importBooks, selectedProjectId, allProjects} = useAppContext();
   const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | 'import' | 'details' | null; data?: EnrichedBook }>({ open: false, type: null })
   
   const [importJson, setImportJson] = React.useState("");
+  const [excelFile, setExcelFile] = React.useState<File | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
@@ -77,6 +78,31 @@ export default function BookManagementClient() {
     { id: 'name', desc: false }
   ]);
   
+
+  const exampleJson = `[
+    {
+      "name": "90454-1990-01",
+      "expectedDocuments": 0,
+      "priority": "Média",
+      "info": "{\\"Volumes\\": \\"70\\", \\"Apontamentos\\": \\"\\"}",
+      "author": "Diário Popular. Lisboa",
+      "isbn": "J.4281 M.",
+      "publicationYear": ,
+      "projectName": "01-Jornais"
+    },
+    {
+      "name": "hg-37-v",
+      "expectedDocuments": 0,
+      "priority": "Média",
+      "info": "{\\"Volumes\\": \\"1\\", \\"Apontamentos\\": \\"Exemplo\\"}",
+      "author": "CATÁLOGO DA CERÂMICA PORTUGUESA / MUSEU MUNICIPAL DO PORTO ; ORG. JOAQUIM DE VASCONCELOS",
+      "isbn": "B.A. 84 V.",
+      "publicationYear": 304821,
+      "projectName": "03-Impressos"
+    }
+  ]`;
+
+
   const handleColumnFilterChange = (columnId: string, value: string) => {
     setColumnFilters(prev => ({ ...prev, [columnId]: value }));
     setCurrentPage(1);
@@ -316,7 +342,7 @@ export default function BookManagementClient() {
     deleteBook(dialogState.data.id);
     closeDialog()
   }
-
+/*
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -329,9 +355,61 @@ export default function BookManagementClient() {
         };
         reader.readAsText(file);
     }
+  };*/
+  const readExcel = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const data = new Uint8Array(e.target?.result as ArrayBuffer);
+      const workbook = XLSX.read(data, { type: "array" });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json<any>(sheet, { defval: "" });
+
+      const jsonObjects = rows.map((r: any, index: number) => {
+        try {
+          return {
+            // ✅ Correção do mapeamento
+            name: String(r["RFS-Indexing"] || r["name"] || "").trim(), // era Qtd Volumes
+            expectedDocuments: Number(r["Qtd imagem"] || r["expectedDocuments"] || 0),
+            priority: "Média",
+            info: JSON.stringify({
+              Volumes: String(r["Qtd Volumes"] || r["Volumes"] || "").trim(), // agora certo
+              Apontamentos: String(r["Apontamentos"] || r["info"] || "").trim(),
+            }),
+            author: String(r["Título"] || r["author"] || "").trim(), // agora certo
+            isbn: String(r["Cota"] || r["isbn"] || "").trim(),
+            publicationYear: String(r["NCB"] || r["publicationYear"] || "").trim(), // agora certo
+            projectName: String(r["Projeto"] || r["project.name"] || "").trim(),
+            _row: index + 2, // linha do Excel (para erros)
+          };
+        } catch {
+          return null;
+        }
+      }).filter(Boolean);
+
+      setImportJson(JSON.stringify(jsonObjects, null, 2));
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => { 
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.name.endsWith(".json")) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target?.result;
+        if (typeof text === "string") setImportJson(text);
+      };
+      reader.readAsText(file);
+    } else if (file.name.endsWith(".xlsx") || file.name.endsWith(".xls")) {
+      setExcelFile(file);
+      readExcel(file);
+    }
   };
   
-  const handleImport = () => {
+  /*const handleImport = () => {
     if (!selectedProjectId) return;
     try {
         const parsedBooks: BookImport[] = JSON.parse(importJson);
@@ -343,7 +421,196 @@ export default function BookManagementClient() {
     } catch (error) {
         toast({ title: "Importação Falhou", description: "O texto fornecido não é JSON válido ou não corresponde ao formato exigido.", variant: "destructive" });
     }
+  }*/
+
+  type BookImportEnriched = BookImport & {
+    _row?: number;
+    projectName: string;
+  };
+  
+  const handleImport = async () => {
+    if (!selectedProjectId || !allProjects) return;
+
+    try {
+      const parsedBooks: BookImportEnriched[] = JSON.parse(importJson);
+      if (!Array.isArray(parsedBooks)) throw new Error("JSON inválido.");
+
+      const selectedProject = allProjects.find(p => p.id === selectedProjectId);
+      if (!selectedProject) {
+        toast({
+          title: "Erro",
+          description: "Projeto selecionado não encontrado.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const validBooks: BookImport[] = [];
+      const failedBooks: FailedBook[] = [];
+
+      // Validação e transformação
+      parsedBooks.forEach((b, index) => {
+        const row = b._row ?? index + 1;
+
+        if (!b.name || b.projectName !== selectedProject.name) {
+          failedBooks.push({ ...b, _row: row, error: "Projeto não corresponde ou nome inválido" });
+          return;
+        }
+
+        const expectedDocuments = Number(b.expectedDocuments);
+        const publicationYear = Number(b.publicationYear);
+
+        if (isNaN(expectedDocuments) || isNaN(publicationYear)) {
+          failedBooks.push({ ...b, _row: row, error: "Campos numéricos inválidos" });
+          return;
+        }
+
+        validBooks.push({
+          name: String(b.name).trim(),
+          expectedDocuments,
+          priority: b.priority || "Média",
+          info: b.info,
+          author: String(b.author || "").trim(),
+          isbn: String(b.isbn || "").trim(),
+          publicationYear,
+          color: b.color || "#FFFFFF",
+        });
+      });
+
+      if (validBooks.length === 0) {
+        toast({
+          title: "Nenhum livro válido",
+          description: "Nenhuma linha corresponde ao projeto selecionado ou possui dados válidos.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      let importedCount = 0;
+
+      try {
+        const result = await importBooks(selectedProjectId, validBooks);
+
+        // Adiciona falhas retornadas pela API
+        if (Array.isArray(result.failed)) {
+          result.failed.forEach(f => {
+            failedBooks.push({ ...f.book, error: f.error });
+          });
+        }
+
+        importedCount = result.success.length;
+      } catch (error: unknown) {
+        console.error(error);
+        // Em caso de erro genérico, marca todos como falha
+        validBooks.forEach(b => {
+          failedBooks.push({ ...b, error: (error as Error)?.message || "Erro na importação" });
+        });
+        importedCount = 0;
+      }
+
+      // Exporta Excel das falhas
+      if (failedBooks.length > 0) {
+        const worksheet = XLSX.utils.json_to_sheet(failedBooks, {
+          header: Object.keys(failedBooks[0]),
+        });
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Falhas");
+        XLSX.writeFile(workbook, `import_failed_rows_${Date.now()}.xlsx`);
+      }
+
+      // Toast final detalhado
+      toast({
+        title: "Importação Concluída",
+        description: `${importedCount} livros importados com sucesso.${
+          failedBooks.length > 0
+            ? ` Falharam as linhas: ${failedBooks.map(f => f.name ?? "?" + f.error ?? "Erro").join(", ")}`
+            : ""
+        }`,
+      });
+
+      closeDialog();
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Erro na importação",
+        description: "Arquivo inválido ou formato incorreto.",
+        variant: "destructive",
+      });
+    }
+  };
+
+
+  function CopyExampleButton() {
+    const [open, setOpen] = React.useState(false);
+
+    return (
+      <>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => setOpen(true)}
+        >
+          Ver Estrutura
+        </Button>
+
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Estrutura JSON de Exemplo</DialogTitle>
+            </DialogHeader>
+
+            <Textarea
+              value={exampleJson}
+              readOnly
+              className="h-64 font-mono text-xs bg-muted"
+            />
+
+            <div className="flex justify-end mt-4">
+                <Button
+                  onClick={() => {
+                    try {
+                      if (typeof navigator !== "undefined" && navigator.clipboard) {
+                        navigator.clipboard.writeText(exampleJson)
+                          .then(() =>
+                            toast({
+                              title: "Copiado!",
+                              description: "O modelo JSON foi copiado para a área de transferência.",
+                            })
+                          )
+                          .catch(() => openManualCopy());
+                      } else {
+                        openManualCopy();
+                      }
+                    } catch {
+                      openManualCopy();
+                    }
+
+                    function openManualCopy() {
+                      const newWin = window.open("", "_blank", "width=600,height=400");
+                      if (newWin) {
+                        newWin.document.write(`
+                          <pre style="white-space: pre-wrap; font-family: monospace; padding: 16px;">
+                ${exampleJson}
+                          </pre>
+                          <p style="padding: 16px; font-family: sans-serif;">
+                            <b>Dica:</b> Selecione e copie o texto acima (Ctrl+C ou Cmd+C)
+                          </p>
+                        `);
+                        newWin.document.title = "Modelo JSON de Exemplo";
+                      }
+                    }
+                  }}
+                >
+                  Copiar Conteúdo
+                </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </>
+    );
   }
+
 
   return (
     <div className="space-y-6">
@@ -354,7 +621,7 @@ export default function BookManagementClient() {
         </div>
         <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => openDialog('import')} disabled={!selectedProjectId}>
-                <BookUp className="mr-2 h-4 w-4"/> Importar Lista de Livros (JSON)
+                <BookUp className="mr-2 h-4 w-4"/> Importar Lista de Livros (JSON e EXCEL)
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -567,7 +834,7 @@ export default function BookManagementClient() {
       <Dialog open={dialogState.open && dialogState.type === 'import'} onOpenChange={closeDialog}>
         <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
-                <DialogTitle>Importar Livros de JSON</DialogTitle>
+                <DialogTitle>Importar Livros de JSON e Excel</DialogTitle>
                 <DialogDescription>
                     Faça upload ou cole um arquivo JSON com um array de livros.
                     Cada objeto deve ter um `name` (string) e `expectedDocuments` (número).
@@ -577,17 +844,23 @@ export default function BookManagementClient() {
                 <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>Carregar Ficheiro</Button>
                     <p className="text-sm text-muted-foreground">Ou cole o conteúdo abaixo.</p>
-                    <Input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json" />
+                    <Input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json,.xlsx,.xls" />
                 </div>
                 <div className="grid w-full gap-1.5">
-                    <Label htmlFor="json-input">Conteúdo JSON</Label>
-                    <Textarea 
-                        id="json-input"
-                        placeholder='[{"name": "Book A", "expectedDocuments": 50}, {"name": "Book B", "expectedDocuments": 120}]'
-                        value={importJson}
-                        onChange={(e) => setImportJson(e.target.value)}
-                        className="h-48 font-mono text-xs"
-                    />
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="json-input" className="text-sm font-medium">
+                      Conteúdo JSON
+                    </Label>
+                  <CopyExampleButton />
+                  </div>
+
+                  <Textarea
+                    id="json-input"
+                    placeholder={exampleJson}
+                    value={importJson}
+                    onChange={(e) => setImportJson(e.target.value)}
+                    className="h-48 font-mono text-xs"
+                  />
                 </div>
             </div>
             <DialogFooter>

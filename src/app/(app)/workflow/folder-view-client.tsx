@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, Check, ScanLine, FileText, FileJson, PlayCircle, Send, UserPlus, CheckCheck, Archive, ThumbsUp, ThumbsDown, Undo2, MoreHorizontal, Loader2, MessageSquarePlus } from "lucide-react";
+import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, Check, ScanLine, FileText, FileJson, PlayCircle, Send, UserPlus, CheckCheck, Archive, ThumbsUp, ThumbsDown, Undo2, MoreHorizontal, Loader2, MessageSquarePlus, BarChart, ListOrdered, Database, Warehouse } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -27,7 +27,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { AppDocument, EnrichedBook, RejectionTag } from "@/context/workflow-context";
+import { AppDocument, EnrichedBook, RejectionTag} from "@/context/workflow-context";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage, StageConfigItem } from "@/lib/workflow-config";
@@ -63,7 +63,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 
-const ITEMS_PER_PAGE = 100;
+const ITEMS_PER_PAGE = 50;
 const SIMPLE_BULK_ACTION_STAGES = [
   'confirm-reception', 'to-scan', 'to-indexing', 'to-checking',
   'indexing-started', 'checking-started', 'ready-for-processing',
@@ -87,6 +87,10 @@ const iconMap: { [key: string]: LucideIcon } = {
     Undo2,
     MoreHorizontal,
     MessageSquarePlus,
+    BarChart,
+    ListOrdered, 
+    Database,
+    Warehouse,
 };
 
 interface FolderViewClientProps {
@@ -150,9 +154,34 @@ type GroupedDocuments = {
     batchInfo?: { id: string, timestampStr: string };
   };
 };
-
+const KpiCard = ({
+  title,
+  value,
+  icon: Icon,
+  description,
+}: {
+  title: string;
+  value: string | number;
+  icon: React.ElementType;
+  description: string;
+}) => (
+  <Card>
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardTitle className="text-sm font-medium">{title}</CardTitle>
+      <Icon className="h-4 w-4 text-muted-foreground" />
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold">{value}</div>
+      <p className="text-xs text-muted-foreground">{description}</p>
+    </CardContent>
+  </Card>
+);
 export default function FolderViewClient({ stage, config }: FolderViewClientProps) {
-  const { 
+  const {
+    setProgress, 
+    progress,
+    withMutation,
+    withProgressMutation,
     documents, 
     books, 
     handleClientAction,
@@ -546,13 +575,53 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     openConfirmationDialog({
       title: `Perform action on ${selection.length} books?`,
       description: `This will perform "${actionLabel}" for all selected books.`,
-      onConfirm: () => {
-        selection.forEach(bookId => {
-          const book = groupedByBook[bookId]?.book;
-          if (book) handleMainAction(book);
+      onConfirm: async () => {
+        if (selection.length === 0) return;
+
+        await withMutation(async () => {
+          const chunkSize = 25; // processa 10 livros por vez
+
+          for (let i = 0; i < selection.length; i += chunkSize) {
+            const chunk = selection.slice(i, i + chunkSize);
+
+            // cria Promises para os 10 itens do lote
+            const promises = chunk.map(async (bookId) => {
+              const book = groupedByBook[bookId]?.book;
+              if (book) await handleMainAction(book);
+            });
+
+            // espera que todas as Promises do lote terminem
+            await Promise.all(promises);
+          }
+
+          setSelection([]);
         });
-        setSelection([]);
       }
+     /*onConfirm: async () => {
+        if (selection.length === 0) return;
+
+        const { results, errors } = await withProgressMutation(
+          selection,
+          async (bookId) => {
+            const book = groupedByBook[bookId]?.book;
+            if (book) {
+              await handleMainAction(book);
+            }
+          },
+          {
+            concurrency: 10, // processa até 10 livros em simultâneo
+            onProgress: (current, total) => {
+              const percent = Math.round((current / total) * 100);
+              setProgress(percent);
+            },
+          }
+        );
+
+        console.log(`✅ Concluídos: ${results.length}`);
+        console.log(`❌ Falharam: ${errors.length}`);
+
+        setSelection([]);
+      }*/
     });
   };
 
@@ -943,6 +1012,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                 </div>
                 {renderBulkActions()}
             </div>
+
              {stage === 'final-quality-control' && (
                 <div className="flex gap-4 pt-4">
                   <div className="flex flex-col">
@@ -996,10 +1066,125 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                   </Select>
                 </div>
               )}
+            <Accordion type="single" collapsible className="w-full pt-4">
+                  <AccordionItem value="stats">
+                    <AccordionTrigger className="text-base px-6 font-semibold rounded-lg border bg-card text-card-foreground shadow-sm">
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-base px-6 font-semibold rounded-lg border bg-card text-card-foreground shadow-sm">
+                        <div className="flex items-center gap-2"><BarChart className="h-5 w-5" /> Estatísticas</div>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-4 px-6 border-x border-b rounded-b-lg bg-card space-y-6">
+                      {/* KPIs principais */}
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        <KpiCard
+                          title="Total de Livros"
+                          value={Object.keys(groupedByBook).length}
+                          icon={BookOpen}
+                          description={`Livros disponíveis nesta fase.`}
+                        />
+                        <KpiCard
+                          title="Total de Páginas"
+                          value={Object.values(groupedByBook)
+                            .reduce((sum, group) => sum + group.pages.length, 0)
+                            .toLocaleString()}
+                          icon={FileText}
+                          description={`Soma total de páginas entre todos os livros.`}
+                        />
+                        {stage === "storage" && (
+                          <KpiCard
+                            title="Armazenamentos com Livros"
+                            value={
+                              new Set(
+                                Object.values(groupedByBook)
+                                  .map((g) => g.book.storageName)
+                                  .filter(Boolean)
+                              ).size
+                            }
+                            icon={Database}
+                            description={`Quantidade de locais de armazenamento com livros associados.`}
+                          />
+                        )}
+                        <KpiCard
+                          title="Páginas por Livro (média)"
+                          value={(() => {
+                            const totalBooks = Object.keys(groupedByBook).length || 1;
+                            const totalPages = Object.values(groupedByBook).reduce(
+                              (sum, g) => sum + g.pages.length,
+                              0
+                            );
+                            return Math.round(totalPages / totalBooks);
+                          })()}
+                          icon={ListOrdered}
+                          description={`Média de páginas por livro nesta fase.`}
+                        />
+                      </div>
+
+                      {/* Tabela de distribuição por storage */}
+                      {stage === "storage" || stage === "final-quality-control" && (
+                        <div className="pt-2 space-y-3">
+                          <h4 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground">
+                            <Warehouse className="h-4 w-4" /> Distribuição por Armazenamento
+                          </h4>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm border-collapse">
+                              <thead>
+                                <tr className="text-left border-b">
+                                  <th className="py-2 px-3 font-medium text-muted-foreground">
+                                    Armazenamento
+                                  </th>
+                                  <th className="py-2 px-3 font-medium text-muted-foreground">
+                                    Livros
+                                  </th>
+                                  <th className="py-2 px-3 font-medium text-muted-foreground">
+                                    Páginas
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {(() => {
+                                  const storageStats = Object.values(groupedByBook).reduce(
+                                    (acc, group) => {
+                                      const name = group.book.storageName || "Sem Local";
+                                      if (!acc[name]) acc[name] = { books: 0, pages: 0 };
+                                      acc[name].books += 1;
+                                      acc[name].pages += group.pages.length;
+                                      return acc;
+                                    },
+                                    {} as Record<string, { books: number; pages: number }>
+                                  );
+
+                                  return Object.entries(storageStats)
+                                    .sort((a, b) => b[1].pages - a[1].pages)
+                                    .map(([storageName, stats]) => (
+                                      <tr
+                                        key={storageName}
+                                        className="border-b last:border-0 hover:bg-muted/40 transition-colors"
+                                      >
+                                        <td className="py-2 px-3 font-medium">
+                                          {storageName}
+                                        </td>
+                                        <td className="py-2 px-3">{stats.books}</td>
+                                        <td className="py-2 px-3">
+                                          {stats.pages.toLocaleString()}
+                                        </td>
+                                      </tr>
+                                    ));
+                                })()}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+                
+                
           </CardHeader>
           <CardContent>
             {Object.keys(groupedByBook).length > 0 ? (
               <>
+
                 <div className="flex items-center justify-between pb-4">
                   <div className="flex items-center gap-2">
                     <Checkbox
@@ -1026,6 +1211,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                     <span className="text-sm text-muted-foreground">Selecionar todos os livros desta página</span>
                   </div>
                 </div>
+                
                 <Accordion type="multiple" value={openAccordions} onValueChange={handleAccordionChange} className="w-full">
                   {paginatedBookGroups.map((bookGroup) => {
                     const { book, pages, hasError, hasWarning, batchInfo } = bookGroup;

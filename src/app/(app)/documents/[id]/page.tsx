@@ -1,5 +1,6 @@
 import DocumentDetailClient from "./client";
 
-export default function DocumentDetailPage({ params }: { params: { id: string } }) {
-    return <DocumentDetailClient docId={params.id} />;
+export default async function DocumentDetailPage({ params }: { params: { id: string } }) {
+    const { id } = await params;
+    return <DocumentDetailClient docId={id} />;
 }

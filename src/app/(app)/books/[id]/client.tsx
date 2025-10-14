@@ -25,7 +25,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 
 interface BookDetailClientProps {
   bookId: string;
@@ -161,6 +161,33 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
     7: 'grid-cols-7', 8: 'grid-cols-8', 9: 'grid-cols-9', 10: 'grid-cols-10', 11: 'grid-cols-11', 12: 'grid-cols-12'
   };
 
+
+    function groupPages(pages: AppDocument[]) {
+    const grouped: Record<string, Record<string, AppDocument[]>> = {};
+    const ungrouped: AppDocument[] = [];
+
+    pages.forEach(page => {
+        // Tenta casar o formato numérico com data: 90454_1988-11-02_0001
+        const match = page.name.match(/^(\d+)_([\d-]+)_/);
+
+        if (match) {
+        const [_, prefix, date] = match;
+
+        if (!grouped[prefix]) grouped[prefix] = {};
+        if (!grouped[prefix][date]) grouped[prefix][date] = [];
+
+        grouped[prefix][date].push(page);
+        } else {
+        // se não casar, adiciona à lista de páginas não agrupadas
+        ungrouped.push(page);
+        }
+    });
+
+    return { grouped, ungrouped };
+    }
+
+    
+
   return (
     <>
     <div className="grid lg:grid-cols-3 gap-6">
@@ -191,67 +218,108 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
           <Badge variant="outline" className="w-16 justify-center">{columns} {columns > 1 ? 'cols' : 'col'}</Badge>
         </div>
 
-        {pages.length > 0 ? (
-            <div className={`grid gap-4 ${gridClasses[columns] || 'grid-cols-8'}`}>
-                {pages.map(page => (
+       {pages.length > 0 ? (
+        (() => {
+            const { grouped, ungrouped } = groupPages(pages);
+
+            return (
+            <>
+                {/*Páginas agrupadas por prefixo/data */}
+                {Object.keys(grouped).length > 0 && (
+                <Accordion type="multiple" 
+                defaultValue={[Object.keys(grouped)[0]]}
+                className="w-full space-y-4 mb-8">
+                    {Object.entries(grouped).map(([prefix, dates]) => (
+                    <AccordionItem key={prefix} value={prefix}>
+                        <AccordionTrigger className="text-lg font-semibold">
+                         {prefix}
+                        </AccordionTrigger>
+                        <AccordionContent>
+                        <Accordion type="multiple" 
+                        defaultValue={[Object.keys(dates)[0]]}
+                        className="pl-4">
+                            {Object.entries(dates)
+                            .sort(([a], [b]) => a.localeCompare(b))
+                            .map(([date, datePages]) => (
+                                <AccordionItem key={date} value={date}>
+                                <AccordionTrigger className="text-md font-medium">
+                                    {date} <span className="text-muted-foreground ml-2">({datePages.length})</span>
+                                </AccordionTrigger>
+                                <AccordionContent>
+                                    <div className={`grid gap-4 ${gridClasses[columns] || 'grid-cols-8'}`}>
+                                    {datePages
+                                    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+                                    .map(page => (
+                                        <div key={page.id} className="relative group">
+                                        <Link href={`/documents/${page.id}`}>
+                                            <Card className="overflow-hidden hover:shadow-lg transition-shadow relative border-2 border-transparent group-hover:border-primary">
+                                            <CardContent className="p-0">
+                                                <Image
+                                                src={page.imageUrl || "https://placehold.co/400x550.png"}
+                                                alt={`Preview of ${page.name}`}
+                                                width={400}
+                                                height={550}
+                                                className="aspect-[4/5.5] object-contain w-full h-full"
+                                                unoptimized
+                                                />
+                                            </CardContent>
+                                            <CardFooter className="p-2 flex-col items-start gap-1">
+                                                <p className="text-xs font-medium whitespace-pre-wrap">{page.name}</p>
+                                            </CardFooter>
+                                            </Card>
+                                        </Link>
+                                        </div>
+                                    ))}
+                                    </div>
+                                </AccordionContent>
+                                </AccordionItem>
+                            ))}
+                        </Accordion>
+                        </AccordionContent>
+                    </AccordionItem>
+                    ))}
+                </Accordion>
+                )}
+
+                {/* Páginas não agrupadas */}
+                {ungrouped.length > 0 && (
+                <div className={`grid gap-4 ${gridClasses[columns] || 'grid-cols-8'}`}>
+                    {ungrouped
+                    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+                    .map(page => (
                     <div key={page.id} className="relative group">
                         <Link href={`/documents/${page.id}`}>
-                            <Card className="overflow-hidden hover:shadow-lg transition-shadow relative border-2 border-transparent group-hover:border-primary">
-                                <CardContent className="p-0">
-                                    <Image
-                                        src={page.imageUrl || "https://placehold.co/400x550.png"}
-                                        alt={`Preview of ${page.name}`}
-                                        data-ai-hint="document page"
-                                        width={400}
-                                        height={550}
-                                        className="aspect-[4/5.5] object-contain w-full h-full"
-                                        //className="object-contain w-full h-full"
-                                        unoptimized
-                                        //fill
-                                    />
-                                    <TooltipProvider>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <div className="absolute inset-0">
-                                                    {page.flag === 'error' && <div className="absolute inset-0 bg-destructive/20 border-2 border-destructive"></div>}
-                                                    {page.flag === 'warning' && <div className="absolute inset-0 bg-orange-500/20 border-2 border-orange-500"></div>}
-                                                </div>
-                                            </TooltipTrigger>
-                                            {page.flagComment && <TooltipContent><p>{page.flagComment}</p></TooltipContent>}
-                                        </Tooltip>
-                                    </TooltipProvider>
-                                </CardContent>
-                                <CardFooter className="p-2 flex-col items-start gap-1">
-                                    <p className="text-xs font-medium whitespace-pre-wrap">{page.name}</p>
-                                    {page.flag && page.flagComment && (
-                                        <div className="flex items-start gap-1.5 text-xs w-full text-muted-foreground">
-                                            {page.flag === 'error' && <ShieldAlert className="h-3 w-3 mt-0.5 flex-shrink-0 text-destructive"/>}
-                                            {page.flag === 'warning' && <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0 text-orange-500"/>}
-                                            {page.flag === 'info' && <Info className="h-3 w-3 mt-0.5 flex-shrink-0 text-primary"/>}
-                                            <p className="break-words">{page.flagComment}</p>
-                                        </div>
-                                    )}
-                                    {page.tags && page.tags.length > 0 && (
-                                        <div className="flex flex-wrap gap-1 pt-1">
-                                            {page.tags.map(tag => (
-                                                <Badge key={tag} variant={'outline'} className="text-xs">{tag}</Badge>
-                                            ))}
-                                        </div>
-                                    )}
-                                </CardFooter>
-                            </Card>
+                        <Card className="overflow-hidden hover:shadow-lg transition-shadow relative border-2 border-transparent group-hover:border-primary">
+                            <CardContent className="p-0">
+                            <Image
+                                src={page.imageUrl || "https://placehold.co/400x550.png"}
+                                alt={`Preview of ${page.name}`}
+                                width={400}
+                                height={550}
+                                className="aspect-[4/5.5] object-contain w-full h-full"
+                                unoptimized
+                            />
+                            </CardContent>
+                            <CardFooter className="p-2 flex-col items-start gap-1">
+                            <p className="text-xs font-medium whitespace-pre-wrap">{page.name}</p>
+                            </CardFooter>
+                        </Card>
                         </Link>
                     </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+                )}
+            </>
+            );
+        })()
         ) : (
-            <div className="flex flex-col items-center justify-center text-center py-20 rounded-lg bg-muted">
-                <BookOpen className="h-12 w-12 text-muted-foreground" />
-                <h3 className="text-xl font-semibold mt-4">Aguardando Armazenamento</h3>
-                <p className="text-muted-foreground">
-                As imagens digitalizadas estarão disponíveis assim que forem transferidas para o armazenamento.
-                </p>
-            </div>
+        <div className="flex flex-col items-center justify-center text-center py-20 rounded-lg bg-muted">
+            <BookOpen className="h-12 w-12 text-muted-foreground" />
+            <h3 className="text-xl font-semibold mt-4">Aguardando Armazenamento</h3>
+            <p className="text-muted-foreground">
+            As imagens digitalizadas estarão disponíveis assim que forem transferidas para o armazenamento.
+            </p>
+        </div>
         )}
       </div>
 

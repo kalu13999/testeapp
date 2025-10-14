@@ -14,16 +14,43 @@ export async function GET(request: NextRequest) {
     
     if (enriched) {
       const [rows] = await connection.execute(`
-        SELECT
-            p.*,
-            c.name AS clientName,
-            (SELECT COUNT(id) FROM books WHERE projectId = p.id) AS bookCount,
-            COALESCE((SELECT SUM(b.expectedDocuments) FROM books b WHERE b.projectId = p.id), 0) AS totalExpected
-        FROM
-            projects p
-        LEFT JOIN
-            clients c ON p.clientId = c.id
-      `);
+ SELECT
+    p.*,
+    c.name AS clientName,
+    COALESCE(b_stats.bookCount, 0) AS bookCount,
+    COALESCE(b_stats.totalExpected, 0) AS totalExpected,
+    COALESCE(doc_stats.documentCount, 0) AS documentCount
+FROM
+    projects p
+LEFT JOIN
+    clients c ON p.clientId = c.id
+
+-- Subquery para contar livros e expectedDocuments por projeto
+LEFT JOIN (
+    SELECT
+        projectId,
+        COUNT(*) AS bookCount,
+        SUM(expectedDocuments) AS totalExpected
+    FROM
+        books
+    GROUP BY
+        projectId
+) b_stats ON b_stats.projectId = p.id
+
+-- Subquery para contar documentos por projeto (via books)
+LEFT JOIN (
+    SELECT
+        b.projectId,
+        COUNT(d.id) AS documentCount
+    FROM
+        books b
+    JOIN
+        documents d ON d.bookId = b.id
+    GROUP BY
+        b.projectId
+) doc_stats ON doc_stats.projectId = p.id
+
+        `);
 
       const projects = (rows as any[]).map(p => {
         const documentCount = p.documentCount || 0;

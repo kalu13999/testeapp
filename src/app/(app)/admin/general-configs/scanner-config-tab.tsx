@@ -51,7 +51,7 @@ import { ScannerForm, type ScannerFormValues } from "./scanner-form"
 import { Input } from "@/components/ui/input"
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
 
-const ITEMS_PER_PAGE = 100;
+const ITEMS_PER_PAGE = 50;
 
 export function ScannerConfigTab() {
   const { scanners, addScanner, updateScanner, deleteScanner } = useAppContext();

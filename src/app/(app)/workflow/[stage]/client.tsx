@@ -63,7 +63,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { format } from "date-fns";
 
-//const ITEMS_PER_PAGE = 100;
+//const ITEMS_PER_PAGE = 50;
 
 const SIMPLE_BULK_ACTION_STAGES = [
   'confirm-reception', 'to-scan', 'to-indexing', 'to-checking',
@@ -1538,7 +1538,7 @@ const handleMainAction = (book: EnrichedBook) => {
              <Accordion type="single" collapsible className="w-full pt-4">
                 <AccordionItem value="stats">
                   <AccordionTrigger className="text-base px-6 font-semibold rounded-lg border bg-card text-card-foreground shadow-sm">
-                    <div className="flex items-center gap-2"><BarChart className="h-5 w-5"/>Estatísticas da Fase</div>
+                    <div className="flex items-center gap-2"><BarChart className="h-5 w-5"/>Estatísticas</div>
                   </AccordionTrigger>
                   <AccordionContent className="pt-4 px-6 border-x border-b rounded-b-lg bg-card">
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

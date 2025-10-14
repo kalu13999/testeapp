@@ -51,7 +51,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
 
-const ITEMS_PER_PAGE = 100;
+const ITEMS_PER_PAGE = 50;
 
 export function ProjectStorageAssociationsTab() {
   const { allProjects, storages, projectStorages, addProjectStorage, updateProjectStorage, deleteProjectStorage } = useAppContext();

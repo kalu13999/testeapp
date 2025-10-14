@@ -386,15 +386,46 @@ function SystemOverviewTab() {
       <>
         <div className="flex flex-col gap-6">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                {kpiData.map((kpi) => (
-                    <Card key={kpi.title} onClick={() => handleKpiClick(kpi)} className={kpi.items && kpi.items.length > 0 ? "cursor-pointer transition-colors hover:bg-muted/50" : ""}>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
-                            <kpi.icon className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent><div className="text-2xl font-bold">{kpi.value}</div><p className="text-xs text-muted-foreground">{kpi.description}</p></CardContent>
-                    </Card>
-                ))}
+                    {kpiData.map((kpi) => {
+                        // Calcula total de páginas apenas se forem livros
+                        const totalDocs =
+                            kpi.type === "books"
+                            ? (kpi.items as EnrichedBook[]).reduce(
+                                (sum, b) => sum + (b.expectedDocuments || 0),
+                                0
+                                )
+                            : null;
+
+                        return (
+                            <Card
+                            key={kpi.title}
+                            onClick={() => handleKpiClick(kpi)}
+                            className={
+                                kpi.items && kpi.items.length > 0
+                                ? "cursor-pointer transition-colors hover:bg-muted/50"
+                                : ""
+                            }
+                            >
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
+                                <kpi.icon className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                {/* Número total de itens */}
+                                <div className="text-2xl font-bold">{kpi.items.length.toLocaleString()}</div>
+
+                                {/* Total de páginas, apenas se for tipo 'books' */}
+                                {totalDocs !== null && (
+                                <div className="text-sm font-semibold text-muted-foreground">
+                                    {totalDocs.toLocaleString()} documento(s)
+                                </div>
+                                )}
+
+                                <p className="text-xs text-muted-foreground mt-1">{kpi.description}</p>
+                            </CardContent>
+                            </Card>
+                        );
+                        })}
             </div>
             <div className="grid gap-6">
                 <Card>

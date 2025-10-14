@@ -34,6 +34,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { AppDocument, RejectionTag } from "@/context/workflow-context";
 import { Textarea } from "@/components/ui/textarea";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 
 type ValidationTask = {
   item: {
@@ -151,6 +152,29 @@ export default function MyTasksClient() {
     return documents.filter(doc => doc.bookId === bookId).sort((a, b) => getPageNum(a.name) - getPageNum(b.name));
   }
 
+  function groupPages(pages: AppDocument[]) {
+    const grouped: Record<string, Record<string, AppDocument[]>> = {};
+    const ungrouped: AppDocument[] = [];
+
+    pages.forEach(page => {
+      // casa com formato: 90454_1988-11-02_0001
+      const match = page.name.match(/^(\d+)_([\d-]+)_/);
+
+      if (match) {
+        const [_, prefix, date] = match;
+
+        if (!grouped[prefix]) grouped[prefix] = {};
+        if (!grouped[prefix][date]) grouped[prefix][date] = [];
+
+        grouped[prefix][date].push(page);
+      } else {
+        ungrouped.push(page);
+      }
+    });
+
+    return { grouped, ungrouped };
+  }
+
   return (
     <>
       <Card>
@@ -211,33 +235,136 @@ export default function MyTasksClient() {
                           <Label htmlFor="columns-slider" className="text-sm whitespace-nowrap">Tamanho da miniatura:</Label>
                           <Slider id="columns-slider" min={1} max={12} step={1} value={[columnCols]} onValueChange={(val) => setColumnCols(val[0])} className="w-full max-w-[200px]" />
                       </div>
-                      <div className={`grid gap-4 ${gridClasses[columnCols]}`}>
-                        {reviewState.task && getPagesForBook(reviewState.task.book.id).map(page => (
-                            <div key={page.id} className="relative group">
-                                <Link href={`/documents/${page.id}`} target="_blank" className="block">
-                                    <Card className="overflow-hidden hover:shadow-lg transition-shadow relative border-2 border-transparent group-hover:border-primary">
+                      {reviewState.task && (() => {
+                        const pages = getPagesForBook(reviewState.task.book.id);
+                        const { grouped, ungrouped } = groupPages(pages);
+
+                        return (
+                          <>
+                            {/* Acordeões para grupos válidos */}
+                            {Object.keys(grouped).length > 0 && (
+                                <Accordion
+                                  type="multiple"
+                                  defaultValue={[Object.keys(grouped)[0]]}
+                                  className="w-full space-y-4"
+                                >
+
+                                {Object.entries(grouped).map(([prefix, dates]) => (
+                                  <AccordionItem key={prefix} value={prefix}>
+                                    <AccordionTrigger className="text-lg font-semibold">
+                                      {prefix}
+                                    </AccordionTrigger>
+                                    <AccordionContent>
+                                      <Accordion type="multiple" 
+                                      defaultValue={[Object.keys(dates)[0]]}
+                                      className="pl-4">
+                                        {Object.entries(dates)
+                                          .sort(([a], [b]) => a.localeCompare(b)) // datas mais recentes primeiro
+                                          .map(([date, datePages]) => (
+                                            <AccordionItem key={date} value={date}>
+                                              <AccordionTrigger className="text-md font-medium">
+                                                {date} <span className="text-muted-foreground ml-2">({datePages.length})</span>
+                                              </AccordionTrigger>
+                                              <AccordionContent>
+                                                <div className={`grid gap-4 ${gridClasses[columnCols]}`}>
+                                                  {datePages
+                                                  .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+                                                  .map(page => (
+                                                    <div key={page.id} className="relative group">
+                                                      <Link href={`/documents/${page.id}`} target="_blank" className="block">
+                                                        <Card className="overflow-hidden hover:shadow-lg transition-shadow relative border-2 border-transparent group-hover:border-primary">
+                                                          <CardContent className="p-0">
+                                                            <Image
+                                                              src={page.imageUrl || "https://placehold.co/400x550.png"}
+                                                              alt={`Preview of ${page.name}`}
+                                                              width={400}
+                                                              height={550}
+                                                              className="aspect-[4/5.5] object-contain w-full h-full"
+                                                              unoptimized
+                                                            />
+                                                          </CardContent>
+                                                          <CardFooter className="p-2 min-h-[50px] flex-col items-start gap-1">
+                                                            <p className="text-xs font-medium break-words">{page.name}</p>
+                                                            {page.tags?.length > 0 && (
+                                                              <div className="flex flex-wrap gap-1 pt-1">
+                                                                {page.tags.map(tag => (
+                                                                  <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
+                                                                ))}
+                                                              </div>
+                                                            )}
+                                                          </CardFooter>
+                                                        </Card>
+                                                      </Link>
+
+                                                      {/* Botão de Tag */}
+                                                      <Button
+                                                        variant="secondary"
+                                                        size="icon"
+                                                        className="h-7 w-7 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        onClick={() => openTaggingDialog(page)}
+                                                      >
+                                                        <Tag className="h-4 w-4" />
+                                                      </Button>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              </AccordionContent>
+                                            </AccordionItem>
+                                          ))}
+                                      </Accordion>
+                                    </AccordionContent>
+                                  </AccordionItem>
+                                ))}
+                              </Accordion>
+                            )}
+
+                            {/* Grid normal para arquivos não agrupáveis */}
+                            {ungrouped.length > 0 && (
+                              <div className={`grid gap-4 mt-6 ${gridClasses[columnCols]}`}>
+                                {ungrouped
+                                .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))                            
+                                .map(page => (
+                                  <div key={page.id} className="relative group">
+                                    <Link href={`/documents/${page.id}`} target="_blank" className="block">
+                                      <Card className="overflow-hidden hover:shadow-lg transition-shadow relative border-2 border-transparent group-hover:border-primary">
                                         <CardContent className="p-0">
-                                            <Image src={page.imageUrl || "https://placehold.co/400x550.png"} alt={`Preview of ${page.name}`} data-ai-hint="document page" 
-                                              width={400} 
-                                              height={550} 
-                                              className="aspect-[4/5.5] object-contain w-full h-full"
-                                              //className="object-contain w-full h-full"
-                                              unoptimized
-                                              //fill
-                                            />
+                                          <Image
+                                            src={page.imageUrl || "https://placehold.co/400x550.png"}
+                                            alt={`Preview of ${page.name}`}
+                                            width={400}
+                                            height={550}
+                                            className="aspect-[4/5.5] object-contain w-full h-full"
+                                            unoptimized
+                                          />
                                         </CardContent>
                                         <CardFooter className="p-2 min-h-[50px] flex-col items-start gap-1">
-                                            <p className="text-xs font-medium break-words">{page.name}</p>
-                                            {page.tags && page.tags.length > 0 && (<div className="flex flex-wrap gap-1 pt-1">{page.tags.map(tag => (<Badge key={tag} variant={'outline'} className="text-xs">{tag}</Badge>))}</div>)}
+                                          <p className="text-xs font-medium break-words">{page.name}</p>
+                                          {page.tags?.length > 0 && (
+                                            <div className="flex flex-wrap gap-1 pt-1">
+                                              {page.tags.map(tag => (
+                                                <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
+                                              ))}
+                                            </div>
+                                          )}
                                         </CardFooter>
-                                    </Card>
-                                </Link>
-                                <Button variant="secondary" size="icon" className="h-7 w-7 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => openTaggingDialog(page)}>
-                                    <Tag className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        ))}
-                      </div>
+                                      </Card>
+                                    </Link>
+
+                                    <Button
+                                      variant="secondary"
+                                      size="icon"
+                                      className="h-7 w-7 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      onClick={() => openTaggingDialog(page)}
+                                    >
+                                      <Tag className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                   </ScrollArea>
               </div>
               <DialogFooter className="pt-4 border-t">

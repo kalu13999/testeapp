@@ -1,3 +1,4 @@
+import { EnrichedAuditLog } from "@/context/workflow-context";
 
 
 
@@ -171,7 +172,7 @@ export interface ProcessingBatchItem {
   itemStartTime: string | null;
   itemEndTime: string | null;
   processedPages: Record<string, number> | null;
-  status: 'Pending' | 'In Progress' | 'Complete' | 'Failed' | 'CQ Failed';
+  status: 'Pending' | 'In Progress' | 'Complete' | 'Failed' | 'CQ Failed' | 'Finalized';
   info: string | null;
   obs: string | null;
 }
@@ -301,7 +302,7 @@ export const getRawBooks = () => fetchData<RawBook[]>('/books');
 export const getBookById = (id: string) => fetchData<RawBook>(`/books/${id}`);
 export const getRawDocuments = () => fetchData<Document[]>('/documents');
 export const getDocumentById = (id: string) => fetchData<Document>(`/documents/${id}`);
-export const getAuditLogs = () => fetchData<AuditLog[]>('/audit-logs');
+export const getAuditLogs = () => fetchData<EnrichedAuditLog[]>('/audit-logs');
 export const getPermissions = () => fetchData<Permissions>('/permissions');
 export const getRoles = () => fetchData<string[]>('/roles');
 export const getProjectWorkflows = () => fetchData<ProjectWorkflows>('/project-workflows');

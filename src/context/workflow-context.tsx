@@ -5,25 +5,48 @@
 import * as React from 'react';
 import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions, ProjectWorkflows, RejectionTag, DocumentStatus, ProcessingBatch, ProcessingBatchItem, Storage, LogTransferencia, ProjectStorage, Scanner, DeliveryBatch, DeliveryBatchItem, BookObservation } from '@/lib/data';
 import { useToast } from "@/hooks/use-toast";
-import { WORKFLOW_SEQUENCE, STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage } from '@/lib/workflow-config';
+import { WORKFLOW_SEQUENCE, STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage, getPreviousEnabledStage } from '@/lib/workflow-config';
 import * as dataApi from '@/lib/data';
 import { UserFormValues } from '@/app/(app)/users/user-form';
 import { StorageFormValues } from '@/app/(app)/admin/general-configs/storage-form';
 import { ScannerFormValues } from '@/app/(app)/admin/general-configs/scanner-form';
 import { format } from 'date-fns';
 import { log } from 'console';
-
+import { useConfirm } from "@/hooks/use-confirm"; 
+import { useDecisionDialog } from "@/hooks/use-decision-dialog";
 export type { EnrichedBook, RejectionTag };
 
 // Define the shape of the book data when importing
 export interface BookImport {
   name: string;
   expectedDocuments: number;
-  priority?: 'Low' | 'Medium' | 'High';
+  priority?: 'Low' | 'Medium' | 'High' | 'Baixa' | 'Média' | 'Alta';
   info?: string;
   author?: string;
   isbn?: string;
   publicationYear?: number;
+  color?: string;
+}
+
+export interface FailedBook {
+  _row?: number;
+  name?: string;
+  expectedDocuments?: number;
+  priority?: string;
+  info?: string;
+  author?: string;
+  isbn?: string;
+  publicationYear?: number;
+  projectName?: string;
+  error: string;
+}
+export interface ImportBooksError extends Error {
+  failedBooks?: FailedBook[];
+}
+export interface ImportBooksResult {
+  success: BookImport[];
+  failed: { book: BookImport; error: string }[];
+  
 }
 
 
@@ -32,6 +55,10 @@ export type AppDocument = Omit<RawDocument, 'statusId'> & { client: string; stat
 export type EnrichedAuditLog = AuditLog & { user: string; };
 export type NavigationHistoryItem = { href: string, label: string };
 
+type MutationProgressOptions = {
+    onProgress?: (current: number, total: number) => void;
+    concurrency?: number; // default: 10
+  };
 type AppContextType = {
 
   isChecking: boolean;
@@ -122,7 +149,7 @@ type AppContextType = {
   addBook: (projectId: string, bookData: Omit<RawBook, 'id' | 'projectId' | 'statusId'>) => Promise<void>;
   updateBook: (bookId: string, bookData: Partial<Omit<RawBook, 'id' | 'projectId' | 'statusId'>>) => Promise<void>;
   deleteBook: (bookId: string) => Promise<void>;
-  importBooks: (projectId: string, newBooks: BookImport[]) => Promise<void>;
+  importBooks: (projectId: string, newBooks: BookImport[]) => Promise<ImportBooksResult>;
   addBookObservation: (bookId: string, observation: string) => Promise<void>;
   
   // Rejection Tag Actions
@@ -144,10 +171,11 @@ type AppContextType = {
 
   // Workflow Actions
   getNextEnabledStage: (currentStage: string, workflow: string[]) => string | null;
+  getPreviousEnabledStage: (currentStage: string, workflow: string[]) => string | null;
   handleMarkAsShipped: (bookIds: string[]) => void;
   handleConfirmReception: (bookId: string) => void;
   handleSendToStorage: (bookId: string, payload: { actualPageCount: number }) => void;
-  handleMoveBookToNextStage: (bookId: string, currentStatus: string) => Promise<boolean>;
+  handleMoveBookToNextStage: (bookId: string, currentStatus: string) => Promise<string | null>;
   handleAssignUser: (bookId: string, userId: string, role: 'scanner' | 'indexer' | 'qc') => void;
   reassignUser: (bookId: string, newUserId: string, role: 'scanner' | 'indexer' | 'qc') => void;
   handleStartTask: (bookId: string, role: 'scanner' | 'indexer' | 'qc') => void;
@@ -183,6 +211,8 @@ type AppContextType = {
   updateBookStatus: (bookId: string, newStatusName: string, additionalUpdates?: Partial<EnrichedBook>) => Promise<any>;
   //
   handleValidationDeliveryBatch: (deliveryId: string, finalDecision: 'approve_remaining' | 'reject_all') => Promise<void>;
+  withMutation: <T>(action: () => Promise<T>) => Promise<T | undefined>;
+  withProgressMutation: <T>(items: string[],action: (item: string, index: number) => Promise<T>, options?: MutationProgressOptions) => Promise<{ results: T[]; errors: { item: string; error: any }[] }>;
   setEnrichedBooks: React.Dispatch<React.SetStateAction<EnrichedBook[]>>;
   setDeliveryBatches: React.Dispatch<React.SetStateAction<DeliveryBatch[]>>;
   setDeliveryBatchItems: React.Dispatch<React.SetStateAction<DeliveryBatchItem[]>>;
@@ -244,48 +274,78 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
   const [navigationHistory, setNavigationHistory] = React.useState<NavigationHistoryItem[]>([]);
   const { toast } = useToast();
-  type MutationProgressOptions = {
-    total: number;
-    onProgress?: (current: number, total: number) => void;
-  };
+   const { confirm, ConfirmDialog } = useConfirm();
+   const { openDecision, DecisionDialog } = useDecisionDialog();
+
 
   const withProgressMutation = async <T,>(
     items: string[],
     action: (item: string, index: number) => Promise<T>,
-    options: MutationProgressOptions
+    options: MutationProgressOptions = {}
   ): Promise<{ results: T[]; errors: { item: string; error: any }[] }> => {
-    const { total, onProgress } = options;
+    const { onProgress, concurrency = 10 } = options;
+    const total = items.length;
+
+    if (total <= 1) {
+      console.warn("withProgressMutation deve ser usada apenas para várias ações.");
+      return { results: [], errors: [] };
+    }
 
     const results: T[] = [];
     const errors: { item: string; error: any }[] = [];
 
+
     setProgressMutation(true);
+    setProgress(0);
 
     try {
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i];
+      let completed = 0;
+      let index = 0;
+
+      const runNext = async (): Promise<void> => {
+        const currentIndex = index++;
+        if (currentIndex >= total) return;
+
+        const item = items[currentIndex];
+
         try {
-          const result = await action(item, i);
+          const result = await action(item, currentIndex);
           results.push(result);
         } catch (error) {
           errors.push({ item, error });
-        }
+        } finally {
+          completed++;
+          const percent = Math.round((completed / total) * 100);
+          setProgress(percent);
+          onProgress?.(completed, total);
 
-        if (onProgress) {
-          onProgress(i + 1, total);
+          // dispara próxima tarefa da fila (se houver)
+          if (index < total) {
+            await runNext();
+          }
         }
-      }
+      };
 
+      // lança as primeiras tasks (até concurrency)
+      const initialCount = Math.min(concurrency, total);
+      const initialTasks: Promise<void>[] = Array.from(
+        { length: initialCount },
+        () => runNext()
+      );
+
+      await Promise.all(initialTasks);
       return { results, errors };
     } catch (error: any) {
       toast({
-        title: "Erro",
-        description: error.message,
+        title: "Erro geral",
+        description: error?.message ?? String(error),
         variant: "destructive",
       });
       return { results, errors };
     } finally {
+
       setProgressMutation(false);
+      setProgress(100);
     }
   };
 
@@ -309,7 +369,7 @@ const withMutation = async <T,>(action: () => Promise<T>): Promise<T | undefined
     try {
         const [
             usersData, permissionsData, rolesData, clientsData, projectsData, booksData, 
-            docsData, auditData, batchesData, batchItemsData, logsData,
+            docsData, enrichedAuditLogs, batchesData, batchItemsData, logsData,
             workflowsData, rejectionData, statusesData,
             storagesData, scannersData, transferLogsData, projectStoragesData,
             deliveryBatchesData, deliveryBatchItemsData, bookObservationsData,
@@ -336,9 +396,9 @@ const withMutation = async <T,>(action: () => Promise<T>): Promise<T | undefined
         setProjectStorages(projectStoragesData);
         setBookObservations(bookObservationsData);
 
-        const enrichedAuditLogs = auditData
+        /*const enrichedAuditLogs = auditData
             .map(log => ({ ...log, user: usersData.find(u => u.id === log.userId)?.name || 'Unknown' }))
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());*/
         setAuditLogs(enrichedAuditLogs);
 
         setProcessingBatches(batchesData);
@@ -1331,7 +1391,7 @@ React.useEffect(() => {
       });
   };
 
-  const importBooks = async (projectId: string, newBooks: BookImport[]) => {
+  /*const importBooks = async (projectId: string, newBooks: BookImport[]) => {
       await withMutation(async () => {
         try {
             const response = await fetch('/api/books', {
@@ -1349,6 +1409,55 @@ React.useEffect(() => {
             toast({ title: "Erro", description: "Não foi possível importar livros.", variant: "destructive" });
         }
       });
+  };*/
+ 
+/*
+  const importBooks = async (projectId: string, newBooks: BookImport[]): Promise<ImportBooksResult> => {
+    const result = await withMutation(async () => {
+      const response = await fetch('/api/books', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId, books: newBooks }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        const error: ImportBooksError = new Error(data?.message || 'Falha ao importar livros');
+        if (data?.failedBooks) error.failedBooks = data.failedBooks;
+        throw error;
+      }
+
+      setEnrichedBooks(prev => [...prev, ...data]);
+
+      return {
+        importedBooks: data,
+        failedBooks: data.failedBooks ?? [],
+      };
+    });
+
+    // Se por algum motivo result for undefined, lança erro
+    if (!result) throw new Error("Erro interno: falha ao importar livros.");
+
+    return result;
+  };*/
+
+  const importBooks = async (
+    projectId: string,
+    books: BookImport[]
+  ): Promise<ImportBooksResult> => {
+    const response = await fetch("/api/books", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId, books }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) throw new Error(data?.error || "Falha ao importar livros");
+
+    // Retorna os arrays diretamente, os objetos já são do tipo BookImport
+    return data as ImportBooksResult;
   };
 
 const addBookObservation = async (bookId: string, observation: string) => {
@@ -1712,7 +1821,7 @@ const addBookObservation = async (bookId: string, observation: string) => {
   };
   
 
-    const handleClientAction = async (bookId: string, action: 'approve' | 'reject', reason?: string) => {
+  const handleClientAction = async (bookId: string, action: 'approve' | 'reject', reason?: string) => {
     const book = enrichedBooks.find(b => b.id === bookId);
     if (!book) return;
 
@@ -2119,12 +2228,12 @@ const addBookObservation = async (bookId: string, observation: string) => {
     });
   };
 
-  const handleMoveBookToNextStage = React.useCallback(async (bookId: string, currentStatus: string): Promise<boolean> => {
+  const handleMoveBookToNextStage = React.useCallback(async (bookId: string, currentStatus: string): Promise<string | null> => {
     console.log(`[handleMoveBookToNextStage] Starting for book ${bookId} from status ${currentStatus}`);
     const book = enrichedBooks.find(b => b.id === bookId);
     if (!book || !book.projectId) {
       console.error(`[handleMoveBookToNextStage] Book or projectId not found for bookId ${bookId}`);
-      return false;
+      return null;
     }
 
     const workflow = projectWorkflows[book.projectId] || [];
@@ -2132,7 +2241,7 @@ const addBookObservation = async (bookId: string, observation: string) => {
     if (!currentStageKey) {
       toast({ title: "Erro de Fluxo de Trabalho", description: `Não foi possível encontrar o estágio de fluxo para o status: "${currentStatus}".`, variant: "destructive" });
       console.error(`[handleMoveBookToNextStage] Workflow key not found for status: ${currentStatus}`);
-      return false;
+      return null;
     }
     console.log(`[handleMoveBookToNextStage] Current stage key: ${currentStageKey}`);
 
@@ -2143,21 +2252,62 @@ const addBookObservation = async (bookId: string, observation: string) => {
     if (newStatusName === 'Unknown') {
       toast({ title: "Erro de Fluxo de Trabalho", description: `Próximo estágio "${nextStageKey}" não tem status configurado.`, variant: "destructive" });
       console.error(`[handleMoveBookToNextStage] Next stage "${nextStageKey}" has no status.`);
-      return false;
+      return null;
     }
 
     console.log(`[handleMoveBookToNextStage] Moving book to new status: ${newStatusName}`);
     const moveResult = await moveBookFolder(book.name, currentStatus, newStatusName);
     if (moveResult !== true) {
       console.error(`[handleMoveBookToNextStage] moveBookFolder failed for book ${bookId}`);
-      return false; // Stop execution if folder move fails
+      return null; // Stop execution if folder move fails
     }
 
     const updatedBook = await updateBookStatus(bookId, newStatusName);
     setEnrichedBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
     logAction('Workflow Step', `Book "${book.name}" moved from ${currentStatus} to ${newStatusName}.`, { bookId });
     console.log(`[handleMoveBookToNextStage] Successfully moved book ${bookId} to ${newStatusName}`);
-    return true;
+    return newStatusName;
+  }, [enrichedBooks, projectWorkflows, statuses, toast, logAction, updateBookStatus, moveBookFolder]);
+
+  const handleMoveBookToPreviousStage = React.useCallback(async (bookId: string, currentStatus: string): Promise<string | null> => {
+    console.log(`[handleMoveBookToPreviousStage] Starting for book ${bookId} from status ${currentStatus}`);
+    const book = enrichedBooks.find(b => b.id === bookId);
+    if (!book || !book.projectId) {
+      console.error(`[handleMoveBookToPreviousStage] Book or projectId not found for bookId ${bookId}`);
+      return null;
+    }
+
+    const workflow = projectWorkflows[book.projectId] || [];
+    const currentStageKey = findStageKeyFromStatus(currentStatus);
+    if (!currentStageKey) {
+      toast({ title: "Erro de Fluxo de Trabalho", description: `Não foi possível encontrar o estágio de fluxo para o status: "${currentStatus}".`, variant: "destructive" });
+      console.error(`[handleMoveBookToPreviousStage] Workflow key not found for status: ${currentStatus}`);
+      return null;
+    }
+    console.log(`[handleMoveBookToPreviousStage] Current stage key: ${currentStageKey}`);
+
+    const prevStageKey = getPreviousEnabledStage(currentStageKey, workflow); // função semelhante a getNextEnabledStage, mas retrocede
+    console.log(`[handleMoveBookToPreviousStage] Previous stage key: ${prevStageKey}`);
+
+    const newStatusName = prevStageKey ? (STAGE_CONFIG[prevStageKey]?.dataStatus || 'Unknown') : 'Storage';
+    if (newStatusName === 'Unknown') {
+      toast({ title: "Erro de Fluxo de Trabalho", description: `Estágio anterior "${prevStageKey}" não tem status configurado.`, variant: "destructive" });
+      console.error(`[handleMoveBookToPreviousStage] Previous stage "${prevStageKey}" has no status.`);
+      return null;
+    }
+
+    console.log(`[handleMoveBookToPreviousStage] Moving book to new status: ${newStatusName}`);
+    const moveResult = await moveBookFolder(book.name, currentStatus, newStatusName);
+    if (moveResult !== true) {
+      console.error(`[handleMoveBookToPreviousStage] moveBookFolder failed for book ${bookId}`);
+      return null;
+    }
+
+    const updatedBook = await updateBookStatus(bookId, newStatusName);
+    setEnrichedBooks(prev => prev.map(b => b.id === bookId ? updatedBook : b));
+    logAction('Workflow Step Reverted', `Book "${book.name}" moved back from ${currentStatus} to ${newStatusName}.`, { bookId });
+    console.log(`[handleMoveBookToPreviousStage] Successfully moved book ${bookId} to ${newStatusName}`);
+    return newStatusName;
   }, [enrichedBooks, projectWorkflows, statuses, toast, logAction, updateBookStatus, moveBookFolder]);
 
 
@@ -2564,7 +2714,7 @@ const openAppValidateScan = (bookId: string) => {
     }
   }, []);
 
-  const startProcessingBatch = async (bookIds: string[], storageId: string) => {
+  /*const startProcessingBatch = async (bookIds: string[], storageId: string) => {
     await withMutation(async () => {
       if (!currentUser) {
         toast({ title: "Erro", description: "Utilizador atual não encontrado.", variant: "destructive" });
@@ -2628,7 +2778,163 @@ const openAppValidateScan = (bookId: string) => {
         toast({ title: "Erro", description: error.message || "Não foi possível iniciar o lote de processamento.", variant: "destructive" });
       }
     });
+  };*/
+  const startProcessingBatch = async (bookIds: string[], storageId: string) => {
+    await withMutation(async () => {
+      if (!currentUser) {
+        toast({ title: "Erro", description: "Utilizador atual não encontrado.", variant: "destructive" });
+        return;
+      }
+
+      try {
+        const fromStatusName = "Ready for Processing";
+        const toStatusName = "In Processing";
+        const concurrency = 10;
+
+        const movedBooks: string[] = [];
+        const failedBooks: string[] = [];
+        const revertedBooks: string[] = [];
+        const revertFailed: string[] = [];
+
+        const moveBookSafely = async (bookId: string) => {
+          const book = enrichedBooks.find(b => b.id === bookId);
+          if (!book) return false;
+          try {
+            const ok = await moveBookFolder(book.name, fromStatusName, toStatusName);
+            if (ok) { movedBooks.push(bookId); return true; }
+            failedBooks.push(bookId);
+            return false;
+          } catch (err) {
+            failedBooks.push(bookId);
+            console.error(`Erro ao mover o livro ${book.name}:`, err);
+            return false;
+          }
+        };
+
+        // 1) mover em paralelo por chunks
+        for (let i = 0; i < bookIds.length; i += concurrency) {
+          const chunk = bookIds.slice(i, i + concurrency);
+          await Promise.all(chunk.map(id => moveBookSafely(id)));
+        }
+
+        if (movedBooks.length === 0) {
+          toast({ title: "Erro", description: "Nenhum livro foi movido com sucesso. Lote não criado.", variant: "destructive" });
+          return;
+        }
+
+        // 2) Decisão do utilizador em caso de falhas
+        let userChoseCreate = true;
+        if (failedBooks.length > 0) {
+          const failedNames = enrichedBooks
+            .filter(b => failedBooks.includes(b.id))
+            .map(b => b.name)
+            .slice(0, 20)
+            .join(", ");
+          const description = `Falharam ${failedBooks.length} / ${bookIds.length} livros ao mover.\n\nEx.: ${failedNames}${failedBooks.length > 20 ? " ... " : ""}\n\nO que desejas fazer?`;
+          const decision = await openDecision("Alguns livros falharam ao mover", description);
+
+          if (decision === "revert") {
+            userChoseCreate = false;
+
+            const revertSafely = async (bookId: string) => {
+              const book = enrichedBooks.find(b => b.id === bookId);
+              if (!book) return false;
+              try {
+                const ok = await moveBookFolder(book.name, toStatusName, fromStatusName);
+                if (ok) { revertedBooks.push(bookId); return true; }
+                else { revertFailed.push(bookId); return false; }
+              } catch (err) {
+                console.error(`Erro ao reverter ${book.name}:`, err);
+                revertFailed.push(bookId);
+                return false;
+              }
+            };
+
+            for (let i = 0; i < movedBooks.length; i += concurrency) {
+              const chunk = movedBooks.slice(i, i + concurrency);
+              await Promise.all(chunk.map(id => revertSafely(id)));
+            }
+
+            if (revertFailed.length === 0) {
+              toast({ title: "Reversão completa", description: `${revertedBooks.length} livros revertidos com sucesso.` });
+            } else {
+              const namesRevertFailed = enrichedBooks.filter(b => revertFailed.includes(b.id)).map(b => b.name).join(", ");
+              toast({
+                title: "Reversão parcial",
+                description: `Falha ao reverter ${revertFailed.length} livros. Items não revertidos: ${namesRevertFailed}`,
+                variant: "destructive",
+              });
+            }
+          }
+        }
+
+        // 3) Criar lote se o utilizador escolheu criar ou não houve falhas
+        let createdBatch: any | null = null;
+        if (userChoseCreate) {
+          const movedIds = movedBooks;
+          const response = await fetch("/api/processing-batches", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ bookIds: movedIds }),
+          });
+          if (!response.ok) throw new Error("Falha ao criar lote de processamento");
+
+          createdBatch = await response.json();
+          setProcessingBatches(prev => [createdBatch, ...prev]);
+          toast({ title: "Lote de Processamento Iniciado" });
+
+          logAction("Processing Batch Started", `Batch ${createdBatch.id} started com ${movedIds.length} livros.`, {});
+          await logProcessingEvent(createdBatch.id, `Batch ${createdBatch.id} started com ${movedIds.length} livros.`);
+        }
+
+        // 4) Atualizar enrichedBooks de forma consistente e forçar re-render
+        const toStatusId = String(statuses.find(s => s.name === toStatusName)?.id ?? "");
+        const fromStatusId = String(statuses.find(s => s.name === fromStatusName)?.id ?? "");
+
+        setEnrichedBooks(prev =>
+          prev
+            .map(b => {
+              if (userChoseCreate && movedBooks.includes(b.id)) return { ...b, statusId: toStatusId };
+              if (!userChoseCreate && revertedBooks.includes(b.id)) return { ...b, statusId: fromStatusId };
+              if (!userChoseCreate && revertFailed.includes(b.id)) return { ...b, statusId: toStatusId };
+              return b;
+            })
+            // remover da lista os livros que entraram no batch
+            .filter(b => !userChoseCreate || !movedBooks.includes(b.id))
+        );
+
+        // 5) Abrir app local apenas se o batch foi criado
+        if (createdBatch) {
+          const storage = storages.find(s => String(s.id) === storageId);
+          if (!storage) {
+            toast({ title: "Erro", description: `Armazenamento com ID ${storageId} não encontrado.`, variant: "destructive" });
+            return;
+          }
+
+          const firstBook = enrichedBooks.find(b => movedBooks.includes(b.id));
+          if (!firstBook) {
+            toast({ title: "Erro", description: "Não foi possível determinar o projeto.", variant: "destructive" });
+            return;
+          }
+
+          openLocalApp("rfs-processa-app", {
+            userId: currentUser.id,
+            batchId: createdBatch.id,
+            batchName: createdBatch.timestampStr,
+            projectId: firstBook.projectId,
+            storageId,
+            rootPath: storage.root_path,
+          });
+        }
+
+      } catch (error: any) {
+        console.error(error);
+        toast({ title: "Erro", description: error.message || "Não foi possível iniciar o lote de processamento.", variant: "destructive" });
+      }
+    });
   };
+
+
 
   const failureProcessingBatch = async (batchId: string, storageId: string) => {
     await withMutation(async () => {
@@ -2736,6 +3042,196 @@ const openAppValidateScan = (bookId: string) => {
       }
     });
   };
+  /*const handleSendBatchToNextStage = async (batchIds: string[]) => {
+    await withMutation(async () => {
+        let allSucceeded = true;
+        const failedBooks: string[] = [];
+  
+        for (const batchId of batchIds) {
+            const itemsInBatch = processingBatchItems.filter(i => i.batchId === batchId);
+            for (const item of itemsInBatch) {
+                const newStatusName = await handleMoveBookToNextStage(item.bookId, 'Processed');
+                const moveResult = newStatusName !== null;
+                let itemUpdateResponse;
+                try {
+                    itemUpdateResponse = await fetch(`/api/processing-batch-items/${item.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: moveResult ? 'Finalized' : 'CQ Failed' }),
+                    });
+                     if (!itemUpdateResponse.ok) throw new Error('Falha ao atualizar status do item');
+
+                    const updatedItem = await itemUpdateResponse.json();
+                     setProcessingBatchItems(prev => prev.map(i => i.id === updatedItem.id ? updatedItem : i));
+                } catch (e) {
+                     console.error(`Failed to update status for item ${item.id}`, e);
+                }
+
+                if (!moveResult) {
+                    allSucceeded = false;
+                    const book = enrichedBooks.find(b => b.id === item.bookId);
+                    if (book) {
+                        failedBooks.push(book.name);
+                        logAction('Final QC Failed', `Book "${book.name}" failed to move to Final QC.`, { bookId: item.bookId });
+                    }
+                }
+            }
+            
+            if (allSucceeded) {
+                 try {
+                    const response = await fetch(`/api/processing-batches/${batchId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: 'Finalized' }),
+                    });
+                     if (!response.ok) throw new Error('Failed to update batch status');
+                    const updatedBatch = await response.json();
+                     setProcessingBatches(prev => prev.map(b => b.id === batchId ? updatedBatch : b));
+                     logAction('Batch Sent to Final QC', `Batch ${batchId} was successfully sent to Final QC.`, {});
+                 } catch (e) {
+                     console.error(`Failed to finalize batch ${batchId}`, e);
+                 }
+            }
+        }
+  
+        if (failedBooks.length > 0) {
+            toast({title: "Alguns Itens Falharam", description: `Não foi possível mover os seguintes livros: ${failedBooks.join(', ')}. O lote permanece no estado 'Processado'.`, variant: "destructive"});
+        } else {
+            toast({ title: "Lotes Enviados", description: `${batchIds.length} lote(s) movido(s) para o Controle de Qualidade Final.` });
+        }
+    });
+  };*/
+
+  /*const handleSendBatchToNextStage = async (batchIds: string[]) => {
+    await withMutation(async () => {
+      const movedBookStatuses: Record<string, string> = {}; // bookId -> status aplicado
+      const failedBooks: string[] = [];
+      const revertedBooks: string[] = [];
+      const revertFailed: string[] = [];
+      const concurrency = 5;
+
+      // 1️⃣ Função para mover livro sem atualizar backend ainda
+      const moveBookLocally = async (item: typeof processingBatchItems[0]) => {
+        if (item.status === 'Finalized') return null; // ignora livros já Finalized
+
+        const newStatusName = await handleMoveBookToNextStage(item.bookId, 'Processed');
+        const moveResult = newStatusName !== null;
+        movedBookStatuses[item.bookId] = moveResult ? newStatusName! : '';
+        if (!moveResult) failedBooks.push(item.bookId);
+        return { item, moveResult };
+      };
+
+      // 2️⃣ Função para reverter livros que foram movidos localmente
+      const revertBookLocally = async (item: typeof processingBatchItems[0]) => {
+        try {
+          const revertedStatus = await handleMoveBookToPreviousStage(item.bookId, movedBookStatuses[item.bookId] || 'Processed');
+          if (revertedStatus) revertedBooks.push(item.bookId);
+          else revertFailed.push(item.bookId);
+          return revertedStatus;
+        } catch (err) {
+          revertFailed.push(item.bookId);
+          console.error(`Falha ao reverter o livro ${item.bookId}:`, err);
+          return false;
+        }
+      };
+
+      for (const batchId of batchIds) {
+        const itemsInBatch = processingBatchItems.filter(i => i.batchId === batchId);
+
+        // 3️⃣ Mover livros em paralelo por chunks
+        const movedResults: Array<{ item: typeof processingBatchItems[0]; moveResult: boolean }> = [];
+        for (let i = 0; i < itemsInBatch.length; i += concurrency) {
+          const chunk = itemsInBatch.slice(i, i + concurrency);
+          const results = (await Promise.all(chunk.map(moveBookLocally))).filter(Boolean) as any;
+          movedResults.push(...results);
+        }
+
+        // 4️⃣ Se houve falhas, pergunta ao usuário se deseja reverter
+        if (failedBooks.length > 0) {
+          const failedNames = itemsInBatch
+            .filter(i => failedBooks.includes(i.bookId))
+            .map(i => enrichedBooks.find(b => b.id === i.bookId)?.name)
+            .filter(Boolean)
+            .slice(0, 20)
+            .join(', ');
+
+          const decision = await openDecision(
+            "Alguns livros falharam",
+            `Falharam ${failedBooks.length} / ${itemsInBatch.length} livros.\nEx.: ${failedNames}${failedBooks.length > 20 ? " ..." : ""}\nDesejas reverter os livros movidos?`
+          );
+
+          if (decision === "revert") {
+            for (let i = 0; i < itemsInBatch.length; i += concurrency) {
+              const chunk = itemsInBatch.slice(i, i + concurrency);
+              await Promise.all(chunk.map(revertBookLocally));
+            }
+
+            // Feedback reversão
+            if (revertFailed.length === 0) {
+              toast({ title: "Reversão completa", description: `${revertedBooks.length} livros revertidos com sucesso.` });
+            } else {
+              const namesRevertFailed = enrichedBooks
+                .filter(b => revertFailed.includes(b.id))
+                .map(b => b.name)
+                .join(", ");
+              toast({ title: "Reversão parcial", description: `Falha ao reverter ${revertFailed.length} livros: ${namesRevertFailed}`, variant: "destructive" });
+            }
+
+            // Se usuário reverteu, não atualiza backend
+            return;
+          }
+        }
+
+        // 5️⃣ Atualiza backend só depois da confirmação (ou se nenhum erro)
+        for (const res of movedResults) {
+          const { item, moveResult } = res;
+          try {
+            const statusToSend = moveResult ? 'Finalized' : 'CQ Failed';
+            const response = await fetch(`/api/processing-batch-items/${item.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ status: statusToSend }),
+            });
+            if (!response.ok) throw new Error('Falha ao atualizar status do item');
+
+            const updatedItem = await response.json();
+            setProcessingBatchItems(prev => prev.map(i => i.id === updatedItem.id ? updatedItem : i));
+          } catch (err) {
+            console.error(`Erro ao atualizar status do item ${item.id}`, err);
+          }
+        }
+
+        // 6️⃣ Atualiza status do batch se todos os livros foram movidos
+        if (failedBooks.length === 0) {
+          try {
+            const response = await fetch(`/api/processing-batches/${batchId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ status: 'Finalized' }),
+            });
+            if (!response.ok) throw new Error('Failed to update batch status');
+            const updatedBatch = await response.json();
+            setProcessingBatches(prev => prev.map(b => b.id === batchId ? updatedBatch : b));
+            logAction('Batch Sent to Final QC', `Batch ${batchId} was successfully sent to Final QC.`, {});
+          } catch (e) {
+            console.error(`Failed to finalize batch ${batchId}`, e);
+          }
+        }
+      }
+
+      // 7️⃣ Feedback final
+      if (failedBooks.length > 0) {
+        toast({
+          title: "Alguns Itens Falharam",
+          description: `Não foi possível mover os seguintes livros: ${failedBooks.join(', ')}. O lote permanece no estado 'Processado'.`,
+          variant: "destructive"
+        });
+      } else {
+        toast({ title: "Lotes Enviados", description: `${batchIds.length} lote(s) movido(s) para o Controle de Qualidade Final.` });
+      }
+    });
+  };*/
+
   const handleSendBatchToNextStage = async (batchIds: string[]) => {
     await withMutation(async () => {
         let allSucceeded = true;
@@ -2744,7 +3240,8 @@ const openAppValidateScan = (bookId: string) => {
         for (const batchId of batchIds) {
             const itemsInBatch = processingBatchItems.filter(i => i.batchId === batchId);
             for (const item of itemsInBatch) {
-                const moveResult = await handleMoveBookToNextStage(item.bookId, 'Processed');
+                const newStatusName = await handleMoveBookToNextStage(item.bookId, 'Processed');
+                const moveResult = newStatusName !== null;
                 let itemUpdateResponse;
                 try {
                     itemUpdateResponse = await fetch(`/api/processing-batch-items/${item.id}`, {
@@ -2794,6 +3291,7 @@ const openAppValidateScan = (bookId: string) => {
         }
     });
   };
+
 
   const setProvisionalDeliveryStatus = async (deliveryItemId: string, bookId: string, status: 'approved' | 'rejected', reason?: string) => {
     await withMutation(async () => {
@@ -3020,7 +3518,7 @@ const openAppValidateScan = (bookId: string) => {
   };
 
 
-  const handleCreateDeliveryBatch = async (bookIds: string[]) => {
+  /*const handleCreateDeliveryBatch = async (bookIds: string[]) => {
     await withMutation(async () => {
       try {
         const response = await fetch('/api/delivery-batches', {
@@ -3057,6 +3555,149 @@ const openAppValidateScan = (bookId: string) => {
       } catch (error) {
         console.error(error);
         toast({ title: "Erro", description: "Não foi possível criar o lote de entrega.", variant: "destructive" });
+      }
+    });
+  };*/
+
+  const handleCreateDeliveryBatch = async (bookIds: string[]) => {
+    await withMutation(async () => {
+      if (!currentUser) {
+        toast({ title: "Erro", description: "Utilizador atual não encontrado.", variant: "destructive" });
+        return;
+      }
+
+      try {
+        const movedBooks: string[] = [];
+        const failedBooks: string[] = [];
+        const revertedBooks: string[] = [];
+        const revertFailed: string[] = [];
+        const revertedBooksStatuses: Record<string, string> = {};
+        const movedBookStatuses: Record<string, string> = {}; // bookId -> status aplicado
+        const concurrency = 5;
+
+        const moveBookSafely = async (bookId: string) => {
+          const book = enrichedBooks.find(b => b.id === bookId);
+          if (!book) return false;
+          try {
+            const newStatusName = await handleMoveBookToNextStage(book.id, book.status); // ajustar handleMoveBookToNextStage para retornar status
+            const newStatus = newStatusName !== null;
+            if (newStatus) {
+              movedBooks.push(bookId);
+              movedBookStatuses[bookId] = newStatusName;
+              return true;
+            } else {
+              failedBooks.push(bookId);
+              return false;
+            }
+          } catch (err) {
+            failedBooks.push(bookId);
+            console.error(`Erro ao mover o livro ${book.name}:`, err);
+            return false;
+          }
+        };
+
+        // 1) Mover em paralelo por chunks
+        for (let i = 0; i < bookIds.length; i += concurrency) {
+          const chunk = bookIds.slice(i, i + concurrency);
+          await Promise.all(chunk.map(id => moveBookSafely(id)));
+        }
+
+        if (movedBooks.length === 0) {
+          toast({ title: "Erro", description: "Nenhum livro foi movido com sucesso. Lote não criado.", variant: "destructive" });
+          return;
+        }
+
+        // 2) Pergunta ao utilizador se deseja criar ou reverter
+        let userChoseCreate = true;
+        if (failedBooks.length > 0) {
+          const failedNames = enrichedBooks
+            .filter(b => failedBooks.includes(b.id))
+            .map(b => b.name)
+            .slice(0, 20)
+            .join(", ");
+          const description = `Falharam ${failedBooks.length} / ${bookIds.length} livros ao mover para entrega.\n\nEx.: ${failedNames}${failedBooks.length > 20 ? " ... " : ""}\n\nO que desejas fazer?`;
+          const decision = await openDecision("Alguns livros falharam ao mover para entrega", description);
+
+          if (decision === "revert") {
+            userChoseCreate = false;
+
+            const revertSafely = async (bookId: string) => {
+              const book = enrichedBooks.find(b => b.id === bookId);
+              if (!book) return false;
+              const currentStatusForRevert = movedBookStatuses[bookId] || book.status;
+              try {
+                const revertedStatus = await handleMoveBookToPreviousStage(book.id, currentStatusForRevert); // retorna status anterior
+                if (revertedStatus) {
+                  revertedBooks.push(bookId);
+                  revertedBooksStatuses[bookId] = revertedStatus;
+                  return true;
+                } else {
+                  revertFailed.push(bookId);
+                  return false;
+                }
+              } catch (err) {
+                revertFailed.push(bookId);
+                console.error(err);
+                return false;
+              }
+            };
+
+            for (let i = 0; i < movedBooks.length; i += concurrency) {
+              const chunk = movedBooks.slice(i, i + concurrency);
+              await Promise.all(chunk.map(id => revertSafely(id)));
+            }
+
+            if (revertFailed.length === 0) {
+              toast({ title: "Reversão completa", description: `${revertedBooks.length} livros revertidos com sucesso.` });
+            } else {
+              const namesRevertFailed = enrichedBooks.filter(b => revertFailed.includes(b.id)).map(b => b.name).join(", ");
+              toast({ title: "Reversão parcial", description: `Falha ao reverter ${revertFailed.length} livros: ${namesRevertFailed}`, variant: "destructive" });
+            }
+          }
+        }
+
+        // 3) Criar lote apenas se user escolheu criar ou não houve falhas
+        let createdBatch: any | null = null;
+        if (userChoseCreate) {
+          const movedIds = movedBooks;
+          const response = await fetch('/api/delivery-batches', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bookIds: movedIds, userId: currentUser.id }),
+          });
+          if (!response.ok) throw new Error('Falha ao criar lote de entrega');
+
+          createdBatch = await response.json();
+          setDeliveryBatches(prev => [createdBatch, ...prev]);
+
+          const newItems = movedIds.map(bookId => ({
+            id: `del_item_${createdBatch.id}_${bookId}`,
+            deliveryId: createdBatch.id,
+            bookId,
+            user_id: currentUser.id,
+            status: 'pending' as const,
+            info: null,
+            obs: null
+          }));
+          setDeliveryBatchItems(prev => [...prev, ...newItems]);
+
+          toast({ title: "Lote de Entrega Criado e Enviado" });
+          logAction('Delivery Batch Created', `Batch ${createdBatch.id} created with ${movedIds.length} books.`, {});
+        }
+
+        // 4) Atualizar enrichedBooks apenas uma vez
+        setEnrichedBooks(prev =>
+          prev.map(b => {
+            if (userChoseCreate && movedBooks.includes(b.id)) return { ...b, statusId: movedBookStatuses[b.id] };
+            if (!userChoseCreate && revertedBooks.includes(b.id)) return { ...b, statusId: revertedBooksStatuses[b.id]};
+            if (!userChoseCreate && revertFailed.includes(b.id)) return { ...b, statusId: movedBookStatuses[b.id] };
+            return b;
+          }).filter(b => userChoseCreate ? !movedBooks.includes(b.id) : true)
+        );
+
+      } catch (error: any) {
+        console.error(error);
+        toast({ title: "Erro", description: error.message || "Não foi possível criar o lote de entrega.", variant: "destructive" });
       }
     });
   };
@@ -3117,7 +3758,88 @@ const openAppValidateScan = (bookId: string) => {
   
       return [];
   }, [enrichedBooks, selectedProjectId, accessibleProjectsForUser, projectWorkflows, storages, toast]);
+/*
+const booksAvaiableInStorageLocalIp = React.useCallback(async (currentStageKey: string) => {
+  if (currentStageKey !== 'to-indexing' && currentStageKey !== 'to-checking') {
+    return [];
+  }
 
+  const localIP = await getLocalIP();
+  const accessibleStorageIds = storages
+    .filter(s => s.ip === localIP)
+    .map(s => String(s.id));
+
+  if (accessibleStorageIds.length === 0) {
+    //toast({ title: "Erro de Armazenamento", description: "Nenhum armazenamento acessível encontrado para o IP atual.", variant: "destructive" });
+    return [];
+  }
+
+  const projectsToScan = selectedProjectId
+    ? accessibleProjectsForUser.filter(p => p.id === selectedProjectId)
+    : accessibleProjectsForUser;
+
+  let availableBooks: EnrichedBook[] = [];
+
+  for (const project of projectsToScan) {
+    const projectWorkflow = projectWorkflows[project.id] || [];
+    const currentStageIndex = projectWorkflow.indexOf(currentStageKey);
+
+    if (currentStageIndex <= 0) continue; // Sem etapa anterior
+
+    const previousStageKey = projectWorkflow[currentStageIndex - 1];
+    const previousStageStatus = STAGE_CONFIG[previousStageKey]?.dataStatus;
+    const workflowConfig = STAGE_CONFIG[currentStageKey];
+
+    if (!previousStageStatus) continue;
+
+    try {
+      const res = await fetch('/api/books-local-ip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stageKey: currentStageKey,
+          previousStageKey,
+          ip: localIP,
+          projectId: project.id,
+        }),
+      });
+
+      if (!res.ok) {
+        // Pode fazer log ou toast de erro se quiser
+        continue;
+      }
+
+      const books: EnrichedBook[] = await res.json();
+
+      // Filtra os livros que não têm o usuário atribuído e que estão no storage acessível
+      
+      const filteredBooks = books.filter(b =>
+        workflowConfig.assigneeRole && !b[`${workflowConfig.assigneeRole}UserId`] &&
+        b.storageId &&
+        accessibleStorageIds.includes(String(b.storageId))
+      );
+
+      if (filteredBooks.length > 0) {
+        availableBooks = [...availableBooks, ...filteredBooks];
+      }
+    } catch (error) {
+      console.error('Erro ao buscar livros:', error);
+    }
+  }
+
+  if (availableBooks.length > 0) {
+    return availableBooks;
+  }
+
+  toast({
+    title: 'Ops, nada por aqui!',
+    description: 'Não encontramos livros disponíveis para o IP do armazenamento atual.',
+    variant: 'default',
+  });
+
+  return [];
+}, [selectedProjectId, accessibleProjectsForUser, projectWorkflows, storages, toast]);
+*/
 
     const handlePullNextTask = React.useCallback(async (currentStageKey: string, userIdToAssign?: string) => {
     await withMutation(async () => {
@@ -3360,7 +4082,7 @@ const openAppValidateScan = (bookId: string) => {
 
 
   const value: AppContextType = { 
-    isChecking, setIsChecking, loading, isMutating, processingBookIds, setIsMutating,
+    withMutation, withProgressMutation, isChecking, setIsChecking, loading, isMutating, processingBookIds, setIsMutating,
     progress, setProgress, progressMutation, setProgressMutation,
     currentUser, login, logout, changePassword,
     navigationHistory, addNavigationHistoryItem,
@@ -3398,6 +4120,7 @@ const openAppValidateScan = (bookId: string) => {
     addScanner, updateScanner, deleteScanner,
     addProjectStorage, updateProjectStorage, deleteProjectStorage,
     getNextEnabledStage,
+    getPreviousEnabledStage,
     handleMarkAsShipped,
     handleConfirmReception,
     handleSendToStorage,
@@ -3429,6 +4152,7 @@ const openAppValidateScan = (bookId: string) => {
 
   return (
     <AppContext.Provider value={value}>
+      <> {DecisionDialog} </>
       {children}
     </AppContext.Provider>
   );

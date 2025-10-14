@@ -29,7 +29,7 @@ import { STAGE_CONFIG, WORKFLOW_SEQUENCE } from "@/lib/workflow-config";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
-const ITEMS_PER_PAGE = 100;
+const ITEMS_PER_PAGE = 50;
 
 const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -52,6 +52,7 @@ export function BookStatsTab() {
   
   const [selection, setSelection] = React.useState<string[]>([]);
   const [currentPage, setCurrentPage] = React.useState(1);
+  const [activeIndex, setActiveIndex] = React.useState<number | null>(null);
 /*
   const bookStats = React.useMemo(() => {
     return books.map(book => {
@@ -154,29 +155,38 @@ export function BookStatsTab() {
   */
 
 
-  type StatusChartItem = {
+type StatusChartItem = {
   name: string;
-  value: number;
+  value: number;       // nº de livros
+  totalPages: number;  // total de páginas
 };
 
 const [booksByStatusChartData, setBooksByStatusChartData] = React.useState<StatusChartItem[]>([]);
 
 React.useEffect(() => {
-  const statusCounts = books.reduce((acc, book) => {
-    const status = book.status || 'Unknown';
-    acc[status] = (acc[status] || 0) + 1;
+  const statusStats = books.reduce((acc, book) => {
+    const status = book.status || "Unknown";
+    if (!acc[status]) acc[status] = { count: 0, pages: 0 };
+    acc[status].count += 1;
+    acc[status].pages += book.expectedDocuments || 0;
     return acc;
-  }, {} as Record<string, number>);
+  }, {} as Record<string, { count: number; pages: number }>);
 
   const orderedChartData = WORKFLOW_SEQUENCE
-    .map(stageKey => {
+    .map((stageKey) => {
       const statusName = STAGE_CONFIG[stageKey]?.dataStatus;
-      if (statusName && statusCounts[statusName]) {
-        return { name: statusName, value: statusCounts[statusName] };
+      const data = statusName ? statusStats[statusName] : undefined;
+
+      if (statusName && data && data.count > 0) {
+        return {
+          name: statusName,
+          value: data.count,
+          totalPages: data.pages,
+        };
       }
       return null;
     })
-    .filter((item): item is StatusChartItem => item !== null && item.value > 0);
+    .filter((item): item is StatusChartItem => item !== null);
 
   setBooksByStatusChartData(orderedChartData);
 }, [books]);
@@ -357,27 +367,72 @@ React.useEffect(() => {
       </Pagination>
     );
   }
-
+  const kpiCards = [
+    {
+      key: "total",
+      title: "Total de Livros",
+      icon: Briefcase,
+      color: "text-foreground",
+    },
+    {
+      key: "inWorkflow",
+      title: "Em Workflow",
+      icon: BookCopy,
+      color: "text-foreground",
+    },
+    {
+      key: "finalized",
+      title: "Finalizados",
+      icon: CheckCheck,
+      color: "text-foreground",
+    },
+    {
+      key: "withErrors",
+      title: "Com Erros",
+      icon: AlertTriangle,
+      color: "text-destructive",
+    },
+  ];
   return (
     <div className="space-y-6">
-       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Total de Livros', kpiData.total.items)}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total de Livros</CardTitle><Briefcase className="h-4 w-4 text-muted-foreground" /></CardHeader>
-                <CardContent><div className="text-2xl font-bold">{kpiData.total.value}</div></CardContent>
-            </Card>
-            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Livros em Workflow', kpiData.inWorkflow.items)}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Em Workflow</CardTitle><BookCopy className="h-4 w-4 text-muted-foreground" /></CardHeader>
-                <CardContent><div className="text-2xl font-bold">{kpiData.inWorkflow.value}</div></CardContent>
-            </Card>
-             <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Livros Finalizados', kpiData.finalized.items)}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Finalizados</CardTitle><CheckCheck className="h-4 w-4 text-muted-foreground" /></CardHeader>
-                <CardContent><div className="text-2xl font-bold">{kpiData.finalized.value}</div></CardContent>
-            </Card>
-            <Card className="cursor-pointer hover:bg-muted/50" onClick={() => handleKpiClick('Livros com Erros', kpiData.withErrors.items)}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Com Erros</CardTitle><AlertTriangle className="h-4 w-4 text-muted-foreground" /></CardHeader>
-                <CardContent><div className="text-2xl font-bold text-destructive">{kpiData.withErrors.value}</div></CardContent>
-            </Card>
-        </div>
+       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  {kpiCards.map(({ key, title, icon: Icon, color }) => {
+    const data = kpiData[key as keyof typeof kpiData];
+    const totalDocs = (data.items as EnrichedBook[]).reduce(
+      (sum, b) => sum + (b.expectedDocuments || 0),
+      0
+    );
+
+    return (
+          <Card
+            key={key}
+            className="cursor-pointer hover:bg-muted/50 transition-colors"
+            onClick={() => handleKpiClick(title, data.items)}
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{title}</CardTitle>
+              <Icon className={`h-4 w-4 ${color}`} />
+            </CardHeader>
+
+            <CardContent>
+              <div className="flex flex-col">
+                <div className={`text-2xl font-bold ${color}`}>
+                  {data.value.toLocaleString()}{" "}
+                  <span className="text-sm text-muted-foreground">livro(s)</span>
+                </div>
+
+                {/* só mostra páginas se houver livros */}
+                {data.items?.length > 0 && (
+                  <div className="text-sm text-muted-foreground">
+                    {totalDocs.toLocaleString()} documento(s)
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
         
         <div className="grid gap-6 md:grid-cols-2">
             <Card>
@@ -385,30 +440,107 @@ React.useEffect(() => {
                     <CardTitle>Livros por Estado</CardTitle>
                     <CardDescription>Distribuição de todos os livros pelo estado atual no workflow.</CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <ChartContainer
-                        config={statusChartConfig}
-                        className="mx-auto aspect-square h-[250px]"
-                    >
-                        <PieChart>
-                        <ChartTooltip
-                            cursor={false}
-                            content={<ChartTooltipContent hideLabel />}
-                        />
-                        <Pie
-                            data={booksByStatusChartData}
-                            dataKey="value"
-                            nameKey="name"
-                            innerRadius={0}
-                            strokeWidth={0}
-                        >
-                            {booksByStatusChartData.map((entry) => (
-                                <Cell key={entry.name} fill={statusChartConfig[entry.name]?.color} />
-                            ))}
-                        </Pie>
-                        </PieChart>
-                    </ChartContainer>
-                </CardContent>
+<CardContent>
+  <div className="flex flex-col items-center gap-6 relative">
+    {/* Pie Chart com overlay de percentagem */}
+    <ChartContainer config={statusChartConfig} className="relative h-[350px] w-[350px]">
+      <div className="relative h-full w-full flex items-center justify-center">
+        <PieChart width={350} height={350}>
+          <Pie
+            data={booksByStatusChartData}
+            dataKey="value"
+            nameKey="name"
+            innerRadius={0}
+            outerRadius={140}
+            strokeWidth={0}
+            onMouseEnter={(_, index) => setActiveIndex(index)}
+            onMouseLeave={() => setActiveIndex(null)}
+          >
+            {booksByStatusChartData.map((entry, index) => (
+              <Cell
+                key={entry.name}
+                fill={statusChartConfig[entry.name]?.color}
+                opacity={activeIndex === null || activeIndex === index ? 1 : 0}
+              />
+            ))}
+          </Pie>
+
+          <ChartTooltip
+            cursor={false}
+            content={({ active, payload }) => {
+              if (!active || !payload) return null;
+              const entry = payload[0].payload as StatusChartItem & { totalPages: number };
+              return (
+                <div className="bg-card/90 backdrop-blur-md border border-muted rounded-lg p-2 shadow-md text-sm">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: statusChartConfig[entry.name]?.color }}
+                    />
+                    <span className="font-medium">{entry.name}</span>
+                  </div>
+                  <div className="ml-5 mt-1">
+                    <div>{entry.value} livros</div>
+                    <div>{entry.totalPages?.toLocaleString()} páginas</div>
+                  </div>
+                </div>
+              );
+            }}
+          />
+        </PieChart>
+
+        {/* Overlay da percentagem centralizada */}
+        {activeIndex !== null && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          {(() => {
+            const total = booksByStatusChartData.reduce((acc, item) => acc + item.value, 0);
+            const percent = ((booksByStatusChartData[activeIndex].value / total) * 100).toFixed(1);
+            const color = statusChartConfig[booksByStatusChartData[activeIndex].name]?.color;
+
+            return (
+              <div
+                className="px-3 py-1 rounded-lg text-3xl font-bold bg-card/90 border border-muted text-center shadow-md backdrop-blur-sm transition-transform duration-300"
+                style={{
+                  color,
+                }}
+              >
+                {percent}%
+              </div>
+            );
+          })()}
+          </div>
+        )}
+      </div>
+    </ChartContainer>
+
+    {/* Lista em grid abaixo do chart */}
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 w-full text-xs">
+      {booksByStatusChartData.map((entry, index) => (
+        <div
+          key={entry.name}
+          className="flex items-center gap-2 cursor-pointer p-1"
+          onMouseEnter={() => setActiveIndex(index)}
+          onMouseLeave={() => setActiveIndex(null)}
+        >
+          <span
+            className="w-3 h-3 rounded-full"
+            style={{
+              backgroundColor: statusChartConfig[entry.name]?.color,
+              opacity: activeIndex === null || activeIndex === index ? 1 : 0,
+            }}
+          />
+          <div className="flex flex-col text-xs ml-1">
+            <span className="font-medium">{entry.name}</span>
+            <span className="text-muted-foreground">
+              {entry.value} livros<br />
+              {entry.totalPages?.toLocaleString()} páginas
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</CardContent>
             </Card>
             <Card>
                 <CardHeader><CardTitle>Top 10 Projetos por Número de Livros</CardTitle></CardHeader>

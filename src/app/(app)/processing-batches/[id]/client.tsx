@@ -103,21 +103,21 @@ export default function BatchDetailClient({ batchId }: BatchDetailClientProps) {
   }, [batch, items, books]);
 
   if (!batch) {
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Batch Not Found</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <p className="text-center text-muted-foreground py-10">
-                    The processing batch you are looking for could not be found.
-                </p>
-            </CardContent>
-        </Card>
-    );
+      return (
+          <Card>
+              <CardHeader>
+                  <CardTitle>Lote não encontrado</CardTitle>
+              </CardHeader>
+              <CardContent>
+                  <p className="text-center text-muted-foreground py-10">
+                      O lote de processamento que está a procurar não foi encontrado.
+                  </p>
+              </CardContent>
+          </Card>
+      );
   }
   
-  const getStatusInfo = (status: 'In Progress' | 'Complete' | 'Failed') => {
+  const getStatusInfo = (status: 'In Progress' | 'Complete' | 'Failed' | 'Pause') => {
       switch (status) {
           case 'In Progress': return { icon: Loader2, color: 'text-primary', className: 'animate-spin' };
           case 'Complete': return { icon: CheckCircle, color: 'text-green-600' };
@@ -147,33 +147,33 @@ export default function BatchDetailClient({ batchId }: BatchDetailClientProps) {
                  <div className="space-y-8">
                     {/* Group 1 */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <DetailItem label="Status" icon={CheckSquare} value={<Badge className="text-base" variant={batch.status === 'Complete' ? 'default' : (batch.status === 'Failed' ? 'destructive' : 'secondary')}>{batch.status}</Badge>} />
-                        <DetailItem label="Storage Location" icon={Warehouse} value={stats.storageName} />
+                        <DetailItem label="Estado" icon={CheckSquare} value={<Badge className="text-base" variant={batch.status === 'Complete' ? 'default' : (batch.status === 'Failed' ? 'destructive' : 'secondary')}>{batch.status}</Badge>} />
+                        <DetailItem label="Local de Armazenamento" icon={Warehouse} value={stats.storageName} />
                     </div>
                     <Separator />
                     {/* Group 2 */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <DetailItem label="Start Time" icon={Calendar} value={format(new Date(batch.startTime), 'dd/MM/yyyy HH:mm')} />
-                        <DetailItem label="End Time" icon={Calendar} value={batch.endTime ? format(new Date(batch.endTime), 'dd/MM/yyyy HH:mm') : '—'} />
-                        <DetailItem label="Total Duration" icon={Timer} value={stats.duration} />
+                        <DetailItem label="Hora de Início" icon={Calendar} value={format(new Date(batch.startTime), 'dd/MM/yyyy HH:mm')} />
+                        <DetailItem label="Hora de Fim" icon={Calendar} value={batch.endTime ? format(new Date(batch.endTime), 'dd/MM/yyyy HH:mm') : '—'} />
+                        <DetailItem label="Duração Total" icon={Timer} value={stats.duration} />
                     </div>
                     <Separator />
                     {/* Group 3 */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <DetailItem label="Books in Batch" icon={Book} value={items.length} />
-                        <DetailItem label="Avg. Time / Book" icon={Hourglass} value={stats.avgPerBook} />
-                        <DetailItem label="Total Pages" icon={FileText} value={stats.totalPages.toLocaleString()} />
-                        <DetailItem label="Avg. Time / Page" icon={Timer} value={stats.avgPerPage} />
+                        <DetailItem label="Livros no Lote" icon={Book} value={items.length} />
+                        <DetailItem label="Tempo Médio / Livro" icon={Hourglass} value={stats.avgPerBook} />
+                        <DetailItem label="Total de Páginas" icon={FileText} value={stats.totalPages.toLocaleString()} />
+                        <DetailItem label="Tempo Médio / Página" icon={Timer} value={stats.avgPerPage} />
                     </div>
                      <Separator />
                     {/* Progress */}
                     <div className="col-span-full">
-                        <DetailItem label="Overall Progress" icon={GanttChartSquare} value={`${batch.progress || 0}%`} />
+                        <DetailItem label="Progresso Global" icon={GanttChartSquare} value={`${batch.progress || 0}%`} />
                         <Progress value={batch.progress || 0} className="mt-2 h-2" />
                     </div>
                 </div>
-                {batch.info && <><Separator className="my-4"/><DetailItem label="Info" value={<p className="text-sm font-normal text-foreground">{batch.info}</p>} /></>}
-                {batch.obs && <><Separator className="my-4"/><DetailItem label="Observations" value={<p className="text-sm font-normal text-foreground">{batch.obs}</p>} /></>}
+                {batch.info && <><Separator className="my-4"/><DetailItem label="Informação" value={<p className="text-sm font-normal text-foreground">{batch.info}</p>} /></>}
+                {batch.obs && <><Separator className="my-4"/><DetailItem label="Observações" value={<p className="text-sm font-normal text-foreground">{batch.obs}</p>} /></>}
             </CardContent>
         </Card>
 

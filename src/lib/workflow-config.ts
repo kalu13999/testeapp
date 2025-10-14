@@ -330,3 +330,16 @@ export const getNextEnabledStage = (currentStage: string, workflow: string[]): s
     }
     return null;
 };
+
+export const getPreviousEnabledStage = (currentStage: string, workflow: string[]): string | null => {
+    const currentIndex = WORKFLOW_SEQUENCE.indexOf(currentStage);
+    if (currentIndex === -1) return null;
+
+    // percorre para trás a partir do estágio anterior
+    for (let i = currentIndex - 1; i >= 0; i--) {
+        const prevStageKey = WORKFLOW_SEQUENCE[i];
+        if (workflow.includes(prevStageKey)) return prevStageKey;
+    }
+
+    return null; // não há estágio anterior habilitado
+};

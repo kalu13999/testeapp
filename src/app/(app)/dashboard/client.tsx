@@ -143,7 +143,22 @@ function ProjectDashboard() {
                 booksByStage[book.status].push(book);
             }
         });
-        const workflowChartData = orderedStageNames.map(name => ({ name, count: booksByStage[name]?.length || 0 }));
+
+        const workflowChartData = orderedStageNames.map(name => {
+            const stageBooks = booksByStage[name] || [];
+
+            const totalPages = stageBooks.reduce(
+                (sum, book) => sum + (book.expectedDocuments || 0),
+                0
+            );
+
+            return {
+                name,
+                count: stageBooks.length,
+                totalPages,
+            };
+        
+        });
         
         const dailyActivity: { [date: string]: { [action: string]: number } } = {};
         const relevantInterval = (dateRange?.from && dateRange.to) ? { start: dateRange.from, end: dateRange.to } : null;
@@ -324,13 +339,59 @@ function ProjectDashboard() {
         );
     }
     
-    const workflowChartConfig = { count: { label: "Books", color: "hsl(var(--primary))" } } satisfies ChartConfig;
+    const workflowChartConfig = {
+        count: { label: "Livros", color: "hsl(210, 80%, 50%)" },
+        totalPages: { label: "Documentos", color: "hsl(150, 70%, 40%)" },
+    } satisfies ChartConfig;
     const ChartComponent = { bar: BarChart, line: LineChart, area: AreaChart }[chartType];
-    const ChartElement = {
-        bar: <Bar dataKey="count" fill="var(--color-count)" radius={[4, 4, 0, 0]} />,
-        line: <Line type="monotone" dataKey="count" stroke="var(--color-count)" strokeWidth={2} dot={false} />,
-        area: <Area type="monotone" dataKey="count" stroke="var(--color-count)" fill="var(--color-count)" fillOpacity={0.3} />,
-    }[chartType];
+    const ChartElements =
+    chartType === "bar"
+        ? [
+            <Bar key="count" dataKey="count" fill="hsl(210, 80%, 50%)" name="Livros" />,
+            <Bar key="totalPages" dataKey="totalPages" fill="hsl(150, 70%, 40%)" name="Páginas" />,
+        ]
+        : chartType === "line"
+        ? [
+            <Line
+            key="count"
+            type="monotone"
+            dataKey="count"
+            stroke="hsl(210, 80%, 50%)"
+            strokeWidth={2}
+            dot={false}
+            name="Livros"
+            />,
+            <Line
+            key="totalPages"
+            type="monotone"
+            dataKey="totalPages"
+            stroke="hsl(150, 70%, 40%)"
+            strokeWidth={2}
+            dot={false}
+            strokeDasharray="5 3"
+            name="Páginas"
+            />,
+        ]
+        : [
+            <Area
+            key="count"
+            type="monotone"
+            dataKey="count"
+            stroke="hsl(210, 80%, 50%)"
+            fill="hsl(210, 80%, 50%)"
+            fillOpacity={0.3}
+            name="Livros"
+            />,
+            <Area
+            key="totalPages"
+            type="monotone"
+            dataKey="totalPages"
+            stroke="hsl(150, 70%, 40%)"
+            fill="hsl(150, 70%, 40%)"
+            fillOpacity={0.3}
+            name="Páginas"
+            />,
+        ];
     const dailyChartConfig = {
         Shipped: { label: "Shipped", color: "hsl(210, 80%, 50%)" },
         Received: { label: "Received", color: "hsl(180, 70%, 40%)" },
@@ -373,18 +434,46 @@ function ProjectDashboard() {
                 </Card>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                    {kpiData.map((kpi) => (
-                        <Card key={kpi.title} onClick={() => handleKpiClick(kpi)} className={kpi.items && kpi.items.length > 0 ? "cursor-pointer transition-colors hover:bg-muted/50" : ""}>
+                    {kpiData.map((kpi) => {
+                        // Calcula total de páginas apenas se forem livros
+                        const totalDocs =
+                            kpi.type === "books"
+                            ? (kpi.items as EnrichedBook[]).reduce(
+                                (sum, b) => sum + (b.expectedDocuments || 0),
+                                0
+                                )
+                            : null;
+
+                        return (
+                            <Card
+                            key={kpi.title}
+                            onClick={() => handleKpiClick(kpi)}
+                            className={
+                                kpi.items && kpi.items.length > 0
+                                ? "cursor-pointer transition-colors hover:bg-muted/50"
+                                : ""
+                            }
+                            >
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
                                 <kpi.icon className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold">{kpi.value}</div>
-                                <p className="text-xs text-muted-foreground">{kpi.description}</p>
+                                {/* Número total de itens */}
+                                <div className="text-2xl font-bold">{kpi.items.length.toLocaleString()}</div>
+
+                                {/* Total de páginas, apenas se for tipo 'books' */}
+                                {totalDocs !== null && (
+                                <div className="text-sm font-semibold text-muted-foreground">
+                                    {totalDocs.toLocaleString()} documento(s)
+                                </div>
+                                )}
+
+                                <p className="text-xs text-muted-foreground mt-1">{kpi.description}</p>
                             </CardContent>
-                        </Card>
-                    ))}
+                            </Card>
+                        );
+                        })}
                 </div>
 
                 <Card>
@@ -397,8 +486,23 @@ function ProjectDashboard() {
                     </CardHeader>
                     <CardContent>
                         <ChartContainer config={workflowChartConfig} className="h-[300px] w-full cursor-pointer">
-                            <ChartComponent data={workflowChartData} onClick={handleWorkflowChartClick}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} angle={-40} textAnchor="end" height={80} interval={0} /><YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false}/><ChartTooltip cursor={{ fill: "hsl(var(--muted))" }} content={<ChartTooltipContent hideLabel />} />{ChartElement}
+                            <ChartComponent data={workflowChartData}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                            <XAxis
+                                dataKey="name"
+                                stroke="hsl(var(--muted-foreground))"
+                                fontSize={12}
+                                tickLine={false}
+                                axisLine={false}
+                                angle={-40}
+                                textAnchor="end"
+                                height={80}
+                                interval={0}
+                                />
+                            <YAxis />
+                            <ChartTooltip />
+                            <ChartLegend content={<ChartLegendContent />} />
+                            {ChartElements}
                             </ChartComponent>
                         </ChartContainer>
                     </CardContent>
