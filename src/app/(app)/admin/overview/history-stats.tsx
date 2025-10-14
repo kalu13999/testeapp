@@ -23,7 +23,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } f
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast";
 import { format, subDays } from 'date-fns'
-import { EnrichedAuditLog } from "@/context/workflow-context"
+import type { EnrichedAuditLog } from "@/lib/data"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 
 

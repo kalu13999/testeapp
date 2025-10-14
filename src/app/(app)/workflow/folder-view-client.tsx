@@ -154,6 +154,15 @@ type GroupedDocuments = {
     batchInfo?: { id: string, timestampStr: string };
   };
 };
+
+type ApiResponse = {
+  groupedByBook: GroupedDocuments;
+  totalBookPages: number;
+  page: number;
+  perPage: number;
+  allVisibleBookIds: string[];
+  availableBatches: { id: string; timestamp: string; books: string[] }[];
+};
 const KpiCard = ({
   title,
   value,
@@ -180,6 +189,8 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   const {
     setProgress, 
     progress,
+    loading,
+    setLoading,
     withMutation,
     withProgressMutation,
     documents, 
@@ -209,6 +220,15 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   } = useAppContext();
   const { toast } = useToast();
   const ActionIcon = config.actionButtonIcon ? iconMap[config.actionButtonIcon] : FolderSync;
+
+  const [data, setData] = React.useState<ApiResponse>({
+    groupedByBook: {},
+    totalBookPages: 0,
+    page: 1,
+    perPage: 10,
+    allVisibleBookIds: [],
+    availableBatches: [],
+  });
 
   const [selection, setSelection] = React.useState<string[]>([]);
   const [rejectionComment, setRejectionComment] = React.useState("");
@@ -289,7 +309,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   const canViewAll = React.useMemo(() => {
     if (!currentUser) return false;
     const userPermissions = permissions[currentUser.role] || [];
-    return userPermissions.includes('*') || userPermissions.includes('/client/view-all-validations');
+    return userPermissions.includes('*') || userPermissions.includes('/workflow/view-all');
   }, [currentUser, permissions]);
   
   const bookToBatchMap = React.useMemo(() => {
@@ -303,6 +323,8 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     return map;
   }, [processingBatchItems, processingBatches]);
 
+
+  
   const groupedByBook = React.useMemo(() => {
     if (!config.dataStatus) return {};
     let booksInStage = books.filter(book => book.status === config.dataStatus);
@@ -372,11 +394,58 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   const allVisibleBookIds = paginatedBookGroups.map(bg => bg.book.id);
   const allVisibleSelected = allVisibleBookIds.every(id => selection.includes(id));
   const someVisibleSelected = allVisibleBookIds.some(id => selection.includes(id));
+  /*const statusParam = config?.dataStatus || "";
 
+  const loadBooks = async () => {
+    const params = new URLSearchParams({
+      dataStatus: statusParam,
+      selectedProjectId: selectedProjectId || "",
+      selectedBatchId: selectedBatchId || "all",
+      selectedStorageId: selectedStorageId || "all",
+      stage: stage || "",
+      role: currentUser?.role || "",
+      clientId: currentUser?.clientId || "",
+    });
+
+    console.log("🔹 Fetching books with params:", Object.fromEntries(params.entries()));
+
+    try {
+      const res = await fetch(`/api/books/grouped?${params.toString()}`);
+      if (!res.ok) throw new Error("Erro ao buscar dados");
+
+      const json: ApiResponse = await res.json();
+      console.log("✅ Dados recebidos da API:", json);
+
+      setData(json);
+    } catch (err) {
+      console.error("❌ Erro no fetch:", err);
+    }
+  };
 
   React.useEffect(() => {
-    setSelection([]);
-  }, [selectedProjectId, selectedBatchId, selectedStorageId]);
+    loadBooks();
+  }, [books, documents, config.dataStatus, selectedProjectId, currentUser, selectedBatchId, stage, selectedStorageId, storages]);
+
+  // === Dados e paginação ===
+  const groupedByBook = data?.groupedByBook || {};
+  const availableBatches = data?.availableBatches || [];
+
+  console.log("📦 groupedByBook:", groupedByBook);
+  console.log("📦 availableBatches:", availableBatches);
+
+  const bookGroups = React.useMemo(() => Object.values(groupedByBook), [groupedByBook]);
+  const totalBookPages = React.useMemo(() => Math.ceil(bookGroups.length / booksPerPage), [bookGroups]);
+
+  const paginatedBookGroups = React.useMemo(
+    () => bookGroups.slice((bookPage - 1) * booksPerPage, bookPage * booksPerPage),
+    [bookGroups, bookPage, booksPerPage]
+  );
+
+  const allVisibleBookIds = React.useMemo(() => paginatedBookGroups.map(bg => bg.book.id), [paginatedBookGroups]);
+  const allVisibleSelected = React.useMemo(() => allVisibleBookIds.every(id => selection.includes(id)), [allVisibleBookIds, selection]);
+  const someVisibleSelected = React.useMemo(() => allVisibleBookIds.some(id => selection.includes(id)), [allVisibleBookIds, selection]);
+*/
+  React.useEffect(() => setSelection([]), [selectedProjectId, selectedBatchId, selectedStorageId]);
 
   const handleRejectSubmit = () => {
     if (!currentBook) return;

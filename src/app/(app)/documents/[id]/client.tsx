@@ -12,14 +12,14 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { useAppContext } from '@/context/workflow-context';
 import { ShieldAlert, AlertTriangle, InfoIcon, CircleX, History, MessageSquarePlus, ArrowLeft, ArrowRight, ZoomIn, MessageSquareWarning, ChevronsUpDown, ArrowDown, ArrowUp } from "lucide-react";
-import type { AppDocument, EnrichedAuditLog } from '@/context/workflow-context';
+import type { AppDocument } from '@/context/workflow-context';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { EnrichedBook } from '@/lib/data';
+import { EnrichedBook, EnrichedAuditLog } from '@/lib/data';
 interface DocumentDetailClientProps {
   docId: string;
 }

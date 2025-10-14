@@ -1,5 +1,3 @@
-import { EnrichedAuditLog } from "@/context/workflow-context";
-
 
 
 
@@ -59,6 +57,8 @@ export interface AuditLog {
     documentId?: string;
     bookId?: string | null;
 }
+
+export interface EnrichedAuditLog extends  AuditLog { user: string; };
 
 export interface BookObservation {
     id: string;
@@ -172,7 +172,7 @@ export interface ProcessingBatchItem {
   itemStartTime: string | null;
   itemEndTime: string | null;
   processedPages: Record<string, number> | null;
-  status: 'Pending' | 'In Progress' | 'Complete' | 'Failed' | 'CQ Failed' | 'Finalized';
+  status: 'Pending' | 'In Progress' | 'Complete' | 'Failed' | 'CQ Failed' | 'Finished' |'Finalized';
   info: string | null;
   obs: string | null;
 }

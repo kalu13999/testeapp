@@ -105,6 +105,9 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
     "/workflow/to-checking",
     "/workflow/checking-started",
     "/profile",
+    "/my-tasks",
+    "/my-validations",
+    "/settings",
   ];
 
   const isExcludedBookPage = pathname.startsWith("/books/");

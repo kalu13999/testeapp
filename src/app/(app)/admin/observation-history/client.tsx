@@ -22,10 +22,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast";
 import { format } from 'date-fns'
-import { EnrichedAuditLog } from "@/context/workflow-context"
+//import { EnrichedAuditLog } from "@/context/workflow-context"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { BookObservation } from "@/lib/data"
-
+import type { EnrichedAuditLog } from "@/lib/data"
 
 const ITEMS_PER_PAGE = 20;
 

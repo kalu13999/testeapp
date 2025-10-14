@@ -34,8 +34,8 @@ import {
 import { AlertTriangle, BookCopy, BarChart2, ListTodo, Package, Send, FileClock, ArrowDownToLine, CheckCheck, TrendingUp, Activity, UserCheck, ShieldAlert, Download, ChevronsUpDown, ArrowUp, ArrowDown } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import { useMemo } from "react"
-import type { EnrichedProject, EnrichedBook } from "@/lib/data";
-import type { EnrichedAuditLog, AppDocument } from "@/context/workflow-context";
+import type { EnrichedProject, EnrichedBook, EnrichedAuditLog } from "@/lib/data";
+import type { AppDocument } from "@/context/workflow-context";
 import Link from "next/link"
 import { subDays, format, eachDayOfInterval, isWithinInterval } from "date-fns"
 import type { DateRange } from "react-day-picker"

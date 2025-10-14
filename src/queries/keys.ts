@@ -1,10 +1,10 @@
 // src/queries/keys.ts
 export const CLIENTS                 = ['clients']
 export const USERS                   = ['users']
-export const RAW_PROJECTS            = ['rawProjects']
-export const RAW_BOOKS               = ['rawBooks']
+export const ENRICHED_PROJECTS            = ['enrichedProjects']
+export const ENRICHED_BOOKS               = ['enrichedBooks']
 export const RAW_DOCUMENTS           = ['rawDocuments']
-export const AUDIT_LOGS              = ['auditLogs']
+export const ENRICHED_AUDIT_LOGS              = ['enrichedauditLogs']
 export const PROCESSING_BATCHES      = ['processingBatches']
 export const PROCESSING_BATCH_ITEMS  = ['processingBatchItems']
 export const PROCESSING_LOGS         = ['processingLogs']

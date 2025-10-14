@@ -3,7 +3,7 @@
 "use client"
 
 import * as React from 'react';
-import type { Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions, ProjectWorkflows, RejectionTag, DocumentStatus, ProcessingBatch, ProcessingBatchItem, Storage, LogTransferencia, ProjectStorage, Scanner, DeliveryBatch, DeliveryBatchItem, BookObservation } from '@/lib/data';
+import type { EnrichedAuditLog, Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions, ProjectWorkflows, RejectionTag, DocumentStatus, ProcessingBatch, ProcessingBatchItem, Storage, LogTransferencia, ProjectStorage, Scanner, DeliveryBatch, DeliveryBatchItem, BookObservation } from '@/lib/data';
 import { useToast } from "@/hooks/use-toast";
 import { WORKFLOW_SEQUENCE, STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage, getPreviousEnabledStage } from '@/lib/workflow-config';
 import * as dataApi from '@/lib/data';
@@ -52,7 +52,7 @@ export interface ImportBooksResult {
 
 // Client-side representation of a document
 export type AppDocument = Omit<RawDocument, 'statusId'> & { client: string; status: string; };
-export type EnrichedAuditLog = AuditLog & { user: string; };
+
 export type NavigationHistoryItem = { href: string, label: string };
 
 type MutationProgressOptions = {
@@ -65,6 +65,8 @@ type AppContextType = {
   setIsChecking: React.Dispatch<React.SetStateAction<boolean>>;
   // Loading state
   loading: boolean;
+  setLoading: React.Dispatch<React.SetStateAction<boolean>>;
+
   isMutating: boolean;
   setIsMutating: React.Dispatch<React.SetStateAction<boolean>>;
 
@@ -4082,7 +4084,7 @@ const booksAvaiableInStorageLocalIp = React.useCallback(async (currentStageKey: 
 
 
   const value: AppContextType = { 
-    withMutation, withProgressMutation, isChecking, setIsChecking, loading, isMutating, processingBookIds, setIsMutating,
+    withMutation, withProgressMutation, isChecking, setIsChecking, loading, setLoading, isMutating, processingBookIds, setIsMutating,
     progress, setProgress, progressMutation, setProgressMutation,
     currentUser, login, logout, changePassword,
     navigationHistory, addNavigationHistoryItem,
