@@ -83,6 +83,13 @@ export default function MyValidationsClient() {
     return userPermissions.includes('*') || userPermissions.includes('/client/view-all-validations');
   }, [currentUser, permissions]);
 
+    const isAdmin = React.useMemo(() => {
+      if (!currentUser) return false;
+      const userPermissions = permissions[currentUser.role] || [];
+      return userPermissions.includes('*');
+    }, [currentUser, permissions]);
+  
+
  /*const batchesToValidate = React.useMemo(() => {
     if (!currentUser) return [];
 
@@ -238,8 +245,17 @@ export default function MyValidationsClient() {
 
   const openTaggingDialog = (doc: AppDocument) => {
     const book = books.find(b => b.id === doc.bookId);
-    if (!book || !currentUser?.clientId) return;
-    const availableTags = rejectionTags.filter(tag => tag.clientId === currentUser.clientId);
+    if (!book) return;
+
+    if (!currentUser?.clientId && !isAdmin) return;
+    
+    let idCliente: string;
+    if (isAdmin)
+      idCliente = book.clientId
+    else if (currentUser?.clientId)
+      idCliente =  currentUser.clientId
+
+    const availableTags = rejectionTags.filter(tag => tag.clientId === idCliente);
     setTaggingState({
       open: true,
       doc: doc,
