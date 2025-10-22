@@ -14,9 +14,9 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import type { EnrichedBook, EnrichedAuditLog } from "@/lib/data";
-import type { AppDocument} from "@/context/workflow-context";
+import type { AppDocument, FileOption} from "@/context/workflow-context";
 import { useAppContext } from "@/context/workflow-context";
-import { Info, BookOpen, History, InfoIcon, ArrowUp, ArrowDown, ChevronsUpDown, ShieldAlert, AlertTriangle, MessageSquarePlus } from "lucide-react";
+import { Download, Info, BookOpen, History, InfoIcon, ArrowUp, ArrowDown, ChevronsUpDown, ShieldAlert, AlertTriangle, MessageSquarePlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
@@ -30,7 +30,23 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/
 interface BookDetailClientProps {
   bookId: string;
 }
+const filesdownload: FileOption[] = [
+  { label: "PDF", endpoint: "/api/workflow/app/download/pdf", filename: "documento.pdf" },
+  { label: "ALTO", endpoint: "/api/workflow/app/download/alto", filename: "documento.xml" },
+];
 
+const filesDownloadImages: FileOption[] = [
+  {
+    label: "JPG",
+    endpoint: "/api/workflow/app/download/image",
+    filename: "001.jpg",
+  },
+  {
+    label: "TIF",
+    endpoint: "/api/workflow/app/download/image",
+    filename: "001.tif",
+  },
+];
 const DetailItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
   <div className="flex flex-col space-y-1">
     <p className="text-sm text-muted-foreground">{label}</p>
@@ -50,7 +66,7 @@ const StageDetailItem = ({ stage, user, startTime, endTime }: { stage: string, u
 );
 
 export default function BookDetailClient({ bookId }: BookDetailClientProps) {
-  const { books, documents, users, auditLogs, bookObservations, addBookObservation } = useAppContext();
+  const { books, documents, users, auditLogs, bookObservations, addBookObservation, handleDownload, handleDownloadFile } = useAppContext();
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
     { id: 'date', desc: true }
   ]);
@@ -242,36 +258,81 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
                             .sort(([a], [b]) => a.localeCompare(b))
                             .map(([date, datePages]) => (
                                 <AccordionItem key={date} value={date}>
-                                <AccordionTrigger className="text-md font-medium">
-                                    {date} <span className="text-muted-foreground ml-2">({datePages.length})</span>
-                                </AccordionTrigger>
-                                <AccordionContent>
-                                    <div className={`grid gap-4 ${gridClasses[columns] || 'grid-cols-8'}`}>
-                                    {datePages
-                                    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
-                                    .map(page => (
-                                        <div key={page.id} className="relative group">
-                                        <Link href={`/documents/${page.id}`}>
-                                            <Card className="overflow-hidden hover:shadow-lg transition-shadow relative border-2 border-transparent group-hover:border-primary">
-                                            <CardContent className="p-0">
-                                                <Image
-                                                src={page.imageUrl || "https://placehold.co/400x550.png"}
-                                                alt={`Preview of ${page.name}`}
-                                                width={400}
-                                                height={550}
-                                                className="aspect-[4/5.5] object-contain w-full h-full"
-                                                unoptimized
-                                                />
-                                            </CardContent>
-                                            <CardFooter className="p-2 flex-col items-start gap-1">
-                                                <p className="text-xs font-medium whitespace-pre-wrap">{page.name}</p>
-                                            </CardFooter>
-                                            </Card>
-                                        </Link>
+                                    <div className="flex items-center justify-between w-full">
+                                        <AccordionTrigger className="text-md font-medium">
+                                            {date} <span className="text-muted-foreground ml-2">({datePages.length})</span>
+                                        </AccordionTrigger>
+                                        {/* Botões de download alinhados à direita */}
+                                        <div className="flex gap-4 ml-4">
+                                            {["Final Quality Control", "Delivery", "Pending Validation", "Client Rejected", "Corrected", "Finalized", "Archived"].includes(book.status) &&
+                                            filesdownload.map((file) => (
+                                                <Button
+                                                key={file.label}
+                                                variant="secondary"
+                                                className="flex flex-col items-center gap-1"
+                                                onClick={(e) => {
+                                                    e.stopPropagation(); // evita abrir/fechar o accordion
+                                                    handleDownload(file, book.name, book.status, date);
+                                                }}
+                                                >
+                                                <Download className="h-6 w-6" />
+                                                <span className="text-sm">{file.label}</span>
+                                                </Button>
+                                            ))}
                                         </div>
-                                    ))}
                                     </div>
-                                </AccordionContent>
+                                    <AccordionContent>
+                                        <div className={`grid gap-4 ${gridClasses[columns] || 'grid-cols-8'}`}>
+                                        {datePages
+                                        .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+                                        .map(page => (
+                                            <div key={page.id} className="relative group">
+                                            <Link href={`/documents/${page.id}`}>
+                                                <Card className="overflow-hidden hover:shadow-lg transition-shadow relative border-2 border-transparent group-hover:border-primary">
+                                                <CardContent className="p-0">
+                                                    <Image
+                                                    src={page.imageUrl || "https://placehold.co/400x550.png"}
+                                                    alt={`Preview of ${page.name}`}
+                                                    width={400}
+                                                    height={550}
+                                                    className="aspect-[4/5.5] object-contain w-full h-full"
+                                                    unoptimized
+                                                    />
+                                                </CardContent>
+                                                <CardFooter className="p-2 flex-col items-start gap-1">
+                                                    <p className="text-xs font-medium whitespace-pre-wrap">{page.name}</p>
+                                                    {/* Botões de download no rodapé com label */}
+                                                    <div className="flex gap-2 pt-2">
+                                                        {["Final Quality Control", "Delivery", "Pending Validation", "Client Rejected", "Corrected", "Finalized", "Archived"].includes(book.status) && 
+                                                        filesDownloadImages.map((file) => (
+                                                        <Button
+                                                            key={file.label}
+                                                            variant="secondary"
+                                                            size="icon"
+                                                            className="flex flex-col items-center gap-1"
+                                                            onClick={() =>
+                                                            handleDownloadFile(
+                                                                file,
+                                                                book.name,
+                                                                book.status,
+                                                                date,
+                                                                page.name,
+                                                                file.label
+                                                            )
+                                                            }
+                                                        >
+                                                            <Download className="h-4 w-4" />
+                                                            <span className="text-xs">{file.label}</span>
+                                                        </Button>
+                                                        ))}
+                                                    </div>
+                                                </CardFooter>
+                                                </Card>
+                                            </Link>
+                                            </div>
+                                        ))}
+                                        </div>
+                                    </AccordionContent>
                                 </AccordionItem>
                             ))}
                         </Accordion>
@@ -283,31 +344,75 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
 
                 {/* Páginas não agrupadas */}
                 {ungrouped.length > 0 && (
-                <div className={`grid gap-4 ${gridClasses[columns] || 'grid-cols-8'}`}>
-                    {ungrouped
-                    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
-                    .map(page => (
-                    <div key={page.id} className="relative group">
-                        <Link href={`/documents/${page.id}`}>
-                        <Card className="overflow-hidden hover:shadow-lg transition-shadow relative border-2 border-transparent group-hover:border-primary">
-                            <CardContent className="p-0">
-                            <Image
-                                src={page.imageUrl || "https://placehold.co/400x550.png"}
-                                alt={`Preview of ${page.name}`}
-                                width={400}
-                                height={550}
-                                className="aspect-[4/5.5] object-contain w-full h-full"
-                                unoptimized
-                            />
-                            </CardContent>
-                            <CardFooter className="p-2 flex-col items-start gap-1">
-                            <p className="text-xs font-medium whitespace-pre-wrap">{page.name}</p>
-                            </CardFooter>
-                        </Card>
-                        </Link>
-                    </div>
+                <>
+                    <div className="flex gap-4 ml-4">
+                    {["Final Quality Control", "Delivery", "Pending Validation", "Client Rejected", "Corrected", "Finalized", "Archived"].includes(book.status) &&
+                    filesdownload.map((file) => (
+                        <Button
+                        key={file.label}
+                        variant="secondary"
+                        className="flex flex-col items-center gap-1"
+                        onClick={(e) => {
+                            e.stopPropagation(); // evita abrir/fechar o accordion
+                            handleDownload(file, book.name, book.status, book.name);
+                        }}
+                        >
+                        <Download className="h-6 w-6" />
+                        <span className="text-sm">{file.label}</span>
+                        </Button>
                     ))}
-                </div>
+                    </div>
+                    <div className={`grid gap-4 ${gridClasses[columns] || 'grid-cols-8'}`}>
+                        {ungrouped
+                        .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+                        .map(page => (
+                        <div key={page.id} className="relative group">
+                            <Link href={`/documents/${page.id}`}>
+                            <Card className="overflow-hidden hover:shadow-lg transition-shadow relative border-2 border-transparent group-hover:border-primary">
+                                <CardContent className="p-0">
+                                <Image
+                                    src={page.imageUrl || "https://placehold.co/400x550.png"}
+                                    alt={`Preview of ${page.name}`}
+                                    width={400}
+                                    height={550}
+                                    className="aspect-[4/5.5] object-contain w-full h-full"
+                                    unoptimized
+                                />
+                                </CardContent>
+                                <CardFooter className="p-2 flex-col items-start gap-1">
+                                <p className="text-xs font-medium whitespace-pre-wrap">{page.name}</p>
+                                {/* Botões de download no rodapé com label */}
+                                <div className="flex gap-2 pt-2">
+                                    {["Final Quality Control", "Delivery", "Pending Validation", "Client Rejected", "Corrected", "Finalized", "Archived"].includes(book.status) &&
+                                    filesDownloadImages.map((file) => (
+                                    <Button
+                                        key={file.label}
+                                        variant="secondary"
+                                        size="icon"
+                                        className="flex flex-col items-center gap-1"
+                                        onClick={() =>
+                                        handleDownloadFile(
+                                            file,
+                                            book.name,
+                                            book.status,
+                                            book.name,
+                                            page.name,
+                                            file.label
+                                        )
+                                        }
+                                    >
+                                        <Download className="h-4 w-4" />
+                                        <span className="text-xs">{file.label}</span>
+                                    </Button>
+                                    ))}
+                                </div>
+                                </CardFooter>
+                            </Card>
+                            </Link>
+                        </div>
+                        ))}
+                    </div>
+                    </>
                 )}
             </>
             );

@@ -1,0 +1,442 @@
+2025-10-17 14:19:14,592 - INFO - === Corte de Imagens TIFF ===
+2025-10-17 14:19:14,592 - INFO - Início da execução: 2025-10-17 14:19:14
+
+2025-10-17 14:20:32,260 - INFO - === Corte de Imagens TIFF ===
+2025-10-17 14:20:32,260 - INFO - Início da execução: 2025-10-17 14:20:32
+
+2025-10-17 14:20:44,304 - INFO - Diretórios atuais:
+2025-10-17 14:20:44,304 - INFO - 1. diretorio_escolhido = C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia
+2025-10-17 14:20:44,304 - INFO - 2. diretorio_pronto    = C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-PRONTOS
+2025-10-17 14:20:44,305 - INFO - 3. diretorio_backup    = C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-BACKUP
+2025-10-17 14:20:44,305 - INFO - 
+A percorrer o diretório: C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia
+
+2025-10-17 14:20:44,306 - INFO - 
+Diretorio Escolhido: C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia
+
+2025-10-17 14:20:44,309 - INFO - A trabalhar em : 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia'
+2025-10-17 14:20:44,310 - INFO - Criação da pasta temporária para renomeação: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\_tempRename'
+2025-10-17 14:20:44,310 - INFO - Renomeando 7 arquivos TIF para pasta temporária 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\_tempRename'
+2025-10-17 14:20:44,313 - INFO - Movendo arquivos renomeados de volta para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia'
+2025-10-17 14:20:44,316 - INFO - Pasta temporária 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\_tempRename' removida com sucesso
+2025-10-17 14:20:44,317 - INFO - Renomeação concluída. Total de arquivos TIF: 7
+2025-10-17 14:20:44,317 - INFO - --------------------------------------------------------------------------------
+2025-10-17 14:20:44,318 - INFO - 
+A tratar imagem: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0001.tif'
+2025-10-17 14:20:44,810 - INFO - Info:
+2025-10-17 14:20:44,810 - INFO - DPI da imagem: 300.0
+2025-10-17 14:20:44,810 - INFO - Compressão da imagem: raw
+2025-10-17 14:20:44,880 - INFO - Imagem convertida BGR TO RGB
+2025-10-17 14:20:44,918 - INFO - A imagem sem borda foi salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0001_sem_borda.tif
+2025-10-17 14:20:44,929 - INFO - Imagem atualizada: C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0001.tif
+2025-10-17 14:20:47,047 - INFO - Metadados replicados de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0001.tif' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0001.tif'
+2025-10-17 14:20:47,047 - INFO - --------------------------------------------------------------------------------
+2025-10-17 14:20:47,047 - INFO - 
+A tratar imagem: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0002.tif'
+2025-10-17 14:20:47,314 - INFO - Info:
+2025-10-17 14:20:47,315 - INFO - DPI da imagem: 300.0
+2025-10-17 14:20:47,315 - INFO - Compressão da imagem: raw
+2025-10-17 14:20:47,362 - INFO - Imagem convertida BGR TO RGB
+2025-10-17 14:20:47,420 - INFO - Parte esquerda salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0002_sem_borda_e.tif
+2025-10-17 14:20:47,446 - INFO - Parte direita salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0002_sem_borda_d.tif
+2025-10-17 14:20:47,466 - INFO - Imagem dividida em:
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0002_e.tif
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0002_d.tif
+2025-10-17 14:20:47,988 - INFO - Metadados replicados de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0002.tif' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0002.tif'
+2025-10-17 14:20:47,999 - INFO - --------------------------------------------------------------------------------
+2025-10-17 14:20:47,999 - INFO - 
+A tratar imagem: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0003.tif'
+2025-10-17 14:20:48,273 - INFO - Info:
+2025-10-17 14:20:48,273 - INFO - DPI da imagem: 300.0
+2025-10-17 14:20:48,273 - INFO - Compressão da imagem: raw
+2025-10-17 14:20:48,322 - INFO - Imagem convertida BGR TO RGB
+2025-10-17 14:20:48,386 - INFO - Parte esquerda salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0003_sem_borda_e.tif
+2025-10-17 14:20:48,567 - INFO - Parte direita salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0003_sem_borda_d.tif
+2025-10-17 14:20:48,680 - INFO - Imagem dividida em:
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0003_e.tif
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0003_d.tif
+2025-10-17 14:20:49,246 - INFO - Metadados replicados de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0003.tif' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0003.tif'
+2025-10-17 14:20:49,247 - INFO - --------------------------------------------------------------------------------
+2025-10-17 14:20:49,247 - INFO - 
+A tratar imagem: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0004.tif'
+2025-10-17 14:20:49,523 - INFO - Info:
+2025-10-17 14:20:49,524 - INFO - DPI da imagem: 300.0
+2025-10-17 14:20:49,524 - INFO - Compressão da imagem: raw
+2025-10-17 14:20:49,573 - INFO - Imagem convertida BGR TO RGB
+2025-10-17 14:20:49,654 - INFO - Parte esquerda salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0004_sem_borda_e.tif
+2025-10-17 14:20:49,688 - INFO - Parte direita salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0004_sem_borda_d.tif
+2025-10-17 14:20:49,708 - INFO - Imagem dividida em:
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0004_e.tif
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0004_d.tif
+2025-10-17 14:20:50,267 - INFO - Metadados replicados de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0004.tif' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0004.tif'
+2025-10-17 14:20:50,267 - INFO - --------------------------------------------------------------------------------
+2025-10-17 14:20:50,267 - INFO - 
+A tratar imagem: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0005.tif'
+2025-10-17 14:20:50,545 - INFO - Info:
+2025-10-17 14:20:50,546 - INFO - DPI da imagem: 300.0
+2025-10-17 14:20:50,546 - INFO - Compressão da imagem: raw
+2025-10-17 14:20:50,597 - INFO - Imagem convertida BGR TO RGB
+2025-10-17 14:20:50,656 - INFO - Parte esquerda salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0005_sem_borda_e.tif
+2025-10-17 14:20:50,683 - INFO - Parte direita salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0005_sem_borda_d.tif
+2025-10-17 14:20:50,704 - INFO - Imagem dividida em:
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0005_e.tif
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0005_d.tif
+2025-10-17 14:20:51,256 - INFO - Metadados replicados de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0005.tif' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0005.tif'
+2025-10-17 14:20:51,256 - INFO - --------------------------------------------------------------------------------
+2025-10-17 14:20:51,256 - INFO - 
+A tratar imagem: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0006.tif'
+2025-10-17 14:20:51,552 - INFO - Info:
+2025-10-17 14:20:51,552 - INFO - DPI da imagem: 300.0
+2025-10-17 14:20:51,552 - INFO - Compressão da imagem: raw
+2025-10-17 14:20:51,596 - INFO - Imagem convertida BGR TO RGB
+2025-10-17 14:20:51,638 - INFO - A imagem sem borda foi salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0006_sem_borda.tif
+2025-10-17 14:20:51,649 - INFO - Imagem atualizada: C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0006.tif
+2025-10-17 14:20:52,226 - INFO - Metadados replicados de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0006.tif' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0006.tif'
+2025-10-17 14:20:52,226 - INFO - --------------------------------------------------------------------------------
+2025-10-17 14:20:52,226 - INFO - 
+A tratar imagem: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0007.tif'
+2025-10-17 14:20:52,507 - INFO - Info:
+2025-10-17 14:20:52,508 - INFO - DPI da imagem: 300.0
+2025-10-17 14:20:52,508 - INFO - Compressão da imagem: raw
+2025-10-17 14:20:52,552 - INFO - Imagem convertida BGR TO RGB
+2025-10-17 14:20:52,690 - INFO - A imagem sem borda foi salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0007_sem_borda.tif
+2025-10-17 14:20:52,701 - INFO - Imagem atualizada: C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0007.tif
+2025-10-17 14:20:53,273 - INFO - Metadados replicados de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0007.tif' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0007.tif'
+2025-10-17 14:20:53,273 - INFO - A mover de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-BACKUP'
+2025-10-17 14:20:53,274 - INFO - Mover concluido
+2025-10-17 14:20:53,275 - INFO - A mover de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-PRONTOS'
+2025-10-17 14:20:53,275 - INFO - Mover concluido
+2025-10-17 14:20:53,276 - INFO - 
+Fim da execução: 2025-10-17 14:20:53
+2025-10-17 14:20:53,276 - INFO - Duração total: 0h 0m 21s
+
+2025-10-17 14:25:16,755 - INFO - === Corte de Imagens TIFF ===
+2025-10-17 14:25:16,756 - INFO - Início da execução: 2025-10-17 14:25:16
+
+2025-10-17 14:25:19,532 - INFO - Diretórios atuais:
+2025-10-17 14:25:19,532 - INFO - 1. diretorio_escolhido = C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia
+2025-10-17 14:25:19,533 - INFO - 2. diretorio_pronto    = C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-PRONTOS
+2025-10-17 14:25:19,533 - INFO - 3. diretorio_backup    = C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-BACKUP
+2025-10-17 14:25:19,533 - INFO - 
+A percorrer o diretório: C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia
+
+2025-10-17 14:25:19,535 - INFO - 
+Diretorio Escolhido: C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia
+
+2025-10-17 14:25:19,535 - INFO - A trabalhar em : 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia'
+2025-10-17 14:25:19,535 - INFO - Criação da pasta temporária para renomeação: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\_tempRename'
+2025-10-17 14:25:19,535 - INFO - Renomeando 7 arquivos TIF para pasta temporária 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\_tempRename'
+2025-10-17 14:25:19,537 - INFO - Movendo arquivos renomeados de volta para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia'
+2025-10-17 14:25:19,541 - INFO - Pasta temporária 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\_tempRename' removida com sucesso
+2025-10-17 14:25:19,542 - INFO - Renomeação concluída. Total de arquivos TIF: 7
+2025-10-17 14:25:19,543 - INFO - --------------------------------------------------------------------------------
+2025-10-17 14:25:19,543 - INFO - 
+A tratar imagem: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0001.tif'
+2025-10-17 14:25:19,963 - INFO - Info:
+2025-10-17 14:25:19,963 - INFO - DPI da imagem: 300.0
+2025-10-17 14:25:19,964 - INFO - Compressão da imagem: raw
+2025-10-17 14:25:20,023 - INFO - Imagem convertida BGR TO RGB
+2025-10-17 14:25:20,096 - INFO - Parte esquerda salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0001_sem_borda_e.tif
+2025-10-17 14:25:20,130 - INFO - Parte direita salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0001_sem_borda_d.tif
+2025-10-17 14:25:20,157 - INFO - Imagem dividida em:
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0001_e.tif
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0001_d.tif
+2025-10-17 14:25:20,755 - INFO - Metadados replicados de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0001.tif' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0001.tif'
+2025-10-17 14:25:20,756 - INFO - --------------------------------------------------------------------------------
+2025-10-17 14:25:20,756 - INFO - 
+A tratar imagem: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0002.tif'
+2025-10-17 14:25:21,070 - INFO - Info:
+2025-10-17 14:25:21,070 - INFO - DPI da imagem: 300.0
+2025-10-17 14:25:21,071 - INFO - Compressão da imagem: raw
+2025-10-17 14:25:21,115 - INFO - Imagem convertida BGR TO RGB
+2025-10-17 14:25:21,149 - INFO - A imagem sem borda foi salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0002_sem_borda.tif
+2025-10-17 14:25:21,160 - INFO - Imagem atualizada: C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0002.tif
+2025-10-17 14:25:21,779 - INFO - Metadados replicados de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0002.tif' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0002.tif'
+2025-10-17 14:25:21,780 - INFO - --------------------------------------------------------------------------------
+2025-10-17 14:25:21,780 - INFO - 
+A tratar imagem: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0003.tif'
+2025-10-17 14:25:22,057 - INFO - Info:
+2025-10-17 14:25:22,058 - INFO - DPI da imagem: 300.0
+2025-10-17 14:25:22,058 - INFO - Compressão da imagem: raw
+2025-10-17 14:25:22,103 - INFO - Imagem convertida BGR TO RGB
+2025-10-17 14:25:22,148 - INFO - Parte esquerda salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0003_sem_borda_e.tif
+2025-10-17 14:25:22,169 - INFO - Parte direita salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0003_sem_borda_d.tif
+2025-10-17 14:25:22,185 - INFO - Imagem dividida em:
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0003_e.tif
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0003_d.tif
+2025-10-17 14:25:22,703 - INFO - Metadados replicados de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0003.tif' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0003.tif'
+2025-10-17 14:25:22,704 - INFO - --------------------------------------------------------------------------------
+2025-10-17 14:25:22,704 - INFO - 
+A tratar imagem: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0004.tif'
+2025-10-17 14:25:23,001 - INFO - Info:
+2025-10-17 14:25:23,002 - INFO - DPI da imagem: 300.0
+2025-10-17 14:25:23,002 - INFO - Compressão da imagem: raw
+2025-10-17 14:25:23,048 - INFO - Imagem convertida BGR TO RGB
+2025-10-17 14:25:23,092 - INFO - Parte esquerda salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0004_sem_borda_e.tif
+2025-10-17 14:25:23,111 - INFO - Parte direita salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0004_sem_borda_d.tif
+2025-10-17 14:25:23,126 - INFO - Imagem dividida em:
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0004_e.tif
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0004_d.tif
+2025-10-17 14:25:23,649 - INFO - Metadados replicados de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0004.tif' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0004.tif'
+2025-10-17 14:25:23,649 - INFO - --------------------------------------------------------------------------------
+2025-10-17 14:25:23,650 - INFO - 
+A tratar imagem: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0005.tif'
+2025-10-17 14:25:23,932 - INFO - Info:
+2025-10-17 14:25:23,933 - INFO - DPI da imagem: 300.0
+2025-10-17 14:25:23,933 - INFO - Compressão da imagem: raw
+2025-10-17 14:25:23,975 - INFO - Imagem convertida BGR TO RGB
+2025-10-17 14:25:24,002 - INFO - A imagem sem borda foi salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0005_sem_borda.tif
+2025-10-17 14:25:24,011 - INFO - Imagem atualizada: C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0005.tif
+2025-10-17 14:25:24,573 - INFO - Metadados replicados de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0005.tif' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0005.tif'
+2025-10-17 14:25:24,574 - INFO - --------------------------------------------------------------------------------
+2025-10-17 14:25:24,574 - INFO - 
+A tratar imagem: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0006.tif'
+2025-10-17 14:25:24,873 - INFO - Info:
+2025-10-17 14:25:24,873 - INFO - DPI da imagem: 300.0
+2025-10-17 14:25:24,873 - INFO - Compressão da imagem: raw
+2025-10-17 14:25:24,924 - INFO - Imagem convertida BGR TO RGB
+2025-10-17 14:25:25,004 - INFO - Parte esquerda salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0006_sem_borda_e.tif
+2025-10-17 14:25:25,045 - INFO - Parte direita salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0006_sem_borda_d.tif
+2025-10-17 14:25:25,240 - INFO - Imagem dividida em:
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0006_e.tif
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0006_d.tif
+2025-10-17 14:25:25,779 - INFO - Metadados replicados de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0006.tif' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0006.tif'
+2025-10-17 14:25:25,780 - INFO - --------------------------------------------------------------------------------
+2025-10-17 14:25:25,780 - INFO - 
+A tratar imagem: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0007.tif'
+2025-10-17 14:25:26,065 - INFO - Info:
+2025-10-17 14:25:26,065 - INFO - DPI da imagem: 300.0
+2025-10-17 14:25:26,066 - INFO - Compressão da imagem: raw
+2025-10-17 14:25:26,116 - INFO - Imagem convertida BGR TO RGB
+2025-10-17 14:25:26,174 - INFO - Parte esquerda salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0007_sem_borda_e.tif
+2025-10-17 14:25:26,201 - INFO - Parte direita salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0007_sem_borda_d.tif
+2025-10-17 14:25:26,222 - INFO - Imagem dividida em:
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0007_e.tif
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0007_d.tif
+2025-10-17 14:25:26,742 - INFO - Metadados replicados de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0007.tif' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0007.tif'
+2025-10-17 14:25:26,743 - INFO - A mover de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-BACKUP'
+2025-10-17 14:25:26,744 - INFO - Mover concluido
+2025-10-17 14:25:26,744 - INFO - A mover de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\RUI TOME-teste-assembleia' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-PRONTOS'
+2025-10-17 14:25:26,745 - INFO - Mover concluido
+2025-10-17 14:25:26,745 - INFO - 
+Fim da execução: 2025-10-17 14:25:26
+2025-10-17 14:25:26,745 - INFO - Duração total: 0h 0m 9s
+
+2025-10-17 14:27:26,275 - INFO - === Corte de Imagens TIFF ===
+2025-10-17 14:27:26,276 - INFO - Início da execução: 2025-10-17 14:27:26
+
+2025-10-17 14:27:28,360 - INFO - Diretórios atuais:
+2025-10-17 14:27:28,360 - INFO - 1. diretorio_escolhido = C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia
+2025-10-17 14:27:28,360 - INFO - 2. diretorio_pronto    = C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\0-PRONTOS
+2025-10-17 14:27:28,360 - INFO - 3. diretorio_backup    = C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\0-BACKUP
+2025-10-17 14:27:28,361 - INFO - 
+A percorrer o diretório: C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia
+
+2025-10-17 14:27:28,361 - INFO - 
+Diretorio Escolhido: C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia
+
+2025-10-17 14:27:28,362 - INFO - A trabalhar em : 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia'
+2025-10-17 14:27:28,363 - INFO - Criação da pasta temporária para renomeação: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\_tempRename'
+2025-10-17 14:27:28,363 - INFO - Renomeando 7 arquivos TIF para pasta temporária 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\_tempRename'
+2025-10-17 14:27:28,365 - INFO - Movendo arquivos renomeados de volta para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia'
+2025-10-17 14:27:28,368 - INFO - Pasta temporária 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\_tempRename' removida com sucesso
+2025-10-17 14:27:28,369 - INFO - Renomeação concluída. Total de arquivos TIF: 7
+2025-10-17 14:27:28,370 - INFO - --------------------------------------------------------------------------------
+2025-10-17 14:27:28,370 - INFO - 
+A tratar imagem: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0001.tif'
+2025-10-17 14:27:28,800 - INFO - Info:
+2025-10-17 14:27:28,801 - INFO - DPI da imagem: 300.0
+2025-10-17 14:27:28,801 - INFO - Compressão da imagem: raw
+2025-10-17 14:27:28,853 - INFO - Imagem convertida BGR TO RGB
+2025-10-17 14:27:44,860 - INFO - A imagem sem borda foi salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0001_sem_borda.tif
+2025-10-17 14:27:44,866 - INFO - Imagem atualizada: C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0001.tif
+2025-10-17 14:27:45,483 - INFO - Metadados replicados de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0001.tif' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0001.tif'
+2025-10-17 14:27:45,483 - INFO - --------------------------------------------------------------------------------
+2025-10-17 14:27:45,483 - INFO - 
+A tratar imagem: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0002.tif'
+2025-10-17 14:27:45,803 - INFO - Info:
+2025-10-17 14:27:45,803 - INFO - DPI da imagem: 300.0
+2025-10-17 14:27:45,804 - INFO - Compressão da imagem: raw
+2025-10-17 14:27:45,850 - INFO - Imagem convertida BGR TO RGB
+2025-10-17 14:27:54,144 - INFO - Parte esquerda salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0002_sem_borda_e.tif
+2025-10-17 14:27:54,176 - INFO - Parte direita salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0002_sem_borda_d.tif
+2025-10-17 14:27:54,186 - INFO - Imagem dividida em:
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0002_e.tif
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0002_d.tif
+2025-10-17 14:27:54,732 - INFO - Metadados replicados de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0002.tif' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0002.tif'
+2025-10-17 14:27:54,732 - INFO - --------------------------------------------------------------------------------
+2025-10-17 14:27:54,733 - INFO - 
+A tratar imagem: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0003.tif'
+2025-10-17 14:27:55,063 - INFO - Info:
+2025-10-17 14:27:55,064 - INFO - DPI da imagem: 300.0
+2025-10-17 14:27:55,064 - INFO - Compressão da imagem: raw
+2025-10-17 14:27:55,111 - INFO - Imagem convertida BGR TO RGB
+2025-10-17 14:27:58,189 - INFO - Parte esquerda salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0003_sem_borda_e.tif
+2025-10-17 14:27:58,238 - INFO - Parte direita salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0003_sem_borda_d.tif
+2025-10-17 14:27:58,246 - INFO - Imagem dividida em:
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0003_e.tif
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0003_d.tif
+2025-10-17 14:27:58,781 - INFO - Metadados replicados de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0003.tif' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0003.tif'
+2025-10-17 14:27:58,782 - INFO - --------------------------------------------------------------------------------
+2025-10-17 14:27:58,782 - INFO - 
+A tratar imagem: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0004.tif'
+2025-10-17 14:27:59,078 - INFO - Info:
+2025-10-17 14:27:59,078 - INFO - DPI da imagem: 300.0
+2025-10-17 14:27:59,079 - INFO - Compressão da imagem: raw
+2025-10-17 14:27:59,127 - INFO - Imagem convertida BGR TO RGB
+2025-10-17 14:27:59,196 - INFO - Parte esquerda salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0004_sem_borda_e.tif
+2025-10-17 14:27:59,225 - INFO - Parte direita salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0004_sem_borda_d.tif
+2025-10-17 14:27:59,300 - INFO - Imagem dividida em:
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0004_e.tif
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0004_d.tif
+2025-10-17 14:27:59,926 - INFO - Metadados replicados de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0004.tif' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0004.tif'
+2025-10-17 14:27:59,926 - INFO - --------------------------------------------------------------------------------
+2025-10-17 14:27:59,927 - INFO - 
+A tratar imagem: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0005.tif'
+2025-10-17 14:28:00,205 - INFO - Info:
+2025-10-17 14:28:00,205 - INFO - DPI da imagem: 300.0
+2025-10-17 14:28:00,205 - INFO - Compressão da imagem: raw
+2025-10-17 14:28:00,256 - INFO - Imagem convertida BGR TO RGB
+2025-10-17 14:28:00,317 - INFO - Parte esquerda salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0005_sem_borda_e.tif
+2025-10-17 14:28:00,359 - INFO - Parte direita salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0005_sem_borda_d.tif
+2025-10-17 14:28:00,475 - INFO - Imagem dividida em:
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0005_e.tif
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0005_d.tif
+2025-10-17 14:28:01,063 - INFO - Metadados replicados de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0005.tif' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0005.tif'
+2025-10-17 14:28:01,064 - INFO - --------------------------------------------------------------------------------
+2025-10-17 14:28:01,064 - INFO - 
+A tratar imagem: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0006.tif'
+2025-10-17 14:28:01,344 - INFO - Info:
+2025-10-17 14:28:01,344 - INFO - DPI da imagem: 300.0
+2025-10-17 14:28:01,344 - INFO - Compressão da imagem: raw
+2025-10-17 14:28:01,397 - INFO - Imagem convertida BGR TO RGB
+2025-10-17 14:28:01,438 - INFO - A imagem sem borda foi salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0006_sem_borda.tif
+2025-10-17 14:28:01,449 - INFO - Imagem atualizada: C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0006.tif
+2025-10-17 14:28:02,097 - INFO - Metadados replicados de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0006.tif' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0006.tif'
+2025-10-17 14:28:02,097 - INFO - --------------------------------------------------------------------------------
+2025-10-17 14:28:02,098 - INFO - 
+A tratar imagem: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0007.tif'
+2025-10-17 14:28:02,398 - INFO - Info:
+2025-10-17 14:28:02,398 - INFO - DPI da imagem: 300.0
+2025-10-17 14:28:02,398 - INFO - Compressão da imagem: raw
+2025-10-17 14:28:02,452 - INFO - Imagem convertida BGR TO RGB
+2025-10-17 14:28:02,492 - INFO - A imagem sem borda foi salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0007_sem_borda.tif
+2025-10-17 14:28:02,631 - INFO - Imagem atualizada: C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0007.tif
+2025-10-17 14:28:03,214 - INFO - Metadados replicados de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0007.tif' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0007.tif'
+2025-10-17 14:28:03,215 - INFO - A mover de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\0-BACKUP'
+2025-10-17 14:28:03,216 - INFO - Mover concluido
+2025-10-17 14:28:03,216 - INFO - A mover de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\0-PRONTOS'
+2025-10-17 14:28:03,217 - INFO - Mover concluido
+2025-10-17 14:28:03,217 - INFO - 
+Fim da execução: 2025-10-17 14:28:03
+2025-10-17 14:28:03,217 - INFO - Duração total: 0h 0m 36s
+
+2025-10-17 14:30:35,098 - INFO - === Corte de Imagens TIFF ===
+2025-10-17 14:30:35,099 - INFO - Início da execução: 2025-10-17 14:30:35
+
+2025-10-17 14:31:01,922 - INFO - Diretórios atuais:
+2025-10-17 14:31:01,922 - INFO - 1. diretorio_escolhido = C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia
+2025-10-17 14:31:01,923 - INFO - 2. diretorio_pronto    = C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\0-PRONTOS
+2025-10-17 14:31:01,923 - INFO - 3. diretorio_backup    = C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\0-BACKUP
+2025-10-17 14:31:01,923 - INFO - 
+A percorrer o diretório: C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia
+
+2025-10-17 14:31:01,924 - INFO - 
+Diretorio Escolhido: C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia
+
+2025-10-17 14:31:01,924 - INFO - A trabalhar em : 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia'
+2025-10-17 14:31:01,925 - INFO - Criação da pasta temporária para renomeação: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\_tempRename'
+2025-10-17 14:31:01,925 - INFO - Renomeando 7 arquivos TIF para pasta temporária 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\_tempRename'
+2025-10-17 14:31:01,928 - INFO - Movendo arquivos renomeados de volta para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia'
+2025-10-17 14:31:01,930 - INFO - Pasta temporária 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\_tempRename' removida com sucesso
+2025-10-17 14:31:01,931 - INFO - Renomeação concluída. Total de arquivos TIF: 7
+2025-10-17 14:31:01,932 - INFO - --------------------------------------------------------------------------------
+2025-10-17 14:31:01,932 - INFO - 
+A tratar imagem: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0001.tif'
+2025-10-17 14:31:02,341 - INFO - Info:
+2025-10-17 14:31:02,342 - INFO - DPI da imagem: 300.0
+2025-10-17 14:31:02,342 - INFO - Compressão da imagem: raw
+2025-10-17 14:31:02,417 - INFO - Imagem convertida BGR TO RGB
+2025-10-17 14:31:02,450 - INFO - A imagem sem borda foi salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0001_sem_borda.tif
+2025-10-17 14:31:02,461 - INFO - Imagem atualizada: C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0001.tif
+2025-10-17 14:31:03,051 - INFO - Metadados replicados de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0001.tif' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0001.tif'
+2025-10-17 14:31:03,051 - INFO - --------------------------------------------------------------------------------
+2025-10-17 14:31:03,051 - INFO - 
+A tratar imagem: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0002.tif'
+2025-10-17 14:31:03,349 - INFO - Info:
+2025-10-17 14:31:03,349 - INFO - DPI da imagem: 300.0
+2025-10-17 14:31:03,350 - INFO - Compressão da imagem: raw
+2025-10-17 14:31:03,423 - INFO - Imagem convertida BGR TO RGB
+2025-10-17 14:31:03,490 - INFO - Parte esquerda salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0002_sem_borda_e.tif
+2025-10-17 14:31:03,520 - INFO - Parte direita salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0002_sem_borda_d.tif
+2025-10-17 14:31:03,541 - INFO - Imagem dividida em:
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0002_e.tif
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0002_d.tif
+2025-10-17 14:31:04,099 - INFO - Metadados replicados de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0002.tif' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0002.tif'
+2025-10-17 14:31:04,099 - INFO - --------------------------------------------------------------------------------
+2025-10-17 14:31:04,100 - INFO - 
+A tratar imagem: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0003.tif'
+2025-10-17 14:31:04,369 - INFO - Info:
+2025-10-17 14:31:04,370 - INFO - DPI da imagem: 300.0
+2025-10-17 14:31:04,370 - INFO - Compressão da imagem: raw
+2025-10-17 14:31:04,438 - INFO - Imagem convertida BGR TO RGB
+2025-10-17 14:31:04,494 - INFO - Parte esquerda salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0003_sem_borda_e.tif
+2025-10-17 14:31:04,518 - INFO - Parte direita salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0003_sem_borda_d.tif
+2025-10-17 14:31:04,538 - INFO - Imagem dividida em:
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0003_e.tif
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0003_d.tif
+2025-10-17 14:31:05,057 - INFO - Metadados replicados de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0003.tif' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0003.tif'
+2025-10-17 14:31:05,058 - INFO - --------------------------------------------------------------------------------
+2025-10-17 14:31:05,058 - INFO - 
+A tratar imagem: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0004.tif'
+2025-10-17 14:31:05,357 - INFO - Info:
+2025-10-17 14:31:05,357 - INFO - DPI da imagem: 300.0
+2025-10-17 14:31:05,357 - INFO - Compressão da imagem: raw
+2025-10-17 14:31:05,423 - INFO - Imagem convertida BGR TO RGB
+2025-10-17 14:31:05,478 - INFO - Parte esquerda salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0004_sem_borda_e.tif
+2025-10-17 14:31:05,503 - INFO - Parte direita salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0004_sem_borda_d.tif
+2025-10-17 14:31:05,522 - INFO - Imagem dividida em:
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0004_e.tif
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0004_d.tif
+2025-10-17 14:31:06,088 - INFO - Metadados replicados de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0004.tif' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0004.tif'
+2025-10-17 14:31:06,088 - INFO - --------------------------------------------------------------------------------
+2025-10-17 14:31:06,088 - INFO - 
+A tratar imagem: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0005.tif'
+2025-10-17 14:31:06,360 - INFO - Info:
+2025-10-17 14:31:06,361 - INFO - DPI da imagem: 300.0
+2025-10-17 14:31:06,361 - INFO - Compressão da imagem: raw
+2025-10-17 14:31:06,423 - INFO - Imagem convertida BGR TO RGB
+2025-10-17 14:31:06,481 - INFO - Parte esquerda salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0005_sem_borda_e.tif
+2025-10-17 14:31:06,552 - INFO - Parte direita salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0005_sem_borda_d.tif
+2025-10-17 14:31:06,774 - INFO - Imagem dividida em:
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0005_e.tif
+  C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0005_d.tif
+2025-10-17 14:31:07,303 - INFO - Metadados replicados de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0005.tif' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0005.tif'
+2025-10-17 14:31:07,304 - INFO - --------------------------------------------------------------------------------
+2025-10-17 14:31:07,304 - INFO - 
+A tratar imagem: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0006.tif'
+2025-10-17 14:31:07,572 - INFO - Info:
+2025-10-17 14:31:07,573 - INFO - DPI da imagem: 300.0
+2025-10-17 14:31:07,573 - INFO - Compressão da imagem: raw
+2025-10-17 14:31:07,641 - INFO - Imagem convertida BGR TO RGB
+2025-10-17 14:31:07,671 - INFO - A imagem sem borda foi salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0006_sem_borda.tif
+2025-10-17 14:31:07,681 - INFO - Imagem atualizada: C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0006.tif
+2025-10-17 14:31:08,251 - INFO - Metadados replicados de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0006.tif' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0006.tif'
+2025-10-17 14:31:08,252 - INFO - --------------------------------------------------------------------------------
+2025-10-17 14:31:08,252 - INFO - 
+A tratar imagem: 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0007.tif'
+2025-10-17 14:31:08,557 - INFO - Info:
+2025-10-17 14:31:08,557 - INFO - DPI da imagem: 300.0
+2025-10-17 14:31:08,557 - INFO - Compressão da imagem: raw
+2025-10-17 14:31:08,620 - INFO - Imagem convertida BGR TO RGB
+2025-10-17 14:31:08,653 - INFO - A imagem sem borda foi salva em C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0007_sem_borda.tif
+2025-10-17 14:31:08,662 - INFO - Imagem atualizada: C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0007.tif
+2025-10-17 14:31:09,230 - INFO - Metadados replicados de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0007.tif' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\RUI TOME-teste-assembleia_0007.tif'
+2025-10-17 14:31:09,230 - INFO - A mover de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia\BORDERED_OLD_RUI TOME-teste-assembleia' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\0-BACKUP'
+2025-10-17 14:31:09,232 - INFO - Mover concluido
+2025-10-17 14:31:09,232 - INFO - A mover de 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\RUI TOME-teste-assembleia' para 'C:\Users\PROCESSAMENTO3\Downloads\TESTE\0-ASSEMBLEIA-TESTE\0-PRONTOS'
+2025-10-17 14:31:09,234 - INFO - Mover concluido
+2025-10-17 14:31:09,234 - INFO - 
+Fim da execução: 2025-10-17 14:31:09
+2025-10-17 14:31:09,234 - INFO - Duração total: 0h 0m 34s
+

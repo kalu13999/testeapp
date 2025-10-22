@@ -14,8 +14,9 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
+import DocumentDetailClient from '@/app/(app)/documents/[id]/client';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, Undo2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, View, X, FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, Tag, ShieldAlert, AlertTriangle, Undo2 } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -67,6 +68,9 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
   const [addPageState, setAddPageState] = React.useState({ open: false, bookId: '', bookName: '', maxPages: 0 });
   const [newPagePosition, setNewPagePosition] = React.useState<number | string>('');
   const [confirmationState, setConfirmationState] = React.useState({ open: false, title: '', description: '', onConfirm: () => {} });
+  
+  const [openDocId, setOpenDocId] = React.useState<string | null>(null);
+  
   const [taggingState, setTaggingState] = React.useState<{
     open: boolean;
     docId: string | null;
@@ -281,7 +285,14 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
                             {pages.map(page => (
                                 <div key={page.id} className="relative group">
-                                <Link href={`/documents/${page.id}`}>
+                                <Link //href={`/documents/${page.id}`}>
+                                  href="#"
+                                  onClick={(e) => {
+                                    e.preventDefault(); // evita navegação
+                                    setOpenDocId(page.id); // faz o mesmo que o botão
+                                  }}
+                                  className="block"
+                                >
                                     <Card className="overflow-hidden hover:shadow-lg transition-shadow relative border-2 border-transparent group-hover:border-primary">
                                         <CardContent className="p-0">
                                             <Image
@@ -358,6 +369,62 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
                                         <Tag className="h-4 w-4"/>
                                     </Button>
                                 </div>
+                                {openDocId && (() => {
+                                  const currentIndex = pages.findIndex(doc => doc.id === openDocId);
+                                  const prevPage = currentIndex > 0 ? pages[currentIndex - 1] : null;
+                                  const nextPage = currentIndex < pages.length - 1 ? pages[currentIndex + 1] : null;
+                                  const page = pages[currentIndex];
+
+                                    return (
+                                      <div className="fixed inset-0 bg-background z-50 flex flex-col animate-fade-in">
+                                        {/* Header */}
+                                        <div className="flex items-center justify-between p-4 border-b">
+                                          {/* Título à esquerda */}
+                                          <h2 className="text-xl font-bold">{page?.name}</h2>
+
+                                          {/* Navegação central */}
+                                          <div className="flex items-center gap-3">
+                                            <Button
+                                              variant="outline"
+                                              size="icon"
+                                              className="h-10 w-10" // botões um pouco maiores
+                                              disabled={!prevPage}
+                                              onClick={() => prevPage && setOpenDocId(prevPage.id)}
+                                            >
+                                              <ArrowLeft className="h-6 w-6" />
+                                            </Button>
+                                            <Button
+                                              variant="outline"
+                                              size="icon"
+                                              className="h-10 w-10"
+                                              disabled={!nextPage}
+                                              onClick={() => nextPage && setOpenDocId(nextPage.id)}
+                                            >
+                                              <ArrowRight className="h-6 w-6" />
+                                            </Button>
+                                          </div>
+
+                                          {/* Botões à direita */}
+                                          <div className="flex items-center gap-2">
+                                            <Button
+                                              variant="destructive"
+                                              size="icon"
+                                              className="h-10 w-10"
+                                              onClick={() => setOpenDocId(null)}
+                                            >
+                                              <X className="h-6 w-6" />
+                                            </Button>
+                                          </div>
+                                        </div>
+
+                                        {/* Conteúdo do documento */}
+                                        <div className="flex-1 overflow-auto p-6">
+                                          <DocumentDetailClient docId={openDocId} btnNavigation={false} />
+                                        </div>
+                                      </div>
+                                    );
+
+                                })()}
                                 </div>
                             ))}
                         </div>

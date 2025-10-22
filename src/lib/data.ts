@@ -42,10 +42,14 @@ export interface Document {
     name: string;
     folderId?: string | null;
     projectId?: string | null;
-    bookId?: string | null;
+    bookId: string;
     flag?: 'error' | 'warning' | 'info' | null;
     flagComment?: string;
     imageUrl?: string;
+    client: string;
+    statusId: string;
+    status: string;
+
 }
 
 export interface AuditLog {
@@ -111,6 +115,7 @@ export interface RawBook {
     qcEndTime?: string | null;
     color?: string | null;
     rejectionReason?: string | null;
+    pathMain?: string | null;
 }
 
 export interface Project {

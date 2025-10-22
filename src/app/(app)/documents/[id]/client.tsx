@@ -22,6 +22,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { EnrichedBook, EnrichedAuditLog } from '@/lib/data';
 interface DocumentDetailClientProps {
   docId: string;
+  btnNavigation: Boolean
 }
 
 const flagConfig = {
@@ -37,7 +38,7 @@ const DetailItem = ({ label, value }: { label: string; value: React.ReactNode })
   </div>
 );
 
-export default function DocumentDetailClient({ docId }: DocumentDetailClientProps) {
+export default function DocumentDetailClient({ docId, btnNavigation}: DocumentDetailClientProps) {
   const { documents, books, auditLogs, updateDocumentFlag, addBookObservation } = useAppContext();
   const [zoom, setZoom] = React.useState(1);
   const [loupeActive, setLoupeActive] = React.useState(false);
@@ -207,12 +208,14 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-center gap-4">
-                <Button asChild variant="outline" size="icon" className="h-10 w-10 rounded-full" disabled={!prevPage}>
+                {btnNavigation && 
+                (<Button asChild variant="outline" size="icon" className="h-10 w-10 rounded-full" disabled={!prevPage}>
                   <Link href={prevPage ? `/documents/${prevPage.id}` : '#'} scroll={false}>
                     <ArrowLeft className="h-5 w-5" />
                     <span className="sr-only">Previous Page</span>
                   </Link>
-                </Button>
+                </Button>)}
+                
                 <div className="relative group w-full max-w-3xl bg-muted rounded-lg flex items-center justify-center h-[80vh]">
                   <div
                     className="relative flex items-center justify-center w-full h-full overflow-auto"
@@ -251,12 +254,13 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
                     )}
                   </div>
                 </div>
-                <Button asChild variant="outline" size="icon" className="h-10 w-10 rounded-full" disabled={!nextPage}>
+                 {btnNavigation && 
+                (<Button asChild variant="outline" size="icon" className="h-10 w-10 rounded-full" disabled={!nextPage}>
                   <Link href={nextPage ? `/documents/${nextPage.id}` : '#'} scroll={false}>
                     <ArrowRight className="h-5 w-5" />
                     <span className="sr-only">Next Page</span>
                   </Link>
-                </Button>
+                </Button>)}
               </div>
             </CardContent>
             <CardFooter className="flex items-center justify-center gap-4 pt-4">
@@ -340,22 +344,22 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
         <div className="md:col-span-1 lg:col-span-1 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="font-headline">Flagging</CardTitle>
-              <CardDescription>Mark this document with a status. Errors will block workflow progression.</CardDescription>
+              <CardTitle className="font-headline">Assinalar</CardTitle>
+              <CardDescription>Marque este documento com um estado. Erros irão bloquear a progressão do fluxo de trabalho.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               <Button variant="destructive" className="w-full" onClick={() => openFlagDialog(document, 'error')}>
-                <ShieldAlert className="mr-2 h-4 w-4" /> Mark with Error
+                <ShieldAlert className="mr-2 h-4 w-4" /> Assinalar como Erro
               </Button>
               <Button variant="secondary" className="w-full" onClick={() => openFlagDialog(document, 'warning')}>
-                <AlertTriangle className="mr-2 h-4 w-4" /> Mark with Warning
+                <AlertTriangle className="mr-2 h-4 w-4" /> Assinalar como Aviso
               </Button>
               <Button variant="outline" className="w-full" onClick={() => openFlagDialog(document, 'info')}>
-                <InfoIcon className="mr-2 h-4 w-4" /> Mark with Info
+                <InfoIcon className="mr-2 h-4 w-4" /> Assinalar como Informação
               </Button>
               {document.flag && (
                 <Button variant="ghost" className="w-full" onClick={() => updateDocumentFlag(document.id, null, '')}>
-                  <CircleX className="mr-2 h-4 w-4" /> Clear Flag
+                  <CircleX className="mr-2 h-4 w-4" /> Limpar Assinalação
                 </Button>
               )}
             </CardContent>
@@ -378,8 +382,26 @@ export default function DocumentDetailClient({ docId }: DocumentDetailClientProp
               <CardTitle className="font-headline">Metadata</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <div className="flex justify-between items-center"><span>Book:</span><strong><Link href={`/books/${document.bookId}`} className="hover:underline">{book?.name}</Link></strong></div>
-              <Separator/>
+              {btnNavigation ? (
+                <div className="flex justify-between items-center">
+                  <span>Book:</span>
+                  <Badge variant="secondary">{book?.name}</Badge>
+                </div>
+              ) : (
+                <div className="flex justify-between items-center">
+                  <span>Book:</span>
+                  <strong>
+                    <Link
+                      href={`/books/${document.bookId}`}
+                      className="hover:underline"
+                    >
+                      {book?.name}
+                    </Link>
+                  </strong>
+                </div>
+              )}
+
+              <Separator />
               <div className="flex justify-between items-center"><span>Status:</span><Badge variant="secondary">{document.status}</Badge></div>
               <Separator />
               <div className="flex justify-between items-center"><span>Flag:</span><Badge variant={document.flag === 'error' ? "destructive" : "outline"}>{currentFlagLabel}</Badge></div>

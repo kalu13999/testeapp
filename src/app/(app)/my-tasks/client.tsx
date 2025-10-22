@@ -20,7 +20,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Eye, ThumbsDown, ThumbsUp, Tag } from "lucide-react"
+import DocumentDetailClient from '@/app/(app)/documents/[id]/client';
+import { X, ArrowLeft, ArrowRight, View, Eye, ThumbsDown, ThumbsUp, Tag, Download } from "lucide-react"
 import { useAppContext } from "@/context/workflow-context"
 import { type EnrichedBook } from "@/lib/data"
 import Link from "next/link";
@@ -32,9 +33,28 @@ import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { AppDocument, RejectionTag } from "@/context/workflow-context";
+import type { AppDocument, RejectionTag, FileOption } from "@/context/workflow-context";
 import { Textarea } from "@/components/ui/textarea";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+
+
+const filesdownload: FileOption[] = [
+  { label: "PDF", endpoint: "/api/workflow/app/download/pdf", filename: "documento.pdf" },
+  { label: "ALTO", endpoint: "/api/workflow/app/download/alto", filename: "documento.xml" },
+];
+
+const filesDownloadImages: FileOption[] = [
+  {
+    label: "JPG",
+    endpoint: "/api/workflow/app/download/image",
+    filename: "001.jpg",
+  },
+  {
+    label: "TIF",
+    endpoint: "/api/workflow/app/download/image",
+    filename: "001.tif",
+  },
+];
 
 type ValidationTask = {
   item: {
@@ -55,7 +75,7 @@ export default function MyTasksClient() {
   const {
     currentUser, permissions, deliveryBatches, deliveryBatchItems, books, users,
     documents, rejectionTags, selectedProjectId,
-    setProvisionalDeliveryStatus, tagPageForRejection
+    setProvisionalDeliveryStatus, tagPageForRejection, handleDownload, handleDownloadFile
   } = useAppContext();
   
   const [reviewState, setReviewState] = React.useState<{ open: boolean; task: ValidationTask | null }>({ open: false, task: null });
@@ -64,7 +84,17 @@ export default function MyTasksClient() {
   const [rejectionComment, setRejectionComment] = React.useState("");
   const [taggingState, setTaggingState] = React.useState<{ open: boolean; doc: AppDocument | null; availableTags: RejectionTag[]; }>({ open: false, doc: null, availableTags: [] });
   const { toast } = useToast();
-  
+  const [openDocId, setOpenDocId] = React.useState<string | null>(null);
+  let baseNameRef = React.useRef<string | undefined>(undefined);
+
+  const handleOpenDoc = React.useCallback((id: string | null) => {
+    setOpenDocId(id);
+  }, [setOpenDocId]);
+
+  const handleCloseDoc = React.useCallback(() => {
+    setOpenDocId(null);
+  }, [setOpenDocId]);
+
   const canViewAll = React.useMemo(() => {
     if (!currentUser) return false;
     const userPermissions = permissions[currentUser.role] || [];
@@ -113,6 +143,12 @@ export default function MyTasksClient() {
     
   }, [currentUser, deliveryBatches, deliveryBatchItems, books, users, canViewAll, selectedProjectId, permissions]);
 
+
+  
+  
+
+
+
   const handleApprove = (item: ValidationTask) => {
     setProvisionalDeliveryStatus(item.item.id, item.book.id, 'approved');
     setReviewState({ open: false, task: null });
@@ -128,25 +164,25 @@ export default function MyTasksClient() {
     toast({ title: `Livro "${rejectionDialog.bookName}" Rejeitado`, variant: "destructive" });
   };
 
-  const openTaggingDialog = (doc: AppDocument) => {
-    const book = books.find(b => b.id === doc.bookId);
-    if (!book) return;
+const openTaggingDialog = React.useCallback((doc: AppDocument) => {
+  const book = books.find(b => b.id === doc.bookId);
+  if (!book) return;
 
-    if (!currentUser?.clientId && !isAdmin) return;
-    
-    let idCliente: string;
-    if (isAdmin)
-      idCliente = book.clientId
-    else if (currentUser?.clientId)
-      idCliente =  currentUser.clientId
+  if (!currentUser?.clientId && !isAdmin) return;
+  
+  let idCliente: string;
+  if (isAdmin)
+    idCliente = book.clientId
+  else if (currentUser?.clientId)
+    idCliente =  currentUser.clientId
 
-    const availableTags = rejectionTags.filter(tag => tag.clientId === idCliente);
-    setTaggingState({
-      open: true,
-      doc: doc,
-      availableTags: availableTags
-    });
-  };
+  const availableTags = rejectionTags.filter(tag => tag.clientId === idCliente);
+  setTaggingState({
+    open: true,
+    doc: doc,
+    availableTags: availableTags
+  });
+}, [books, currentUser, isAdmin, rejectionTags]);
   
   const closeTaggingDialog = () => {
     setTaggingState({ open: false, doc: null, availableTags: [] });
@@ -190,6 +226,207 @@ export default function MyTasksClient() {
     return { grouped, ungrouped };
   }
 
+  // === MEMO: pages para o review atual
+  const pagesMemo = React.useMemo(() => {
+    if (!reviewState.task) return [] as AppDocument[];
+    return getPagesForBook(reviewState.task.book.id);
+  }, [reviewState.task, getPagesForBook]);
+
+  const groupedMemo = React.useMemo(() => groupPages(pagesMemo), [pagesMemo]);
+
+  // === PageCard memoizado
+  const PageCard = React.useMemo(() => React.memo(function PageCard({
+    page, date
+  }: { page: AppDocument; date?: string }) {
+    baseNameRef.current = date;  
+    return (
+      <div className="relative group">
+        <a
+          href="#"
+          onClick={(e) => { e.preventDefault(); handleOpenDoc(page.id); }}
+          className="block"
+        >
+          <Card className="overflow-hidden hover:shadow-lg transition-shadow relative border-2 border-transparent group-hover:border-primary">
+            <CardContent className="p-0">
+            <Image
+                src={page.imageUrl || "https://placehold.co/400x550.png"}
+                alt={`Preview of ${page.name}`}
+                width={400}
+                height={550}
+                className="aspect-[4/5.5] object-contain w-full h-full"
+                unoptimized
+              />
+            </CardContent>
+            <CardFooter className="p-2 min-h-[50px] flex-col items-start gap-1">
+              <p className="text-xs font-medium break-words">{page.name}</p>
+              {page.tags?.length > 0 && (
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {page.tags.map(tag => <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>)}
+                </div>
+              )}
+              <div className="flex gap-2 pt-2">
+                {["Final Quality Control", "Delivery", "Pending Validation", "Client Rejected", "Corrected", "Finalized", "Archived"].includes(reviewState.task?.book.status || "") &&
+                  filesDownloadImages.map((file) => (
+                    <Button
+                      key={file.label}
+                      variant="secondary"
+                      size="icon"
+                      className="flex flex-col items-center gap-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDownloadFile(
+                          file,
+                          reviewState.task?.book.name,
+                          reviewState.task?.book.status,
+                          date ?? reviewState.task?.book.name,
+                          page.name,
+                          file.label
+                        );
+                      }}
+                    >
+                      <Download className="h-4 w-4" />
+                      <span className="text-xs">{file.label}</span>
+                    </Button>
+                  ))
+                }
+              </div>
+            </CardFooter>
+          </Card>
+        </a>
+
+        <Button
+          variant="secondary"
+          size="icon"
+          className="h-7 w-7 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={() => openTaggingDialog(page)}
+        >
+          <Tag className="h-4 w-4" />
+        </Button>
+      </div>
+    );
+  }), [handleOpenDoc, handleDownloadFile, filesDownloadImages, reviewState.task, openTaggingDialog]);
+
+
+  interface ReviewPagesProps {
+  groupedMemo: ReturnType<typeof groupPages>;
+  columnCols: number;
+  reviewTask: ValidationTask | null;
+  handleDownload: (file: FileOption, bookName: string, bookStatus: string, date: string) => void;
+  filesdownload: FileOption[];
+  PageCard: React.FC<{ page: AppDocument; date?: string }>;
+}
+
+  const ReviewPages = React.memo(({
+    groupedMemo,
+    columnCols,
+    reviewTask,
+    handleDownload,
+    filesdownload,
+    PageCard
+  }: ReviewPagesProps) => {
+
+    if (!reviewTask) return null;
+
+    const { grouped, ungrouped } = groupedMemo;
+
+    return (
+      <ScrollArea className="h-full pr-6">
+        <div className="flex items-center justify-end gap-4 py-4 sticky top-0 bg-background z-10">
+          <Label htmlFor="columns-slider" className="text-sm whitespace-nowrap">Tamanho da miniatura:</Label>
+          <Slider
+            id="columns-slider"
+            min={1}
+            max={12}
+            step={1}
+            value={[columnCols]}
+            onValueChange={() => {}}
+            className="w-full max-w-[200px]"
+          />
+        </div>
+
+        {/* Acordeões para grupos válidos */}
+        {Object.keys(grouped).length > 0 && (
+          <Accordion type="multiple" defaultValue={[Object.keys(grouped)[0]]} className="w-full space-y-4">
+            {Object.entries(grouped).map(([prefix, dates]) => (
+              <AccordionItem key={prefix} value={prefix}>
+                <AccordionTrigger className="text-lg font-semibold">{prefix}</AccordionTrigger>
+                <AccordionContent>
+                  <Accordion type="multiple" defaultValue={[Object.keys(dates)[0]]} className="pl-4">
+                    {Object.entries(dates)
+                      .sort(([a], [b]) => a.localeCompare(b))
+                      .map(([date, datePages]) => (
+                        <AccordionItem key={date} value={date}>
+                          <div className="flex items-center justify-between w-full">
+                            <AccordionTrigger className="text-md font-medium flex-1 text-left">
+                              {date} <span className="text-muted-foreground ml-2">({datePages.length})</span>
+                            </AccordionTrigger>
+                            <div className="flex gap-4 ml-4">
+                              {["Final Quality Control", "Delivery", "Pending Validation", "Client Rejected", "Corrected", "Finalized", "Archived"].includes(reviewTask.book.status) &&
+                                filesdownload.map(file => (
+                                  <Button
+                                    key={file.label}
+                                    variant="secondary"
+                                    className="flex flex-col items-center gap-1"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDownload(file, reviewTask.book.name, reviewTask.book.status, date);
+                                    }}
+                                  >
+                                    <Download className="h-6 w-6" />
+                                    <span className="text-sm">{file.label}</span>
+                                  </Button>
+                                ))
+                              }
+                            </div>
+                          </div>
+                          <AccordionContent>
+                            <div className={`grid gap-4 ${gridClasses[columnCols]}`}>
+                              {datePages
+                                .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+                                .map(page => <PageCard key={page.id} page={page} date={date} />)}
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      ))}
+                  </Accordion>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        )}
+
+        {/* Grid normal para arquivos não agrupáveis */}
+        {ungrouped.length > 0 && (
+          <>
+            <div className="flex gap-4 ml-4">
+              {["Final Quality Control", "Delivery", "Pending Validation", "Client Rejected", "Corrected", "Finalized", "Archived"].includes(reviewTask.book.status) &&
+                filesdownload.map(file => (
+                  <Button
+                    key={file.label}
+                    variant="secondary"
+                    className="flex flex-col items-center gap-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDownload(file, reviewTask.book.name, reviewTask.book.status, reviewTask.book.name);
+                    }}
+                  >
+                    <Download className="h-6 w-6" />
+                    <span className="text-sm">{file.label}</span>
+                  </Button>
+                ))
+              }
+            </div>
+            <div className={`grid gap-4 mt-6 ${gridClasses[columnCols]}`}>
+              {ungrouped
+                .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+                .map(page => <PageCard key={page.id} page={page} />)}
+            </div>
+          </>
+        )}
+      </ScrollArea>
+    );
+  });
+  // === JSX render
   return (
     <>
       <Card>
@@ -238,150 +475,89 @@ export default function MyTasksClient() {
       {/* Review Dialog */}
       <Dialog open={reviewState.open} onOpenChange={(isOpen) => !isOpen && setReviewState({ open: false, task: null })}>
           <DialogContent className="max-w-[90vw] h-[95vh] flex flex-col">
-              <DialogHeader>
-                  <DialogTitle>Analisar: {reviewState.task?.book.name}</DialogTitle>
+               <DialogHeader>
+                  <DialogTitle>
+                    Analisar: {reviewState.task?.book.name}
+                  </DialogTitle>
+
                   <DialogDescription>
                     Analise todas as páginas. Você pode marcar páginas individuais com problemas antes de tomar uma decisão final.
                   </DialogDescription>
-              </DialogHeader>
+
+
+                </DialogHeader>
               <div className="flex-1 min-h-0">
-                  <ScrollArea className="h-full pr-6">
-                      <div className="flex items-center justify-end gap-4 py-4 sticky top-0 bg-background z-10">
-                          <Label htmlFor="columns-slider" className="text-sm whitespace-nowrap">Tamanho da miniatura:</Label>
-                          <Slider id="columns-slider" min={1} max={12} step={1} value={[columnCols]} onValueChange={(val) => setColumnCols(val[0])} className="w-full max-w-[200px]" />
-                      </div>
-                      {reviewState.task && (() => {
-                        const pages = getPagesForBook(reviewState.task.book.id);
-                        const { grouped, ungrouped } = groupPages(pages);
-
-                        return (
-                          <>
-                            {/* Acordeões para grupos válidos */}
-                            {Object.keys(grouped).length > 0 && (
-                                <Accordion
-                                  type="multiple"
-                                  defaultValue={[Object.keys(grouped)[0]]}
-                                  className="w-full space-y-4"
-                                >
-
-                                {Object.entries(grouped).map(([prefix, dates]) => (
-                                  <AccordionItem key={prefix} value={prefix}>
-                                    <AccordionTrigger className="text-lg font-semibold">
-                                      {prefix}
-                                    </AccordionTrigger>
-                                    <AccordionContent>
-                                      <Accordion type="multiple" 
-                                      defaultValue={[Object.keys(dates)[0]]}
-                                      className="pl-4">
-                                        {Object.entries(dates)
-                                          .sort(([a], [b]) => a.localeCompare(b)) // datas mais recentes primeiro
-                                          .map(([date, datePages]) => (
-                                            <AccordionItem key={date} value={date}>
-                                              <AccordionTrigger className="text-md font-medium">
-                                                {date} <span className="text-muted-foreground ml-2">({datePages.length})</span>
-                                              </AccordionTrigger>
-                                              <AccordionContent>
-                                                <div className={`grid gap-4 ${gridClasses[columnCols]}`}>
-                                                  {datePages
-                                                  .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
-                                                  .map(page => (
-                                                    <div key={page.id} className="relative group">
-                                                      <Link href={`/documents/${page.id}`} target="_blank" className="block">
-                                                        <Card className="overflow-hidden hover:shadow-lg transition-shadow relative border-2 border-transparent group-hover:border-primary">
-                                                          <CardContent className="p-0">
-                                                            <Image
-                                                              src={page.imageUrl || "https://placehold.co/400x550.png"}
-                                                              alt={`Preview of ${page.name}`}
-                                                              width={400}
-                                                              height={550}
-                                                              className="aspect-[4/5.5] object-contain w-full h-full"
-                                                              unoptimized
-                                                            />
-                                                          </CardContent>
-                                                          <CardFooter className="p-2 min-h-[50px] flex-col items-start gap-1">
-                                                            <p className="text-xs font-medium break-words">{page.name}</p>
-                                                            {page.tags?.length > 0 && (
-                                                              <div className="flex flex-wrap gap-1 pt-1">
-                                                                {page.tags.map(tag => (
-                                                                  <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
-                                                                ))}
-                                                              </div>
-                                                            )}
-                                                          </CardFooter>
-                                                        </Card>
-                                                      </Link>
-
-                                                      {/* Botão de Tag */}
-                                                      <Button
-                                                        variant="secondary"
-                                                        size="icon"
-                                                        className="h-7 w-7 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                        onClick={() => openTaggingDialog(page)}
-                                                      >
-                                                        <Tag className="h-4 w-4" />
-                                                      </Button>
-                                                    </div>
-                                                  ))}
-                                                </div>
-                                              </AccordionContent>
-                                            </AccordionItem>
-                                          ))}
-                                      </Accordion>
-                                    </AccordionContent>
-                                  </AccordionItem>
-                                ))}
-                              </Accordion>
-                            )}
-
-                            {/* Grid normal para arquivos não agrupáveis */}
-                            {ungrouped.length > 0 && (
-                              <div className={`grid gap-4 mt-6 ${gridClasses[columnCols]}`}>
-                                {ungrouped
-                                .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))                            
-                                .map(page => (
-                                  <div key={page.id} className="relative group">
-                                    <Link href={`/documents/${page.id}`} target="_blank" className="block">
-                                      <Card className="overflow-hidden hover:shadow-lg transition-shadow relative border-2 border-transparent group-hover:border-primary">
-                                        <CardContent className="p-0">
-                                          <Image
-                                            src={page.imageUrl || "https://placehold.co/400x550.png"}
-                                            alt={`Preview of ${page.name}`}
-                                            width={400}
-                                            height={550}
-                                            className="aspect-[4/5.5] object-contain w-full h-full"
-                                            unoptimized
-                                          />
-                                        </CardContent>
-                                        <CardFooter className="p-2 min-h-[50px] flex-col items-start gap-1">
-                                          <p className="text-xs font-medium break-words">{page.name}</p>
-                                          {page.tags?.length > 0 && (
-                                            <div className="flex flex-wrap gap-1 pt-1">
-                                              {page.tags.map(tag => (
-                                                <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
-                                              ))}
-                                            </div>
-                                          )}
-                                        </CardFooter>
-                                      </Card>
-                                    </Link>
-
-                                    <Button
-                                      variant="secondary"
-                                      size="icon"
-                                      className="h-7 w-7 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                                      onClick={() => openTaggingDialog(page)}
-                                    >
-                                      <Tag className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </>
-                        );
-                      })()}
-                  </ScrollArea>
+                  <ReviewPages
+                    groupedMemo={groupedMemo}
+                    columnCols={columnCols}
+                    reviewTask={reviewState.task}
+                    handleDownload={handleDownload}
+                    filesdownload={filesdownload}
+                    PageCard={PageCard}
+                  />
               </div>
+              {/* === Overlay único: renderiza apenas 1 vez === */}
+                {openDocId && (() => {
+                  const currentIndex = pagesMemo.findIndex(doc => doc.id === openDocId);
+                  const prevPage = currentIndex > 0 ? pagesMemo[currentIndex - 1] : null;
+                  const nextPage = currentIndex < pagesMemo.length - 1 ? pagesMemo[currentIndex + 1] : null;
+                  const currentPage = pagesMemo[currentIndex];
+
+                  return (
+                    <div className="fixed inset-0 bg-background z-50 flex flex-col animate-fade-in">
+                      <div className="flex items-center justify-between p-4 border-b">
+                        <div className="flex items-center gap-4">
+                          <h2 className="text-xl font-bold">{currentPage?.name}</h2>
+
+                          <div className="flex items-center gap-2">
+                            {["Final Quality Control","Delivery","Pending Validation","Client Rejected","Corrected","Finalized","Archived"].includes(reviewState.task?.book.status || "") &&
+                              filesDownloadImages.map(file => (
+                                <Button
+                                  key={file.label}
+                                  variant="secondary"
+                                  size="icon"
+                                  onClick={() => handleDownloadFile(
+                                    file,
+                                    reviewState.task?.book.name,
+                                    reviewState.task?.book.status,
+                                    baseNameRef.current ?? reviewState.task?.book.name,
+                                    currentPage?.name,
+                                    file.label
+                                  )}
+                                >
+                                  <Download className="h-4 w-4" />
+                                  <span className="text-xs">{file.label}</span>
+                                </Button>
+                              ))
+                            }
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <Button variant="outline" size="icon" disabled={!prevPage} onClick={() => prevPage && handleOpenDoc(prevPage.id)}>
+                            <ArrowLeft className="h-6 w-6" />
+                          </Button>
+                          <Button variant="outline" size="icon" disabled={!nextPage} onClick={() => nextPage && handleOpenDoc(nextPage.id)}>
+                            <ArrowRight className="h-6 w-6" />
+                          </Button>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Button variant="secondary" onClick={() => currentPage && openTaggingDialog(currentPage)}>
+                            <Tag className="mr-2 h-4 w-4" /> Registar Motivo de Rejeição
+                          </Button>
+                          <Button variant="destructive" size="icon" onClick={handleCloseDoc}>
+                            <X className="h-6 w-6" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="flex-1 overflow-auto p-6">
+                        <DocumentDetailClient docId={openDocId} btnNavigation={false} />
+                      </div>
+                    </div>
+                  );
+                })()}
               <DialogFooter className="pt-4 border-t">
                   <Button variant="destructive" onClick={() => reviewState.task && setRejectionDialog({ open: true, bookId: reviewState.task.book.id, deliveryItemId: reviewState.task.item.id, bookName: reviewState.task.book.name })}>
                       <ThumbsDown className="mr-2 h-4 w-4"/> Rejeitar Livro
@@ -391,6 +567,7 @@ export default function MyTasksClient() {
                   </Button>
               </DialogFooter>
           </DialogContent>
+          
       </Dialog>
       
        {/* Rejection Comment Dialog */}
@@ -420,14 +597,19 @@ export default function MyTasksClient() {
           </DialogContent>
        </Dialog>
        
-       {/* Tagging Dialog */}
-       <TaggingDialog
-         isOpen={taggingState.open}
-         onClose={closeTaggingDialog}
-         doc={taggingState.doc}
-         availableTags={taggingState.availableTags}
-         onSave={handleTaggingSubmit}
-       />
+
+       
+
+
+      {/* Tagging Dialog completamente fora do Dialog de review */}
+      <TaggingDialog
+        isOpen={taggingState.open}
+        onClose={closeTaggingDialog}
+        doc={taggingState.doc}
+        availableTags={taggingState.availableTags}
+        onSave={handleTaggingSubmit}
+      />
+
     </>
   )
 }
@@ -455,7 +637,7 @@ function TaggingDialog({ isOpen, onClose, doc, availableTags, onSave }: TaggingD
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
               <DialogTitle>Tag "{doc.name}"</DialogTitle>
               <DialogDescription>

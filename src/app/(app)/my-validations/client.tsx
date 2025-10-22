@@ -23,8 +23,10 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"
 import { Button } from "@/components/ui/button";
+import DocumentDetailClient from '@/app/(app)/documents/[id]/client';
+import { useRouter, usePathname } from "next/navigation";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FileClock, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, ThumbsDown, ThumbsUp, Check, type LucideIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, View, FileClock, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, ThumbsDown, ThumbsUp, Check, type LucideIcon } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -89,6 +91,15 @@ export default function MyValidationsClient() {
       return userPermissions.includes('*');
     }, [currentUser, permissions]);
   
+
+      const [openDocId, setOpenDocId] = React.useState<string | null>(null);
+
+      const handleOpenModal = (id: string) => setOpenDocId(id);
+      const handleCloseModal = () => setOpenDocId(null);
+
+      const handleOpenWindow = (id: string) => {
+        window.open(`/documents/${id}`, `doc_${id}`, "width=900,height=700");
+      };
 
  /*const batchesToValidate = React.useMemo(() => {
     if (!currentUser) return [];
@@ -278,16 +289,39 @@ export default function MyValidationsClient() {
     setColumnStates(prev => ({ ...prev, [bookId]: { cols } }));
   }
 
-  const getPagesForBook = (bookId: string) => {
+  /*const getPagesForBook = (bookId: string) => {
     const getPageNum = (name: string): number => {
         const match = name.match(/ - Page (\d+)/);
         return match ? parseInt(match[1], 10) : 9999; 
     }
     return documents.filter(doc => doc.bookId === bookId).sort((a, b) => getPageNum(a.name) - getPageNum(b.name));
-  }
+  }*/
 
   const [pagesByBatch, setPagesByBatch] = React.useState<{ [key: string]: number }>({});
   
+
+  // --- Memo: páginas por livro (evita filtrar/ordenar repetidas vezes) ---
+  const pagesByBook = React.useMemo(() => {
+    const map = new Map<string, AppDocument[]>();
+
+    const getPageNum = (name: string): number => {
+      const match = name.match(/ - Page (\d+)/);
+      return match ? parseInt(match[1], 10) : 9999;
+    };
+
+    for (const doc of documents) {
+      if (!map.has(doc.bookId)) map.set(doc.bookId, []);
+      map.get(doc.bookId)!.push(doc);
+    }
+
+    for (const [bookId, arr] of map.entries()) {
+      arr.sort((a, b) => getPageNum(a.name) - getPageNum(b.name));
+    }
+
+    return map;
+  }, [documents]);
+
+
   // Configuração da paginação
   const booksPerPage = 30;
 
@@ -417,7 +451,7 @@ export default function MyValidationsClient() {
                      <Accordion type="multiple" className="w-full">
                         {paginatedBooks.map(task => {
                             const { book } = task;
-                            const pages = getPagesForBook(book.id);
+                            const pages = pagesByBook.get(book.id) || [];
                             const bookCols = columnStates[book.id]?.cols || 8;
                             return (
                                 <AccordionItem value={book.id} key={book.id} className={cn(
@@ -454,7 +488,16 @@ export default function MyValidationsClient() {
                                          <div className={`grid gap-4 ${gridClasses[bookCols]}`}>
                                             {pages.map(page => (
                                                 <div key={page.id} className="relative group">
-                                                    <Link href={`/documents/${page.id}`} target="_blank" className="block">
+                                            
+                                                    <Link href={`/documents/${page.id}`} className="block">
+                                                        {//<//href="#"
+                                                        //onClick={(e) => {
+                                                          //e.preventDefault(); // evita navegação
+                                                          //setOpenDocId(page.id); // faz o mesmo que o botão
+                                                        //}}
+                                                        //className="block"
+                                                      //>
+                                                      }
                                                         <Card className="overflow-hidden hover:shadow-lg transition-shadow relative border-2 border-transparent group-hover:border-primary">
                                                             <CardContent className="p-0">
                                                                 <Image src={page.imageUrl || "https://placehold.co/400x550.png"} alt={`Preview of ${page.name}`} data-ai-hint="document page" 
@@ -472,9 +515,76 @@ export default function MyValidationsClient() {
                                                             </CardFooter>
                                                         </Card>
                                                     </Link>
-                                                    <Button variant="secondary" size="icon" className="h-7 w-7 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => openTaggingDialog(page)}>
+                                                    <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                      <Button variant="secondary" size="icon" onClick={() => openTaggingDialog(page)}>
                                                         <Tag className="h-4 w-4" />
-                                                    </Button>
+                                                      </Button>
+                                                      <Button variant="secondary" size="icon" onClick={() => setOpenDocId(page.id)}>
+                                                        <View className="h-4 w-4" />
+                                                      </Button>
+                                                    </div>
+                                                    {openDocId && (() => {
+                                                      const currentIndex = pages.findIndex(doc => doc.id === openDocId);
+                                                      const prevPage = currentIndex > 0 ? pages[currentIndex - 1] : null;
+                                                      const nextPage = currentIndex < pages.length - 1 ? pages[currentIndex + 1] : null;
+                                                      const page = pages[currentIndex];
+
+                                                        return (
+                                                          <div className="fixed inset-0 bg-background z-50 flex flex-col animate-fade-in">
+                                                            {/* Header */}
+                                                            <div className="flex items-center justify-between p-4 border-b">
+                                                              {/* Título à esquerda */}
+                                                              <h2 className="text-xl font-bold">{page?.name}</h2>
+
+                                                              {/* Navegação central */}
+                                                              <div className="flex items-center gap-3">
+                                                                <Button
+                                                                  variant="outline"
+                                                                  size="icon"
+                                                                  className="h-10 w-10" // botões um pouco maiores
+                                                                  disabled={!prevPage}
+                                                                  onClick={() => prevPage && setOpenDocId(prevPage.id)}
+                                                                >
+                                                                  <ArrowLeft className="h-6 w-6" />
+                                                                </Button>
+                                                                <Button
+                                                                  variant="outline"
+                                                                  size="icon"
+                                                                  className="h-10 w-10"
+                                                                  disabled={!nextPage}
+                                                                  onClick={() => nextPage && setOpenDocId(nextPage.id)}
+                                                                >
+                                                                  <ArrowRight className="h-6 w-6" />
+                                                                </Button>
+                                                              </div>
+
+                                                              {/* Botões à direita */}
+                                                              <div className="flex items-center gap-2">
+                                                                <Button
+                                                                  variant="secondary"
+                                                                  onClick={() => openTaggingDialog(page)}
+                                                                >
+                                                                  <Tag className="mr-2 h-4 w-4" /> Registar Motivo de Rejeição
+                                                                </Button>
+                                                                <Button
+                                                                  variant="destructive"
+                                                                  size="icon"
+                                                                  className="h-10 w-10"
+                                                                  onClick={() => setOpenDocId(null)}
+                                                                >
+                                                                  <X className="h-6 w-6" />
+                                                                </Button>
+                                                              </div>
+                                                            </div>
+
+                                                            {/* Conteúdo do documento */}
+                                                            <div className="flex-1 overflow-auto p-6">
+                                                              <DocumentDetailClient docId={openDocId} btnNavigation={false} />
+                                                            </div>
+                                                          </div>
+                                                        );
+
+                                                    })()}
                                                 </div>
                                             ))}
                                         </div>

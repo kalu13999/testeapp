@@ -5,7 +5,7 @@ import { getConnection, releaseConnection } from '@/lib/db';
 import type { PoolConnection, RowDataPacket } from 'mysql2/promise';
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
-  const { id } = params;
+  const { id } = await params;
   let connection: PoolConnection | null = null;
   try {
     connection = await getConnection();
@@ -36,7 +36,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
 }
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
-    const { id } = params;
+    const { id } = await params;
     let connection: PoolConnection | null = null;
     try {
         const body = await request.json();
@@ -96,7 +96,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 }
 
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
-    const { id } = params;
+    const { id } = await params;
     let connection: PoolConnection | null = null;
     try {
         connection = await getConnection();

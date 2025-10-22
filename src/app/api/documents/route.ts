@@ -36,10 +36,11 @@ export async function GET() {
   let connection: PoolConnection | null = null;
   try {
     connection = await getConnection();
-    const [rows] = await connection.execute<RowDataPacket[]>(`
+    const [rows] = await connection.query<RowDataPacket[]>(`
       SELECT 
           d.*,
-          c.name as clientName,
+          c.name as client,
+          ds.id as statusId,
           ds.name as status
       FROM 
           documents d
@@ -49,6 +50,8 @@ export async function GET() {
           books b ON d.bookId = b.id
       LEFT JOIN
           document_statuses ds ON b.statusId = ds.id
+      ORDER BY 
+          d.name ASC;
     `);
 
     const documents = rows.map(doc => {

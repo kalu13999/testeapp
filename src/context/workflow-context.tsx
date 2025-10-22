@@ -3,7 +3,7 @@
 "use client"
 
 import * as React from 'react';
-import type { EnrichedAuditLog, Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document as RawDocument, AuditLog, ProcessingLog, Permissions, ProjectWorkflows, RejectionTag, DocumentStatus, ProcessingBatch, ProcessingBatchItem, Storage, LogTransferencia, ProjectStorage, Scanner, DeliveryBatch, DeliveryBatchItem, BookObservation } from '@/lib/data';
+import type { EnrichedAuditLog, Client, User, Project, EnrichedProject, EnrichedBook, RawBook, Document, AuditLog, ProcessingLog, Permissions, ProjectWorkflows, RejectionTag, DocumentStatus, ProcessingBatch, ProcessingBatchItem, Storage, LogTransferencia, ProjectStorage, Scanner, DeliveryBatch, DeliveryBatchItem, BookObservation } from '@/lib/data';
 import { useToast } from "@/hooks/use-toast";
 import { WORKFLOW_SEQUENCE, STAGE_CONFIG, findStageKeyFromStatus, getNextEnabledStage, getPreviousEnabledStage } from '@/lib/workflow-config';
 import * as dataApi from '@/lib/data';
@@ -14,6 +14,7 @@ import { format } from 'date-fns';
 import { log } from 'console';
 import { useConfirm } from "@/hooks/use-confirm"; 
 import { useDecisionDialog } from "@/hooks/use-decision-dialog";
+import { Book } from 'lucide-react';
 export type { EnrichedBook, RejectionTag };
 
 // Define the shape of the book data when importing
@@ -50,8 +51,15 @@ export interface ImportBooksResult {
 }
 
 
+export interface FileOption {
+  label: string;      // texto do botão
+  endpoint: string;   // só guardamos como variável, não no HTML
+  filename: string;   // nome do arquivo para salvar
+}
+
+
 // Client-side representation of a document
-export type AppDocument = Omit<RawDocument, 'statusId'> & { client: string; status: string; };
+export type AppDocument = Document
 
 export type NavigationHistoryItem = { href: string, label: string };
 
@@ -96,7 +104,7 @@ type AppContextType = {
   qcUsers: User[];
   projects: EnrichedProject[];
   books: EnrichedBook[];
-  documents: AppDocument[];
+  documents: Document[];
   auditLogs: EnrichedAuditLog[];
   bookObservations: BookObservation[];
   processingBatches: ProcessingBatch[];
@@ -113,6 +121,7 @@ type AppContextType = {
   scanners: Scanner[];
   statuses: DocumentStatus[];
   //rawBooks: RawBook[];
+  
   
   // Global Project Filter
   allProjects: EnrichedProject[];
@@ -203,7 +212,7 @@ type AppContextType = {
   distributeValidationSample: (batchId: string, assignments: { itemId: string; userId: string }[]) => Promise<void>;
   addPageToBook: (bookId: string, position: number) => Promise<void>;
   deletePageFromBook: (pageId: string, bookId: string) => Promise<void>;
-  updateDocumentFlag: (docId: string, flag: AppDocument['flag'], comment?: string) => Promise<void>;
+  updateDocumentFlag: (docId: string, flag: Document['flag'], comment?: string) => Promise<void>;
   handlePullNextTask: (currentStage: string, userIdToAssign?: string) => Promise<void>;
   booksAvaiableInStorageLocalIp: (currentStageKey: string) => Promise<EnrichedBook[] | undefined>;
   logAction: (action: string, details: string, ids: { bookId?: string; documentId?: string; userId?: string; }) => Promise<void>;
@@ -220,6 +229,10 @@ type AppContextType = {
   setDeliveryBatchItems: React.Dispatch<React.SetStateAction<DeliveryBatchItem[]>>;
   setAuditLogs: React.Dispatch<React.SetStateAction<EnrichedAuditLog[]>>;
   setProcessingBatchItems: React.Dispatch<React.SetStateAction<ProcessingBatchItem[]>>;
+
+  //
+  handleDownload: (file: FileOption, bookName: string | undefined, bookStatus: string | undefined, bookGroupName: string | undefined) => Promise<void>;
+  handleDownloadFile: (file: FileOption, bookName?: string | undefined, bookStatus?: string | undefined, bookGroupName?: string | undefined, imageName?: string | undefined, format?: string) => Promise<void>;
 };
 
 const AppContext = React.createContext<AppContextType | undefined>(undefined);
@@ -250,12 +263,12 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   // States to hold ENRICHED data directly
   const [allEnrichedProjects, setAllEnrichedProjects] = React.useState<EnrichedProject[]>([]);
   const [enrichedBooks, setEnrichedBooks] = React.useState<EnrichedBook[]>([]);
-  const [documents, setDocuments] = React.useState<AppDocument[]>([]);
+  const [documents, setDocuments] = React.useState<Document[]>([]);
 
 
   //const [rawProjects, setAllEnrichedProjects] = React.useState<Project[]>([]);
   //const [rawBooks, setEnrichedBooks] = React.useState<RawBook[]>([]);
-  const [rawDocuments, setRawDocuments] = React.useState<RawDocument[]>([]);
+  //const [rawDocuments, setRawDocuments] = React.useState<Document[]>([]);
 
   const [auditLogs, setAuditLogs] = React.useState<EnrichedAuditLog[]>([]);
  const [bookObservations, setBookObservations] = React.useState<BookObservation[]>([]);
@@ -391,7 +404,7 @@ const withMutation = async <T,>(action: () => Promise<T>): Promise<T | undefined
         setClients(clientsData);
         setEnrichedBooks(booksData);
         setStatuses(statusesData);
-        setRawDocuments(docsData);
+        setDocuments(docsData);
         setStorages(storagesData);
         setScanners(scannersData);
         setTransferLogs(transferLogsData);
@@ -494,7 +507,7 @@ const withMutation = async <T,>(action: () => Promise<T>): Promise<T | undefined
         setAllEnrichedProjects(projectsData);
         setEnrichedBooks(booksData);
         setStatuses(statusesData);
-        setRawDocuments(docsData);
+        setDocuments(docsData);
         setStorages(storagesData);
         setScanners(scannersData);
         setTransferLogs(transferLogsData);
@@ -1067,7 +1080,7 @@ React.useEffect(() => {
   
   const documentsForContext = React.useMemo(() => {
     const bookIdsInScope = new Set(booksForContext.map(b => b.id));
-    return rawDocuments
+    return documents
       .filter(d => d.bookId && bookIdsInScope.has(d.bookId))
       .map(doc => {
         const book = booksForContext.find(b => b.id === doc.bookId);
@@ -1077,7 +1090,7 @@ React.useEffect(() => {
           status: book?.status || 'Unknown',
         }
       });
-  }, [rawDocuments, booksForContext]);
+  }, [documents, booksForContext]);
 
    const scannerUsers = React.useMemo(() => users.filter(user => user.role === 'Scanning'), [users]);
   const indexerUsers = React.useMemo(() => users.filter(user => user.role === 'Indexing'), [users]);
@@ -1148,7 +1161,7 @@ React.useEffect(() => {
           setClients(prev => prev.filter(c => c.id !== clientId));
           setAllEnrichedProjects(prev => prev.filter(p => p.clientId !== clientId));
           setEnrichedBooks(prev => prev.filter(b => !associatedProjectIds.includes(b.projectId)));
-          setRawDocuments(prev => prev.filter(d => d.clientId !== clientId));
+          setDocuments(prev => prev.filter(d => d.clientId !== clientId));
           setRejectionTags(prev => prev.filter(t => t.clientId !== clientId));
 
           if (associatedProjectIds.includes(selectedProjectId!)) setSelectedProjectId(null);
@@ -1319,7 +1332,7 @@ React.useEffect(() => {
             if (selectedProjectId === projectId) setSelectedProjectId(null);
             setAllEnrichedProjects(prev => prev.filter(p => p.id !== projectId));
             setEnrichedBooks(prev => prev.filter(b => b.projectId !== projectId));
-            setRawDocuments(prev => prev.filter(d => d.projectId !== projectId));
+            setDocuments(prev => prev.filter(d => d.projectId !== projectId));
             setProjectWorkflows(prev => {
                 const newWorkflows = { ...prev };
                 delete newWorkflows[projectId];
@@ -1383,7 +1396,7 @@ React.useEffect(() => {
             const response = await fetch(`/api/books/${bookId}`, { method: 'DELETE' });
             if (!response.ok) throw new Error('Falha ao eliminar livro');
             setEnrichedBooks(prev => prev.filter(b => b.id !== bookId));
-            setRawDocuments(prev => prev.filter(d => d.bookId !== bookId));
+            setDocuments(prev => prev.filter(d => d.bookId !== bookId));
             logAction('Book Deleted', `Book "${bookToDelete?.name}" and its pages were deleted.`, { bookId });
             toast({ title: "Livro Eliminado", variant: "destructive" });
         } catch (error) {
@@ -1796,9 +1809,9 @@ const addBookObservation = async (bookId: string, observation: string) => {
   };
 
 
-  const updateDocument = async (docId: string, data: Partial<AppDocument>) => {
+  const updateDocument = async (docId: string, data: Partial<Document>) => {
     await withMutation(async () => {
-      const doc = rawDocuments.find(d => d.id === docId);
+      const doc = documents.find(d => d.id === docId);
       if (!doc) return;
       try {
           const response = await fetch(`/api/documents/${docId}`, {
@@ -1808,7 +1821,7 @@ const addBookObservation = async (bookId: string, observation: string) => {
           });
           if (!response.ok) throw new Error('Falha ao atualizar documento');
           const updatedDocData = await response.json();
-          setRawDocuments(prev => prev.map(d => (d.id === docId ? { ...d, ...updatedDocData } : d)));
+          setDocuments(prev => prev.map(d => (d.id === docId ? { ...d, ...updatedDocData } : d)));
           
           let logDetails = `Document "${doc.name}" updated.`;
           if (data.tags) logDetails = `Tags for document "${doc.name}" updated to: ${data.tags.join(', ') || 'None'}.`;
@@ -1851,7 +1864,7 @@ const addBookObservation = async (bookId: string, observation: string) => {
       }
   };
 
-  const updateDocumentFlag = async (docId: string, flag: AppDocument['flag'], comment?: string) => await updateDocument(docId, { flag, flagComment: flag ? comment : undefined });
+  const updateDocumentFlag = async (docId: string, flag: Document['flag'], comment?: string) => await updateDocument(docId, { flag, flagComment: flag ? comment : undefined });
   const addPageToBook = async (bookId: string, position: number) => {
     await withMutation(async () => {
       const book = enrichedBooks.find(b => b.id === bookId);
@@ -1859,7 +1872,7 @@ const addBookObservation = async (bookId: string, observation: string) => {
       const newPageName = `${book.name} - Page ${position} (Added)`;
       const newPageId = `doc_${book.id}_new_${Date.now()}`;
       
-      const newPage: Partial<RawDocument> = {
+      const newPage: Partial<Document> = {
         id: newPageId, name: newPageName, clientId: book.clientId, 
         type: 'Added Page', lastUpdated: getDbSafeDate(), 
         tags: ['added', 'corrected'],
@@ -1871,7 +1884,7 @@ const addBookObservation = async (bookId: string, observation: string) => {
           const response = await fetch('/api/documents', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newPage) });
           if (!response.ok) throw new Error('Falha ao adicionar página');
           const createdPage = await response.json();
-          setRawDocuments(prevDocs => {
+          setDocuments(prevDocs => {
             const otherPages = prevDocs.filter(p => p.bookId !== bookId);
             const bookPages = prevDocs.filter(p => p.bookId === bookId);
             bookPages.splice(position - 1, 0, createdPage);
@@ -1889,11 +1902,11 @@ const addBookObservation = async (bookId: string, observation: string) => {
 
   const deletePageFromBook = async (pageId: string, bookId: string) => {
     await withMutation(async () => {
-        const page = rawDocuments.find(p => p.id === pageId);
+        const page = documents.find(p => p.id === pageId);
         try {
             const response = await fetch(`/api/documents/${pageId}`, { method: 'DELETE' });
             if (!response.ok) throw new Error('Falha ao eliminar página');
-            setRawDocuments(prev => prev.filter(p => p.id !== pageId));
+            setDocuments(prev => prev.filter(p => p.id !== pageId));
             setEnrichedBooks(prev => prev.map(b => b.id === bookId ? {...b, expectedDocuments: (b.expectedDocuments || 1) - 1 } : b));
             logAction('Page Deleted', `Page "${page?.name}" was deleted from book.`, { bookId, documentId: pageId });
             toast({ title: "Página Eliminada", variant: "destructive" });
@@ -2214,7 +2227,7 @@ const addBookObservation = async (bookId: string, observation: string) => {
         const { book: updatedRawBook, documents: newRawDocuments } = await response.json();
         
         setEnrichedBooks(prevBooks => prevBooks.map(b => b.id === bookId ? updatedRawBook : b));
-        setRawDocuments(prevDocs => [...prevDocs, ...newRawDocuments]);
+        setDocuments(prevDocs => [...prevDocs, ...newRawDocuments]);
         
         const currentStatusName = statuses.find(s => s.id === book.statusId)?.name || 'Unknown';
         const logMessage = findStageKeyFromStatus(currentStatusName) === 'already-received' ? 'Reception & Scan Skipped' : 'Scanning Finished';
@@ -2535,12 +2548,12 @@ const openAppValidateScan = (bookId: string) => {
             updates.indexingStartTime = getDbSafeDate();
             logMsg = 'Indexing Started';
             appProtocol = 'rfs-indexing-app';
-            bookDirectory = `${storage.root_path}/${newStageFolder}/${project.name}/${book.name}`;
+            bookDirectory = `${book.pathMain || storage.root_path}/${newStageFolder}/${project.name}/${book.name}`;//`${storage.root_path}/${newStageFolder}/${project.name}/${book.name}`;
         } else if (role === 'qc') {
             updates.qcStartTime = getDbSafeDate();
             logMsg = 'Checking Started';
             appProtocol = 'rfs-check-app';
-            bookDirectory = `${storage.root_path}/${newStageFolder}/${project.name}/${scanner.nome}/${book.name}`;
+            bookDirectory = `${book.pathMain || storage.root_path}/${newStageFolder}/${project.name}/${scanner.nome}/${book.name}`//`${storage.root_path}/${newStageFolder}/${project.name}/${scanner.nome}/${book.name}`;
         }
 
         const updatedBook = await updateBookStatus(bookId, newStatusName, updates);
@@ -2925,7 +2938,7 @@ const openAppValidateScan = (bookId: string) => {
             batchName: createdBatch.timestampStr,
             projectId: firstBook.projectId,
             storageId,
-            rootPath: storage.root_path,
+            rootPath: firstBook.pathMain || storage.root_path,//rootPath: storage.root_path,
           });
         }
 
@@ -2960,12 +2973,12 @@ const openAppValidateScan = (bookId: string) => {
             toast({ title: "Erro", description: "Não foi possível encontrar itens para este lote.", variant: "destructive" });
             return;
         }
-        const book = enrichedBooks.find(b => b.id === firstItemInBatch.bookId);
-        if (!book) {
+        const firstBook = enrichedBooks.find(b => b.id === firstItemInBatch.bookId);
+        if (!firstBook) {
             toast({ title: "Erro", description: `Não foi possível encontrar o livro com ID ${firstItemInBatch.bookId}.`, variant: "destructive" });
             return;
         }
-        const projectId = book.projectId;
+        const projectId = firstBook.projectId;
         // --- FIM DA LÓGICA PROPOSTA ---
 
         openLocalApp('rfs-processa-app', {
@@ -2974,7 +2987,7 @@ const openAppValidateScan = (bookId: string) => {
           batchName: batch.timestampStr,
           projectId: projectId,
           storageId: storageId,
-          rootPath: storage.root_path,
+          rootPath: firstBook.pathMain || storage.root_path,//rootPath: storage.root_path,
         });
 
       } catch (error: any) {
@@ -3998,69 +4011,156 @@ const booksAvaiableInStorageLocalIp = React.useCallback(async (currentStageKey: 
   }, [currentUser, users, enrichedBooks, selectedProjectId, handleAssignUser, toast]);
 
   const handleValidationDeliveryBatch = async (deliveryId: string, finalDecision: 'approve_remaining' | 'reject_all') => {
-          await withMutation(async () => {
-              if (!currentUser) return;
-              
-              const batch = deliveryBatches.find(b => b.id === deliveryId);
-              if (!batch) return;
-              
-              const itemsInBatch = deliveryBatchItems.filter(item => item.deliveryId === deliveryId);
-              const failedMoves: string[] = [];
-      
-              for (const item of itemsInBatch) {
-                  const book = enrichedBooks.find(b => b.id === item.bookId);
-                  if (!book) continue;
-      
-                  const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
-                  if (!currentStatusName) {
-                      console.error(`Could not find status name for statusId: ${book.statusId}`);
-                      failedMoves.push(book.name);
-                      continue;
-                  }
-                  
-                  let newStatusName: string;
-                  
-                  if (finalDecision === 'reject_all') {
-                      newStatusName = 'Client Rejected';
-                  } else { // approve_remaining
-                      newStatusName = item.status === 'rejected' ? 'Client Rejected' : 'Finalized';
-                  }
-                  
-                  if (currentStatusName !== newStatusName) {
-                      const moveResult = await moveBookFolder(book.name, currentStatusName, newStatusName);
-                      if(moveResult) {
-                          const updatedBook = await updateBookStatus(book.id, newStatusName);
-                          setEnrichedBooks(prev => prev.map(b => b.id === book.id ? updatedBook : b));
-                          await logAction(
-                              newStatusName === 'Client Rejected' ? 'Client Rejection' : 'Client Approval',
-                              `Batch Finalization: Book status set to ${newStatusName}.`,
-                              { bookId: book.id, userId: currentUser.id }
-                          );
-                      } else {
-                          failedMoves.push(book.name);
-                      }
-                  }
-              }
-      
-              if (failedMoves.length > 0) {
-                  toast({title: "Batch Finalization Failed", description: `Could not move folders for the following books: ${failedMoves.join(', ')}. The batch status was not updated.`, variant: "destructive", duration: 5000});
-                  return;
-              }
-      
-              const response = await fetch(`/api/delivery-batches/${deliveryId}`, {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ status: 'Finalized' }),
-              });
-              if (!response.ok) throw new Error('Failed to finalize batch via API.');
-              
-              const updatedBatch = await response.json();
-              setDeliveryBatches(prev => prev.map(b => b.id === deliveryId ? updatedBatch : b));
-      
-              await logAction('Delivery Batch Finalized', `Batch ${deliveryId} was finalized by ${currentUser.name}. Decision: ${finalDecision}.`, { userId: currentUser.id });
-              toast({ title: "Validation Confirmed", description: "All books in the batch have been processed." });
-          });
-        };
+    await withMutation(async () => {
+        if (!currentUser) return;
+        
+        const batch = deliveryBatches.find(b => b.id === deliveryId);
+        if (!batch) return;
+        
+        const itemsInBatch = deliveryBatchItems.filter(item => item.deliveryId === deliveryId);
+        const failedMoves: string[] = [];
+
+        for (const item of itemsInBatch) {
+            const book = enrichedBooks.find(b => b.id === item.bookId);
+            if (!book) continue;
+
+            const currentStatusName = statuses.find(s => s.id === book.statusId)?.name;
+            if (!currentStatusName) {
+                console.error(`Could not find status name for statusId: ${book.statusId}`);
+                failedMoves.push(book.name);
+                continue;
+            }
+            
+            let newStatusName: string;
+            
+            if (finalDecision === 'reject_all') {
+                newStatusName = 'Client Rejected';
+            } else { // approve_remaining
+                newStatusName = item.status === 'rejected' ? 'Client Rejected' : 'Finalized';
+            }
+            
+            if (currentStatusName !== newStatusName) {
+                const moveResult = await moveBookFolder(book.name, currentStatusName, newStatusName);
+                if(moveResult) {
+                    const updatedBook = await updateBookStatus(book.id, newStatusName);
+                    setEnrichedBooks(prev => prev.map(b => b.id === book.id ? updatedBook : b));
+                    await logAction(
+                        newStatusName === 'Client Rejected' ? 'Client Rejection' : 'Client Approval',
+                        `Batch Finalization: Book status set to ${newStatusName}.`,
+                        { bookId: book.id, userId: currentUser.id }
+                    );
+                } else {
+                    failedMoves.push(book.name);
+                }
+            }
+        }
+
+        if (failedMoves.length > 0) {
+            toast({title: "Batch Finalization Failed", description: `Could not move folders for the following books: ${failedMoves.join(', ')}. The batch status was not updated.`, variant: "destructive", duration: 5000});
+            return;
+        }
+
+        const response = await fetch(`/api/delivery-batches/${deliveryId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'Finalized' }),
+        });
+        if (!response.ok) throw new Error('Failed to finalize batch via API.');
+        
+        const updatedBatch = await response.json();
+        setDeliveryBatches(prev => prev.map(b => b.id === deliveryId ? updatedBatch : b));
+
+        await logAction('Delivery Batch Finalized', `Batch ${deliveryId} was finalized by ${currentUser.name}. Decision: ${finalDecision}.`, { userId: currentUser.id });
+        toast({ title: "Validation Confirmed", description: "All books in the batch have been processed." });
+    });
+  };
+
+  const handleDownload = async (file: FileOption, bookName: string | undefined, bookStatus: string | undefined, bookGroupName: string | undefined) => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_WORKFLOW_API_URL;
+      const res = await fetch(`${apiUrl}${file.endpoint}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ bookName, bookStatus, bookGroupName }),
+      });
+
+      if (!res.ok) throw new Error("Erro ao baixar arquivo");
+
+      // Extrai o nome do arquivo do header Content-Disposition
+      let filename = file.filename; // fallback
+      const disposition = res.headers.get("Content-Disposition");
+      if (disposition) {
+        const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^;"']+)["']?/i);
+        if (match && match[1]) {
+          filename = decodeURIComponent(match[1]);
+        }
+      }
+
+      const blob = await res.blob();
+      const link = document.createElement("a");
+      link.href = window.URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(link.href); // limpa memória
+
+    } catch (err) {
+      console.error(err);
+      alert("Falha ao baixar o arquivo");
+    }
+  };
+
+
+  const handleDownloadFile = async (
+      file: FileOption,
+      bookName?: string,
+      bookStatus?: string,
+      bookGroupName?: string,
+      imageName?: string,
+      format?: string
+    ) => {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_WORKFLOW_API_URL;
+
+        const body: any = {};
+        if (bookName) body.bookName = bookName;
+        if (bookStatus) body.bookStatus = bookStatus;
+        if (bookGroupName) body.bookGroupName = bookGroupName;
+        if (imageName) body.imageName = imageName;
+        if (format) body.format = format;
+
+        const res = await fetch(`${apiUrl}${file.endpoint}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: Object.keys(body).length ? JSON.stringify(body) : undefined,
+        });
+
+        if (!res.ok) throw new Error("Erro ao baixar arquivo");
+
+        let filename = file.filename;
+        const disposition = res.headers.get("Content-Disposition");
+        if (disposition) {
+          const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^;"']+)["']?/i);
+          if (match && match[1]) filename = decodeURIComponent(match[1]);
+        }
+
+        const blob = await res.blob();
+        const link = document.createElement("a");
+        link.href = window.URL.createObjectURL(blob);
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(link.href);
+
+      } catch (err) {
+        console.error(err);
+        alert("Falha ao baixar o arquivo");
+      }
+    };
 
   /*const scannerUsers = React.useMemo(() => users.filter(user => user.role === 'Scanning'), [users]);
   const indexerUsers = React.useMemo(() => users.filter(user => user.role === 'Indexing'), [users]);
@@ -4084,7 +4184,7 @@ const booksAvaiableInStorageLocalIp = React.useCallback(async (currentStageKey: 
 
 
   const value: AppContextType = { 
-    withMutation, withProgressMutation, isChecking, setIsChecking, loading, setLoading, isMutating, processingBookIds, setIsMutating,
+    handleDownloadFile, handleDownload, withMutation, withProgressMutation, isChecking, setIsChecking, loading, setLoading, isMutating, processingBookIds, setIsMutating,
     progress, setProgress, progressMutation, setProgressMutation,
     currentUser, login, logout, changePassword,
     navigationHistory, addNavigationHistoryItem,
