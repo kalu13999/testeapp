@@ -385,11 +385,6 @@ export default function DocumentDetailClient({ docId, btnNavigation}: DocumentDe
               {btnNavigation ? (
                 <div className="flex justify-between items-center">
                   <span>Book:</span>
-                  <Badge variant="secondary">{book?.name}</Badge>
-                </div>
-              ) : (
-                <div className="flex justify-between items-center">
-                  <span>Book:</span>
                   <strong>
                     <Link
                       href={`/books/${document.bookId}`}
@@ -398,6 +393,11 @@ export default function DocumentDetailClient({ docId, btnNavigation}: DocumentDe
                       {book?.name}
                     </Link>
                   </strong>
+                </div>
+              ) : (
+                <div className="flex justify-between items-center">
+                  <span>Book:</span>
+                  <Badge variant="secondary">{book?.name}</Badge>
                 </div>
               )}
 
