@@ -71,6 +71,260 @@ const gridClasses: { [key: number]: string } = {
   7: 'grid-cols-7', 8: 'grid-cols-8', 9: 'grid-cols-9', 10: 'grid-cols-10', 11: 'grid-cols-11', 12: 'grid-cols-12'
 };
 
+
+// ====================================================================
+// Componente PageCard extraído
+// ====================================================================
+interface PageCardProps {
+  page: AppDocument;
+  date?: string;
+  bookStatus: string;
+  bookName: string;
+  handleOpenDoc: (id: string) => void;
+  handleDownloadFile: (file: FileOption, bookName?: string, bookStatus?: string, bookGroupName?: string, imageName?: string, format?: string) => void;
+  openTaggingDialog: (doc: AppDocument) => void;
+}
+
+const PageCard = React.memo(function PageCard({
+  page,
+  date,
+  bookStatus,
+  bookName,
+  handleOpenDoc,
+  handleDownloadFile,
+  openTaggingDialog,
+}: PageCardProps) {
+  return (
+    <div className="relative group">
+      <a
+        href="#"
+        onClick={(e) => { e.preventDefault(); handleOpenDoc(page.id); }}
+        className="block"
+      >
+        <Card className="overflow-hidden hover:shadow-lg transition-shadow relative border-2 border-transparent group-hover:border-primary">
+          <CardContent className="p-0">
+            <Image
+              src={page.imageUrl || "https://placehold.co/400x550.png"}
+              alt={`Preview of ${page.name}`}
+              width={400}
+              height={550}
+              className="aspect-[4/5.5] object-contain w-full h-full"
+              unoptimized
+            />
+          </CardContent>
+          <CardFooter className="p-2 min-h-[50px] flex-col items-start gap-1">
+            <p className="text-xs font-medium break-words">{page.name}</p>
+            {page.tags?.length > 0 && (
+              <div className="flex flex-wrap gap-1 pt-1">
+                {page.tags.map(tag => <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>)}
+              </div>
+            )}
+            <div className="flex gap-2 pt-2">
+              {["Final Quality Control", "Delivery", "Pending Validation", "Client Rejected", "Corrected", "Finalized", "Archived"].includes(bookStatus) &&
+                filesDownloadImages.map((file) => (
+                  <Button
+                    key={file.label}
+                    variant="secondary"
+                    size="icon"
+                    className="flex flex-col items-center gap-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDownloadFile(
+                        file,
+                        bookName,
+                        bookStatus,
+                        date ?? bookName,
+                        page.name,
+                        file.label
+                      );
+                    }}
+                  >
+                    <Download className="h-4 w-4" />
+                    <span className="text-xs">{file.label}</span>
+                  </Button>
+                ))
+              }
+            </div>
+          </CardFooter>
+        </Card>
+      </a>
+      <Button
+        variant="secondary"
+        size="icon"
+        className="h-7 w-7 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+        onClick={() => openTaggingDialog(page)}
+      >
+        <Tag className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+});
+
+
+// ====================================================================
+// Componente ReviewPages extraído
+// ====================================================================
+interface ReviewPagesProps {
+  reviewTask: ValidationTask | null;
+  groupedMemo: ReturnType<typeof groupPages>;
+  columnCols: number;
+  handleDownload: (file: FileOption, bookName: string, bookStatus: string, date: string) => void;
+  PageCardComponent: React.FC<PageCardProps>;
+  handleOpenDoc: (id: string) => void;
+  handleDownloadFile: (file: FileOption, bookName?: string, bookStatus?: string, bookGroupName?: string, imageName?: string, format?: string) => void;
+  openTaggingDialog: (doc: AppDocument) => void;
+}
+
+function groupPages(pages: AppDocument[]) {
+  const grouped: Record<string, Record<string, AppDocument[]>> = {};
+  const ungrouped: AppDocument[] = [];
+
+  pages.forEach(page => {
+    const match = page.name.match(/^(\d+)_([\d-]+)_/);
+
+    if (match) {
+      const [_, prefix, date] = match;
+      if (!grouped[prefix]) grouped[prefix] = {};
+      if (!grouped[prefix][date]) grouped[prefix][date] = [];
+      grouped[prefix][date].push(page);
+    } else {
+      ungrouped.push(page);
+    }
+  });
+
+  return { grouped, ungrouped };
+}
+
+const ReviewPages = React.memo(({
+  reviewTask,
+  groupedMemo,
+  columnCols,
+  handleDownload,
+  PageCardComponent,
+  handleOpenDoc,
+  handleDownloadFile,
+  openTaggingDialog
+}: ReviewPagesProps) => {
+
+  if (!reviewTask) return null;
+
+  const { grouped, ungrouped } = groupedMemo;
+
+  return (
+    <ScrollArea className="h-full pr-6">
+      <div className="flex items-center justify-end gap-4 py-4 sticky top-0 bg-background z-10">
+        <Label htmlFor="columns-slider" className="text-sm whitespace-nowrap">Tamanho da miniatura:</Label>
+        <Slider
+          id="columns-slider"
+          min={1}
+          max={12}
+          step={1}
+          value={[columnCols]}
+          onValueChange={() => {}}
+          className="w-full max-w-[200px]"
+        />
+      </div>
+
+      {Object.keys(grouped).length > 0 && (
+        <Accordion type="multiple" defaultValue={[Object.keys(grouped)[0]]} className="w-full space-y-4">
+          {Object.entries(grouped).map(([prefix, dates]) => (
+            <AccordionItem key={prefix} value={prefix}>
+              <AccordionTrigger className="text-lg font-semibold">{prefix}</AccordionTrigger>
+              <AccordionContent>
+                <Accordion type="multiple" defaultValue={[Object.keys(dates)[0]]} className="pl-4">
+                  {Object.entries(dates)
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .map(([date, datePages]) => (
+                      <AccordionItem key={date} value={date}>
+                        <div className="flex items-center justify-between w-full">
+                          <AccordionTrigger className="text-md font-medium flex-1 text-left">
+                            {date} <span className="text-muted-foreground ml-2">({datePages.length})</span>
+                          </AccordionTrigger>
+                          <div className="flex gap-4 ml-4">
+                            {["Final Quality Control", "Delivery", "Pending Validation", "Client Rejected", "Corrected", "Finalized", "Archived"].includes(reviewTask.book.status) &&
+                              filesdownload.map(file => (
+                                <Button
+                                  key={file.label}
+                                  variant="secondary"
+                                  className="flex flex-col items-center gap-1"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDownload(file, reviewTask.book.name, reviewTask.book.status, date);
+                                  }}
+                                >
+                                  <Download className="h-6 w-6" />
+                                  <span className="text-sm">{file.label}</span>
+                                </Button>
+                              ))
+                            }
+                          </div>
+                        </div>
+                        <AccordionContent>
+                          <div className={`grid gap-4 ${gridClasses[columnCols]}`}>
+                             {datePages
+                              .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+                              .map(page => <PageCardComponent 
+                                key={page.id} 
+                                page={page} 
+                                date={date} 
+                                bookStatus={reviewTask.book.status} 
+                                bookName={reviewTask.book.name}
+                                handleOpenDoc={handleOpenDoc}
+                                handleDownloadFile={handleDownloadFile}
+                                openTaggingDialog={openTaggingDialog}
+                               />)
+                            }
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                </Accordion>
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      )}
+
+      {ungrouped.length > 0 && (
+        <>
+          <div className="flex gap-4 ml-4">
+            {["Final Quality Control", "Delivery", "Pending Validation", "Client Rejected", "Corrected", "Finalized", "Archived"].includes(reviewTask.book.status) &&
+              filesdownload.map(file => (
+                <Button
+                  key={file.label}
+                  variant="secondary"
+                  className="flex flex-col items-center gap-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDownload(file, reviewTask.book.name, reviewTask.book.status, reviewTask.book.name);
+                  }}
+                >
+                  <Download className="h-6 w-6" />
+                  <span className="text-sm">{file.label}</span>
+                </Button>
+              ))
+            }
+          </div>
+          <div className={`grid gap-4 mt-6 ${gridClasses[columnCols]}`}>
+           {ungrouped
+              .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+              .map(page => <PageCardComponent 
+                key={page.id} 
+                page={page} 
+                bookStatus={reviewTask.book.status} 
+                bookName={reviewTask.book.name}
+                handleOpenDoc={handleOpenDoc}
+                handleDownloadFile={handleDownloadFile}
+                openTaggingDialog={openTaggingDialog} 
+              />)
+            }
+          </div>
+        </>
+      )}
+    </ScrollArea>
+  );
+});
+
 export default function MyTasksClient() {
   const {
     currentUser, permissions, deliveryBatches, deliveryBatchItems, books, users,
@@ -85,15 +339,15 @@ export default function MyTasksClient() {
   const [taggingState, setTaggingState] = React.useState<{ open: boolean; doc: AppDocument | null; availableTags: RejectionTag[]; }>({ open: false, doc: null, availableTags: [] });
   const { toast } = useToast();
   const [openDocId, setOpenDocId] = React.useState<string | null>(null);
-  let baseNameRef = React.useRef<string | undefined>(undefined);
 
   const handleOpenDoc = React.useCallback((id: string | null) => {
     setOpenDocId(id);
-  }, [setOpenDocId]);
+  }, []);
 
   const handleCloseDoc = React.useCallback(() => {
     setOpenDocId(null);
-  }, [setOpenDocId]);
+  }, []);
+  
 
   const canViewAll = React.useMemo(() => {
     if (!currentUser) return false;
@@ -165,66 +419,44 @@ export default function MyTasksClient() {
   };
 
 const openTaggingDialog = React.useCallback((doc: AppDocument) => {
-  const book = books.find(b => b.id === doc.bookId);
-  if (!book) return;
+    const book = books.find(b => b.id === doc.bookId);
+    if (!book) return;
 
-  if (!currentUser?.clientId && !isAdmin) return;
-  
-  let idCliente: string;
-  if (isAdmin)
-    idCliente = book.clientId
-  else if (currentUser?.clientId)
-    idCliente =  currentUser.clientId
+    if (!currentUser?.clientId && !isAdmin) return;
+    
+    let idCliente: string;
+    if (isAdmin)
+      idCliente = book.clientId
+    else if (currentUser?.clientId)
+      idCliente =  currentUser.clientId
 
-  const availableTags = rejectionTags.filter(tag => tag.clientId === idCliente);
-  setTaggingState({
-    open: true,
-    doc: doc,
-    availableTags: availableTags
-  });
-}, [books, currentUser, isAdmin, rejectionTags]);
+    const availableTags = rejectionTags.filter(tag => tag.clientId === idCliente);
+    setTaggingState({
+      open: true,
+      doc: doc,
+      availableTags: availableTags
+    });
+  }, [books, currentUser, isAdmin, rejectionTags]);
   
-  const closeTaggingDialog = () => {
+ const closeTaggingDialog = React.useCallback(() => {
     setTaggingState({ open: false, doc: null, availableTags: [] });
-  };
+  }, []);
   
-  const handleTaggingSubmit = (tags: string[]) => {
+  const handleTaggingSubmit = React.useCallback((tags: string[]) => {
     if (taggingState.doc) {
       tagPageForRejection(taggingState.doc.id, tags);
     }
     closeTaggingDialog();
-  };
+  }, [taggingState.doc, tagPageForRejection, closeTaggingDialog]);
 
-  const getPagesForBook = (bookId: string) => {
+
+  const getPagesForBook = React.useCallback((bookId: string) => {
     const getPageNum = (name: string): number => {
         const match = name.match(/ - Page (\d+)/);
         return match ? parseInt(match[1], 10) : 9999; 
     }
     return documents.filter(doc => doc.bookId === bookId).sort((a, b) => getPageNum(a.name) - getPageNum(b.name));
-  }
-
-  function groupPages(pages: AppDocument[]) {
-    const grouped: Record<string, Record<string, AppDocument[]>> = {};
-    const ungrouped: AppDocument[] = [];
-
-    pages.forEach(page => {
-      // casa com formato: 90454_1988-11-02_0001
-      const match = page.name.match(/^(\d+)_([\d-]+)_/);
-
-      if (match) {
-        const [_, prefix, date] = match;
-
-        if (!grouped[prefix]) grouped[prefix] = {};
-        if (!grouped[prefix][date]) grouped[prefix][date] = [];
-
-        grouped[prefix][date].push(page);
-      } else {
-        ungrouped.push(page);
-      }
-    });
-
-    return { grouped, ungrouped };
-  }
+  }, [documents]);
 
   // === MEMO: pages para o review atual
   const pagesMemo = React.useMemo(() => {
@@ -234,199 +466,12 @@ const openTaggingDialog = React.useCallback((doc: AppDocument) => {
 
   const groupedMemo = React.useMemo(() => groupPages(pagesMemo), [pagesMemo]);
 
-  // === PageCard memoizado
-  const PageCard = React.useMemo(() => React.memo(function PageCard({
-    page, date
-  }: { page: AppDocument; date?: string }) {
-    baseNameRef.current = date;  
-    return (
-      <div className="relative group">
-        <a
-          href="#"
-          onClick={(e) => { e.preventDefault(); handleOpenDoc(page.id); }}
-          className="block"
-        >
-          <Card className="overflow-hidden hover:shadow-lg transition-shadow relative border-2 border-transparent group-hover:border-primary">
-            <CardContent className="p-0">
-            <Image
-                src={page.imageUrl || "https://placehold.co/400x550.png"}
-                alt={`Preview of ${page.name}`}
-                width={400}
-                height={550}
-                className="aspect-[4/5.5] object-contain w-full h-full"
-                unoptimized
-              />
-            </CardContent>
-            <CardFooter className="p-2 min-h-[50px] flex-col items-start gap-1">
-              <p className="text-xs font-medium break-words">{page.name}</p>
-              {page.tags?.length > 0 && (
-                <div className="flex flex-wrap gap-1 pt-1">
-                  {page.tags.map(tag => <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>)}
-                </div>
-              )}
-              <div className="flex gap-2 pt-2">
-                {["Final Quality Control", "Delivery", "Pending Validation", "Client Rejected", "Corrected", "Finalized", "Archived"].includes(reviewState.task?.book.status || "") &&
-                  filesDownloadImages.map((file) => (
-                    <Button
-                      key={file.label}
-                      variant="secondary"
-                      size="icon"
-                      className="flex flex-col items-center gap-1"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDownloadFile(
-                          file,
-                          reviewState.task?.book.name,
-                          reviewState.task?.book.status,
-                          date ?? reviewState.task?.book.name,
-                          page.name,
-                          file.label
-                        );
-                      }}
-                    >
-                      <Download className="h-4 w-4" />
-                      <span className="text-xs">{file.label}</span>
-                    </Button>
-                  ))
-                }
-              </div>
-            </CardFooter>
-          </Card>
-        </a>
-
-        <Button
-          variant="secondary"
-          size="icon"
-          className="h-7 w-7 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={() => openTaggingDialog(page)}
-        >
-          <Tag className="h-4 w-4" />
-        </Button>
-      </div>
-    );
-  }), [handleOpenDoc, handleDownloadFile, filesDownloadImages, reviewState.task, openTaggingDialog]);
+  const PageCardComponent = React.useCallback((props: PageCardProps) => {
+      return <PageCard {...props} />;
+  }, []);
 
 
-  interface ReviewPagesProps {
-  groupedMemo: ReturnType<typeof groupPages>;
-  columnCols: number;
-  reviewTask: ValidationTask | null;
-  handleDownload: (file: FileOption, bookName: string, bookStatus: string, date: string) => void;
-  filesdownload: FileOption[];
-  PageCard: React.FC<{ page: AppDocument; date?: string }>;
-}
-
-  const ReviewPages = React.memo(({
-    groupedMemo,
-    columnCols,
-    reviewTask,
-    handleDownload,
-    filesdownload,
-    PageCard
-  }: ReviewPagesProps) => {
-
-    if (!reviewTask) return null;
-
-    const { grouped, ungrouped } = groupedMemo;
-
-    return (
-      <ScrollArea className="h-full pr-6">
-        <div className="flex items-center justify-end gap-4 py-4 sticky top-0 bg-background z-10">
-          <Label htmlFor="columns-slider" className="text-sm whitespace-nowrap">Tamanho da miniatura:</Label>
-          <Slider
-            id="columns-slider"
-            min={1}
-            max={12}
-            step={1}
-            value={[columnCols]}
-            onValueChange={() => {}}
-            className="w-full max-w-[200px]"
-          />
-        </div>
-
-        {/* Acordeões para grupos válidos */}
-        {Object.keys(grouped).length > 0 && (
-          <Accordion type="multiple" defaultValue={[Object.keys(grouped)[0]]} className="w-full space-y-4">
-            {Object.entries(grouped).map(([prefix, dates]) => (
-              <AccordionItem key={prefix} value={prefix}>
-                <AccordionTrigger className="text-lg font-semibold">{prefix}</AccordionTrigger>
-                <AccordionContent>
-                  <Accordion type="multiple" defaultValue={[Object.keys(dates)[0]]} className="pl-4">
-                    {Object.entries(dates)
-                      .sort(([a], [b]) => a.localeCompare(b))
-                      .map(([date, datePages]) => (
-                        <AccordionItem key={date} value={date}>
-                          <div className="flex items-center justify-between w-full">
-                            <AccordionTrigger className="text-md font-medium flex-1 text-left">
-                              {date} <span className="text-muted-foreground ml-2">({datePages.length})</span>
-                            </AccordionTrigger>
-                            <div className="flex gap-4 ml-4">
-                              {["Final Quality Control", "Delivery", "Pending Validation", "Client Rejected", "Corrected", "Finalized", "Archived"].includes(reviewTask.book.status) &&
-                                filesdownload.map(file => (
-                                  <Button
-                                    key={file.label}
-                                    variant="secondary"
-                                    className="flex flex-col items-center gap-1"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDownload(file, reviewTask.book.name, reviewTask.book.status, date);
-                                    }}
-                                  >
-                                    <Download className="h-6 w-6" />
-                                    <span className="text-sm">{file.label}</span>
-                                  </Button>
-                                ))
-                              }
-                            </div>
-                          </div>
-                          <AccordionContent>
-                            <div className={`grid gap-4 ${gridClasses[columnCols]}`}>
-                              {datePages
-                                .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
-                                .map(page => <PageCard key={page.id} page={page} date={date} />)}
-                            </div>
-                          </AccordionContent>
-                        </AccordionItem>
-                      ))}
-                  </Accordion>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-        )}
-
-        {/* Grid normal para arquivos não agrupáveis */}
-        {ungrouped.length > 0 && (
-          <>
-            <div className="flex gap-4 ml-4">
-              {["Final Quality Control", "Delivery", "Pending Validation", "Client Rejected", "Corrected", "Finalized", "Archived"].includes(reviewTask.book.status) &&
-                filesdownload.map(file => (
-                  <Button
-                    key={file.label}
-                    variant="secondary"
-                    className="flex flex-col items-center gap-1"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDownload(file, reviewTask.book.name, reviewTask.book.status, reviewTask.book.name);
-                    }}
-                  >
-                    <Download className="h-6 w-6" />
-                    <span className="text-sm">{file.label}</span>
-                  </Button>
-                ))
-              }
-            </div>
-            <div className={`grid gap-4 mt-6 ${gridClasses[columnCols]}`}>
-              {ungrouped
-                .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
-                .map(page => <PageCard key={page.id} page={page} />)}
-            </div>
-          </>
-        )}
-      </ScrollArea>
-    );
-  });
-  // === JSX render
+    // === JSX render
   return (
     <>
       <Card>
@@ -488,12 +533,14 @@ const openTaggingDialog = React.useCallback((doc: AppDocument) => {
                 </DialogHeader>
               <div className="flex-1 min-h-0">
                   <ReviewPages
+                    reviewTask={reviewState.task}
                     groupedMemo={groupedMemo}
                     columnCols={columnCols}
-                    reviewTask={reviewState.task}
                     handleDownload={handleDownload}
-                    filesdownload={filesdownload}
-                    PageCard={PageCard}
+                    PageCardComponent={PageCardComponent}
+                    handleOpenDoc={handleOpenDoc}
+                    handleDownloadFile={handleDownloadFile}
+                    openTaggingDialog={openTaggingDialog}
                   />
               </div>
               {/* === Overlay único: renderiza apenas 1 vez === */}
@@ -506,38 +553,13 @@ const openTaggingDialog = React.useCallback((doc: AppDocument) => {
                   return (
                     <div className="fixed inset-0 bg-background z-50 flex flex-col animate-fade-in">
                       <div className="flex items-center justify-between p-4 border-b">
-                        <div className="flex items-center gap-4">
-                          <h2 className="text-xl font-bold">{currentPage?.name}</h2>
-
-                          <div className="flex items-center gap-2">
-                            {["Final Quality Control","Delivery","Pending Validation","Client Rejected","Corrected","Finalized","Archived"].includes(reviewState.task?.book.status || "") &&
-                              filesDownloadImages.map(file => (
-                                <Button
-                                  key={file.label}
-                                  variant="secondary"
-                                  size="icon"
-                                  onClick={() => handleDownloadFile(
-                                    file,
-                                    reviewState.task?.book.name,
-                                    reviewState.task?.book.status,
-                                    baseNameRef.current ?? reviewState.task?.book.name,
-                                    currentPage?.name,
-                                    file.label
-                                  )}
-                                >
-                                  <Download className="h-4 w-4" />
-                                  <span className="text-xs">{file.label}</span>
-                                </Button>
-                              ))
-                            }
-                          </div>
-                        </div>
+                        <h2 className="text-xl font-bold">{currentPage?.name}</h2>
 
                         <div className="flex items-center gap-3">
-                          <Button variant="outline" size="icon" disabled={!prevPage} onClick={() => prevPage && handleOpenDoc(prevPage.id)}>
+                          <Button variant="outline" size="icon" className="h-10 w-10" disabled={!prevPage} onClick={() => prevPage && handleOpenDoc(prevPage.id)}>
                             <ArrowLeft className="h-6 w-6" />
                           </Button>
-                          <Button variant="outline" size="icon" disabled={!nextPage} onClick={() => nextPage && handleOpenDoc(nextPage.id)}>
+                          <Button variant="outline" size="icon" className="h-10 w-10" disabled={!nextPage} onClick={() => nextPage && handleOpenDoc(nextPage.id)}>
                             <ArrowRight className="h-6 w-6" />
                           </Button>
                         </div>
@@ -546,7 +568,7 @@ const openTaggingDialog = React.useCallback((doc: AppDocument) => {
                           <Button variant="secondary" onClick={() => currentPage && openTaggingDialog(currentPage)}>
                             <Tag className="mr-2 h-4 w-4" /> Registar Motivo de Rejeição
                           </Button>
-                          <Button variant="destructive" size="icon" onClick={handleCloseDoc}>
+                          <Button variant="destructive" size="icon" className="h-10 w-10" onClick={handleCloseDoc}>
                             <X className="h-6 w-6" />
                           </Button>
                         </div>

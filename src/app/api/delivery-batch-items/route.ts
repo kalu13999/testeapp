@@ -6,7 +6,7 @@ export async function GET() {
   let connection: PoolConnection | null = null;
   try {
     connection = await getConnection();
-    const [rows] = await connection.execute('SELECT * FROM delivery_batch_items');
+    const [rows] = await connection.execute("SELECT * FROM delivery_batch_items ORDER BY FIELD(status, 'rejected', 'approved', 'pending'), user_id DESC;");
     return NextResponse.json(rows);
   } catch (error) {
     console.error("Error fetching delivery_batch_items:", error);
