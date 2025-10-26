@@ -68,7 +68,7 @@ const gridClasses: { [key: number]: string } = {
 export default function MyValidationsClient() {
   const {
     currentUser, permissions, deliveryBatches, deliveryBatchItems, books, users,
-    documents, rejectionTags, selectedProjectId,
+    documents, rejectionTags, selectedProjectId, setSelectedBookId, selectedBookId,
     setProvisionalDeliveryStatus, tagPageForRejection
   } = useAppContext();
   
@@ -78,6 +78,8 @@ export default function MyValidationsClient() {
   const [rejectionComment, setRejectionComment] = React.useState("");
   const [taggingState, setTaggingState] = React.useState<{ open: boolean; doc: AppDocument | null; availableTags: RejectionTag[]; }>({ open: false, doc: null, availableTags: [] });
   const [columnStates, setColumnStates] = React.useState<{ [key: string]: { cols: number } }>({});
+
+  const [openBooks, setOpenBooks] = React.useState<string[]>([]);
 
   const canViewAll = React.useMemo(() => {
     if (!currentUser) return false;
@@ -448,7 +450,21 @@ export default function MyValidationsClient() {
                     </AccordionTrigger>
                   </div>
                   <AccordionContent className="p-4 space-y-4">
-                     <Accordion type="multiple" className="w-full">
+                     <Accordion type="multiple" className="w-full"
+                       value={openBooks}
+                        onValueChange={(newValues) => {
+                          // Detecta o livro que acabou de ser aberto
+                          const newlyOpened = newValues.find(v => !openBooks.includes(v));
+
+                          setOpenBooks(newValues);
+
+                          if (newlyOpened) {
+                            setSelectedBookId(newlyOpened);
+                            console.log("Livro aberto:", newlyOpened);
+                          }
+                        }}
+                     
+                     >
                         {paginatedBooks.map(task => {
                             const { book } = task;
                             const pages = pagesByBook.get(book.id) || [];

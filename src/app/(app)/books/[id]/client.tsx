@@ -13,10 +13,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+
+import DocumentDetailClient from '@/app/(app)/documents/[id]/client';
 import type { EnrichedBook, EnrichedAuditLog } from "@/lib/data";
 import type { AppDocument, FileOption} from "@/context/workflow-context";
 import { useAppContext } from "@/context/workflow-context";
-import { Download, Info, BookOpen, History, InfoIcon, ArrowUp, ArrowDown, ChevronsUpDown, ShieldAlert, AlertTriangle, MessageSquarePlus } from "lucide-react";
+import { X, ArrowLeft, ArrowRight, Download, Info, BookOpen, History, InfoIcon, ArrowUp, ArrowDown, ChevronsUpDown, ShieldAlert, AlertTriangle, Eye, EyeOff, MessageSquarePlus, Tag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
@@ -66,25 +68,47 @@ const StageDetailItem = ({ stage, user, startTime, endTime }: { stage: string, u
 );
 
 export default function BookDetailClient({ bookId }: BookDetailClientProps) {
-  const { books, documents, users, auditLogs, bookObservations, addBookObservation, handleDownload, handleDownloadFile } = useAppContext();
+  const { setSelectedBookId, selectedBookId, books, documents, users, auditLogs, bookObservations, addBookObservation, handleDownload, handleDownloadFile } = useAppContext();
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
     { id: 'date', desc: true }
   ]);
-  const [columns, setColumns] = React.useState(8);
+  const [isVisible, setIsVisible] = React.useState(true);
+  const [columns, setColumns] = React.useState(6);
   const [isObservationModalOpen, setIsObservationModalOpen] = React.useState(false);
   const [newObservation, setNewObservation] = React.useState('');
+  const [openDocId, setOpenDocId] = React.useState<string | null>(null);
+  const [bookGroupNameDoc, setbookGroupNameDoc] = React.useState<string | null>(null);
+  const [showOnlyTagged, setShowOnlyTagged] = React.useState(false);
+
+
+   const handleOpenDoc = React.useCallback((id: string | null, bookGroup: string | null) => {
+     setbookGroupNameDoc(bookGroup);
+     setOpenDocId(id);
+   }, []);
+ 
+   const handleCloseDoc = React.useCallback(() => {
+     setbookGroupNameDoc(null);
+     setOpenDocId(null);
+   }, []);
+
+    React.useEffect(() => {
+        setSelectedBookId(bookId);
+    }, [bookId, setSelectedBookId]);
 
   const book = books.find(b => b.id === bookId);
   
   const pages = React.useMemo(() => {
     const getPageNum = (name: string): number => {
         const match = name.match(/ - Page (\d+)/);
-        return match ? parseInt(match[1], 10) : 9999; 
-    }
+        return match ? parseInt(match[1], 10) : 9999;
+    };
+
     return documents
-      .filter(d => d.bookId === bookId)
-      .sort((a, b) => getPageNum(a.name) - getPageNum(b.name));
-  }, [documents, bookId]);
+        .filter(d => d.bookId === bookId)
+        .filter(d => !showOnlyTagged || ((d.tags && d.tags.length > 0) || (d.flag && d.flag.length > 0))
+)
+        .sort((a, b) => getPageNum(a.name) - getPageNum(b.name));
+    }, [documents, bookId, showOnlyTagged]);
   
   const scanner = users.find(u => u.id === book?.scannerUserId);
   const indexer = users.find(u => u.id === book?.indexerUserId);
@@ -207,7 +231,8 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
   return (
     <>
     <div className="grid lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-2 space-y-6">
+    {/* Coluna principal */}
+    <div className={isVisible ? "lg:col-span-2 space-y-6" : "lg:col-span-3 space-y-6"}>
         <div className="flex justify-between items-start">
             <div>
                 <p className="text-sm text-muted-foreground">{book.projectName} / {book.clientName}</p>
@@ -215,9 +240,38 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
                 <p className="text-muted-foreground max-w-2xl mt-1">
                     A mostrar {pages.length} de {book.expectedDocuments} páginas esperadas.    </p>
             </div>
-            <Button onClick={() => setIsObservationModalOpen(true)}>
-                <MessageSquarePlus className="mr-2 h-4 w-4" /> Adicionar Observação
-            </Button>
+            <div className="mb-4 flex justify-end gap-2">
+                {/* Botão de adicionar observação */}
+                <Button onClick={() => setIsObservationModalOpen(true)} className="flex items-center">
+                    <MessageSquarePlus className="mr-2 h-4 w-4" />
+                    Adicionar Observação
+                </Button>
+
+                {/* Botão de mostrar/esconder detalhes */}
+                <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    className="flex items-center"
+                    onClick={() => setIsVisible(!isVisible)}
+                >
+                    {isVisible ? (
+                    <Eye className="mr-2 h-4 w-4" />
+                    ) : (
+                    <EyeOff className="mr-2 h-4 w-4" />
+                    )}
+                    {isVisible ? "Esconder detalhes" : "Mostrar detalhes do livro"}
+                </Button>
+
+                <Button
+                variant={showOnlyTagged ? "default" : "outline"}
+                size="sm"
+                className="flex items-center"
+                onClick={() => setShowOnlyTagged(!showOnlyTagged)}
+                >
+                <Tag className="mr-2 h-4 w-4" />
+                {showOnlyTagged ? "Mostrar todos" : "Mostrar Anomalas"}
+                </Button>
+            </div>
         </div>
 
         <div className="flex items-center gap-4 py-2">
@@ -256,7 +310,9 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
                         className="pl-4">
                             {Object.entries(dates)
                             .sort(([a], [b]) => a.localeCompare(b))
-                            .map(([date, datePages]) => (
+                            .map(([date, datePages]) => {
+                            const baseFolderBook = `${prefix}_${date}`;  // Declare this here, before JSX rendering
+                            return (
                                 <AccordionItem key={date} value={date}>
                                     <div className="flex items-center justify-between w-full">
                                         <AccordionTrigger className="text-md font-medium">
@@ -272,7 +328,7 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
                                                 className="flex flex-col items-center gap-1"
                                                 onClick={(e) => {
                                                     e.stopPropagation(); // evita abrir/fechar o accordion
-                                                    handleDownload(file, book.name, book.status, date);
+                                                    handleDownload(file, book.name, book.status, baseFolderBook);
                                                 }}
                                                 >
                                                 <Download className="h-6 w-6" />
@@ -287,54 +343,90 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
                                         .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
                                         .map(page => (
                                             <div key={page.id} className="relative group">
-                                            <Link href={`/documents/${page.id}`}>
-                                                <Card className="overflow-hidden hover:shadow-lg transition-shadow relative border-2 border-transparent group-hover:border-primary">
-                                                <CardContent className="p-0">
-                                                    <Image
-                                                    src={page.imageUrl || "https://placehold.co/400x550.png"}
-                                                    alt={`Preview of ${page.name}`}
-                                                    width={400}
-                                                    height={550}
-                                                    className="aspect-[4/5.5] object-contain w-full h-full"
-                                                    unoptimized
-                                                    />
-                                                </CardContent>
-                                                <CardFooter className="p-2 flex-col items-start gap-1">
-                                                    <p className="text-xs font-medium whitespace-pre-wrap">{page.name}</p>
-                                                    {/* Botões de download no rodapé com label */}
-                                                    <div className="flex gap-2 pt-2">
-                                                        {["Final Quality Control", "Delivery", "Pending Validation", "Client Rejected", "Corrected", "Finalized", "Archived"].includes(book.status) && 
-                                                        filesDownloadImages.map((file) => (
-                                                        <Button
-                                                            key={file.label}
-                                                            variant="secondary"
-                                                            size="icon"
-                                                            className="flex flex-col items-center gap-1"
-                                                            onClick={() =>
-                                                            handleDownloadFile(
-                                                                file,
-                                                                book.name,
-                                                                book.status,
-                                                                date,
-                                                                page.name,
-                                                                file.label
-                                                            )
-                                                            }
-                                                        >
-                                                            <Download className="h-4 w-4" />
-                                                            <span className="text-xs">{file.label}</span>
-                                                        </Button>
-                                                        ))}
-                                                    </div>
-                                                </CardFooter>
-                                                </Card>
-                                            </Link>
+                                                     
+                                              <Card 
+  className={`
+    overflow-hidden 
+    hover:shadow-lg 
+    transition-shadow 
+    relative 
+    border-2  /* contorno mais carregado */
+    ${page.flag === 'error' ? 'border-destructive bg-destructive/10' : ''}
+    ${page.flag === 'warning' ? 'border-orange-500 bg-orange-100' : ''}
+    ${page.flag === 'info' ? 'border-primary bg-primary/10' : ''}
+    ${!page.flag ? 'border-transparent' : ''}
+  `}
+>
+  {/* Apenas a imagem é clicável */}
+  <div className="relative cursor-pointer w-full" onClick={() => handleOpenDoc(page.id, baseFolderBook ?? book?.name)}>
+    <Image
+      src={page.imageUrl || "https://placehold.co/400x550.png"}
+      alt={`Preview of ${page.name}`}
+      width={400}
+      height={550}
+      className="aspect-[4/5.5] object-contain w-full h-full"
+      unoptimized
+    />
+
+    {page.flagComment && (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="absolute inset-0 pointer-events-none"></div>
+          </TooltipTrigger>
+          <TooltipContent><p>{page.flagComment}</p></TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    )}
+  </div>
+
+  {/* Footer separado */}
+  <CardFooter className="p-2 flex-col items-start gap-1">
+    <p className="text-xs font-medium whitespace-pre-wrap">{page.name}</p>
+
+    {page.flag && page.flagComment && (
+      <div className="flex items-start gap-1.5 text-xs w-full text-muted-foreground">
+        {page.flag === 'error' && <ShieldAlert className="h-3 w-3 mt-0.5 flex-shrink-0 text-destructive"/>}
+        {page.flag === 'warning' && <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0 text-orange-500"/>}
+        {page.flag === 'info' && <Info className="h-3 w-3 mt-0.5 flex-shrink-0 text-primary"/>}
+        <p className="break-words">{page.flagComment}</p>
+      </div>
+    )}
+
+    {page.tags && page.tags.length > 0 && (
+      <div className="flex flex-wrap gap-1 pt-1">
+        {page.tags.map(tag => (
+          <Badge key={tag} variant="destructive" className="text-xs">{tag}</Badge>
+        ))}
+      </div>
+    )}
+
+    <div className="flex gap-2 pt-2">
+      {["Final Quality Control", "Delivery", "Pending Validation", "Client Rejected", "Corrected", "Finalized", "Archived"].includes(book.status) &&
+        filesDownloadImages.map((file) => (
+          <Button
+            key={file.label}
+            variant="secondary"
+            size="icon"
+            className="flex flex-col items-center gap-1"
+            onClick={() => handleDownloadFile(file, book.name, book.status, baseFolderBook ?? book?.name, page.name, file.label)}
+          >
+            <Download className="h-4 w-4" />
+            <span className="text-xs">{file.label}</span>
+          </Button>
+        ))
+      }
+    </div>
+  </CardFooter>
+</Card>
                                             </div>
                                         ))}
                                         </div>
                                     </AccordionContent>
                                 </AccordionItem>
-                            ))}
+                                );
+                                })
+                            }
                         </Accordion>
                         </AccordionContent>
                     </AccordionItem>
@@ -367,53 +459,88 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
                         .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
                         .map(page => (
                         <div key={page.id} className="relative group">
-                            <Link href={`/documents/${page.id}`}>
-                            <Card className="overflow-hidden hover:shadow-lg transition-shadow relative border-2 border-transparent group-hover:border-primary">
-                                <CardContent className="p-0">
-                                <Image
-                                    src={page.imageUrl || "https://placehold.co/400x550.png"}
-                                    alt={`Preview of ${page.name}`}
-                                    width={400}
-                                    height={550}
-                                    className="aspect-[4/5.5] object-contain w-full h-full"
-                                    unoptimized
-                                />
-                                </CardContent>
-                                <CardFooter className="p-2 flex-col items-start gap-1">
-                                <p className="text-xs font-medium whitespace-pre-wrap">{page.name}</p>
-                                {/* Botões de download no rodapé com label */}
-                                <div className="flex gap-2 pt-2">
-                                    {["Final Quality Control", "Delivery", "Pending Validation", "Client Rejected", "Corrected", "Finalized", "Archived"].includes(book.status) &&
-                                    filesDownloadImages.map((file) => (
-                                    <Button
-                                        key={file.label}
-                                        variant="secondary"
-                                        size="icon"
-                                        className="flex flex-col items-center gap-1"
-                                        onClick={() =>
-                                        handleDownloadFile(
-                                            file,
-                                            book.name,
-                                            book.status,
-                                            book.name,
-                                            page.name,
-                                            file.label
-                                        )
-                                        }
-                                    >
-                                        <Download className="h-4 w-4" />
-                                        <span className="text-xs">{file.label}</span>
-                                    </Button>
-                                    ))}
-                                </div>
-                                </CardFooter>
-                            </Card>
-                            </Link>
+
+                          <Card 
+  className={`
+    overflow-hidden 
+    hover:shadow-lg 
+    transition-shadow 
+    relative 
+    border-4  /* contorno mais carregado */
+    ${page.flag === 'error' ? 'border-destructive bg-destructive/20' : ''}
+    ${page.flag === 'warning' ? 'border-orange-500 bg-orange-200' : ''}
+    ${page.flag === 'info' ? 'border-primary bg-primary/20' : ''}
+    ${!page.flag ? 'border-transparent' : ''}
+  `}
+>
+  {/* Apenas a imagem é clicável */}
+  <div className="relative cursor-pointer w-full" onClick={() => handleOpenDoc(page.id, book?.name)}>
+    <Image
+      src={page.imageUrl || "https://placehold.co/400x550.png"}
+      alt={`Preview of ${page.name}`}
+      width={400}
+      height={550}
+      className="aspect-[4/5.5] object-contain w-full h-full"
+      unoptimized
+    />
+
+    {page.flagComment && (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="absolute inset-0 pointer-events-none"></div>
+          </TooltipTrigger>
+          <TooltipContent><p>{page.flagComment}</p></TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    )}
+  </div>
+
+  {/* Footer separado */}
+  <CardFooter className="p-2 flex-col items-start gap-1">
+    <p className="text-xs font-medium whitespace-pre-wrap">{page.name}</p>
+
+    {page.flag && page.flagComment && (
+      <div className="flex items-start gap-1.5 text-xs w-full text-muted-foreground">
+        {page.flag === 'error' && <ShieldAlert className="h-3 w-3 mt-0.5 flex-shrink-0 text-destructive"/>}
+        {page.flag === 'warning' && <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0 text-orange-500"/>}
+        {page.flag === 'info' && <Info className="h-3 w-3 mt-0.5 flex-shrink-0 text-primary"/>}
+        <p className="break-words">{page.flagComment}</p>
+      </div>
+    )}
+
+    {page.tags && page.tags.length > 0 && (
+      <div className="flex flex-wrap gap-1 pt-1">
+        {page.tags.map(tag => (
+          <Badge key={tag} variant="destructive" className="text-xs">{tag}</Badge>
+        ))}
+      </div>
+    )}
+
+    <div className="flex gap-2 pt-2">
+      {["Final Quality Control", "Delivery", "Pending Validation", "Client Rejected", "Corrected", "Finalized", "Archived"].includes(book.status) &&
+        filesDownloadImages.map((file) => (
+          <Button
+            key={file.label}
+            variant="secondary"
+            size="icon"
+            className="flex flex-col items-center gap-1"
+            onClick={() => handleDownloadFile(file, book.name, book.status, book.name, page.name, file.label)}
+          >
+            <Download className="h-4 w-4" />
+            <span className="text-xs">{file.label}</span>
+          </Button>
+        ))
+      }
+    </div>
+  </CardFooter>
+</Card>
                         </div>
                         ))}
                     </div>
                     </>
                 )}
+                
             </>
             );
         })()
@@ -427,8 +554,114 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
         </div>
         )}
       </div>
+      {/* Coluna de detalhes (aparece/desaparece) */}
+      {isVisible && (
+        <div className="lg:col-span-1 space-y-6">
+          {/* Card de Informações do Livro */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Informações do Livro</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <DetailItem 
+                label="Projeto" 
+                value={
+                  <Link href={`/projects/${book.projectId}`} className="text-primary hover:underline">
+                    {book.projectName}
+                  </Link>
+                } 
+              />
+              <DetailItem label="Cliente" value={book.clientName} />
+              <DetailItem label="Estado" value={<Badge variant="outline">{book.status}</Badge>} />
+              <Separator />
+              <DetailItem label="Autor" value={book.author || '—'} />
+              <DetailItem label="ISBN" value={book.isbn || '—'} />
+              <DetailItem label="Ano de Publicação" value={book.publicationYear || '—'} />
+              <DetailItem label="Prioridade" value={book.priority || '—'} />
+              <Separator />
+              <DetailItem label="Páginas Esperadas" value={book.expectedDocuments} />
+              <DetailItem label="Páginas Digitalizadas" value={book.documentCount} />
+              <Separator />
+              <DetailItem label="Armazenamento" value={book.storageName || '—'} />
+              <DetailItem label="Scanner (Dispositivo)" value={book.scannerDeviceName || '—'} />
+            </CardContent>
+          </Card>
 
-      <div className="lg:col-span-1 space-y-6">
+          {/* Card Workflow */}
+          <Card>
+            <CardHeader><CardTitle>Workflow Details</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <StageDetailItem stage="Scanning" user={scanner?.name} startTime={book.scanStartTime} endTime={book.scanEndTime} />
+              <StageDetailItem stage="Indexing" user={indexer?.name} startTime={book.indexingStartTime} endTime={book.indexingEndTime} />
+              <StageDetailItem stage="Quality Control" user={qc?.name} startTime={book.qcStartTime} endTime={book.qcEndTime} />
+            </CardContent>
+          </Card>
+
+          {book.info && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Informações Adicionais</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">{book.info}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Histórico de Observações */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-headline flex items-center gap-2"><History className="h-5 w-5"/> Histórico de Observações</CardTitle>
+              <CardDescription>Notas e observações sobre este livro.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {relevantObservations.length > 0 ? relevantObservations.map((obs) => (
+                  <div key={obs.id} className="flex items-start gap-3 relative">
+                    <div className="flex-1 -mt-1.5">
+                      <p className="text-sm text-foreground">{obs.observation}</p>
+                      <time className="text-xs text-muted-foreground/80">{new Date(obs.created_at).toLocaleString()} por {obs.userName}</time>
+                    </div>
+                  </div>
+                )) : (
+                  <p className="text-sm text-muted-foreground">Nenhuma observação registada para este livro.</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Histórico do Livro */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-headline flex items-center gap-2"><History className="h-5 w-5"/> Histórico do Livro</CardTitle>
+              <CardDescription>Eventos chave no ciclo de vida deste livro.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {bookAuditLogs.length > 0 ? bookAuditLogs.map((log, index) => (
+                  <div key={log.id} className="flex items-start gap-3 relative">
+                    {index < bookAuditLogs.length - 1 && <div className="absolute left-[7px] top-6 w-px h-full bg-border" />}
+                    <div className="flex-shrink-0 z-10">
+                      <div className="h-4 w-4 rounded-full bg-primary/20 flex items-center justify-center ring-4 ring-background">
+                        <InfoIcon className="h-2.5 w-2.5 text-primary"/>
+                      </div>
+                    </div>
+                    <div className="flex-1 -mt-1.5">
+                      <p className="font-medium text-xs">{log.action}</p>
+                      <p className="text-xs text-muted-foreground">{log.details}</p>
+                      <time className="text-xs text-muted-foreground/80">{new Date(log.date).toLocaleString()} por {log.user}</time>
+                    </div>
+                  </div>
+                )) : (
+                  <p className="text-sm text-muted-foreground">Nenhum histórico disponível para este livro.</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/*<div className="lg:col-span-1 space-y-6">
         <Card>
             <CardHeader>
                 <CardTitle>Informações do Livro</CardTitle>
@@ -527,7 +760,7 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
                 </div>
             </CardContent>
         </Card>
-      </div>
+      </div>*/}
     </div>
     
      <Dialog open={isObservationModalOpen} onOpenChange={setIsObservationModalOpen}>
@@ -552,6 +785,101 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
             </DialogFooter>
         </DialogContent>
       </Dialog>
+      {openDocId && (() => {
+        const currentIndex = pages.findIndex(doc => doc.id === openDocId);
+        const prevPage = currentIndex > 0 ? pages[currentIndex - 1] : null;
+        const nextPage = currentIndex < pages.length - 1 ? pages[currentIndex + 1] : null;
+        const currentPage = pages[currentIndex];
+
+        return (
+        <div className="fixed inset-0 bg-background z-50 flex flex-col animate-fade-in">
+            <div className="flex items-center justify-between p-4 border-b w-full">
+            {/* Esquerda: título + downloads */}
+            <div className="flex items-center gap-4">
+                <h2 className="text-xl font-bold">{currentPage?.name}</h2>
+
+                <div className="flex items-center gap-2">
+                {[
+                    "Final Quality Control",
+                    "Delivery",
+                    "Pending Validation",
+                    "Client Rejected",
+                    "Corrected",
+                    "Finalized",
+                    "Archived",
+                ].includes(book?.status || "") &&
+                    filesDownloadImages.map((file) => (
+                    <Button
+                        key={file.label}
+                        variant="secondary"
+                        size="icon"
+                        className="flex flex-col items-center gap-1"
+                        onClick={() =>
+                        handleDownloadFile(
+                            file,
+                            book?.name,
+                            book?.status,
+                            bookGroupNameDoc ?? book?.name,
+                            currentPage.name,
+                            file.label
+                        )
+                        }
+                    >
+                        <Download className="h-4 w-4" />
+                        <span className="text-xs">{file.label}</span>
+                    </Button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Centro: navegação */}
+            <div className="flex items-center gap-3">
+                <Button
+                variant="outline"
+                size="icon"
+                className="h-10 w-10"
+                disabled={!prevPage}
+                onClick={() =>
+                    prevPage && handleOpenDoc(prevPage.id, bookGroupNameDoc)
+                }
+                >
+                <ArrowLeft className="h-6 w-6" />
+                </Button>
+
+                <Button
+                variant="outline"
+                size="icon"
+                className="h-10 w-10"
+                disabled={!nextPage}
+                onClick={() =>
+                    nextPage && handleOpenDoc(nextPage.id, bookGroupNameDoc)
+                }
+                >
+                <ArrowRight className="h-6 w-6" />
+                </Button>
+            </div>
+
+            {/* Direita: ações */}
+            <div className="flex items-center gap-2">
+                
+                <Button
+                variant="destructive"
+                size="icon"
+                className="h-10 w-10"
+                onClick={handleCloseDoc}
+                >
+                <X className="h-6 w-6" />
+                </Button>
+            </div>
+            </div>
+
+
+            <div className="flex-1 overflow-auto p-6">
+            <DocumentDetailClient docId={openDocId} btnNavigation={false} />
+            </div>
+        </div>
+        );
+    })()}
     </>
   )
 }

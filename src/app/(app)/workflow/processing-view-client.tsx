@@ -278,7 +278,7 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
                     <KpiCard
                       title="Total de Páginas"
                       value={Object.values(groupedByBook)
-                        .reduce((sum, group) => sum + group.pages.length, 0)
+                        .reduce((sum, group) => sum + (group.pages.length > 0 ? group.pages.length : group.book.expectedDocuments || 0), 0)
                         .toLocaleString()}
                       icon={FileText}
                       description={`Soma total de páginas entre todos os livros.`}
@@ -302,7 +302,7 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
                       value={(() => {
                         const totalBooks = Object.keys(groupedByBook).length || 1;
                         const totalPages = Object.values(groupedByBook).reduce(
-                          (sum, g) => sum + g.pages.length,
+                          (sum, g) => sum + (g.pages.length > 0 ? g.pages.length : g.book.expectedDocuments || 0),
                           0
                         );
                         return Math.round(totalPages / totalBooks);
@@ -340,7 +340,7 @@ export default function ProcessingViewClient({ config }: ProcessingViewClientPro
                                 const name = group.book.storageName || "Sem Local";
                                 if (!acc[name]) acc[name] = { books: 0, pages: 0 };
                                 acc[name].books += 1;
-                                acc[name].pages += group.pages.length;
+                                acc[name].pages += group.pages.length > 0 ? group.pages.length : group.book.expectedDocuments || 0;
                                 return acc;
                               },
                               {} as Record<string, { books: number; pages: number }>

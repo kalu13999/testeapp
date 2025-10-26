@@ -261,6 +261,10 @@ export interface EnrichedBook extends RawBook {
     storageName?: string;
     storageId?: string;
     scannerDeviceName?: string;
+    docErrCount: number;
+    docWarnCount: number;
+    docInfoCount: number;
+    docTagCliCount: number;
 }
 
 
@@ -306,6 +310,7 @@ export const getProjectById = (id: string) => fetchData<Project>(`/projects/${id
 export const getRawBooks = () => fetchData<RawBook[]>('/books');
 export const getBookById = (id: string) => fetchData<RawBook>(`/books/${id}`);
 export const getRawDocuments = () => fetchData<Document[]>('/documents');
+export const getTotalsDocuments = () => fetchData<Document[]>('/documents/totals');
 export const getDocumentById = (id: string) => fetchData<Document>(`/documents/${id}`);
 export const getAuditLogs = () => fetchData<EnrichedAuditLog[]>('/audit-logs');
 export const getPermissions = () => fetchData<Permissions>('/permissions');

@@ -74,11 +74,24 @@ export default function ValidationMonitoringClient() {
             const itemsInBatch = deliveryBatchItems.filter(item => item.deliveryId === batch.id);
             const bookIdsInBatch = new Set(itemsInBatch.map(item => item.bookId));
             
-            let booksInBatch = books.filter(book => bookIdsInBatch.has(book.id));
+            /*let booksInBatch = books.filter(book => bookIdsInBatch.has(book.id));
 
             if (currentUser?.clientId) {
                 booksInBatch = booksInBatch.filter(book => book.clientId === currentUser.clientId);
+            }*/
+
+            const booksMap = new Map(books.map(b => [b.id, b]));
+
+            // filtra pelo clientId antes
+            if (currentUser?.clientId) {
+                booksMap.forEach((book, id) => {
+                    if (book.clientId !== currentUser.clientId) booksMap.delete(id);
+                });
             }
+
+          const booksInBatch: EnrichedBook[] = itemsInBatch
+            .map(item => booksMap.get(item.bookId))
+            .filter((book): book is EnrichedBook => book !== undefined);
 
             const totalItems = itemsInBatch.length;
             const approvedCount = itemsInBatch.filter(i => i.status === 'approved').length;
@@ -90,7 +103,7 @@ export default function ValidationMonitoringClient() {
                 const item = itemsInBatch.find(i => i.bookId === book.id);
                 const assignee = users.find(u => u.id === item?.user_id);
                 return { ...book, itemStatus: item?.status || 'pending', assigneeName: assignee?.name || 'Unassigned' };
-              }).sort((a, b) => a.assigneeName.localeCompare(b.assigneeName));
+              });//.sort((a, b) => a.assigneeName.localeCompare(b.assigneeName));
             
             const totalDocs = booksWithAssignee.reduce((sum, book) => sum + (book.documentCount || 0), 0);
 

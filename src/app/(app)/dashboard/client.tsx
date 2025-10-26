@@ -65,7 +65,7 @@ const getStatusBadgeVariant = (status: string) => {
 }
 
 function ProjectDashboard() {
-    const { projects, selectedProjectId, auditLogs, documents } = useAppContext();
+    const { projects, selectedProjectId, auditLogs, documents, totalsDocuments } = useAppContext();
     const { toast } = useToast();
     const [chartType, setChartType] = React.useState<'bar' | 'line' | 'area'>('bar');
     const [detailState, setDetailState] = React.useState<{ open: boolean; title: string; items: (EnrichedBook | EnrichedAuditLog)[]; type: 'books' | 'activities' | null; }>({ open: false, title: '', items: [], type: null });
@@ -113,12 +113,25 @@ function ProjectDashboard() {
         const pendingValidationBooks = books.filter(b => b.status === 'Pending Validation');
         const workflowBooks = books.filter(b => !['Archived', 'Pending Shipment', 'Finalized', 'Complete'].includes(b.status));
         const finalizedBooks = books.filter(b => b.status === 'Finalized');
-        const errorDocs = projectDocs.filter(d => d.flag === 'error');
-        const warningDocs = projectDocs.filter(d => d.flag === 'warning');
+        const errorDocs = totalsDocuments.filter(td => td.flag === 'error');
+    //books.reduce((sum, b) => sum + (b.docErrCount || 0), 0);//projectDocs.filter(d => d.flag === 'error');
+        const warningDocs = totalsDocuments.filter(td => td.flag === 'warning');
+    //books.reduce((sum, b) => sum + (b.docErrCount || 0), 0);//projectDocs.filter(d => d.flag === 'warning');
         const booksWithErrors = Array.from(new Set(errorDocs.map(d => d.bookId))).map(bookId => books.find(b => b.id === bookId)).filter((b): b is EnrichedBook => !!b);
+        //books.filter(b => b.docErrCount !== 0);//Array.from(new Set(errorDocs.map(d => d.bookId))).map(bookId => books.find(b => b.id === bookId)).filter((b): b is EnrichedBook => !!b);
         const booksWithWarnings = Array.from(new Set(warningDocs.map(d => d.bookId))).map(bookId => books.find(b => b.id === bookId)).filter((b): b is EnrichedBook => !!b);
+        //books.filter(b => b.docWarnCount !== 0);//Array.from(new Set(warningDocs.map(d => d.bookId))).map(bookId => books.find(b => b.id === bookId)).filter((b): b is EnrichedBook => !!b);
+        
+        
         const actionsTodayLogs = projectLogs.filter(l => l.date.startsWith(new Date().toISOString().slice(0, 10)));
-
+        
+        
+        const tagCliDocs = totalsDocuments.filter(td => td.tags && td.tags.length > 0);
+        // books.reduce((sum, b) => sum + (b.docTagCliCount || 0), 0);//projectDocs.filter(d => d.flag === 'error');
+        const booksWithTagCli = Array.from(new Set(tagCliDocs.map(d => d.bookId))).map(bookId => books.find(b => b.id === bookId)).filter((b): b is EnrichedBook => !!b);
+        
+        //books.filter(b => b.docTagCliCount !== 0);//Array.from(new Set(warningDocs.map(d => d.bookId))).map(bookId => books.find(b => b.id === bookId)).filter((b): b is EnrichedBook => !!b);
+       
 
         const kpiData = [
             { title: "Envios Pendentes", value: pendingShippingBooks.length.toLocaleString(), icon: Package, description: "Livros à espera de envio do cliente", items: pendingShippingBooks, type: 'books' as const },
@@ -127,9 +140,12 @@ function ProjectDashboard() {
             { title: "Ação Pendente do Cliente", value: pendingValidationBooks.length.toLocaleString(), icon: UserCheck, description: "Livros à espera de aprovação do cliente", items: pendingValidationBooks, type: 'books' as const },
             { title: "Livros em Processamento", value: workflowBooks.length.toLocaleString(), icon: BookCopy, description: "Livros ativos a ser processados", items: workflowBooks, type: 'books' as const },
             { title: "Livros Finalizados", value: finalizedBooks.length.toLocaleString(), icon: CheckCheck, description: "Livros aprovados", items: finalizedBooks, type: 'books' as const },
-            { title: "Erros de Documento", value: errorDocs.length.toLocaleString(), icon: ShieldAlert, description: "Páginas com erros identificados", items: booksWithErrors, type: 'books' as const },
-            { title: "Avisos de Documento", value: warningDocs.length.toLocaleString(), icon: AlertTriangle, description: "Páginas com alertas", items: booksWithWarnings, type: 'books' as const },
+            //{ title: "Erros de Documento", value: errorDocs.length.toLocaleString(), icon: ShieldAlert, description: "Páginas com erros identificados", items: booksWithErrors, type: 'books' as const },
+            //{ title: "Avisos de Documento", value: warningDocs.length.toLocaleString(), icon: AlertTriangle, description: "Páginas com alertas", items: booksWithWarnings, type: 'books' as const },
+            { title: "Erros de Documento", value: errorDocs.toLocaleString(), icon: ShieldAlert, description: "Páginas com erros identificados", items: booksWithErrors, type: 'books' as const },
+            { title: "Avisos de Documento", value: warningDocs.toLocaleString(), icon: AlertTriangle, description: "Páginas com alertas", items: booksWithWarnings, type: 'books' as const },
             { title: "Ações de Hoje", value: actionsTodayLogs.length.toLocaleString(), icon: Activity, description: "Registos de ações efetuadas hoje", items: actionsTodayLogs, type: 'activities' as const },
+            { title: "Erros no Cliente", value: tagCliDocs.toLocaleString(), icon: ShieldAlert, description: "Páginas com erros identificados", items: booksWithTagCli, type: 'books' as const },
         ]
 
         const orderedStageNames = [

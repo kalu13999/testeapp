@@ -120,6 +120,7 @@ type AppContextType = {
   storages: Storage[];
   scanners: Scanner[];
   statuses: DocumentStatus[];
+  totalsDocuments: Document[];
   //rawBooks: RawBook[];
   
   
@@ -129,6 +130,8 @@ type AppContextType = {
   selectedProjectId: string | null;
   setSelectedProjectId: (projectId: string | null) => void;
 
+  selectedBookId: string | null;
+  setSelectedBookId:  React.Dispatch<React.SetStateAction<string | null>>
 
   loadInitialData: () => Promise<void>;
   loadInitialDataBook: () => Promise<void>;
@@ -264,7 +267,9 @@ export function AppProvider({ children }: { children: React.ReactNode; }) {
   const [allEnrichedProjects, setAllEnrichedProjects] = React.useState<EnrichedProject[]>([]);
   const [enrichedBooks, setEnrichedBooks] = React.useState<EnrichedBook[]>([]);
   const [documents, setDocuments] = React.useState<Document[]>([]);
-
+  const [totalsDocuments, setTotalsDocuments] = React.useState<Document[]>([]);
+  
+  const [selectedBookId , setSelectedBookId ] = React.useState<string | null>(null);
 
   //const [rawProjects, setAllEnrichedProjects] = React.useState<Project[]>([]);
   //const [rawBooks, setEnrichedBooks] = React.useState<RawBook[]>([]);
@@ -384,13 +389,14 @@ const withMutation = async <T,>(action: () => Promise<T>): Promise<T | undefined
     try {
         const [
             usersData, permissionsData, rolesData, clientsData, projectsData, booksData, 
-            docsData, enrichedAuditLogs, batchesData, batchItemsData, logsData,
+            totalsDoc, enrichedAuditLogs, batchesData, batchItemsData, logsData,
             workflowsData, rejectionData, statusesData,
             storagesData, scannersData, transferLogsData, projectStoragesData,
             deliveryBatchesData, deliveryBatchItemsData, bookObservationsData,
         ] = await Promise.all([
             dataApi.getUsers(), dataApi.getPermissions(), dataApi.getRoles(), dataApi.getClients(),
-            dataApi.getEnrichedProjects(), dataApi.getEnrichedBooks(), dataApi.getRawDocuments(), 
+            dataApi.getEnrichedProjects(), dataApi.getEnrichedBooks(),
+            dataApi.getTotalsDocuments(),
             dataApi.getAuditLogs(), dataApi.getProcessingBatches(), dataApi.getProcessingBatchItems(),
             dataApi.getProcessingLogs(), dataApi.getProjectWorkflows(), dataApi.getRejectionTags(),
             dataApi.getDocumentStatuses(), dataApi.getStorages(), dataApi.getScanners(),
@@ -404,7 +410,9 @@ const withMutation = async <T,>(action: () => Promise<T>): Promise<T | undefined
         setClients(clientsData);
         setEnrichedBooks(booksData);
         setStatuses(statusesData);
-        setDocuments(docsData);
+        setTotalsDocuments(totalsDoc);
+        setDocuments([]);//docsData);//limpa os documentos e depois carrega quando abre as pastas
+        // pode manter é uma questão de ver melhor.. para já limpa
         setStorages(storagesData);
         setScanners(scannersData);
         setTransferLogs(transferLogsData);
@@ -454,6 +462,55 @@ const withMutation = async <T,>(action: () => Promise<T>): Promise<T | undefined
         }
     }
   }, [toast]);
+
+  /*const loadDocumentsByBook = async (bookId: string) => {
+    if (!bookId) return;
+
+    setLoading(true);
+    setDocuments([]); // limpa ao iniciar o loading
+
+    try {
+      const res = await fetch(`/api/books/${bookId}/documents`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data: Document[] = await res.json();
+      setDocuments(data);
+    } catch (err) {
+      console.error("Erro ao carregar documentos:", err);
+    } finally {
+      setLoading(false);
+    }
+  };*/
+
+  const loadDocumentsByBook = async (bookId: string) => {
+    if (!bookId) return;
+
+    //setLoading(true);
+
+    try {
+      const res = await fetch(`/api/books/${bookId}/documents`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data: Document[] = await res.json();
+
+      setDocuments(prevDocs => {
+        // cria um Map dos IDs existentes para evitar duplicados
+        const existingIds = new Set(prevDocs.map(d => d.id));
+        const newDocs = data.filter(d => !existingIds.has(d.id));
+        return [...prevDocs, ...newDocs];
+      });
+
+    } catch (err) {
+      console.error("Erro ao carregar documentos:", err);
+    } finally {
+      //setLoading(false);
+    }
+  };
+
+    React.useEffect(() => {
+    if (selectedBookId) loadDocumentsByBook(selectedBookId);
+  }, [selectedBookId]);
+  
 
   const loadInitialData_OLD = React.useCallback(async () => {
     try {
@@ -1865,6 +1922,7 @@ const addBookObservation = async (bookId: string, observation: string) => {
   };
 
   const updateDocumentFlag = async (docId: string, flag: Document['flag'], comment?: string) => await updateDocument(docId, { flag, flagComment: flag ? comment : undefined });
+
   const addPageToBook = async (bookId: string, position: number) => {
     await withMutation(async () => {
       const book = enrichedBooks.find(b => b.id === bookId);
@@ -2244,6 +2302,7 @@ const addBookObservation = async (bookId: string, observation: string) => {
   };
 
   const handleMoveBookToNextStage = React.useCallback(async (bookId: string, currentStatus: string): Promise<string | null> => {
+    //const result = await withMutation(async () => {
     console.log(`[handleMoveBookToNextStage] Starting for book ${bookId} from status ${currentStatus}`);
     const book = enrichedBooks.find(b => b.id === bookId);
     if (!book || !book.projectId) {
@@ -2254,7 +2313,9 @@ const addBookObservation = async (bookId: string, observation: string) => {
     const workflow = projectWorkflows[book.projectId] || [];
     const currentStageKey = findStageKeyFromStatus(currentStatus);
     if (!currentStageKey) {
-      toast({ title: "Erro de Fluxo de Trabalho", description: `Não foi possível encontrar o estágio de fluxo para o status: "${currentStatus}".`, variant: "destructive" });
+      setTimeout(() => {
+        toast({ title: "Erro de Fluxo de Trabalho", description: `Não foi possível encontrar o estágio de fluxo para o status: "${currentStatus}".`, variant: "destructive" });
+    },0);
       console.error(`[handleMoveBookToNextStage] Workflow key not found for status: ${currentStatus}`);
       return null;
     }
@@ -2265,8 +2326,10 @@ const addBookObservation = async (bookId: string, observation: string) => {
     
     const newStatusName = nextStageKey ? (STAGE_CONFIG[nextStageKey]?.dataStatus || 'Unknown') : 'Complete';
     if (newStatusName === 'Unknown') {
-      toast({ title: "Erro de Fluxo de Trabalho", description: `Próximo estágio "${nextStageKey}" não tem status configurado.`, variant: "destructive" });
-      console.error(`[handleMoveBookToNextStage] Next stage "${nextStageKey}" has no status.`);
+      setTimeout(() => {
+        toast({ title: "Erro de Fluxo de Trabalho", description: `Próximo estágio "${nextStageKey}" não tem status configurado.`, variant: "destructive" });
+        },0);
+        console.error(`[handleMoveBookToNextStage] Next stage "${nextStageKey}" has no status.`);
       return null;
     }
 
@@ -2282,9 +2345,12 @@ const addBookObservation = async (bookId: string, observation: string) => {
     logAction('Workflow Step', `Book "${book.name}" moved from ${currentStatus} to ${newStatusName}.`, { bookId });
     console.log(`[handleMoveBookToNextStage] Successfully moved book ${bookId} to ${newStatusName}`);
     return newStatusName;
-  }, [enrichedBooks, projectWorkflows, statuses, toast, logAction, updateBookStatus, moveBookFolder]);
+  //});
+  //return result ?? null;
+}, [enrichedBooks, projectWorkflows, statuses, toast, logAction, updateBookStatus, moveBookFolder]);
 
   const handleMoveBookToPreviousStage = React.useCallback(async (bookId: string, currentStatus: string): Promise<string | null> => {
+    //const result = await withMutation(async () => {
     console.log(`[handleMoveBookToPreviousStage] Starting for book ${bookId} from status ${currentStatus}`);
     const book = enrichedBooks.find(b => b.id === bookId);
     if (!book || !book.projectId) {
@@ -2295,7 +2361,9 @@ const addBookObservation = async (bookId: string, observation: string) => {
     const workflow = projectWorkflows[book.projectId] || [];
     const currentStageKey = findStageKeyFromStatus(currentStatus);
     if (!currentStageKey) {
+      setTimeout(()=>{
       toast({ title: "Erro de Fluxo de Trabalho", description: `Não foi possível encontrar o estágio de fluxo para o status: "${currentStatus}".`, variant: "destructive" });
+      },0);
       console.error(`[handleMoveBookToPreviousStage] Workflow key not found for status: ${currentStatus}`);
       return null;
     }
@@ -2306,7 +2374,9 @@ const addBookObservation = async (bookId: string, observation: string) => {
 
     const newStatusName = prevStageKey ? (STAGE_CONFIG[prevStageKey]?.dataStatus || 'Unknown') : 'Storage';
     if (newStatusName === 'Unknown') {
+      setTimeout( () => {
       toast({ title: "Erro de Fluxo de Trabalho", description: `Estágio anterior "${prevStageKey}" não tem status configurado.`, variant: "destructive" });
+      },0);
       console.error(`[handleMoveBookToPreviousStage] Previous stage "${prevStageKey}" has no status.`);
       return null;
     }
@@ -2323,7 +2393,9 @@ const addBookObservation = async (bookId: string, observation: string) => {
     logAction('Workflow Step Reverted', `Book "${book.name}" moved back from ${currentStatus} to ${newStatusName}.`, { bookId });
     console.log(`[handleMoveBookToPreviousStage] Successfully moved book ${bookId} to ${newStatusName}`);
     return newStatusName;
-  }, [enrichedBooks, projectWorkflows, statuses, toast, logAction, updateBookStatus, moveBookFolder]);
+//});
+    //return result ?? null;
+    }, [enrichedBooks, projectWorkflows, statuses, toast, logAction, updateBookStatus, moveBookFolder]);
 
 
   const handleAssignUser = async (bookId: string, userId: string, role: 'scanner' | 'indexer' | 'qc') => {
@@ -2590,20 +2662,45 @@ const openAppValidateScan = (bookId: string) => {
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                const errorMessage = errorData.error || `Falha ao contar TIFs. API respondeu com estado ${response.status}`;
-                logAction('Count TIFs', `Failed to count tifs for book "${book?.name}". Reason: ${errorMessage}`, { userId: currentUser?.id });
-                toast({ title: "Erro ao Contar TIFs", description: errorMessage, variant: "destructive", duration: 5000 });
-                return;
+              const errorData = await response.json();
+              const errorMessage = errorData.error || `Falha ao contar TIFs. API respondeu com estado ${response.status}`;
+              logAction(
+                'Count TIFs',
+                `Failed to count tifs for book "${book?.name}". Reason: ${errorMessage}`,
+                { userId: currentUser?.id }
+              );
+              toast({
+                title: "Erro ao Contar TIFs",
+                description: errorMessage,
+                variant: "destructive",
+                duration: 5000
+              });
+              return;
             }
 
             const data = await response.json();
 
-            if (book?.id && data.tifCount !== undefined) {
-              await updateBook(book.id, { expectedDocuments: data.tifCount });
-            }
+            if (data.status === "wait") {
+              toast({
+                title: "Aguardando Modificações",
+                description: data.message || "O sistema está a aguardar atualizações. Tente novamente daqui a alguns minutos.",
+                variant: "default",
+                duration: 6000
+              });
 
-            logAction('Count TIFs', `Successfully counted ${data.tifCount} TIFs for book "${data.bookName}".`, { bookId, userId: currentUser?.id });
+              return; 
+            }
+            if (data.status === "ok") {
+              if (book?.id && data.tifCount !== undefined) {
+                await updateBook(book.id, { expectedDocuments: data.tifCount });
+              }
+
+              logAction(
+                'Count TIFs',
+                `Successfully counted ${data.tifCount} TIFs for book "${data.bookName}".`,
+                { bookId, userId: currentUser?.id }
+              );
+            }
             msgfinal = `Todos os TIFs para "${data.bookName}" foram contados com sucesso. Total: ${data.tifCount}.`
 
 
@@ -4075,7 +4172,7 @@ const booksAvaiableInStorageLocalIp = React.useCallback(async (currentStageKey: 
     });
   };
 
-  const handleDownload = async (file: FileOption, bookName: string | undefined, bookStatus: string | undefined, bookGroupName: string | undefined) => {
+  /*const handleDownload = async (file: FileOption, bookName: string | undefined, bookStatus: string | undefined, bookGroupName: string | undefined) => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_WORKFLOW_API_URL;
       const res = await fetch(`${apiUrl}${file.endpoint}`, {
@@ -4160,7 +4257,139 @@ const booksAvaiableInStorageLocalIp = React.useCallback(async (currentStageKey: 
         console.error(err);
         alert("Falha ao baixar o arquivo");
       }
-    };
+    };*/
+
+const handleDownload = async (
+  file: FileOption,
+  bookName: string | undefined,
+  bookStatus: string | undefined,
+  bookGroupName: string | undefined
+) => {
+  try {
+    console.log("📥 Iniciando handleDownload");
+    console.log("📦 Parâmetros:", { file, bookName, bookStatus, bookGroupName });
+
+    const apiUrl = process.env.NEXT_PUBLIC_WORKFLOW_API_URL;
+    console.log("🌐 API URL:", apiUrl);
+
+    const res = await fetch(`${apiUrl}${file.endpoint}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ bookName, bookStatus, bookGroupName }),
+    });
+
+    console.log("📨 Resposta da API:", res.status, res.statusText);
+
+    if (!res.ok) {
+      console.error("❌ Erro na resposta da API");
+      throw new Error("Erro ao baixar arquivo");
+    }
+
+    let filename = file.filename; // fallback
+    const disposition = res.headers.get("Content-Disposition");
+    console.log("📄 Header Content-Disposition:", disposition);
+
+    if (disposition) {
+      const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^;"']+)["']?/i);
+      if (match && match[1]) {
+        filename = decodeURIComponent(match[1]);
+        console.log("📁 Nome do arquivo extraído:", filename);
+      }
+    }
+
+    const blob = await res.blob();
+    console.log("🧪 Blob recebido:", blob);
+
+    const link = document.createElement("a");
+    link.href = window.URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(link.href);
+
+    console.log("✅ Download iniciado com sucesso");
+
+  } catch (err) {
+    console.error("❗ Erro durante o download:", err);
+    alert("Falha ao baixar o arquivo");
+  }
+};
+
+
+const handleDownloadFile = async (
+  file: FileOption,
+  bookName?: string,
+  bookStatus?: string,
+  bookGroupName?: string,
+  imageName?: string,
+  format?: string
+) => {
+  try {
+    console.log("📥 Iniciando handleDownloadFile");
+    console.log("📦 Parâmetros:", { file, bookName, bookStatus, bookGroupName, imageName, format });
+
+    const apiUrl = process.env.NEXT_PUBLIC_WORKFLOW_API_URL;
+    console.log("🌐 API URL:", apiUrl);
+
+    const body: any = {};
+    if (bookName) body.bookName = bookName;
+    if (bookStatus) body.bookStatus = bookStatus;
+    if (bookGroupName) body.bookGroupName = bookGroupName;
+    if (imageName) body.imageName = imageName;
+    if (format) body.format = format;
+
+    console.log("📝 Corpo da requisição:", body);
+
+    const res = await fetch(`${apiUrl}${file.endpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: Object.keys(body).length ? JSON.stringify(body) : undefined,
+    });
+
+    console.log("📨 Resposta da API:", res.status, res.statusText);
+
+    if (!res.ok) {
+      console.error("❌ Erro na resposta da API");
+      throw new Error("Erro ao baixar arquivo");
+    }
+
+    let filename = file.filename;
+    const disposition = res.headers.get("Content-Disposition");
+    console.log("📄 Header Content-Disposition:", disposition);
+
+    if (disposition) {
+      const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^;"']+)["']?/i);
+      if (match && match[1]) {
+        filename = decodeURIComponent(match[1]);
+        console.log("📁 Nome do arquivo extraído:", filename);
+      }
+    }
+
+    const blob = await res.blob();
+    console.log("🧪 Blob recebido:", blob);
+
+    const link = document.createElement("a");
+    link.href = window.URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(link.href);
+
+    console.log("✅ Download iniciado com sucesso");
+
+  } catch (err) {
+    console.error("❗ Erro durante o download:", err);
+    alert("Falha ao baixar o arquivo");
+  }
+};
+
+
+
+
 
   /*const scannerUsers = React.useMemo(() => users.filter(user => user.role === 'Scanning'), [users]);
   const indexerUsers = React.useMemo(() => users.filter(user => user.role === 'Indexing'), [users]);
@@ -4184,7 +4413,7 @@ const booksAvaiableInStorageLocalIp = React.useCallback(async (currentStageKey: 
 
 
   const value: AppContextType = { 
-    handleDownloadFile, handleDownload, withMutation, withProgressMutation, isChecking, setIsChecking, loading, setLoading, isMutating, processingBookIds, setIsMutating,
+    totalsDocuments, selectedBookId, setSelectedBookId, handleDownloadFile, handleDownload, withMutation, withProgressMutation, isChecking, setIsChecking, loading, setLoading, isMutating, processingBookIds, setIsMutating,
     progress, setProgress, progressMutation, setProgressMutation,
     currentUser, login, logout, changePassword,
     navigationHistory, addNavigationHistoryItem,

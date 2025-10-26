@@ -218,6 +218,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     processingBatchItems,
     storages,
     addBookObservation,
+    setSelectedBookId, selectedBookId,
   } = useAppContext();
   const { toast } = useToast();
   const ActionIcon = config.actionButtonIcon ? iconMap[config.actionButtonIcon] : FolderSync;
@@ -230,6 +231,9 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     allVisibleBookIds: [],
     availableBatches: [],
   });
+
+
+  const [openBooks, setOpenBooks] = React.useState<string[]>([]);
 
   const [selection, setSelection] = React.useState<string[]>([]);
   const [rejectionComment, setRejectionComment] = React.useState("");
@@ -300,7 +304,18 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
   }, [storageKey]);
 
   const handleAccordionChange = (value: string[]) => {
+    const newlyOpened = value.find(v => !openBooks.includes(v));
+
+    setOpenBooks(value);
+
+    if (newlyOpened) {
+      setSelectedBookId(newlyOpened);
+      console.log("Livro aberto:", newlyOpened);
+    }
+
     setOpenAccordions(value);
+
+    
     try {
       localStorage.setItem(storageKey, JSON.stringify(value));
     } catch (error) {
@@ -535,7 +550,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
       });
   }
   
-  const handleMainAction = (book: EnrichedBook) => {
+  /*const handleMainAction = async (book: EnrichedBook) => {
     if (!book.projectId) {
         toast({ title: "Erro", description: "ID do projeto não encontrado para este livro.", variant: "destructive" });
         return;
@@ -563,7 +578,41 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     } else {
        handleMoveBookToNextStage(book.id, book.status);
     }
-  }
+  }*/
+
+    const handleMainAction = async (book: EnrichedBook) => {
+      if (!book.projectId) {
+          toast({ title: "Erro", description: "ID do projeto não encontrado para este livro.", variant: "destructive" });
+          return;
+      }
+      console.log("handleMainAction");
+      
+      const workflow = projectWorkflows[book.projectId] || [];
+      const currentStageKey = findStageKeyFromStatus(book.status);
+      if (!currentStageKey) {
+          toast({ title: "Erro de Workflow", description: `Não foi possível encontrar uma fase de workflow para o estado: "${book.status}"`, variant: "destructive" });
+          return;
+      }
+      
+      const nextStage = getNextEnabledStage(currentStageKey, workflow);
+      
+      if (!nextStage) {
+        //const result = await handleMoveBookToNextStage(book.id, book.status);
+        toast({ title: "Fim de Workflow", description: "Esta é a última etapa para este projeto.", variant: "default" });
+     
+        return '';
+      }
+      
+      const nextStageConfig = STAGE_CONFIG[nextStage];
+    
+      if (nextStageConfig?.assigneeRole) {
+        openAssignmentDialog(book.id, book.name, book.projectId, nextStageConfig.assigneeRole);
+        return '';
+      } else {
+        const result = await handleMoveBookToNextStage(book.id, book.status);
+        return result ? 'success' : 'error';
+      }
+    }
 
 
   const openTaggingDialog = (doc: AppDocument) => {
@@ -646,7 +695,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
     openConfirmationDialog({
       title: `Perform action on ${selection.length} books?`,
       description: `This will perform "${actionLabel}" for all selected books.`,
-      onConfirm: async () => {
+      /*onConfirm: async () => {
         if (selection.length === 0) return;
 
         await withMutation(async () => {
@@ -667,32 +716,33 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
 
           setSelection([]);
         });
-      }
-     /*onConfirm: async () => {
+      }*/
+      onConfirm: async () => {
         if (selection.length === 0) return;
 
-        const { results, errors } = await withProgressMutation(
-          selection,
-          async (bookId) => {
-            const book = groupedByBook[bookId]?.book;
-            if (book) {
-              await handleMainAction(book);
-            }
-          },
-          {
-            concurrency: 10, // processa até 10 livros em simultâneo
-            onProgress: (current, total) => {
-              const percent = Math.round((current / total) * 100);
-              setProgress(percent);
-            },
-          }
-        );
+        await withMutation(async () => {
+          const results = await Promise.all(
+            selection.map(async (bookId) => {
+              const book = groupedByBook[bookId]?.book;
+              if (!book) return { book, status: 'skipped', message: 'Livro não encontrado' };
+                    const status = await handleMainAction(book);
+                    return { book, status, message: status === 'success' ? `Livro "${book.name}" processado com sucesso` : `Erro ao processar "${book.name}"` };
+                  })
+                );
 
-        console.log(`✅ Concluídos: ${results.length}`);
-        console.log(`❌ Falharam: ${errors.length}`);
+                const successCount = results.filter(r => r.status === 'success').length;
+                const errorCount = results.filter(r => r.status === 'error').length;
 
-        setSelection([]);
-      }*/
+                // Toast resumo
+                toast({
+                  title: 'Ação em massa concluída',
+                  description: `${successCount} livros processados com sucesso. ${errorCount} falharam.`,
+                  variant: errorCount > 0 ? 'destructive' : 'default'
+                });
+
+                setSelection([]);
+        });
+      }
     });
   };
 
@@ -1156,7 +1206,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                         <KpiCard
                           title="Total de Páginas"
                           value={Object.values(groupedByBook)
-                            .reduce((sum, group) => sum + group.pages.length, 0)
+                            .reduce((sum, group) => sum + (group.pages.length > 0 ? group.pages.length : group.book.expectedDocuments || 0), 0)
                             .toLocaleString()}
                           icon={FileText}
                           description={`Soma total de páginas entre todos os livros.`}
@@ -1180,7 +1230,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                           value={(() => {
                             const totalBooks = Object.keys(groupedByBook).length || 1;
                             const totalPages = Object.values(groupedByBook).reduce(
-                              (sum, g) => sum + g.pages.length,
+                              (sum, g) => sum + (g.pages.length > 0 ? g.pages.length : g.book.expectedDocuments || 0),
                               0
                             );
                             return Math.round(totalPages / totalBooks);
@@ -1218,7 +1268,7 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                                       const name = group.book.storageName || "Sem Local";
                                       if (!acc[name]) acc[name] = { books: 0, pages: 0 };
                                       acc[name].books += 1;
-                                      acc[name].pages += group.pages.length;
+                                      acc[name].pages += (group.pages.length > 0 ? group.pages.length : group.book.expectedDocuments || 0);
                                       return acc;
                                     },
                                     {} as Record<string, { books: number; pages: number }>
@@ -1283,11 +1333,12 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                   </div>
                 </div>
                 
-                <Accordion type="multiple" value={openAccordions} onValueChange={handleAccordionChange} className="w-full">
+                <Accordion type="multiple" value={openAccordions} 
+                onValueChange={handleAccordionChange}  className="w-full">
                   {paginatedBookGroups.map((bookGroup) => {
                     const { book, pages, hasError, hasWarning, batchInfo } = bookGroup;
                     const isProcessing = processingBookIds.includes(book.id);
-                    const pageCount = pages.length;
+                    const pageCount = pages.length > 0 ? pages.length : book.expectedDocuments || 0;
                     const bookCols = columnStates[book.id]?.cols || 8;
 
                     const allPages = getPagesForBook(book.id);

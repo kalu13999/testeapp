@@ -815,7 +815,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     }
 };
 
-const handleMainAction = (book: EnrichedBook) => {
+const handleMainAction = async (book: EnrichedBook) => {
   if (!book.projectId) {
       toast({ title: "Erro", description: "ID do projeto não encontrado para este livro.", variant: "destructive" });
       return;
@@ -832,16 +832,20 @@ const handleMainAction = (book: EnrichedBook) => {
   const nextStage = getNextEnabledStage(currentStageKey, workflow);
   
   if (!nextStage) {
-    handleMoveBookToNextStage(book.id, book.status);
-    return;
+    //const result = await handleMoveBookToNextStage(book.id, book.status);
+    toast({ title: "Fim de Workflow", description: "Esta é a última etapa para este projeto.", variant: "default" });
+ 
+    return '';
   }
   
   const nextStageConfig = STAGE_CONFIG[nextStage];
 
   if (nextStageConfig?.assigneeRole) {
     openAssignmentDialog(book, nextStageConfig.assigneeRole);
+    return '';
   } else {
-     handleMoveBookToNextStage(book.id, book.status);
+    const result = await handleMoveBookToNextStage(book.id, book.status);
+    return result ? 'success' : 'error';
   }
 }
 
@@ -878,7 +882,7 @@ const handleMainAction = (book: EnrichedBook) => {
       return nextStageConfig.assigneeRole ? 'ASSIGN' : 'MOVE';
   }, [projectWorkflows, getNextEnabledStage]);
 
-  const handleBulkAction = () => {
+  const handleBulkAction = async () => {
     if (selection.length === 0) return;
     const firstBook = allDisplayItems.find(item => item.id === selection[0]) as EnrichedBook;
     if (!firstBook) return;
@@ -895,13 +899,52 @@ const handleMainAction = (book: EnrichedBook) => {
         openConfirmationDialog({
             title: `Realizar ação em ${selection.length} livros?`,
             description: `Isto irá realizar "${actionLabel}" para todos os livros selecionados.`,
-            onConfirm: () => {
-                selection.forEach(bookId => {
-                    const book = allDisplayItems.find(b => b.id === bookId) as EnrichedBook;
-                    if (book) handleMainAction(book);
-                });
+            /*onConfirm: async () => {
+                for (const bookId of selection) {
+                  const book = allDisplayItems.find(b => b.id === bookId) as EnrichedBook;
+                  if (book) {
+                    await handleMainAction(book); // processa um por vez
+                  }
+                }
                 setSelection([]);
-            }
+              }*/
+             /*onConfirm: async () => {
+              await Promise.all(
+                selection.map(async bookId => {
+                  const book = allDisplayItems.find(b => b.id === bookId) as EnrichedBook;
+                  if (book) {
+                    await handleMainAction(book);
+                  }
+                })
+              );
+              setSelection([]);
+            }*/
+           onConfirm: async () => {
+            if (selection.length === 0) return;
+
+            await withMutation(async () => {
+              const results = await Promise.all(
+                selection.map(async (bookId) => {
+                  const book = allDisplayItems.find(b => b.id === bookId) as EnrichedBook;
+                  if (!book) return { book, status: 'skipped', message: 'Livro não encontrado' };
+                  const status = await handleMainAction(book);
+                  return { book, status, message: status === 'success' ? `Livro "${book.name}" processado com sucesso` : `Erro ao processar "${book.name}"` };
+                })
+              );
+
+              const successCount = results.filter(r => r.status === 'success').length;
+              const errorCount = results.filter(r => r.status === 'error').length;
+
+              // Toast resumo
+              toast({
+                title: 'Ação em massa concluída',
+                description: `${successCount} livros processados com sucesso. ${errorCount} falharam.`,
+                variant: errorCount > 0 ? 'destructive' : 'default'
+              });
+
+              setSelection([]);
+            });
+          }
         });
     }
   };
