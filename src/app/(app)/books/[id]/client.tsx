@@ -546,11 +546,23 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
         })()
         ) : (
         <div className="flex flex-col items-center justify-center text-center py-20 rounded-lg bg-muted">
-            <BookOpen className="h-12 w-12 text-muted-foreground" />
+        <BookOpen className="h-12 w-12 text-muted-foreground" />
+
+        {showOnlyTagged ? (
+            <>
+            <h3 className="text-xl font-semibold mt-4">Nenhum documento com apontamentos de anomalias</h3>
+            <p className="text-muted-foreground">
+                Clique em "Mostrar Todos" para ver todos os documentos.
+            </p>
+            </>
+        ) : (
+            <>
             <h3 className="text-xl font-semibold mt-4">Aguardando Armazenamento</h3>
             <p className="text-muted-foreground">
-            As imagens digitalizadas estarão disponíveis assim que forem transferidas para o armazenamento.
+                As imagens digitalizadas estarão disponíveis assim que forem transferidas para o armazenamento.
             </p>
+            </>
+        )}
         </div>
         )}
       </div>
@@ -574,9 +586,9 @@ export default function BookDetailClient({ bookId }: BookDetailClientProps) {
               <DetailItem label="Cliente" value={book.clientName} />
               <DetailItem label="Estado" value={<Badge variant="outline">{book.status}</Badge>} />
               <Separator />
-              <DetailItem label="Autor" value={book.author || '—'} />
-              <DetailItem label="ISBN" value={book.isbn || '—'} />
-              <DetailItem label="Ano de Publicação" value={book.publicationYear || '—'} />
+              <DetailItem label="TÍtulo" value={book.author || '—'} />
+              <DetailItem label="Cota" value={book.isbn || '—'} />
+              <DetailItem label="NCB" value={book.publicationYear || '—'} />
               <DetailItem label="Prioridade" value={book.priority || '—'} />
               <Separator />
               <DetailItem label="Páginas Esperadas" value={book.expectedDocuments} />

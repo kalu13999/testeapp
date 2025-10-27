@@ -96,8 +96,6 @@ export const AppLayoutContent = ({ children }: { children: React.ReactNode }) =>
 
   // páginas que NÃO devem carregar os dados
   const excludedPaths = [
-    "/workflow/already-received",
-    "/workflow/storage",
     "/workflow/to-scan",
     "/workflow/scanning-started",
     "/workflow/to-indexing",

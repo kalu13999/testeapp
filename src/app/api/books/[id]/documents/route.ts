@@ -6,8 +6,9 @@ export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  const { id } = await params;
+  const bookId = id;
 
-  const bookId = params.id;
   let connection: PoolConnection | null = null;
 
   try {

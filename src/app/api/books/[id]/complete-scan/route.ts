@@ -26,6 +26,10 @@ const enrichBook = (
     clientName: project.clientName,
     documentCount: bookDocuments.length,
     progress: Math.min(100, bookProgress),
+    docErrCount: 0, 
+    docWarnCount: 0, 
+    docInfoCount: 0, 
+    docTagCliCount: 0,
   };
 };
 

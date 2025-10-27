@@ -234,6 +234,8 @@ type AppContextType = {
   setProcessingBatchItems: React.Dispatch<React.SetStateAction<ProcessingBatchItem[]>>;
 
   //
+  getRelevantObservations: (bookId: string) => (BookObservation & { userName: string })[];
+  //
   handleDownload: (file: FileOption, bookName: string | undefined, bookStatus: string | undefined, bookGroupName: string | undefined) => Promise<void>;
   handleDownloadFile: (file: FileOption, bookName?: string | undefined, bookStatus?: string | undefined, bookGroupName?: string | undefined, imageName?: string | undefined, format?: string) => Promise<void>;
 };
@@ -507,9 +509,19 @@ const withMutation = async <T,>(action: () => Promise<T>): Promise<T | undefined
     }
   };
 
-    React.useEffect(() => {
+    /*React.useEffect(() => {
     if (selectedBookId) loadDocumentsByBook(selectedBookId);
-  }, [selectedBookId]);
+  }, [selectedBookId]);*/
+
+  React.useEffect(() => {
+  const fetchDocs = async () => {
+    if (selectedBookId) {
+      await loadDocumentsByBook(selectedBookId);
+    }
+  };
+
+  fetchDocs();
+}, [selectedBookId]);
   
 
   const loadInitialData_OLD = React.useCallback(async () => {
@@ -4172,6 +4184,23 @@ const booksAvaiableInStorageLocalIp = React.useCallback(async (currentStageKey: 
     });
   };
 
+  const getRelevantObservations = (
+    bookId: string,
+  ) => {
+    if (!bookObservations?.length || !bookId) return [];
+
+    return bookObservations
+      .filter(obs => obs.book_id === bookId)
+      .map(obs => ({
+        ...obs,
+        userName: users.find(u => u.id === obs.user_id)?.name || 'Unknown',
+      }))
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+  };
+
   /*const handleDownload = async (file: FileOption, bookName: string | undefined, bookStatus: string | undefined, bookGroupName: string | undefined) => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_WORKFLOW_API_URL;
@@ -4479,6 +4508,7 @@ const handleDownloadFile = async (
     setProcessingBatchItems,
     loadInitialData,
     loadInitialDataBook,
+    getRelevantObservations,
   };
 
   return (

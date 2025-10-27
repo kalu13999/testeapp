@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, Check, ScanLine, FileText, FileJson, PlayCircle, Send, UserPlus, CheckCheck, Archive, ThumbsUp, ThumbsDown, Undo2, MoreHorizontal, Loader2, Upload, FileWarning, Download, ArrowUp, ArrowDown, ChevronsUpDown, XCircle, UserPlus2, RotateCcw, MessageSquarePlus, Book, Files, BarChart } from "lucide-react";
+import { FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, X, Tag, ShieldAlert, AlertTriangle, Check, ScanLine, FileText, FileJson, PlayCircle, Send, UserPlus, CheckCheck, Archive, ThumbsUp, ThumbsDown, Undo2, MoreHorizontal, Loader2, Upload, FileWarning, Download, ArrowUp, ArrowDown, ChevronsUpDown, XCircle, UserPlus2, RotateCcw, MessageSquarePlus, Book, Files, BarChart, History } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -182,6 +182,7 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
     handleResubmitCopyTifs, handleResubmitMoveTifs,
     addPageToBook, deletePageFromBook, updateDocumentFlag, rejectionTags, tagPageForRejection,
     handleCompleteTask,handleCancelCompleteTask, handlePullNextTask, addBookObservation, booksAvaiableInStorageLocalIp,
+    getRelevantObservations,
   } = useAppContext();
 
   const { toast } = useToast();
@@ -251,6 +252,17 @@ export default function WorkflowClient({ config, stage }: WorkflowClientProps) {
   const { storages } = useAppContext();
  
   const storageKey = React.useMemo(() => `accordion_state_${stage}`, [stage]);
+  
+
+
+const relevantObservations = React.useMemo(
+  () => {
+    if (!detailsState.book?.id) return [];
+    return getRelevantObservations(detailsState.book.id);
+  },
+  [detailsState.book?.id]
+);
+
 
   React.useEffect(() => {
     try {
@@ -2054,7 +2066,7 @@ const handleMainAction = async (book: EnrichedBook) => {
         </DialogContent>
     </Dialog>
 
-    <Dialog open={detailsState.open} onOpenChange={() => setDetailsState({ open: false, book: undefined })}>
+    {/*<Dialog open={detailsState.open} onOpenChange={() => setDetailsState({ open: false, book: undefined })}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Detalhes do Livro</DialogTitle>
@@ -2080,12 +2092,105 @@ const handleMainAction = async (book: EnrichedBook) => {
               <DetailItem label="Páginas Esperadas" value={detailsState.book?.expectedDocuments} />
               <DetailItem label="Páginas Digitalizadas" value={detailsState.book?.documentCount} />
             </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-headline flex items-center gap-2"><History className="h-5 w-5"/> Histórico de Observações</CardTitle>
+              <CardDescription>Notas e observações sobre este livro.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {relevantObservations.length > 0 ? relevantObservations.map((obs) => (
+                  <div key={obs.id} className="flex items-start gap-3 relative">
+                    <div className="flex-1 -mt-1.5">
+                      <p className="text-sm text-foreground">{obs.observation}</p>
+                      <time className="text-xs text-muted-foreground/80">{new Date(obs.created_at).toLocaleString()} por {obs.userName}</time>
+                    </div>
+                  </div>
+                )) : (
+                  <p className="text-sm text-muted-foreground">Nenhuma observação registada para este livro.</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
            <DialogFooter>
               <Button type="button" variant="secondary" onClick={() => setDetailsState({ open: false, book: undefined })}>Close</Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
-    
+      </Dialog>*/}
+
+    <Dialog
+      open={detailsState.open}
+      onOpenChange={() => setDetailsState({ open: false, book: undefined })}
+    >
+      <DialogContent className="max-w-2xl w-full p-6 rounded-2xl shadow-lg bg-white">
+      <DialogHeader>
+        <DialogTitle className="text-xl font-semibold text-gray-900">
+          Detalhes do Livro 
+          <p></p>
+          <Link href={`/books/${detailsState.book?.id}`} className="text-primary hover:underline">
+                {detailsState.book?.name}</Link>
+        </DialogTitle>
+        <DialogDescription className="text-sm text-gray-500 mt-1">
+          {detailsState.book?.clientName} - {detailsState.book?.projectName}
+        </DialogDescription>
+      </DialogHeader>
+
+        {/* Detalhes do livro - linha vertical, tipografia leve */}
+        <div className="space-y-2 mb-8 text-sm text-gray-700">
+
+                <DetailItem label="Título" value={detailsState.book?.author || '—'} />
+                <DetailItem label="Cota" value={detailsState.book?.isbn || '—'} />
+                <DetailItem label="NCB" value={detailsState.book?.publicationYear || '—'} />
+                <Separator />
+                <DetailItem label="Prioridade" value={detailsState.book?.priority || '—'} />
+                <Separator />
+                <DetailItem label="Scanner" value={detailsState.book?.scannerDeviceName || '—'} />
+                <DetailItem label="Armazenamento" value={detailsState.book?.storageName || '—'} />
+                
+                {detailsState.book?.info && (
+                <>
+                <Separator />
+                <div className="pt-2 grid grid-cols-1 gap-2">
+                    <p className="text-muted-foreground">Informação Adicional</p>
+                    <p className="font-medium whitespace-pre-wrap">{detailsState.book?.info}</p>
+                </div>
+                </>
+                )}
+
+        </div>
+
+        {/* Histórico de Observações */}
+        <section>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+            <History className="h-4 w-4 text-gray-500" /> Histórico de Observações
+          </h3>
+          <div className="space-y-2 max-h-64 overflow-y-auto text-sm text-gray-700">
+            {relevantObservations.length > 0 ? (
+              relevantObservations.map((obs) => (
+                <div key={obs.id} className="p-2 border border-gray-100 rounded-lg bg-gray-50">
+                  <p>{obs.observation}</p>
+                  <time className="text-xs text-gray-500 mt-1 block">
+                    {new Date(obs.created_at).toLocaleString()} por {obs.userName}
+                  </time>
+                </div>
+              ))
+            ) : (
+              <p>Nenhuma observação registada.</p>
+            )}
+          </div>
+        </section>
+
+        {/* Footer */}
+        <DialogFooter className="mt-6 flex justify-end">
+
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+
+          
     <Dialog open={pullTaskState.open} onOpenChange={(open) => !open && setPullTaskState({ open: false, stage: '', role: null })}>
       <DialogContent>
         <DialogHeader>

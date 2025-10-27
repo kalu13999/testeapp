@@ -16,18 +16,19 @@ import {
 import { Button } from "@/components/ui/button";
 import DocumentDetailClient from '@/app/(app)/documents/[id]/client';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ArrowLeft, ArrowRight, View, X, FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, Tag, ShieldAlert, AlertTriangle, Undo2 } from "lucide-react";
+import { MessageSquarePlus, History, ArrowLeft, ArrowRight, View, X, FolderSync, MessageSquareWarning, Trash2, Replace, FilePlus2, Info, BookOpen, Tag, ShieldAlert, AlertTriangle, Undo2 } from "lucide-react";
 import { useAppContext } from "@/context/workflow-context";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { AppDocument } from "@/context/workflow-context";
+import { AppDocument, EnrichedBook } from "@/context/workflow-context";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { RejectionTag } from "@/lib/data";
 
@@ -61,6 +62,8 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
     rejectionTags,
     currentUser,
     tagPageForRejection,
+    addBookObservation,
+    getRelevantObservations,
   } = useAppContext();
   const { toast } = useToast();
   
@@ -68,8 +71,12 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
   const [addPageState, setAddPageState] = React.useState({ open: false, bookId: '', bookName: '', maxPages: 0 });
   const [newPagePosition, setNewPagePosition] = React.useState<number | string>('');
   const [confirmationState, setConfirmationState] = React.useState({ open: false, title: '', description: '', onConfirm: () => {} });
-  
+  const [observationTarget, setObservationTarget] = React.useState<EnrichedBook | null>(null);
+  const [newObservation, setNewObservation] = React.useState('');
+
   const [openDocId, setOpenDocId] = React.useState<string | null>(null);
+  
+  const [detailsState, setDetailsState] = React.useState<{ open: boolean; book?: EnrichedBook }>({ open: false });
   
   const [taggingState, setTaggingState] = React.useState<{
     open: boolean;
@@ -91,6 +98,19 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
   React.useEffect(() => {
     setSelection([]);
   }, [selectedProjectId]);
+
+
+
+    const relevantObservations = React.useMemo(
+      () => {
+        if (!detailsState.book?.id) return [];
+        return getRelevantObservations(detailsState.book.id);
+      },
+      [detailsState.book?.id]
+    );
+
+
+
 
   const getPagesForBook = (bookId: string) => {
     const getPageNum = (name: string): number => {
@@ -232,10 +252,32 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
                 <AccordionContent>
                     <div className="px-4 py-4 space-y-4">
                         <Card>
-                            <CardHeader className="flex flex-row items-center gap-2 pb-2">
-                                <Info className="h-4 w-4" />
-                                <CardTitle className="text-base">Informações do Livro</CardTitle>
-                            </CardHeader>
+                              <CardHeader className="flex flex-row items-center gap-2 pb-2">
+                                <div className="flex flex-col md:flex-row md:items-center w-full gap-2">
+                                  {/* Título */}
+                                  <div className="flex items-center gap-2">
+                                    <Info className="h-4 w-4" />
+                                    <CardTitle className="text-base">Detalhes do Livro</CardTitle>
+                                  </div>
+
+                                  {/* Botões alinhados à direita */}
+                                  <div className="flex gap-2 md:ml-auto w-full md:w-auto">
+                                    <Button 
+                                      onClick={() => setObservationTarget(book)} 
+                                      className="w-full md:w-auto"
+                                    >
+                                      <MessageSquarePlus className="mr-2 h-4 w-4" /> Adicionar Observação
+                                    </Button>
+                                    <Button 
+                                      variant="secondary"
+                                      onClick={() => setDetailsState({ open: true, book: book })}
+                                      className="w-full md:w-auto"
+                                    >
+                                      <History className="mr-2 h-4 w-4" /> Histórico de Observações
+                                    </Button>
+                                  </div>
+                                </div>
+                              </CardHeader>
                             <CardContent className="text-sm space-y-4">
                                 <DetailItem 
                                   label="Livro" 
@@ -248,9 +290,9 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
                                 <DetailItem label="Projeto" value={book.projectName} />
                                 <DetailItem label="Cliente" value={book.clientName} />
                                 <Separator />
-                                <DetailItem label="Autor" value={book.author || '—'} />
-                                <DetailItem label="ISBN" value={book.isbn || '—'} />
-                                <DetailItem label="Ano de Publicação" value={book.publicationYear || '—'} />
+                                <DetailItem label="Título" value={book.author || '—'} />
+                                <DetailItem label="Cota" value={book.isbn || '—'} />
+                                <DetailItem label="NCB" value={book.publicationYear || '—'} />
                                 <Separator />
                                 <DetailItem label="Prioridade" value={book.priority || '—'} />
                                 {book.info && (
@@ -539,6 +581,74 @@ export default function CorrectionViewClient({ config }: CorrectionViewClientPro
             </DialogFooter>
         </DialogContent>
     </Dialog>
+    <Dialog open={!!observationTarget} onOpenChange={() => setObservationTarget(null)}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Adicionar Observação para: {observationTarget?.name}</DialogTitle>
+                    <DialogDescription>
+                        A sua nota será adicionada ao histórico do livro com o seu nome e data.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                    <Textarea
+                        placeholder="Escreva a sua observação aqui..."
+                        value={newObservation}
+                        onChange={(e) => setNewObservation(e.target.value)}
+                        rows={5}
+                    />
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setObservationTarget(null)}>Cancelar</Button>
+                    <Button onClick={() => {
+                        if (observationTarget) addBookObservation(observationTarget.id, newObservation);
+                        setNewObservation('');
+                        setObservationTarget(null);
+                    }} disabled={!newObservation.trim()}>Guardar Observação</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+     <Dialog
+          open={detailsState.open}
+          onOpenChange={() => setDetailsState({ open: false, book: undefined })}
+        >
+          <DialogContent className="max-w-2xl w-full p-6 rounded-2xl shadow-lg bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-gray-900">
+              <History className="h-4 w-4 text-gray-500" /> Histórico de Observações
+              <p></p>
+              <Link href={`/books/${detailsState.book?.id}`} className="text-primary hover:underline">
+                    {detailsState.book?.name}</Link>
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-500 mt-1">
+              {detailsState.book?.clientName} - {detailsState.book?.projectName}
+            </DialogDescription>
+          </DialogHeader>
+    
+           
+            {/* Histórico de Observações */}
+            <section>
+              <div className="space-y-2 max-h-64 overflow-y-auto text-sm text-gray-700">
+                {relevantObservations.length > 0 ? (
+                  relevantObservations.map((obs) => (
+                    <div key={obs.id} className="p-2 border border-gray-100 rounded-lg bg-gray-50">
+                      <p>{obs.observation}</p>
+                      <time className="text-xs text-gray-500 mt-1 block">
+                        {new Date(obs.created_at).toLocaleString()} por {obs.userName}
+                      </time>
+                    </div>
+                  ))
+                ) : (
+                  <p>Nenhuma observação registada.</p>
+                )}
+              </div>
+            </section>
+    
+            {/* Footer */}
+            <DialogFooter className="mt-6 flex justify-end">
+    
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
     </>
   )
 }

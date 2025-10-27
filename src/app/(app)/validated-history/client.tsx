@@ -495,9 +495,9 @@ export default function ValidatedHistoryClient() {
                 <div className="space-y-4 py-4 text-sm">
                     <DetailItem label="Projeto" value={detailsState.book?.projectName} />
                     <Separator />
-                    <DetailItem label="Autor" value={detailsState.book?.author || '—'} />
-                    <DetailItem label="ISBN" value={detailsState.book?.isbn || '—'} />
-                    <DetailItem label="Ano de Publicação" value={detailsState.book?.publicationYear || '—'} />
+                    <DetailItem label="Título" value={detailsState.book?.author || '—'} />
+                    <DetailItem label="Cota" value={detailsState.book?.isbn || '—'} />
+                    <DetailItem label="NCB" value={detailsState.book?.publicationYear || '—'} />
                     <Separator />
                     <DetailItem label="Prioridade" value={detailsState.book?.priority || '—'} />
                     <DetailItem label="Resultado" value={detailsState.book?.validationStatus} />
