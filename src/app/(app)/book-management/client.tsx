@@ -21,7 +21,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { MoreHorizontal, PlusCircle, BookUp, Trash2, Edit, Info, FolderSearch, ChevronsUpDown, ArrowUp, ArrowDown, Download } from "lucide-react"
+import { MoreHorizontal, PlusCircle, BookUp, Trash2, Edit, Info, FolderSearch, ChevronsUpDown, ArrowUp, ArrowDown, Download, History } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,7 +48,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-
+import { Separator } from "@/components/ui/separator";
 import type { EnrichedBook, RawBook } from "@/lib/data"
 import type { BookImport, FailedBook, ImportBooksError  } from "@/context/workflow-context"
 import { BookForm } from "./book-form"
@@ -63,7 +63,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 const ITEMS_PER_PAGE = 50;
 
 export default function BookManagementClient() {
-  const { books, addBook, updateBook, deleteBook, importBooks, selectedProjectId, allProjects} = useAppContext();
+  const { books, addBook, updateBook, deleteBook, importBooks, selectedProjectId, allProjects, getRelevantObservations } = useAppContext();
   const [dialogState, setDialogState] = React.useState<{ open: boolean; type: 'new' | 'edit' | 'delete' | 'import' | 'details' | null; data?: EnrichedBook }>({ open: false, type: null })
   
   const [importJson, setImportJson] = React.useState("");
@@ -77,7 +77,14 @@ export default function BookManagementClient() {
   const [sorting, setSorting] = React.useState<{ id: string; desc: boolean }[]>([
     { id: 'name', desc: false }
   ]);
-  
+
+  const relevantObservations = React.useMemo(
+    () => {
+      if (!dialogState.data?.id) return [];
+      return getRelevantObservations(dialogState.data.id);
+    },
+    [dialogState.data?.id]
+  );
 
   const exampleJson = `[
     {
@@ -103,6 +110,12 @@ export default function BookManagementClient() {
   ]`;
 
 
+const DetailItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
+  <div className="grid grid-cols-3 items-center gap-x-4">
+    <p className="text-muted-foreground">{label}</p>
+    <p className="col-span-2 font-medium">{value}</p>
+  </div>
+);
   const handleColumnFilterChange = (columnId: string, value: string) => {
     setColumnFilters(prev => ({ ...prev, [columnId]: value }));
     setCurrentPage(1);
@@ -367,20 +380,23 @@ export default function BookManagementClient() {
 
       const jsonObjects = rows.map((r: any, index: number) => {
         try {
+
+          const rLower: Record<string, any> = Object.fromEntries(
+            Object.entries(r).map(([key, value]) => [key.toLowerCase(), value])
+          );
           return {
-            // ✅ Correção do mapeamento
-            name: String(r["RFS-Indexing"] || r["name"] || "").trim(), // era Qtd Volumes
-            expectedDocuments: Number(r["Qtd imagem"] || r["expectedDocuments"] || 0),
+            name: String(rLower["rfs-indexing"] || rLower["name"] || "").trim(),
+            expectedDocuments: Number(rLower["qtd imagem"] || rLower["expecteddocuments"] || 0),
             priority: "Média",
             info: JSON.stringify({
-              Volumes: String(r["Qtd Volumes"] || r["Volumes"] || "").trim(), // agora certo
-              Apontamentos: String(r["Apontamentos"] || r["info"] || "").trim(),
+              Volumes: String(rLower["qtd volumes"] || rLower["volumes"] || "").trim(),
+              Apontamentos: String(rLower["apontamentos"] || rLower["info"] || "").trim(),
             }),
-            author: String(r["Título"] || r["author"] || "").trim(), // agora certo
-            isbn: String(r["Cota"] || r["isbn"] || "").trim(),
-            publicationYear: String(r["NCB"] || r["publicationYear"] || "").trim(), // agora certo
-            projectName: String(r["Projeto"] || r["project.name"] || "").trim(),
-            _row: index + 2, // linha do Excel (para erros)
+            author: String(rLower["título"] || rLower["titulo"] || rLower["author"] || "").trim(),
+            isbn: String(rLower["cota"] || rLower["isbn"] || "").trim(),
+            publicationYear: String(rLower["ncb"] || rLower["publicationyear"] || "").trim(),
+            projectName: String(rLower["projeto"] || rLower["project.name"] || "").trim(),
+            _row: index + 2,
           };
         } catch {
           return null;
@@ -871,39 +887,70 @@ export default function BookManagementClient() {
       </Dialog>
 
        <Dialog open={dialogState.open && dialogState.type === 'details'} onOpenChange={closeDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Detalhes do Livro</DialogTitle>
-            <DialogDescription>{dialogState.data?.name}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4 text-sm">
-            <div className="grid grid-cols-3 items-center gap-x-4">
-              <p className="text-muted-foreground">Autor</p>
-              <p className="col-span-2 font-medium">{dialogState.data?.author || '—'}</p>
-            </div>
-            <div className="grid grid-cols-3 items-center gap-x-4">
-              <p className="text-muted-foreground">ISBN</p>
-              <p className="col-span-2 font-medium">{dialogState.data?.isbn || '—'}</p>
-            </div>
-             <div className="grid grid-cols-3 items-center gap-x-4">
-              <p className="text-muted-foreground">Ano de Publicação</p>
-              <p className="col-span-2 font-medium">{dialogState.data?.publicationYear || '—'}</p>
-            </div>
-            <div className="grid grid-cols-3 items-center gap-x-4">
-              <p className="text-muted-foreground">Prioridade</p>
-              <p className="col-span-2 font-medium">{dialogState.data?.priority || '—'}</p>
-            </div>
-            {dialogState.data?.info && (
-              <div className="grid grid-cols-3 items-start gap-x-4">
-                <p className="text-muted-foreground">Informação Adicional</p>
-                <p className="col-span-2 font-medium whitespace-pre-wrap">{dialogState.data.info}</p>
-              </div>
+              <DialogContent className="max-w-2xl w-full p-6 rounded-2xl shadow-lg bg-white">
+      <DialogHeader>
+        <DialogTitle className="text-xl font-semibold text-gray-900">
+          Detalhes do Livro 
+          <p></p>
+          {dialogState.data?.name}
+          {/*<Link href={`/books/${dialogState.data?.id}`} className="text-primary hover:underline">
+                {dialogState.data?.name}</Link>*/}
+        </DialogTitle>
+        <DialogDescription className="text-sm text-gray-500 mt-1">
+          {dialogState.data?.clientName} - {dialogState.data?.projectName}
+        </DialogDescription>
+      </DialogHeader>
+
+        {/* Detalhes do livro - linha vertical, tipografia leve */}
+        <div className="space-y-2 mb-8 text-sm text-gray-700">
+
+                <DetailItem label="Título" value={dialogState.data?.author || '—'} />
+                <DetailItem label="Cota" value={dialogState.data?.isbn || '—'} />
+                <DetailItem label="NCB" value={dialogState.data?.publicationYear || '—'} />
+                <Separator />
+                <DetailItem label="Prioridade" value={dialogState.data?.priority || '—'} />
+                <Separator />
+                <DetailItem label="Scanner" value={dialogState.data?.scannerDeviceName || '—'} />
+                <DetailItem label="Armazenamento" value={dialogState.data?.storageName || '—'} />
+                
+                {dialogState.data?.info && (
+                <>
+                <Separator />
+                <div className="pt-2 grid grid-cols-1 gap-2">
+                    <p className="text-muted-foreground">Informação Adicional</p>
+                    <p className="font-medium whitespace-pre-wrap">{dialogState.data?.info}</p>
+                </div>
+                </>
+                )}
+
+        </div>
+
+        {/* Histórico de Observações */}
+        <section>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+            <History className="h-4 w-4 text-gray-500" /> Histórico de Observações
+          </h3>
+          <div className="space-y-2 max-h-64 overflow-y-auto text-sm text-gray-700">
+            {relevantObservations.length > 0 ? (
+              relevantObservations.map((obs) => (
+                <div key={obs.id} className="p-2 border border-gray-100 rounded-lg bg-gray-50">
+                  <p>{obs.observation}</p>
+                  <time className="text-xs text-gray-500 mt-1 block">
+                    {new Date(obs.created_at).toLocaleString()} por {obs.userName}
+                  </time>
+                </div>
+              ))
+            ) : (
+              <p>Nenhuma observação registada.</p>
             )}
           </div>
-           <DialogFooter>
-              <Button type="button" variant="secondary" onClick={closeDialog}>Fechar</Button>
-          </DialogFooter>
-        </DialogContent>
+        </section>
+
+        {/* Footer */}
+        <DialogFooter className="mt-6 flex justify-end">
+
+        </DialogFooter>
+      </DialogContent>
       </Dialog>
     </div>
   )

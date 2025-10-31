@@ -413,8 +413,13 @@ const withMutation = async <T,>(action: () => Promise<T>): Promise<T | undefined
         setEnrichedBooks(booksData);
         setStatuses(statusesData);
         setTotalsDocuments(totalsDoc);
+
         setDocuments([]);//docsData);//limpa os documentos e depois carrega quando abre as pastas
         // pode manter é uma questão de ver melhor.. para já limpa
+        setSelectedBookId(null);// variavel que carrega os documentos 
+
+
+
         setStorages(storagesData);
         setScanners(scannersData);
         setTransferLogs(transferLogsData);
@@ -517,6 +522,7 @@ const withMutation = async <T,>(action: () => Promise<T>): Promise<T | undefined
   const fetchDocs = async () => {
     if (selectedBookId) {
       await loadDocumentsByBook(selectedBookId);
+      setSelectedBookId(null);
     }
   };
 

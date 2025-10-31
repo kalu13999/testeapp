@@ -129,9 +129,10 @@ export function MainNav() {
       if (item.href === '/dashboard' && currentUser.role === 'Client' && menuSection.id !== 'dashboard') {
           return false;
       }
+      /*
        if (item.href === '/admin/overview' && currentUser.role !== 'Admin') {
           return false;
-       }
+       }*/
 
 
       return true;

@@ -94,7 +94,7 @@ export const allMenuItems: MenuSection[] = [
     collapsible: true,
     colorVariant: 'neutral',
     items: [
-      { href: "/admin/overview", label: "Visão Global", icon: Globe, roles: ['Admin'] },
+      { href: "/admin/overview", label: "Visão Global", icon: Globe},//, roles: ['Admin'] },
       { href: "/admin/daily-production", label: "Produção Diária", icon: TrendingUp },
     ]
   },

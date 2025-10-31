@@ -80,6 +80,7 @@ export default function MyValidationsClient() {
   const [columnStates, setColumnStates] = React.useState<{ [key: string]: { cols: number } }>({});
 
   const [openBooks, setOpenBooks] = React.useState<string[]>([]);
+  const [openDocId, setOpenDocId] = React.useState<string | null>(null);
 
   const canViewAll = React.useMemo(() => {
     if (!currentUser) return false;
@@ -94,7 +95,7 @@ export default function MyValidationsClient() {
     }, [currentUser, permissions]);
   
 
-      const [openDocId, setOpenDocId] = React.useState<string | null>(null);
+      
 
       const handleOpenModal = (id: string) => setOpenDocId(id);
       const handleCloseModal = () => setOpenDocId(null);
@@ -481,7 +482,7 @@ export default function MyValidationsClient() {
                                                 <BookOpen className="h-5 w-5 text-muted-foreground" />
                                                 <div>
                                                     <p className="font-semibold">{book.name}</p>
-                                                    <p className="text-sm text-muted-foreground">{book.projectName} - {pages.length} pages {canViewAll && `- Assigned to: ${task.assigneeName}`}</p>
+                                                    <p className="text-sm text-muted-foreground">{book.projectName} - {book.documentCount} pages {canViewAll && `- Assigned to: ${task.assigneeName}`}</p>
                                                 </div>
                                             </div>
                                         </AccordionTrigger>
@@ -540,10 +541,13 @@ export default function MyValidationsClient() {
                                                       </Button>
                                                     </div>
                                                     {openDocId && (() => {
-                                                      const currentIndex = pages.findIndex(doc => doc.id === openDocId);
-                                                      const prevPage = currentIndex > 0 ? pages[currentIndex - 1] : null;
-                                                      const nextPage = currentIndex < pages.length - 1 ? pages[currentIndex + 1] : null;
-                                                      const page = pages[currentIndex];
+                                                      
+                                                      const allPages = pagesByBook.get(book.id) ?? [];
+                                                   
+                                                      const currentIndex = allPages.findIndex(doc => doc.id === openDocId);
+                                                      const prevPage = currentIndex > 0 ? allPages[currentIndex - 1] : null;
+                                                      const nextPage = currentIndex < pages.length - 1 ? allPages[currentIndex + 1] : null;
+                                                      const page = allPages[currentIndex];
 
                                                         return (
                                                           <div className="fixed inset-0 bg-background z-50 flex flex-col animate-fade-in">

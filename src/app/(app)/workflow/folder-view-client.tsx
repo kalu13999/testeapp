@@ -1587,10 +1587,10 @@ export default function FolderViewClient({ stage, config }: FolderViewClientProp
                                         </DropdownMenu>
                                     </div>
                                     {openDocId && (() => {
-                                      const currentIndex = paginatedPages.findIndex(doc => doc.id === openDocId);
-                                      const prevPage = currentIndex > 0 ? paginatedPages[currentIndex - 1] : null;
-                                      const nextPage = currentIndex < paginatedPages.length - 1 ? paginatedPages[currentIndex + 1] : null;
-                                      const page = paginatedPages[currentIndex];
+                                      const currentIndex = allPages.findIndex(doc => doc.id === openDocId);
+                                      const prevPage = currentIndex > 0 ? allPages[currentIndex - 1] : null;
+                                      const nextPage = currentIndex < allPages.length - 1 ? allPages[currentIndex + 1] : null;
+                                      const page = allPages[currentIndex];
 
                                         return (
                                           <div className="fixed inset-0 bg-background z-50 flex flex-col animate-fade-in">

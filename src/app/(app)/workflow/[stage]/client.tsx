@@ -1073,6 +1073,7 @@ const handleMainAction = async (book: EnrichedBook) => {
         </TableCell>
         <TableCell>{item.projectName}</TableCell>
         <TableCell className="hidden md:table-cell">{item.isbn}</TableCell>
+        <TableCell className="hidden md:table-cell">{item.publicationYear}</TableCell>
         <TableCell className="hidden md:table-cell">{item.expectedDocuments}</TableCell>
         {canViewAll && config.assigneeRole && (
           <TableCell>{item.assigneeName}</TableCell>
@@ -1675,6 +1676,7 @@ const handleMainAction = async (book: EnrichedBook) => {
                         </div>
                       </TableHead>
                       <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('isbn', e.shiftKey)}>Cota {getSortIndicator('isbn')}</div></TableHead>
+                      <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('publicationYear', e.shiftKey)}>NCB {getSortIndicator('publicationYear')}</div></TableHead>
                       <TableHead className="hidden md:table-cell"><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('expectedDocuments', e.shiftKey)}>Paginas {getSortIndicator('expectedDocuments')}</div></TableHead>
                       {canViewAll && config.assigneeRole && (
                          <TableHead><div className="flex items-center gap-2 cursor-pointer select-none group" onClick={(e) => handleSort('assigneeName', e.shiftKey)}>Atribuído{getSortIndicator('assigneeName')}</div></TableHead>
@@ -1740,6 +1742,14 @@ const handleMainAction = async (book: EnrichedBook) => {
                             placeholder="Filtrar..."
                             value={columnFilters['isbn'] || ''}
                             onChange={(e) => handleColumnFilterChange('isbn', e.target.value)}
+                            className="h-8"
+                        />
+                    </TableHead>
+                    <TableHead className="hidden md:table-cell">
+                        <Input
+                            placeholder="Filtrar..."
+                            value={columnFilters['publicationYear'] || ''}
+                            onChange={(e) => handleColumnFilterChange('publicationYear', e.target.value)}
                             className="h-8"
                         />
                     </TableHead>
